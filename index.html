@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Philadelphia AI — Your Creative Telegram Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts for modern look -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4fd1c5;
+      --accent: #ffd700;
+      --dark: #101014;
+      --darker: #070709;
+      --text: #f5f5f5;
+      --muted: #b3b3b3;
+      --card: #18181c;
+      --glass: rgba(24,24,28,0.72);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 60% 30%, #23233a 60%, #070709 100%);
+      color: var(--text);
+      font-family: 'Inter', Arial, sans-serif;
+      overflow-x: hidden;
+    }
+    nav {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 28px 7vw 0 7vw;
+      position: relative;
+      z-index: 10;
+    }
+    .logo {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo span {
+      color: var(--text);
+      font-weight: 400;
+      font-size: 1.1em;
+    }
+    .nav-btn {
+      background: var(--primary);
+      color: #111;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 32px;
+      font-size: 1.1em;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+      box-shadow: 0 2px 16px #0004;
+      text-decoration: none;
+      margin-left: 18px;
+    }
+    .nav-btn:hover {
+      background: #38b2ac;
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 4px 24px #0007;
+    }
+    .hero {
+      width: 100%;
+      min-height: 72vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      margin-top: 36px;
+    }
+    .hero-title {
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+      line-height: 1.15;
+      background: linear-gradient(90deg, var(--primary), #fff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shine 3s linear infinite;
+      display: inline-block;
+    }
+    @keyframes shine {
+      0% { background-position: 0%;}
+      100% { background-position: 200%;}
+    }
+    .hero-desc {
+      font-size: 1.25em;
+      color: var(--muted);
+      margin-bottom: 38px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+    .cta-btns {
+      display: flex;
+      gap: 18px;
+      justify-content: center;
+      margin-bottom: 38px;
+      flex-wrap: wrap;
+    }
+    .cta-btn {
+      background: var(--primary);
+      color: #111;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 36px;
+      font-size: 1.18em;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 16px #0004;
+      text-decoration: none;
+      transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cta-btn.secondary {
+      background: #23233a;
+      color: var(--primary);
+      border: 1.5px solid var(--primary);
+    }
+    .cta-btn:hover {
+      background: #38b2ac;
+      color: #fff;
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 4px 24px #0007;
+    }
+    .cta-btn.secondary:hover {
+      background: #18181c;
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .moving-bg {
+      position: absolute;
+      left: 0; right: 0; top: 0; bottom: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .grid {
+      position: absolute;
+      left: 50%; top: 54%;
+      transform: translate(-50%, -50%) scale(1.1);
+      width: 700px; height: 320px;
+      opacity: 0.18;
+      background: repeating-linear-gradient(0deg, #fff1 0 1px, transparent 1px 20px),
+                  repeating-linear-gradient(90deg, #fff1 0 1px, transparent 1px 20px);
+      border-radius: 50%;
+      filter: blur(1px);
+      animation: gridmove 7s linear infinite alternate;
+    }
+    @keyframes gridmove {
+      0% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg);}
+      100% { transform: translate(-50%, -50%) scale(1.1) rotate(5deg);}
+    }
+    .floating-emoji {
+      position: absolute;
+      font-size: 2.2em;
+      opacity: 0.14;
+      animation: float 7s infinite ease-in-out alternate;
+    }
+    .floating-emoji.one { left: 10vw; top: 18vh; animation-delay: 0s;}
+    .floating-emoji.two { right: 9vw; top: 33vh; animation-delay: 1.5s;}
+    .floating-emoji.three { left: 20vw; bottom: 18vh; animation-delay: 3s;}
+    @keyframes float {
+      0% { transform: translateY(0);}
+      100% { transform: translateY(-20px) scale(1.08);}
+    }
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 30px;
+      margin: 0 auto 70px auto;
+      max-width: 1100px;
+      z-index: 2;
+      position: relative;
+    }
+    .feature-card {
+      background: var(--glass);
+      border-radius: var(--radius);
+      padding: 30px 28px 22px 28px;
+      min-width: 240px;
+      max-width: 300px;
+      flex: 1 1 240px;
+      box-shadow: 0 2px 18px #0002;
+      text-align: center;
+      transition: transform 0.18s, box-shadow 0.18s;
+      border: 1.5px solid #23233a;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px) scale(1.04);
+      box-shadow: 0 4px 32px #0005;
+      border-color: var(--primary);
+    }
+    .feature-card i {
+      font-size: 2.3em;
+      color: var(--primary);
+      margin-bottom: 12px;
+      transition: color 0.18s;
+    }
+    .feature-card:hover i {
+      color: var(--accent);
+    }
+    .feature-title {
+      font-size: 1.18em;
+      font-weight: 700;
+      margin-bottom: 7px;
+      color: #fff;
+    }
+    .feature-desc {
+      color: var(--muted);
+      font-size: 1em;
+      line-height: 1.5;
+    }
+    .creator {
+      margin: 0 auto 60px auto;
+      max-width: 700px;
+      background: var(--glass);
+      border-radius: var(--radius);
+      padding: 28px 30px;
+      box-shadow: 0 2px 16px #0002;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .creator img {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2.5px solid var(--primary);
+      box-shadow: 0 2px 10px #0003;
+      background: #fff;
+    }
+    .creator-info {
+      flex: 1;
+    }
+    .creator-info h4 {
+      margin: 0 0 4px 0;
+      font-size: 1.1em;
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .creator-info p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1em;
+      line-height: 1.4;
+    }
+    footer {
+      text-align: center;
+      color: #555;
+      font-size: 1em;
+      padding: 28px 0 18px 0;
+      background: transparent;
+      letter-spacing: 1px;
+    }
+    @media (max-width: 900px) {
+      .features { flex-direction: column; gap: 28px;}
+      .creator { flex-direction: column; align-items: flex-start;}
+      .creator img { margin-bottom: 10px;}
+    }
+    @media (max-width: 600px) {
+      nav { flex-direction: column; gap: 14px; padding: 18px 3vw 0 3vw;}
+      .hero-title { font-size: 2em;}
+      .features { padding: 0 2vw;}
+      .feature-card { min-width: 90vw; max-width: 98vw;}
+      .creator { padding: 18px 10px;}
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">
+      <i class="fa-solid fa-feather-pointed"></i>
+      Philadelphia <span>AI</span>
+    </div>
+    <div>
+      <a href="https://t.me/writingurubot" class="nav-btn secondary" target="_blank"><i class="fab fa-telegram"></i> Telegram</a>
+      <a href="signup.html" class="nav-btn"><i class="fa-solid fa-sign-in-alt"></i> Sign Up</a>
+    </div>
+  </nav>
+  <div class="moving-bg">
+    <div class="grid"></div>
+    <div class="floating-emoji one">🤯</div>
+    <div class="floating-emoji two">✍️</div>
+    <div class="floating-emoji three">💡</div>
+  </div>
+  <section class="hero">
+    <h1 class="hero-title" id="hero-animated">Not just smart.<br> <span style="color:var(--primary)">Soulful.</span></h1>
+    <div class="hero-desc">
+      Meet <b>Philadelphia AI</b> — Nigeria’s first emotionally intelligent Telegram assistant.<br>
+      <span style="color:var(--primary)">Write, create, chat, analyze, and imagine anything.</span><br>
+      From stories to songs, images to videos. All powered by Gemini, Stability, and more.<br>
+      <span style="color:#ffd700">Zero coding. Infinite creativity. Just vibes.</span>
+    </div>
+    <div class="cta-btns">
+      <a href="signup.html" class="cta-btn"><i class="fa-solid fa-bolt"></i> Get Started</a>
+      <a href="https://t.me/writingurubot" class="cta-btn secondary" target="_blank"><i class="fab fa-telegram"></i> Try on Telegram</a>
+    </div>
+  </section>
+  <section class="features">
+    <div class="feature-card">
+      <i class="fa-solid fa-image"></i>
+      <div class="feature-title">Image & Video Magic</div>
+      <div class="feature-desc">
+        Generate stunning images with <b>/philadelphia_vision</b>.<br>
+        Turn photos into videos, summarize clips, or download media.<br>
+        <span style="color:var(--primary)">Powered by Stability & Gemini.</span>
+      </div>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-headphones"></i>
+      <div class="feature-title">Audio & Song Genius</div>
+      <div class="feature-desc">
+        Instantly turn text or docs into audio with <b>/tts</b>.<br>
+        Download your favorite tracks or get audio summaries.<br>
+        <span style="color:var(--primary)">Just ask, Philly delivers.</span>
+      </div>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-book-open"></i>
+      <div class="feature-title">Creative Writing & Editing</div>
+      <div class="feature-desc">
+        Stories, poems, essays, code, and more.<br>
+        Get feedback, corrections, or inspiration.<br>
+        <span style="color:var(--primary)">No limits. Just vibes.</span>
+      </div>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-globe"></i>
+      <div class="feature-title">Instant Website Creation</div>
+      <div class="feature-desc">
+        Build & deploy custom sites with <b>/create_site</b>.<br>
+        Edit, manage, and share — all from Telegram.<br>
+        <span style="color:var(--primary)">Vercel-powered. No code needed.</span>
+      </div>
+    </div>
+    <div class="feature-card">
+      <i class="fa-solid fa-users"></i>
+      <div class="feature-title">Group Tools & Companionship</div>
+      <div class="feature-desc">
+        Welcome, moderate, broadcast, and manage your Telegram groups.<br>
+        Or just vibe — Philly’s always there to chat or listen.
+      </div>
+    </div>
+  </section>
+  <div class="creator">
+    <img src="https://9jahotblog.github.io/assets/dev/kolade_photo.jpg" alt="Kolade Philip Ogunlana">
+    <div class="creator-info">
+      <h4>Created by Kolade Philip Ogunlana</h4>
+      <p>
+        Nigerian author, teacher, and AI creative.<br>
+        Winner of the Ifeadigo Write Your Book Challenge.<br>
+        <a href="https://t.me/writingurubot" style="color:var(--primary);text-decoration:underline" target="_blank">Chat with Philly on Telegram</a>
+      </p>
+    </div>
+  </div>
+  <footer>
+    &copy; 2025 Philadelphia AI. <span style="color:var(--primary)">Made with ❤️ in Nigeria.</span>
+  </footer>
+  <script>
+    // Animate hero text letters
+    const text = "Not just smart.\nSoulful.";
+    const hero = document.getElementById('hero-animated');
+    function animateHero() {
+      const lines = [
+        'Not just smart.',
+        '<span style="color:var(--primary)">Soulful.</span>'
+      ];
+      let html = '';
+      lines.forEach((line, i) => {
+        html += `<div style="opacity:0;transition:opacity 0.8s ${i*0.7}s;" class="hero-line">${line}</div>`;
+      });
+      hero.innerHTML = html;
+      setTimeout(() => {
+        document.querySelectorAll('.hero-line').forEach((el, idx) => {
+          setTimeout(() => el.style.opacity = 1, idx*700);
+        });
+      }, 200);
+    }
+    animateHero();
+  </script>
+</body>
+</html>
