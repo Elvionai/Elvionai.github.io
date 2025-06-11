@@ -468,18 +468,230 @@
 
   <!-- Chat Section -->
   <section class="chat-section" id="chatSection">
-    <div class="chat-title-row">
-      <div class="chat-title"><i class="fa-solid fa-message"></i> Philadelphia AI Chat</div>
-      <button class="fullscreen-btn" id="fullscreenBtn" title="Fullscreen"><i class="fa-regular fa-square"></i></button>
+  <div class="chat-title-row">
+    <div class="chat-title"><i class="fa-solid fa-message"></i> Philadelphia AI Chat</div>
+    <button class="fullscreen-btn" id="fullscreenBtn" title="Fullscreen"><i class="fa-regular fa-square"></i></button>
+  </div>
+  <div class="conversation-bar">
+    <div class="conversation-name" id="conversationName"></div>
+    <div class="conversation-controls">
+      <button id="newConversationBtn" title="Start new conversation">+</button>
+      <select id="conversationSelect"></select>
     </div>
-    <div class="chat-box" id="chatBox"></div>
-    <form class="chat-input-row" id="chatForm" autocomplete="off">
-      <label for="chatFile" title="Upload file"><i class="fa-solid fa-paperclip"></i></label>
-      <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
-      <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
-      <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
-    </form>
-  </section>
+  </div>
+  <div class="mode-bar">
+    <button class="mode-btn" data-mode="companion">Companion</button>
+    <button class="mode-btn" data-mode="code">Code</button>
+    <button class="mode-btn" data-mode="research">Research</button>
+    <!-- Add more modes as needed -->
+  </div>
+  <div class="chat-box" id="chatBox"></div>
+  <form class="chat-input-row" id="chatForm" autocomplete="off">
+    <label for="chatFile" title="Upload file"><i class="fa-solid fa-paperclip"></i></label>
+    <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
+    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+    <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+  </form>
+</section>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+const BACKEND_URL = "https://YOUR_BACKEND_URL/chat"; // <-- set your backend here
+
+// --- Conversation State ---
+let conversations = JSON.parse(localStorage.getItem("philly_conversations") || "{}");
+let currentConvId = localStorage.getItem("philly_currentConvId") || null;
+let currentMode = localStorage.getItem("philly_mode") || "companion";
+
+function randomName() {
+  const names = ["Untitled", "Philly Chat", "Companion", "Code Session", "Research", "New Chat"];
+  return names[Math.floor(Math.random() * names.length)] + " " + Math.floor(Math.random()*1000);
+}
+
+function saveConversations() {
+  localStorage.setItem("philly_conversations", JSON.stringify(conversations));
+  localStorage.setItem("philly_currentConvId", currentConvId);
+  localStorage.setItem("philly_mode", currentMode);
+}
+
+function setConversationName(name) {
+  document.getElementById("conversationName").textContent = name;
+}
+
+function renderConversationSelect() {
+  const select = document.getElementById("conversationSelect");
+  select.innerHTML = "";
+  Object.entries(conversations).forEach(([id, conv]) => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = conv.name || "Chat";
+    if (id === currentConvId) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
+function switchConversation(id) {
+  if (!conversations[id]) return;
+  currentConvId = id;
+  saveConversations();
+  setConversationName(conversations[id].name);
+  renderConversationSelect();
+  renderChat();
+}
+
+function newConversation() {
+  const id = "conv_" + Date.now();
+  const name = randomName();
+  conversations[id] = { name, mode: currentMode, history: [] };
+  currentConvId = id;
+  saveConversations();
+  setConversationName(name);
+  renderConversationSelect();
+  renderChat();
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  if (currentConvId && conversations[currentConvId]) {
+    conversations[currentConvId].mode = mode;
+    saveConversations();
+  }
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+}
+
+function renderChat() {
+  const chatBox = document.getElementById("chatBox");
+  chatBox.innerHTML = "";
+  if (!currentConvId || !conversations[currentConvId]) return;
+  for (const msg of conversations[currentConvId].history) {
+    addChatMessage(msg.role, msg.content, false);
+  }
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addChatMessage(role, content, save = true) {
+  const chatBox = document.getElementById("chatBox");
+  const div = document.createElement('div');
+  div.className = 'chat-message ' + (role === 'user' ? 'user' : '');
+  // Render markdown for bot, plain for user
+  if (role === 'assistant') {
+    div.innerHTML = `<div class="msg sparkle-text">${marked.parse(content)}</div>`;
+  } else {
+    div.innerHTML = `<div class="msg">${content}</div>`;
+  }
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  // Save to current conversation
+  if (save && currentConvId && conversations[currentConvId]) {
+    conversations[currentConvId].history.push({ role, content });
+    saveConversations();
+  }
+}
+
+// --- Fullscreen logic ---
+const chatSection = document.getElementById('chatSection');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+let isFullscreen = false;
+fullscreenBtn.onclick = function() {
+  isFullscreen = !isFullscreen;
+  if (isFullscreen) {
+    chatSection.classList.add('fullscreen');
+    fullscreenBtn.innerHTML = '<i class="fa-solid fa-compress"></i>';
+  } else {
+    chatSection.classList.remove('fullscreen');
+    fullscreenBtn.innerHTML = '<i class="fa-regular fa-square"></i>';
+  }
+};
+
+// --- Conversation controls ---
+document.getElementById("newConversationBtn").onclick = newConversation;
+document.getElementById("conversationSelect").onchange = function() {
+  switchConversation(this.value);
+};
+document.querySelectorAll(".mode-btn").forEach(btn => {
+  btn.onclick = () => setMode(btn.dataset.mode);
+});
+
+// --- Chat form logic ---
+const chatForm = document.getElementById('chatForm');
+const chatInput = document.getElementById('chatInput');
+chatForm.onsubmit = async function(e){
+  e.preventDefault();
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+  addChatMessage('user', msg);
+  chatInput.value = '';
+  // Typing indicator
+  addChatMessage('assistant', '...thinking...', false);
+  // Prepare payload
+  const history = conversations[currentConvId]?.history || [];
+  const payload = {
+    message: msg,
+    user_id: currentConvId,
+    history: history.filter(x => x.role && x.content)
+  };
+  // Add mode as a system prompt if needed
+  if (currentMode && currentMode !== "companion") {
+    payload.history.unshift({
+      role: "user",
+      content: `Switch to "${currentMode}" mode. Respond as a ${currentMode} AI.`
+    });
+  }
+  try {
+    const res = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    // Remove typing indicator
+    const chatBox = document.getElementById("chatBox");
+    chatBox.removeChild(chatBox.lastChild);
+    addChatMessage('assistant', data.response);
+  } catch (err) {
+    const chatBox = document.getElementById("chatBox");
+    chatBox.removeChild(chatBox.lastChild);
+    addChatMessage('assistant', "Sorry, I couldn't reach the AI.");
+  }
+};
+
+// --- Sparkle effect for bot text ---
+const style = document.createElement('style');
+style.innerHTML = `
+.sparkle-text { position: relative; }
+.sparkle-text::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    120deg,
+    rgba(255,255,255,0.08) 0px,
+    rgba(255,255,255,0.08) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  animation: sparkles 2.5s linear infinite;
+}
+@keyframes sparkles {
+  0% { background-position: 0 0; }
+  100% { background-position: 100px 100px; }
+}
+.mode-btn.active { background: #4fd1c5; color: #18181c; }
+`;
+document.head.appendChild(style);
+
+// --- Init ---
+if (!currentConvId || !conversations[currentConvId]) newConversation();
+else {
+  setConversationName(conversations[currentConvId].name);
+  renderConversationSelect();
+  setMode(currentMode);
+  renderChat();
+}
+</script>
+
 
   <!-- Firebase & Profile Logic -->
   <script type="module">
