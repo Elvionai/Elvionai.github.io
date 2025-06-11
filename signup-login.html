@@ -45,23 +45,23 @@
       padding-bottom: 32px;
     }
     .logo {
-      margin-top: 48px;
+      margin-top: 44px;
       margin-bottom: 18px;
       display: flex;
       flex-direction: column;
       align-items: center;
     }
     .logo img {
-      width: 72px;
-      height: 72px;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
       object-fit: cover;
       box-shadow: 0 2px 16px #0006;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       background: #fff;
     }
     .logo-text {
-      font-size: 2.2rem;
+      font-size: 2rem;
       font-weight: 800;
       letter-spacing: 2px;
       background: linear-gradient(90deg, #4fd1c5, #fff, #ffd700, #4fd1c5);
@@ -70,6 +70,7 @@
       -webkit-text-fill-color: transparent;
       animation: shine 3s linear infinite;
       text-shadow: 0 2px 16px #000a;
+      text-align: center;
     }
     @keyframes shine {
       to { background-position: 200% center; }
@@ -105,27 +106,18 @@
       width: 100%;
       text-align: center;
       color: var(--muted);
-      margin: 28px 0 18px 0;
+      margin: 16px 0 12px 0;
       font-size: 0.98em;
       position: relative;
-    }
-    .divider:before, .divider:after {
-      content: "";
-      display: inline-block;
-      width: 30%;
-      height: 1px;
-      background: #23233a;
-      vertical-align: middle;
-      margin: 0 10px;
     }
     .signup-form {
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 13px;
       margin-bottom: 12px;
     }
-    .signup-form input, .signup-form select {
+    .signup-form input {
       width: 100%;
       padding: 13px 15px;
       border-radius: 12px;
@@ -137,7 +129,7 @@
       transition: border 0.18s;
       outline: none;
     }
-    .signup-form input:focus, .signup-form select:focus {
+    .signup-form input:focus {
       border: 1.5px solid var(--primary);
     }
     .signup-form label {
@@ -146,12 +138,6 @@
       margin-bottom: 2px;
       margin-left: 2px;
       display: block;
-    }
-    .signup-form .dob-note {
-      font-size: 0.88em;
-      color: var(--muted);
-      margin-top: -10px;
-      margin-bottom: 6px;
     }
     .submit-btn {
       width: 100%;
@@ -171,6 +157,16 @@
     .error-message {
       color: #ff6b6b;
       background: #2a1818;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.98em;
+      margin-bottom: 12px;
+      text-align: center;
+      display: none;
+    }
+    .success-message {
+      color: #4fd1c5;
+      background: #1d2a1d;
       border-radius: 10px;
       padding: 10px 12px;
       font-size: 0.98em;
@@ -249,9 +245,9 @@
     }
     @media (max-width: 500px) {
       .container { max-width: 98vw;}
-      .logo-text { font-size: 1.4rem;}
+      .logo-text { font-size: 1.2rem;}
       .modal { padding: 22px 7vw 12px 7vw;}
-      .logo img { width: 54px; height: 54px;}
+      .logo img { width: 48px; height: 48px;}
     }
   </style>
 </head>
@@ -261,9 +257,9 @@
       <img src="https://i.postimg.cc/FKYGhx7g/IMG-20250607-WA0016.jpg" alt="Philadelphia AI Logo">
       <div class="logo-text">Philadelphia AI</div>
     </div>
-    <div class="subtitle">Create your account to unlock the future.<br>Sign up with your favorite method:</div>
+    <div class="subtitle">Understand everything.<br>Sign up to unlock the future.</div>
     <button class="auth-btn google" id="googleSignUp"><i class="fab fa-google"></i>Continue with Google</button>
-    <div class="divider">or</div>
+    <div class="divider">or sign up with email</div>
     <form class="signup-form" id="signupForm" autocomplete="off">
       <label for="name">Full Name</label>
       <input type="text" id="name" required placeholder="Your full name">
@@ -274,22 +270,13 @@
       <label for="password">Password</label>
       <input type="password" id="password" required minlength="6" placeholder="Create a password">
       <label for="dob">Date of Birth</label>
-      <input type="date" id="dob" required>
-      <div class="dob-note">We use your date of birth to ensure safe usage and permissions.</div>
+      <input type="text" id="dob" required placeholder="e.g. 2002-07-31">
       <label for="country">Country</label>
-      <select id="country" required>
-        <option value="">Select your country</option>
-        <option value="Nigeria">Nigeria</option>
-        <option value="United States">United States</option>
-        <option value="India">India</option>
-        <option value="Saudi Arabia">Saudi Arabia</option>
-        <option value="Brazil">Brazil</option>
-        <option value="Colombia">Colombia</option>
-        <option value="Other">Other</option>
-      </select>
+      <input type="text" id="country" required placeholder="e.g. Nigeria">
       <button type="submit" class="submit-btn">Sign Up</button>
     </form>
     <div class="error-message" id="errorMsg"></div>
+    <div class="success-message" id="successMsg"></div>
     <div class="terms">
       By continuing you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.<br>
       Already have an account? <span class="signin-link" id="showLogin">Sign in</span>
@@ -345,20 +332,19 @@
       const provider = new GoogleAuthProvider();
       try {
         const result = await signInWithPopup(auth, provider);
-        // Save user info to Firestore
         await setDoc(doc(db, "users", result.user.uid), {
           name: result.user.displayName,
           email: result.user.email,
           username: result.user.email.split("@")[0],
-          country: "",
           dob: "",
+          country: "",
           createdAt: new Date()
         });
         if (!result.user.emailVerified) {
           await sendEmailVerification(result.user);
-          alert('Verification email sent. Please check your inbox.');
+          showSuccess("Account created! Verification email sent. Please check your inbox.");
         }
-        window.location.href = "profile.html";
+        setTimeout(() => window.location.href = "profile.html", 2000);
       } catch (error) {
         showError(error.message);
       }
@@ -371,8 +357,8 @@
       const username = document.getElementById('username').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-      const dob = document.getElementById('dob').value;
-      const country = document.getElementById('country').value;
+      const dob = document.getElementById('dob').value.trim();
+      const country = document.getElementById('country').value.trim();
       if (!name || !username || !email || !password || !dob || !country) {
         showError("Please fill in all fields.");
         return;
@@ -389,8 +375,8 @@
           createdAt: new Date()
         });
         await sendEmailVerification(userCredential.user);
-        alert('Sign-up successful! Verification email sent. Please check your inbox before logging in.');
-        window.location.href = "profile.html";
+        showSuccess("Account created! Verification email sent. Please check your inbox.");
+        setTimeout(() => window.location.href = "profile.html", 2500);
       } catch (error) {
         showError(error.message);
       }
@@ -435,7 +421,13 @@
       const err = document.getElementById('errorMsg');
       err.textContent = msg;
       err.style.display = 'block';
-      setTimeout(() => { err.style.display = 'none'; }, 6000);
+      document.getElementById('successMsg').style.display = 'none';
+    }
+    function showSuccess(msg) {
+      const succ = document.getElementById('successMsg');
+      succ.textContent = msg;
+      succ.style.display = 'block';
+      document.getElementById('errorMsg').style.display = 'none';
     }
   </script>
 </body>
