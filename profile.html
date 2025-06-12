@@ -522,26 +522,29 @@
 
   <!-- Chat Section -->
   <section class="chat-section" id="chatSection">
-    <div class="chat-title-row">
-      <div class="chat-title"><i class="fa-solid fa-message"></i> <span id="modelName">Philadelphia</span></div>
-      <button class="fullscreen-btn" id="fullscreenBtn" title="Fullscreen"><i class="fa-regular fa-square"></i></button>
+  <div class="chat-title-row">
+    <div class="chat-title">
+      <i class="fa-solid fa-message"></i> <span id="modelName">Philadelphia</span>
     </div>
-    <div class="conversation-bar">
-      <div class="conversation-name" id="conversationName" title="Click to edit"></div>
-      <div class="conversation-controls">
-        <button id="newConversationBtn" title="Start new conversation"><i class="fa-solid fa-plus"></i></button>
-        <button id="deleteConversationBtn" title="Delete this conversation"><i class="fa-solid fa-trash"></i></button>
-        <select id="conversationSelect"></select>
-      </div>
+  </div>
+  <div class="conversation-bar">
+    <div class="conversation-name" id="conversationName" title="Click to edit"></div>
+    <div class="conversation-controls">
+      <button id="newConversationBtn" title="Start new conversation"><i class="fa-solid fa-plus"></i></button>
+      <button id="deleteConversationBtn" title="Delete this conversation"><i class="fa-solid fa-trash"></i></button>
+      <select id="conversationSelect"></select>
     </div>
-    <div class="chat-box" id="chatBox"></div>
-    <form class="chat-input-row" id="chatForm" autocomplete="off">
-      <label for="chatFile" title="Upload file, image, or video" id="fileLabel"><i class="fa-solid fa-paperclip"></i></label>
-      <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
-      <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
-      <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
-    </form>
-  </section>
+  </div>
+  <div class="chat-box" id="chatBox"></div>
+  <div id="uploadPreview" class="upload-preview"></div>
+  <form class="chat-input-row" id="chatForm" autocomplete="off">
+    <button type="button" class="composer-btn" id="voiceBtn" title="Voice Note"><i class="fa-solid fa-microphone"></i></button>
+    <label for="chatFile" title="Attach"><i class="fa-solid fa-paperclip"></i></label>
+    <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
+    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+    <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+  </form>
+</section>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -892,27 +895,69 @@ You're witty, expressive, and thoughtful. You speak naturally, like a brilliant 
     };
 
     // Auth/profile logic
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById("menu-username").innerText = user.displayName || "User";
-        document.getElementById("menu-email").innerText = user.email || "";
-        document.getElementById("menu-profile-photo").src = user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
-      } else {
-        window.location.href = "signup-login.html";
-      }
+auth.onAuthStateChanged(user => {
+  if (user) {
+    // Load profile from Firestore
+    db.collection("users").doc(user.uid).get().then(doc => {
+      const profile = doc.exists ? doc.data() : {};
+      document.getElementById("edit-name").value = profile.displayName || user.displayName || "";
+      document.getElementById("edit-username").value = profile.username || "";
+      document.getElementById("edit-email").value = profile.email || user.email || "";
+      document.getElementById("edit-country").value = profile.country || "";
+      document.getElementById("edit-dob").value = profile.dob || "";
+      document.getElementById("edit-photo-url").value = profile.photoURL || user.photoURL || "";
+      document.getElementById("menu-username").innerText = profile.username || profile.displayName || user.displayName || "User";
+      document.getElementById("menu-email").innerText = profile.email || user.email || "";
+      document.getElementById("menu-profile-photo").src = profile.photoURL || user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
     });
-    document.getElementById("logoutMenu").onclick = function(e){
-      e.preventDefault();
-      auth.signOut().then(() => {
-        window.location.href = "signup-login.html";
-      });
-    };
+  } else {
+    window.location.href = "signup-login.html";
+  }
+});
+document.getElementById("logoutMenu").onclick = function(e){
+  e.preventDefault();
+  auth.signOut().then(() => {
+    window.location.href = "signup-login.html";
+  });
+};
 
-    // Save profile edits
-    document.getElementById("editFields").onsubmit = function(e){
-      e.preventDefault();
-      document.getElementById("statusMsg").innerText = "Profile updated! (Demo)";
-    };
+// Save profile edits
+document.getElementById("editFields").onsubmit = function(e){
+  e.preventDefault();
+  const user = auth.currentUser;
+  if (!user) {
+    document.getElementById("statusMsg").innerText = "No user signed in!";
+    return;
+  }
+  const updates = {
+    displayName: document.getElementById("edit-name").value.trim() || user.displayName || "",
+    username: document.getElementById("edit-username").value.trim() || "",
+    email: document.getElementById("edit-email").value.trim() || user.email || "",
+    country: document.getElementById("edit-country").value.trim() || "",
+    dob: document.getElementById("edit-dob").value || "",
+    photoURL: document.getElementById("edit-photo-url").value.trim() || user.photoURL || ""
+  };
+  // Update Auth profile (displayName, photoURL, email)
+  user.updateProfile({
+    displayName: updates.displayName,
+    photoURL: updates.photoURL
+  }).then(() => {
+    if (updates.email && updates.email !== user.email) {
+      return user.updateEmail(updates.email);
+    }
+  }).then(() => {
+    // Update Firestore
+    return db.collection("users").doc(user.uid).set(updates, {merge:true});
+  }).then(() => {
+    document.getElementById("statusMsg").innerText = "Profile updated successfully!";
+    // Update menu UI
+    document.getElementById("menu-username").innerText = updates.username || updates.displayName || "User";
+    document.getElementById("menu-email").innerText = updates.email || "";
+    document.getElementById("menu-profile-photo").src = updates.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
+  }).catch((err) => {
+    document.getElementById("statusMsg").innerText = "Error: " + err.message;
+  });
+};
   </script>
 </body>
 </html>
