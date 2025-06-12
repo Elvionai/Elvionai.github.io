@@ -892,69 +892,27 @@ You're witty, expressive, and thoughtful. You speak naturally, like a brilliant 
     };
 
     // Auth/profile logic
-auth.onAuthStateChanged(user => {
-  if (user) {
-    // Load profile from Firestore
-    db.collection("users").doc(user.uid).get().then(doc => {
-      const profile = doc.exists ? doc.data() : {};
-      document.getElementById("edit-name").value = profile.displayName || user.displayName || "";
-      document.getElementById("edit-username").value = profile.username || "";
-      document.getElementById("edit-email").value = profile.email || user.email || "";
-      document.getElementById("edit-country").value = profile.country || "";
-      document.getElementById("edit-dob").value = profile.dob || "";
-      document.getElementById("edit-photo-url").value = profile.photoURL || user.photoURL || "";
-      document.getElementById("menu-username").innerText = profile.username || profile.displayName || user.displayName || "User";
-      document.getElementById("menu-email").innerText = profile.email || user.email || "";
-      document.getElementById("menu-profile-photo").src = profile.photoURL || user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById("menu-username").innerText = user.displayName || "User";
+        document.getElementById("menu-email").innerText = user.email || "";
+        document.getElementById("menu-profile-photo").src = user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
+      } else {
+        window.location.href = "signup-login.html";
+      }
     });
-  } else {
-    window.location.href = "signup-login.html";
-  }
-});
-document.getElementById("logoutMenu").onclick = function(e){
-  e.preventDefault();
-  auth.signOut().then(() => {
-    window.location.href = "signup-login.html";
-  });
-};
+    document.getElementById("logoutMenu").onclick = function(e){
+      e.preventDefault();
+      auth.signOut().then(() => {
+        window.location.href = "signup-login.html";
+      });
+    };
 
-// Save profile edits
-document.getElementById("editFields").onsubmit = function(e){
-  e.preventDefault();
-  const user = auth.currentUser;
-  if (!user) {
-    document.getElementById("statusMsg").innerText = "No user signed in!";
-    return;
-  }
-  const updates = {
-    displayName: document.getElementById("edit-name").value.trim() || user.displayName || "",
-    username: document.getElementById("edit-username").value.trim() || "",
-    email: document.getElementById("edit-email").value.trim() || user.email || "",
-    country: document.getElementById("edit-country").value.trim() || "",
-    dob: document.getElementById("edit-dob").value || "",
-    photoURL: document.getElementById("edit-photo-url").value.trim() || user.photoURL || ""
-  };
-  // Update Auth profile (displayName, photoURL, email)
-  user.updateProfile({
-    displayName: updates.displayName,
-    photoURL: updates.photoURL
-  }).then(() => {
-    if (updates.email && updates.email !== user.email) {
-      return user.updateEmail(updates.email);
-    }
-  }).then(() => {
-    // Update Firestore
-    return db.collection("users").doc(user.uid).set(updates, {merge:true});
-  }).then(() => {
-    document.getElementById("statusMsg").innerText = "Profile updated successfully!";
-    // Update menu UI
-    document.getElementById("menu-username").innerText = updates.username || updates.displayName || "User";
-    document.getElementById("menu-email").innerText = updates.email || "";
-    document.getElementById("menu-profile-photo").src = updates.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
-  }).catch((err) => {
-    document.getElementById("statusMsg").innerText = "Error: " + err.message;
-  });
-};
+    // Save profile edits
+    document.getElementById("editFields").onsubmit = function(e){
+      e.preventDefault();
+      document.getElementById("statusMsg").innerText = "Profile updated! (Demo)";
+    };
   </script>
 </body>
 </html>
