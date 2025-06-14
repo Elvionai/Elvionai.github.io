@@ -547,6 +547,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
   <script>
     // Model config
     const PHILLY_BACKEND = "https://web-production-187cd.up.railway.app/chat";
@@ -867,6 +868,7 @@ You're witty, expressive, and thoughtful. You speak naturally, like a brilliant 
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.firestore();
 
     // Hamburger menu logic
     const hamburger = document.getElementById('hamburger');
@@ -909,10 +911,55 @@ You're witty, expressive, and thoughtful. You speak naturally, like a brilliant 
     };
 
     // Save profile edits
-    document.getElementById("editFields").onsubmit = function(e){
-      e.preventDefault();
-      document.getElementById("statusMsg").innerText = "Profile updated! (Demo)";
-    };
+document.getElementById("editFields").onsubmit = function(e){
+  e.preventDefault();
+  const user = auth.currentUser;
+  if (!user) {
+    document.getElementById("statusMsg").innerText = "Please sign in to edit your profile.";
+    return;
+  }
+
+  const userId = user.uid;
+  const name = document.getElementById("edit-name").value;
+  const username = document.getElementById("edit-username").value;
+  const email = document.getElementById("edit-email").value;
+  const country = document.getElementById("edit-country").value;
+  const dob = document.getElementById("edit-dob").value;
+  const photoUrl = document.getElementById("edit-photo-url").value;
+
+  const updates = {};
+  if (name) updates.name = name;
+  if (username) updates.username = username;
+  if (email) updates.email = email;
+  if (country) updates.country = country;
+  if (dob) updates.dob = dob;
+  if (photoUrl) updates.photoURL = photoUrl;
+
+  // Update Firestore user document
+  const userRef = db.collection("users").doc(userId);
+  userRef.set(updates, { merge: true })
+    .then(() => {
+      // Update Auth profile (displayName and photoURL)
+      if (username || photoUrl) {
+        const authUpdates = {};
+        if (username) authUpdates.displayName = username;
+        if (photoUrl) authUpdates.photoURL = photoUrl;
+        return user.updateProfile(authUpdates);
+      }
+    })
+    .then(() => {
+      // Update the UI
+      document.getElementById("menu-username").innerText = username || user.displayName || "User";
+      document.getElementById("menu-email").innerText = email || user.email || "";
+      if (photoUrl) document.getElementById("menu-profile-photo").src = photoUrl || user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
+      document.getElementById("statusMsg").innerText = "Profile updated!";
+    })
+    .catch((error) => {
+      console.error("Error updating profile:", error);
+      document.getElementById("statusMsg").innerText = "Error updating profile. Please try again.";
+    });
+};
+
   </script>
 </body>
 </html>
