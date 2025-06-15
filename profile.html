@@ -486,6 +486,13 @@
       gap: 8px;
       align-items: center;
     }
+    .quota-display {
+  font-size: 0.9em;
+  color: var(--muted);
+  margin: 0 16px 8px 16px;
+  display: flex;
+  gap: 16px;
+}
     .conversation-controls button {
       background: #23233a;
       color: var(--text);
@@ -576,7 +583,8 @@
   <!-- Chat Section -->
   <section class="chat-section" id="chatSection">
     <div class="chat-title-row">
-      <div class="chat-title"><i class="fa-solid fa-message"></i> <span id="modelName">Philadelphia</span></div>
+      <div class="chat-title"><i class="fa-solid fa-message"></i> <span id="modelName">Philadelphia AI</span></div>
+      <i>Switch to desktop mode for better experience...</i>
       <button class="fullscreen-btn" id="fullscreenBtn" title="Fullscreen"><i class="fa-regular fa-square"></i></button>
     </div>
     <div class="conversation-bar">
@@ -589,16 +597,111 @@
     </div>
     <div class="chat-box" id="chatBox"></div>
     <div id="filePreview" class="file-preview" style="display:none;"></div>
-    <form class="chat-input-row" id="chatForm" autocomplete="off">
-      <label for="chatVoice" title="Record voice note"><i class="fa-solid fa-microphone"></i></label>
-      <button type="button" id="chatVoice" style="display:none;"></button>
-      <label for="chatFile" title="Upload file, image, or video" id="fileLabel"><i class="fa-solid fa-paperclip"></i></label>
-      <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
-      <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
-      <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
-    </form>
+    <div class="quota-display">
+  <span id="voiceQuota">Voice: 1/1</span>
+  <span id="ttsQuota">TTS: 0/30s</span>
+</div>
+<form class="chat-input-row" id="chatForm" autocomplete="off">
+  <label for="chatVoice" title="Voice Call (30s max)"><i class="fa-solid fa-microphone"></i></label>
+  <button type="button" id="chatVoice" style="display:none;"></button>
+  <label for="ttsBtn" title="Text-to-Speech"><i class="fa-solid fa-volume-high"></i></label>
+  <button type="button" id="ttsBtn" style="display:none;"></button>
+  <label for="chatFile" title="Upload file, image, or video" id="fileLabel"><i class="fa-solid fa-paperclip"></i></label>
+  <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
+  <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+  <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+</form>
   </section>
 
+  <script>  
+  let mediaRecorder;
+let audioChunks = [];
+let voiceCallTimer;
+
+document.getElementById('chatVoice').parentElement.onclick = async function(e) {
+  e.preventDefault();
+  // Check quota
+  const quota = await fetchQuota(auth.currentUser.uid);
+  if (!quota.voice_call_quota) {
+    alert(`Voice call quota exceeded. Try again after ${quota.next_available || 'later'}`);
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      formData.append('user_id', auth.currentUser.uid);
+      const response = await fetch('/voice-call', {
+        method: 'POST',
+        body: formData,
+        headers: { 'Authorization': 'Bearer ' + await auth.currentUser.getIdToken() }
+      });
+      const data = await response.json();
+      if (data.error) alert(data.error);
+      else {
+        addChatMessage('user', data.text);
+        // Update quota display
+        updateQuotaDisplay();
+      }
+    };
+    mediaRecorder.start();
+    voiceCallTimer = setTimeout(() => mediaRecorder.stop(), 30000); // 30s
+    alert("Recording started. Speak now (30s max).");
+  } catch (err) {
+    alert('Error starting voice call: ' + err.message);
+  }
+};
+   document.getElementById('ttsBtn').parentElement.onclick = async function(e) {
+  e.preventDefault();
+  // Check quota
+  const quota = await fetchQuota(auth.currentUser.uid);
+  if (!quota.tts_quota) {
+    alert(`TTS quota exceeded. Try again after ${quota.next_available || 'later'}`);
+    return;
+  }
+  const text = prompt("Enter text to speak (30s max):");
+  if (!text) return;
+  const response = await fetch('/tts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + await auth.currentUser.getIdToken()
+    },
+    body: JSON.stringify({ user_id: auth.currentUser.uid, text })
+  });
+  const data = await response.json();
+  if (data.error) alert(data.error);
+  else {
+    if (!data.is_philadelphia) alert("Note: You are now using Google, not Philadelphia's voice.");
+    const audio = new Audio('data:audio/mp3;base64,' + data.audio);
+    audio.play();
+    // Update quota display
+    updateQuotaDisplay();
+  }
+};
+   async function fetchQuota(user_id) {
+  const response = await fetch(`/quota/${user_id}`, {
+    headers: { 'Authorization': 'Bearer ' + await auth.currentUser.getIdToken() }
+  });
+  return await response.json();
+}
+
+async function updateQuotaDisplay() {
+  const quota = await fetchQuota(auth.currentUser.uid);
+  document.getElementById('voiceQuota').textContent =
+    `Voice: ${quota.voice_call_quota ? '1/1' : '0/1'}`;
+  document.getElementById('ttsQuota').textContent =
+    `TTS: ${quota.tts_quota ? '30s/30s' : '0/30s'}`;
+  // You can also show next_available if quota is exceeded
+}
+  </script>
+
+  
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
