@@ -920,72 +920,13 @@ You're witty, expressive, and thoughtful. You speak naturally, like a brilliant 
         `;
       }
     };
-     // --- Search Utilities ---
-
-// Detect if a message should trigger a search
-function shouldTriggerSearch(text) {
-    const lowered = text.toLowerCase();
-    const triggerWords = ["who", "what", "when", "how", "where", "search", "lookup", "do you know", "tell me", "explain", "why"];
-    return triggerWords.some(word => lowered.includes(word));
-}
-
-// Search Google CSE and return results
-async function search(query, deep = false) {
-    const res = await fetch('https://web-production-9a18.up.railway.app/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, deep }),
-    });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    return await res.json();
-}
-
-// Summarize content with Gemini
-async function summarize(content) {
-    const res = await fetch('https://web-production-9a18.up.railway.app/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-    });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-    return await res.json();
-}
-
-// Add a search result to the chat
-function addSearchResultToChat(result, isDeep = false) {
-    const chatBox = document.getElementById("chatBox");
-    const div = document.createElement('div');
-    div.className = 'chat-message assistant';
-    div.style.setProperty('--delay', chatBox.children.length);
-
-    let content = '';
-    if (isDeep) {
-        content = `<strong>🧠 Deep Analysis:</strong><br>${result.map(r => 
-            `<strong>${r.title}</strong><br>${r.snippet}<br><a href="${r.link}" target="_blank">Read more</a><br><br>`
-        ).join('')}`;
-    } else {
-        content = `<strong>🔍 Search Result:</strong><br>
-                   <strong>${result.title}</strong><br>
-                   ${result.snippet}<br>
-                   <a href="${result.link}" target="_blank">Read more</a>`;
-        if (result.image) {
-            content += `<br><img src="${result.image}" alt="Result image" style="max-width:100%;max-height:200px;">`;
-        }
-    }
-    div.innerHTML = content;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-// --- Chat Form Handler (replace or update your existing chatForm.onsubmit) ---
-
-chatForm.onsubmit = async function(e) {
+      chatForm.onsubmit = async function(e) {
     e.preventDefault();
     const msg = chatInput.value.trim();
     const file = chatFile.files[0];
     if (!msg && !file) return;
 
-    // Show user message (optional)
+    // Show user message
     if (msg) addChatMessage('user', msg);
 
     // Handle file upload
@@ -1032,28 +973,7 @@ chatForm.onsubmit = async function(e) {
 
     // Send text message if no file
     if (msg && !file) {
-        // Trigger search if the message matches
-        if (shouldTriggerSearch(msg)) {
-            try {
-                const result = await search(msg);
-                if (result && result.results && result.results.length) {
-                    if (result.results.length > 1) {
-                        // Deep search, show all results
-                        addSearchResultToChat(result.results, true);
-                    } else {
-                        // Single result, show with image if available
-                        addSearchResultToChat(result.results[0], false);
-                    }
-                } else {
-                    addChatMessage('assistant', "Sorry, I couldn't find any clear results online for that.\nTry asking in another way.");
-                }
-            } catch (err) {
-                addChatMessage('assistant', "Sorry, I couldn't search for that right now.");
-            }
-        } else {
-            // Normal chat
-            await sendMessage(msg);
-        }
+        await sendMessage(msg);
     }
 
     // Reset form
@@ -1061,7 +981,7 @@ chatForm.onsubmit = async function(e) {
     chatFile.value = '';
     filePreview.style.display = 'none';
     filePreview.innerHTML = '';
-};  
+};          
     // --- Voice note logic ---
     const chatVoice = document.getElementById('chatVoice');
     let recognition;
