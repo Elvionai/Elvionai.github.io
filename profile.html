@@ -921,35 +921,66 @@ You're witty, expressive, and thoughtful. You speak naturally, like a brilliant 
       }
     };
     chatForm.onsubmit = async function(e) {
-      e.preventDefault();
-      const msg = chatInput.value.trim();
-      const file = chatFile.files[0];
-      if (!msg && !file) return;
-      if (msg) addChatMessage('user', msg);
-      if (file) {
-        if (file.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = function(ev) {
-            addChatMessage('user', `<img src="${ev.target.result}" alt="uploaded">`);
-          };
-          reader.readAsDataURL(file);
-        } else if (file.type.startsWith("video/")) {
-          const reader = new FileReader();
-          reader.onload = function(ev) {
-            addChatMessage('user', `<video src="${ev.target.result}" controls></video>`);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          addChatMessage('user', `<span class="file-link">${file.name}</span>`);
-        }
-      }
-      chatInput.value = '';
-      chatFile.value = '';
-      filePreview.style.display = 'none';
-      filePreview.innerHTML = '';
-      await sendMessage(msg);
-    };
+    e.preventDefault();
+    const msg = chatInput.value.trim();
+    const file = chatFile.files[0];
+    if (!msg && !file) return;
 
+    // Show user message (optional)
+    if (msg) addChatMessage('user', msg);
+
+    // Handle file upload
+    if (file) {
+        // Optional: Show preview
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            if (file.type.startsWith('image/')) {
+                addChatMessage('user', `<img src="${ev.target.result}" alt="uploaded">`);
+            } else if (file.type.startsWith('video/')) {
+                addChatMessage('user', `<video src="${ev.target.result}" controls></video>`);
+            } else {
+                addChatMessage('user', `<span class="file-link">${file.name}</span>`);
+            }
+        };
+        reader.readAsDataURL(file);
+
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('user_id', currentConvId);
+        formData.append('file', file);
+
+        // Choose the right endpoint
+        let endpoint;
+        if (file.type.startsWith('image/')) endpoint = '/upload-image';
+        else if (file.type.startsWith('video/')) endpoint = '/upload-video';
+        else if (file.type.startsWith('audio/')) endpoint = '/upload-audio';
+        else endpoint = '/upload-document';
+
+        // Upload to backend
+        try {
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                body: formData,
+            });
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            const data = await res.json();
+            addChatMessage('assistant', data.summary);
+        } catch (err) {
+            addChatMessage('assistant', "Sorry, I couldn't process the file: " + err.message);
+        }
+    }
+
+    // Send text message if no file
+    if (msg && !file) {
+        await sendMessage(msg);
+    }
+
+    // Reset form
+    chatInput.value = '';
+    chatFile.value = '';
+    filePreview.style.display = 'none';
+    filePreview.innerHTML = '';
+};
     // --- Voice note logic ---
     const chatVoice = document.getElementById('chatVoice');
     let recognition;
