@@ -144,7 +144,7 @@
     }
     .oauth-btn .fa-phone {font-size:1.14em;}
     .oauth-btn:hover { background: var(--cyan); color: #11141a;}
-    .form-links { text-align:right; margin-top: 2px;}
+    .form-links { text-align:right; margin-top: 2px; }
     .form-links a, .form-links span { color:var(--cyan); text-decoration:underline; cursor:pointer; font-size:.93em; margin-left:7px;}
     .terms-note { color: var(--muted); font-size: .93em; margin: 4px 0 0 0; text-align: center;}
     .terms-note a { color: var(--cyan); text-decoration: underline;}
@@ -155,9 +155,8 @@
       .auth-tab { width:29px;height:29px;font-size:.91em;}
       .logo-img {width:35px;height:35px;}
     }
-    /* Phone form tweaks */
     .phone-form-row { display: flex; gap:6px; align-items: center;}
-    #recaptcha-container {margin:10px 0 0 0;}
+    #recaptcha-container,#recaptcha-login-container {margin:10px 0 5px 0;}
   </style>
 </head>
 <body>
@@ -209,9 +208,6 @@
       <input type="text" id="otp" placeholder="6-digit code" style="display:none;" maxlength="6" inputmode="numeric">
       <button type="button" class="submit-btn" id="verifyOtpBtn" style="display:none;">Verify Code</button>
       <div class="status-message" id="phoneStatus"></div>
-      <div class="terms-note">
-        By using phone sign in, you agree to our <a href="terms.html" target="_blank">Terms</a>.
-      </div>
       <div class="form-links"><a href="#" id="phoneBackBtn">&larr; Back</a></div>
     </form>
     <!-- Log In Form (initially hidden) -->
@@ -245,9 +241,6 @@
       <input type="text" id="login-otp" placeholder="6-digit code" style="display:none;" maxlength="6" inputmode="numeric">
       <button type="button" class="submit-btn" id="verifyLoginOtpBtn" style="display:none;">Verify Code</button>
       <div class="status-message" id="phoneLoginStatus"></div>
-      <div class="terms-note">
-        By using phone sign in, you agree to our <a href="terms.html" target="_blank">Terms</a>.
-      </div>
       <div class="form-links"><a href="#" id="phoneLoginBackBtn">&larr; Back</a></div>
     </form>
   </section>
@@ -319,7 +312,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // OAUTH Helping functions
+  // OAUTH HELPERS
   async function handleOAuth(provider, statusDiv) {
     try {
       const result = await signInWithPopup(auth, provider);
@@ -330,7 +323,7 @@
           createdAt: new Date()
         });
       }
-      if (result.user.emailVerified || provider.providerId === "twitter.com") { // Twitter emails are always considered verified
+      if (result.user.emailVerified || provider.providerId === "twitter.com") {
         window.location.href = "profile.html";
       } else {
         await sendEmailVerification(result.user, { url: window.location.origin });
@@ -342,37 +335,19 @@
     }
   }
 
-  // Google
-  document.getElementById('googleSignUp').onclick = (e) => {
-    e.preventDefault();
-    handleOAuth(new GoogleAuthProvider(), document.getElementById('signupStatus'));
-  };
-  document.getElementById('googleLogin').onclick = (e) => {
-    e.preventDefault();
-    handleOAuth(new GoogleAuthProvider(), document.getElementById('loginStatus'));
-  };
+  // Google Auth
+  document.getElementById('googleSignUp').onclick = (e) => { e.preventDefault(); handleOAuth(new GoogleAuthProvider(), document.getElementById('signupStatus')); };
+  document.getElementById('googleLogin').onclick = (e) => { e.preventDefault(); handleOAuth(new GoogleAuthProvider(), document.getElementById('loginStatus')); };
 
   // Twitter
-  document.getElementById('twitterSignUp').onclick = (e) => {
-    e.preventDefault();
-    handleOAuth(new TwitterAuthProvider(), document.getElementById('signupStatus'));
-  };
-  document.getElementById('twitterLogin').onclick = (e) => {
-    e.preventDefault();
-    handleOAuth(new TwitterAuthProvider(), document.getElementById('loginStatus'));
-  };
+  document.getElementById('twitterSignUp').onclick = (e) => { e.preventDefault(); handleOAuth(new TwitterAuthProvider(), document.getElementById('signupStatus')); };
+  document.getElementById('twitterLogin').onclick = (e) => { e.preventDefault(); handleOAuth(new TwitterAuthProvider(), document.getElementById('loginStatus')); };
 
   // Yahoo
-  document.getElementById('yahooSignUp').onclick = (e) => {
-    e.preventDefault();
-    handleOAuth(new OAuthProvider('yahoo.com'), document.getElementById('signupStatus'));
-  };
-  document.getElementById('yahooLogin').onclick = (e) => {
-    e.preventDefault();
-    handleOAuth(new OAuthProvider('yahoo.com'), document.getElementById('loginStatus'));
-  };
+  document.getElementById('yahooSignUp').onclick = (e) => { e.preventDefault(); handleOAuth(new OAuthProvider('yahoo.com'), document.getElementById('signupStatus')); };
+  document.getElementById('yahooLogin').onclick = (e) => { e.preventDefault(); handleOAuth(new OAuthProvider('yahoo.com'), document.getElementById('loginStatus')); };
 
-  // Email/Password Sign Up
+  // EMAIL/PASSWORD SIGNUP
   signupForm.onsubmit = async function(e) {
     e.preventDefault();
     const name = document.getElementById('signup-name').value.trim();
@@ -403,7 +378,7 @@
     }
   };
 
-  // Email/Password Log In
+  // EMAIL/PASSWORD LOGIN
   loginForm.onsubmit = function(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
@@ -420,11 +395,10 @@
           status.textContent = "Please verify your email before logging in. Check your inbox.";
           status.style.color = "#ffd700";
         }
-      })
-      .catch((error) => {
-        status.textContent = error.message;
-        status.style.color = "#ffd700";
-      });
+      }).catch((error) => {
+      status.textContent = error.message;
+      status.style.color = "#ffd700";
+    });
   };
 
   // FORGOT PASSWORD
@@ -447,63 +421,64 @@
       });
   };
 
-  // PHONE NUMBER AUTH --- SIGNUP FLOW ----
-  let phoneVerificationId = null;
-  let loginPhoneVerificationId = null;
-  let phoneRecaptcha;
-  let loginRecaptcha;
-  // Show phone form
+  // PHONE SIGNUP -- robust initialization
+  let phoneRecaptcha, phoneConfirmationResult;
+  function setupPhoneRecaptcha(containerId) {
+    if (window.phoneRecaptcha) {
+      try { window.phoneRecaptcha.clear(); } catch(e){}
+      window.phoneRecaptcha = undefined;
+    }
+    phoneRecaptcha = new RecaptchaVerifier(containerId, {
+      size: 'normal', callback: () => {}, 'expired-callback': () => {}
+    }, auth);
+    window.phoneRecaptcha = phoneRecaptcha;
+  }
   document.getElementById('phoneSignUp').onclick = function(e) {
     e.preventDefault();
     signupForm.style.display = "none";
     phoneForm.style.display = "flex";
-    if (!window.phoneRecaptcha) {
-      phoneRecaptcha = new RecaptchaVerifier('recaptcha-container', {
-        size: 'normal',
-        callback: (response) => {},
-        'expired-callback': () => {}
-      }, auth);
-      window.phoneRecaptcha = phoneRecaptcha;
-    }
+    document.getElementById('otp').style.display = "none";
+    document.getElementById('otpLabel').style.display = "none";
+    document.getElementById('verifyOtpBtn').style.display = "none";
+    setupPhoneRecaptcha('recaptcha-container');
   };
   document.getElementById('phoneBackBtn').onclick = function(e) {
     e.preventDefault(); phoneForm.style.display = "none"; signupForm.style.display = "flex";
   };
-  // Send OTP
   document.getElementById('sendOtpBtn').onclick = function(e) {
     e.preventDefault();
     const number = document.getElementById('phone-number').value.trim();
     const status = document.getElementById('phoneStatus');
     status.textContent = '';
     if (number.length < 8) {
-      status.textContent = "Enter valid phone number (with +countrycode)";
+      status.textContent = "Enter valid phone number with +countrycode";
       status.style.color = "#ffd700";
       return;
     }
-    signInWithPhoneNumber(auth, number, phoneRecaptcha)
+    signInWithPhoneNumber(auth, number, window.phoneRecaptcha)
       .then((confirmationResult) => {
-        phoneVerificationId = confirmationResult;
-        status.textContent = "OTP sent. Please enter the code below.";
+        phoneConfirmationResult = confirmationResult;
+        status.textContent = "OTP sent. Enter it below.";
         status.style.color = "#00ffff";
-        document.getElementById('otp').style.display = '';
-        document.getElementById('otpLabel').style.display = '';
-        document.getElementById('verifyOtpBtn').style.display = '';
-      }).catch((error) => {
+        document.getElementById('otp').style.display = "";
+        document.getElementById('otpLabel').style.display = "";
+        document.getElementById('verifyOtpBtn').style.display = "";
+      })
+      .catch((error) => {
         status.textContent = error.message;
         status.style.color = "#ffd700";
       });
   };
-  // Verify OTP
   document.getElementById('verifyOtpBtn').onclick = function(e) {
     e.preventDefault();
     const code = document.getElementById('otp').value.trim();
     const status = document.getElementById('phoneStatus');
-    if (!phoneVerificationId) {
-      status.textContent = "Send the code to your phone first.";
+    if (!phoneConfirmationResult) {
+      status.textContent = "Send the OTP first.";
       status.style.color = "#ffd700";
       return;
     }
-    phoneVerificationId.confirm(code)
+    phoneConfirmationResult.confirm(code)
       .then(async (result) => {
         status.textContent = "Phone verified and signed in!";
         status.style.color = "#00ffff";
@@ -519,19 +494,26 @@
       });
   };
 
-  // PHONE NUMBER AUTH --- LOGIN FLOW ----
+  // PHONE LOGIN FORM -- robust
+  let loginPhoneRecaptcha, loginPhoneConfirmationResult;
+  function setupLoginRecaptcha(containerId) {
+    if (window.loginPhoneRecaptcha) {
+      try { window.loginPhoneRecaptcha.clear(); } catch(e){}
+      window.loginPhoneRecaptcha = undefined;
+    }
+    loginPhoneRecaptcha = new RecaptchaVerifier(containerId, {
+      size: 'normal', callback: () => {}, 'expired-callback': () => {}
+    }, auth);
+    window.loginPhoneRecaptcha = loginPhoneRecaptcha;
+  }
   document.getElementById('phoneLogin').onclick = function(e) {
     e.preventDefault();
     loginForm.style.display = "none";
     phoneLoginForm.style.display = "flex";
-    if (!window.loginRecaptcha) {
-      loginRecaptcha = new RecaptchaVerifier('recaptcha-login-container', {
-        size: 'normal',
-        callback: (response) => {},
-        'expired-callback': () => {}
-      }, auth);
-      window.loginRecaptcha = loginRecaptcha;
-    }
+    document.getElementById('login-otp').style.display = "none";
+    document.getElementById('loginOtpLabel').style.display = "none";
+    document.getElementById('verifyLoginOtpBtn').style.display = "none";
+    setupLoginRecaptcha('recaptcha-login-container');
   };
   document.getElementById('phoneLoginBackBtn').onclick = function(e) {
     e.preventDefault(); phoneLoginForm.style.display = "none"; loginForm.style.display = "flex";
@@ -542,19 +524,20 @@
     const status = document.getElementById('phoneLoginStatus');
     status.textContent = '';
     if (number.length < 8) {
-      status.textContent = "Enter valid phone number (with +countrycode)";
+      status.textContent = "Enter valid phone number with +countrycode";
       status.style.color = "#ffd700";
       return;
     }
-    signInWithPhoneNumber(auth, number, loginRecaptcha)
+    signInWithPhoneNumber(auth, number, window.loginPhoneRecaptcha)
       .then((confirmationResult) => {
-        loginPhoneVerificationId = confirmationResult;
-        status.textContent = "OTP sent. Please enter the code below.";
+        loginPhoneConfirmationResult = confirmationResult;
+        status.textContent = "OTP sent. Enter it below.";
         status.style.color = "#00ffff";
-        document.getElementById('login-otp').style.display = '';
-        document.getElementById('loginOtpLabel').style.display = '';
-        document.getElementById('verifyLoginOtpBtn').style.display = '';
-      }).catch((error) => {
+        document.getElementById('login-otp').style.display = "";
+        document.getElementById('loginOtpLabel').style.display = "";
+        document.getElementById('verifyLoginOtpBtn').style.display = "";
+      })
+      .catch((error) => {
         status.textContent = error.message;
         status.style.color = "#ffd700";
       });
@@ -563,12 +546,12 @@
     e.preventDefault();
     const code = document.getElementById('login-otp').value.trim();
     const status = document.getElementById('phoneLoginStatus');
-    if (!loginPhoneVerificationId) {
-      status.textContent = "Send the code to your phone first.";
+    if (!loginPhoneConfirmationResult) {
+      status.textContent = "Send the OTP first.";
       status.style.color = "#ffd700";
       return;
     }
-    loginPhoneVerificationId.confirm(code)
+    loginPhoneConfirmationResult.confirm(code)
       .then(async (result) => {
         status.textContent = "Phone verified and logged in!";
         status.style.color = "#00ffff";
@@ -583,7 +566,6 @@
         status.style.color = "#ffd700";
       });
   };
-
 </script>
 </body>
 </html>
