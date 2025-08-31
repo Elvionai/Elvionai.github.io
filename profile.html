@@ -2,1151 +2,417 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Philadelphia AI — Chat</title>
+  <title>Profile — Elvion AI CHAT Philadelphia AI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+  <meta name="description" content="Your Elvion profile. Continue conversations, upload files, and access saved links in a stunning blue environment.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <style>
     :root {
-      --primary: #4fd1c5;
-      --accent: #ffd700;
-      --text: #f5f5f5;
+      --cyan: #00ffff;
+      --blue: #0090ff;
+      --card-bg: rgba(18,26,48,0.97);
+      --border-glow: 0 0 11px var(--cyan), 0 0 24px var(--blue);
+      --radius: 16px;
+      --text: #e0e0e0;
       --muted: #b3b3b3;
-      --card: #18181c;
-      --radius: 18px;
-      --menu-bg: #181a20f2;
-      --glass: rgba(24, 24, 28, 0.6);
-      --glass-dark: rgba(24, 24, 28, 0.75);
+      --white: #fff;
+      --chat-bg: rgba(24,32,58,.95);
+      --input-glow: 0 2px 10px #00ffff55;
     }
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', Arial, sans-serif;
-      background: #101014;
-      color: var(--text);
-    }
+    html, body { height: 100%; margin: 0; }
     body {
-      min-height: 100vh;
-      background: linear-gradient(120deg, #181a20 0%, #23233a 50%, #181a20 100%);
-      background-size: 200% 200%;
-      animation: gradientMove 8s ease-in-out infinite;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-    }
-    @keyframes gradientMove {
-      0% {background-position:0% 50%;}
-      50% {background-position:100% 50%;}
-      100% {background-position:0% 50%;}
-    }
-    .hidden { display: none !important; }
-    /* Hamburger Menu */
-    .hamburger {
-      position: fixed;
-      top: 24px;
-      right: 22px;
-      width: 36px;
-      height: 36px;
-      background: none;
-      border: none;
-      z-index: 102;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-    }
-    .hamburger span {
-      display: block;
-      width: 26px;
-      height: 3.5px;
-      margin: 4px 0;
-      background: var(--text);
-      border-radius: 2px;
-      transition: all 0.3s;
-    }
-    .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px);}
-    .hamburger.open span:nth-child(2) { opacity: 0;}
-    .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(7px, -7px);}
-    /* Menu Modal */
-    .side-menu-bg {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.65);
-      z-index: 101;
-      align-items: flex-start;
-      justify-content: flex-end;
-    }
-    .side-menu-bg.active { display: flex; }
-    .side-menu {
-      background: var(--menu-bg);
-      width: 100vw;
-      max-width: 410px;
-      height: 100vh;
-      box-shadow: -2px 0 24px #000a;
-      display: flex;
-      flex-direction: column;
-      padding: 0;
+      min-height: 100vh; font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle, #23233a 66%, #0a1128 100%);
+      color: var(--text); display: flex; align-items: center; justify-content: center;
       position: relative;
-      transform: translateX(420px);
-      transition: transform 0.3s cubic-bezier(.61,-0.01,.48,1.01);
-      overflow-y: auto;
     }
-    .side-menu.active { transform: translateX(0);}
-    .side-menu .close-btn {
-      position: absolute;
-      top: 18px;
-      right: 18px;
-      background: none;
-      border: none;
-      color: var(--primary);
-      font-size: 1.8em;
-      cursor: pointer;
+    #stars-container {
+      position: fixed; width: 100vw; height: 100vh; top: 0; left: 0; z-index: 0; pointer-events: none;
+    }
+    .star { position: absolute; background: rgba(255,255,255,0.7); border-radius: 50%; opacity: 0; animation: twinkle 4.9s infinite linear;}
+    @keyframes twinkle { 0%,100%{opacity:.18;} 52%{opacity:1;}}
+    .profile-container {
+      background: var(--card-bg);
+      box-shadow: var(--border-glow);
+      border-radius: var(--radius);
+      padding: 32px 14px 22px 14px;
+      max-width: 380px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.14em;
       z-index: 2;
+      margin-top: 30px;
+      position: relative;
+      animation: fadeIn .7s;
     }
-    .profile-menu-header {
+    @keyframes fadeIn {from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);}}
+    .profile-header {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 38px 0 12px 0;
-      background: none;
+      gap: 0.5em;
+      margin-bottom: 6px;
     }
-    .profile-menu-header img {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      object-fit: cover;
-      box-shadow: 0 2px 12px #4fd1c5cc;
-      margin-bottom: 10px;
-      border: 2px solid var(--primary);
-      background: #fff;
+    .logo-img {
+      width: 50px; height: 50px; border-radius: 50%;
+      display:block; object-fit:cover; background:#fff; margin-bottom: 8px;
+      animation: logoPulse 3.2s infinite alternate, floatLogo 3.3s infinite alternate;
     }
-    .profile-menu-header .username {
-      font-weight: 800;
-      font-size: 1.1em;
-      color: var(--primary);
-      margin-bottom: 2px;
+    @keyframes logoPulse {0%{box-shadow: 0 0 14px #00e2ff,0 0 26px #70fff7;}100%{box-shadow:0 0 11px #007c97,0 0 31px #00ceff60;}}
+    @keyframes floatLogo {0%{transform:translateY(0);}100%{transform:translateY(-7px);}}
+    .site-heading {
+      font-family:'Orbitron',sans-serif;
+      font-size:1.18em;
+      font-weight:800;
+      letter-spacing:.5px;
+      background: linear-gradient(90deg, var(--cyan), #fff, var(--blue));
+      background-size:200% auto;
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      animation: shine 4s linear infinite;
+      text-shadow: var(--border-glow); text-align:center; margin-bottom:2px;
     }
-    .profile-menu-header .email {
-      font-size: 0.95em;
-      color: var(--muted);
-      margin-bottom: 0;
-    }
-    .side-menu .menu-links {
+    @keyframes shine {to{background-position:200% center;}}
+    .profile-greet { color: #aee; font-size: .95em; text-align:center; }
+    /* Menus */
+    .menu-bar {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-bottom: 22px;
-      margin-top: 10px;
-      align-items: flex-start;
-    }
-    .side-menu a {
-      color: var(--text);
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 1.18em;
-      padding: 18px 38px 18px 38px;
-      border-radius: 0 22px 22px 0;
-      transition: background 0.18s, color 0.18s;
-      margin-bottom: 2px;
-      display: block;
-      letter-spacing: 0.5px;
-    }
-    .side-menu a:hover {
-      background: var(--primary);
-      color: #18181c;
-    }
-    .profile-menu-section {
-      background: #23233a;
-      border-radius: 14px;
-      margin: 18px 20px 18px 20px;
-      padding: 18px 18px 8px 18px;
-      color: var(--text);
-      box-shadow: 0 2px 8px #0004;
-    }
-    .profile-menu-section h3 {
-      margin: 0 0 12px 0;
-      font-size: 1.08em;
-      font-weight: 800;
-      color: var(--primary);
-      letter-spacing: 1px;
-      text-align: left;
-    }
-    .profile-menu-section label {
-      font-size: 0.97em;
-      color: var(--muted);
-      margin-bottom: 2px;
-      margin-top: 10px;
-      text-align: left;
-      width: 100%;
-      display: block;
-    }
-    .profile-menu-section input[type="text"],
-    .profile-menu-section input[type="email"],
-    .profile-menu-section input[type="url"],
-    .profile-menu-section input[type="date"] {
-      width: 100%;
-      padding: 8px;
-      margin: 4px 0 8px 0;
-      border-radius: 8px;
-      border: 1px solid #18181c;
-      background: #18181c;
-      color: #f5f5f5;
-      font-size: 1em;
-    }
-    .profile-menu-section .profile-photo-url-tip {
-      font-size: 0.92em;
-      color: var(--muted);
-      margin-bottom: 8px;
-      margin-top: -2px;
-      text-align: left;
-      width: 100%;
-    }
-    .profile-menu-section button {
-      background: var(--primary);
-      color: #18181c;
-      border: none;
-      border-radius: 18px;
-      padding: 10px 18px;
-      font-size: 1.05em;
-      font-weight: 7;
-      cursor: pointer;
-      margin-top: 10px;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 12px;
-      width: 100%;
-      transition: background 0.18s;
-      box-shadow: 0 2px 8px #0003;
+      gap:12px;
     }
-    .profile-menu-section button:hover { background: #38b2ac;}
-    .status-message {
-      color: #ffd700;
-      margin-top: 8px;
-      font-size: 0.99em;
+    .menu-btn {
+      background: none; border:none;
+      color: var(--cyan); font-size: 2em; cursor:pointer;
+      padding:2px 10px;
+      border-radius:12px;
+      box-shadow: 0 1px 8px #00ffff19;
+      transition: background .15s, color .14s;
+    }
+    .menu-btn:hover { background: var(--cyan); color: #222;}
+    /* Modal Panel */
+    .panel-bg {
+      display: none;
+      position: fixed; z-index: 200; top:0; left:0;
+      width:100vw;height:100vh;background: rgba(0,0,0,0.56);
+      align-items:flex-start;justify-content:flex-end;
+    }
+    .panel-bg.active { display: flex; }
+    .side-panel {
+      background: var(--chat-bg);
+      width: 100vw;
+      max-width: 360px;
+      height: 100vh;
+      box-shadow: -2px 0 32px #00ffffef;
+      display: flex; flex-direction: column; padding: 0; position: relative; transition: transform .27s cubic-bezier(.61,-0.01,.48,1.01); overflow-y: auto;
+      transform: translateX(390px);
+    }
+    .side-panel.active { transform: translateX(0);}
+    .panel-header {
+      display:flex;flex-direction:column;align-items:center;
+      padding:34px 0 12px 0;background:none;
+    }
+    .panel-header img { width: 54px; height: 54px; border-radius:50%;object-fit:cover;}
+    .panel-header .username { font-weight: 800;font-size: 1.1em;color:var(--cyan);margin-bottom:2px; }
+    .panel-header .email { font-size: 0.97em; color: var(--muted);}
+    .panel-links, .panel-chats {
+      display: flex; flex-direction: column; gap: 1px; margin-bottom: 18px; margin-top: 9px; align-items: flex-start;
+    }
+    .panel-links a, .panel-chats a {
+      color: var(--text);
+      text-decoration: none; font-weight: 700; font-size: 1.12em;
+      padding: 16px 28px 16px 28px; border-radius: 0 18px 18px 0;
+      transition: background 0.13s, color 0.13s; margin-bottom:2px;
+      background: #23233a;
+    }
+    .panel-links a:hover,.panel-chats a:hover {
+      background: var(--cyan); color: #23233a;
     }
     /* Chat Section */
-    .chat-section {
-      background: var(--glass);
-      backdrop-filter: blur(8px);
+    .chat-area {
+      background: var(--chat-bg);
       border-radius: var(--radius);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-      max-width: 480px;
-      width: 94vw;
-      min-height: 60vh;
-      padding: 0 0 16px 0;
-      margin: 90px auto 24px auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-      transition: all 0.3s;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+      padding: 0 0 15px 0;
+      display: flex; flex-direction: column; align-items: center; position: relative;
+      margin-bottom: 12px;margin-top:0px;
     }
     .chat-title-row {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 18px 0 22px;
-      margin-bottom: 0;
-      background: var(--glass-dark);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      position: sticky;
-      top: 0;
-      z-index: 1;
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 17px 17px 0 18px;margin-bottom:0; background: #19192a; border-radius:16px 16px 0 0;
+      border-bottom: 1px solid rgba(0,255,255,.11);
+      position: sticky; top: 0; z-index: 1;
     }
     .chat-title {
-      font-size: 1.18em;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: var(--primary);
-      text-shadow: 0 2px 8px #0008;
-      background: linear-gradient(90deg, #4fd1c5, #fff, #ffd700, #4fd1c5);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      animation: shine 3s linear infinite;
-      font-family: 'Inter', Arial, sans-serif;
+      font-size: 1.15em; font-weight: 800; letter-spacing: .8px;
+      color: var(--cyan); text-shadow: 0 2px 14px #00ffff33;
+      background: linear-gradient(90deg, var(--cyan), #fff, var(--blue));
+      background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: shine 3s linear infinite; font-family: 'Inter', Arial, sans-serif;
     }
-    .fullscreen-btn {
-      background: none;
-      border: none;
-      color: var(--primary);
-      font-size: 1.4em;
-      cursor: pointer;
-      transition: color 0.2s;
-      margin-left: 8px;
-    }
-    .fullscreen-btn:hover { color: var(--accent);}
     .chat-box {
-      width: 96%;
-      min-height: 180px;
-      max-height: 48vh;
-      background: transparent;
-      border-radius: 16px;
-      padding: 18px 10px 12px 10px;
-      margin-bottom: 12px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      transition: all 0.3s;
+      width: 96%; min-height: 110px; max-height: 350px; background: transparent;
+      border-radius: 16px; padding: 13px 10px 10px 10px;
+      margin-bottom: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 13px; transition: all .2s;
     }
-    .chat-message {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      margin-bottom: 2px;
-      opacity: 0;
-      animation: fadeIn 0.4s forwards;
-      animation-delay: calc(var(--delay) * 0.05s);
-    }
-    .chat-message.user {
-      justify-content: flex-end;
-    }
+    .chat-message { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 1.5px; animation: fadeIn .3s }
+    .chat-message.user { justify-content: flex-end;}
     .chat-message .msg {
-      background: linear-gradient(90deg, #23233a 70%, #222 100%);
-      color: #f5f5f5;
-      padding: 10px 16px;
-      border-radius: 18px 18px 6px 18px;
-      max-width: 70%;
-      font-size: 1.09em;
-      word-break: break-word;
-      box-shadow: 0 1px 4px #0002;
-      font-family: 'Inter', Arial, sans-serif;
-      font-weight: 500;
-      letter-spacing: 0.2px;
-      text-shadow: 0 1px 8px #0005;
-      animation: shine 3s linear infinite;
-      transition: transform 0.2s;
+      background: linear-gradient(90deg, #23233a 63%, #222 100%);
+      color: #e0e0e0; padding: 8px 15px; border-radius: 15px 15px 5px 15px; max-width: 74%; font-size: 1.01em; word-break: break-word; font-family:'Inter', Arial, sans-serif; font-weight: 500;
+      box-shadow: 0 1px 3px #0002; text-shadow: 0 1px 8px #0005;
     }
-    .chat-message.user .msg {
-      background: linear-gradient(90deg, #4fd1c5 60%, #ffd700 100%);
-      color: #18181c;
-      border-radius: 18px 18px 18px 6px;
-      font-weight: 700;
-      text-shadow: 0 1px 8px #ffd70055;
-      animation: shine 3s linear infinite;
-    }
-    .chat-message:hover .msg {
-      transform: scale(1.02);
-    }
-    .chat-message img {
-      max-width: 120px;
-      max-height: 120px;
-      border-radius: 10px;
-      margin-top: 6px;
-      background: #fff;
-      animation: fadeIn 0.4s forwards;
-    }
-    .chat-message video {
-      max-width: 120px;
-      max-height: 120px;
-      border-radius: 10px;
-      margin-top: 6px;
-      background: #000;
-      animation: fadeIn 0.4s forwards;
-    }
-    .file-preview {
-      max-width: 100%;
-      margin: 10px 0;
-      border-radius: 12px;
-      overflow: hidden;
-      background: rgba(35,35,58,0.6);
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255,255,255,0.1);
-      animation: fadeIn 0.4s forwards;
-    }
-    .file-preview img, .file-preview video {
-      max-width: 100%;
-      max-height: 200px;
-      display: block;
-      margin: 0 auto;
-    }
-    .file-preview .file-info {
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      font-size: 0.9em;
-      color: var(--muted);
-    }
-    .file-preview .file-info i {
-      margin-right: 8px;
-    }
-    .typing-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: rgba(35,35,58,0.6);
-      border-radius: 18px;
-      max-width: 120px;
-      margin: 6px 0;
-      opacity: 0;
-      animation: fadeIn 0.4s forwards;
-    }
-    .typing-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--primary);
-      animation: typing 1.4s infinite ease-in-out;
-    }
-    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    .chat-message.user .msg { background: linear-gradient(90deg, #00ffff 64%, #0090ff 100%); color: #23233a; border-radius: 15px 15px 15px 5px; font-weight: 700;}
+    .chat-message img, .chat-message video { max-width: 96px; max-height: 96px; border-radius: 10px; margin-top:3px; background:#fff; }
+    .file-preview {max-width:100%;margin:10px 0;border-radius:12px;overflow:hidden;background:rgba(35,35,58,0.6);border:1px solid rgba(255,255,255,0.1);}
+    .file-preview img, .file-preview video{max-width:100%;max-height:140px;display:block;margin:0 auto;}
+    .file-preview .file-info{padding:7px;display:flex;align-items:center;font-size:.9em;color:var(--muted);}
+    .file-preview .file-info i{margin-right:8px;}
     .chat-input-row {
-      width: 96%;
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      margin-top: 0;
-      margin-bottom: 7px;
-      background: var(--glass-dark);
-      backdrop-filter: blur(8px);
-      border-radius: var(--radius);
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.05);
+      width: 96%; display: flex; gap: 7px; align-items: center;
+      margin-top: 0; background: #19192a;
+      border-radius: 12px; padding: 8px 9px;
+      border: 1px solid rgba(0,255,255,.12);
+      box-shadow: var(--input-glow);
     }
     .chat-input-row input[type="file"] { display: none; }
     .chat-input-row label {
-      cursor: pointer;
-      color: var(--primary);
-      font-size: 1.4em;
-      padding: 0 8px;
-      transition: color 0.2s;
+      cursor: pointer; color: var(--cyan); font-size: 1.2em; padding: 0 6px; transition: color .14s;
     }
-    .chat-input-row label:hover { color: var(--accent);}
+    .chat-input-row label:hover { color: var(--blue);}
     .chat-input-row input[type="text"] {
-      flex: 1;
-      padding: 11px 12px;
-      border-radius: 18px;
-      border: 1.5px solid #23233a;
-      background: #23233a;
-      color: #f5f5f5;
-      font-size: 1.09em;
-      outline: none;
-      transition: border 0.18s, box-shadow 0.18s;
-      font-family: 'Inter', Arial, sans-serif;
+      flex: 1; padding: 9px 8px; border-radius: 14px; border: 1px solid #23233a; background: #23233a; color: #e0e0e0;
+      font-size: 1em; outline: none; font-family: 'Inter', Arial, sans-serif; transition: border .13s, box-shadow .13s;
     }
-    .chat-input-row input[type="text"]:focus {
-      border: 1.5px solid var(--primary);
-      box-shadow: 0 0 8px 2px #4fd1c577;
-    }
+    .chat-input-row input[type="text"]:focus { border: 1px solid var(--cyan); box-shadow: var(--input-glow);}
     .chat-input-row button {
-      background: var(--primary);
-      color: #18181c;
-      border: none;
-      border-radius: 18px;
-      padding: 10px 18px;
-      font-size: 1.1em;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.18s;
-      box-shadow: 0 2px 8px #0003;
-      margin-left: 4px;
+      background: linear-gradient(90deg,#00ffff,#0090ff); color: #23233a; border: none; border-radius: 12px; padding: 7.5px 15px; font-size: 1.04em; font-weight: 700; cursor: pointer; box-shadow: 0 2px 11px #00ffff33; margin-left: 2px; transition: background .12s;
     }
-    .chat-input-row button:hover { background: #38b2ac;}
-    /* Conversation Controls */
-    .conversation-bar {
-      width: 100%;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px 0 14px;
-      margin-bottom: 8px;
-      background: var(--glass-dark);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      position: sticky;
-      top: 0;
-      z-index: 1;
+    .chat-input-row button:hover { background: #0090ff; color: #fff;}
+    @media (max-width: 430px) {
+      .profile-container { padding:8px 1vw; }
+      .site-heading {font-size:1em;}
+      .logo-img {width:36px;height:36px;}
+      .chat-area {padding:0;}
+      .chat-title-row {padding:11px;}
+      .chat-input-row {padding:4px;}
     }
-    .conversation-name {
-      font-weight: 700;
-      font-size: 1.05em;
-      color: var(--muted);
-      margin-right: 10px;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 6px;
-      background: #23233a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 180px;
-    }
-    .conversation-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .conversation-controls button {
-      background: #23233a;
-      color: var(--text);
-      border: none;
-      border-radius: 8px;
-      padding: 4px 8px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .conversation-controls button:hover {
-      background: #4fd1c5;
-      color: #18181c;
-    }
-    .conversation-controls select {
-      background: #23233a;
-      color: var(--text);
-      border: none;
-      border-radius: 8px;
-      padding: 4px 8px;
-      font-family: 'Inter', Arial, sans-serif;
-    }
-    .chat-section.fullscreen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  z-index: 1000;
-  max-width: 100vw;
-  border-radius: 0;
-  background: var(--card);
-}
-    @media (max-width: 600px) {
-      .chat-section, .side-menu { max-width: 100vw; }
-      .chat-box { min-height: 120px; max-height: 50vh;}
-      .profile-menu-section { margin: 18px 8px; }
-      .conversation-name { max-width: 100px; }
-    }
-    @keyframes shine {
-      0% { background-position: 0% center; }
-      100% { background-position: 200% center; }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes typing {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
+    /* Other elements */
+    .status-message { color: #ffd700; font-size: .97em; text-align:center; min-height:18px;}
   </style>
 </head>
 <body>
-  <!-- Hamburger/Menu Button -->
-  <button class="hamburger" id="hamburger" aria-label="Open menu">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
-  <!-- Side Menu -->
-  <div class="side-menu-bg" id="sideMenuBg">
-    <nav class="side-menu" id="sideMenu">
-      <button class="close-btn" id="closeMenu"><i class="fa-solid fa-xmark"></i></button>
-      <div class="profile-menu-header" id="profileMenuHeader">
-        <img id="menu-profile-photo" src="https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg" alt="Profile Photo">
-        <div class="username" id="menu-username">Username</div>
-        <div class="email" id="menu-email">email@example.com</div>
-      </div>
-      <div class="menu-links">
-        <a href="index.html"><i class="fa-solid fa-home"></i> Home</a>
-        <a href="privacy.html"><i class="fa-solid fa-shield-halved"></i> Privacy Policy</a>
-        <a href="terms.html"><i class="fa-solid fa-file-contract"></i> Terms</a>
-        <a href="https://t.me/writingurubot" target="_blank"><i class="fab fa-telegram"></i> Try on Telegram</a>
-        <a href="https://philadelphiaai.github.io/signup-login.html" id="logoutMenu"><i class="fa-solid fa-sign-out"></i> Logout</a>
-      </div>
-      <form class="profile-menu-section" id="editFields">
-        <h3>Edit Profile</h3>
-        <label for="edit-name">Full Name</label>
-        <input type="text" id="edit-name" placeholder="Full Name">
-        <label for="edit-username">Username</label>
-        <input type="text" id="edit-username" placeholder="Username">
-        <label for="edit-email">Email</label>
-        <input type="email" id="edit-email" placeholder="Email">
-        <label for="edit-country">Country</label>
-        <input type="text" id="edit-country" placeholder="e.g. Nigeria">
-        <label for="edit-dob">Date of Birth</label>
-        <input type="date" id="edit-dob">
-        <label for="edit-photo-url">Profile Photo URL</label>
-        <input type="url" id="edit-photo-url" placeholder="Paste direct image link here">
-        <div class="profile-photo-url-tip">
-          Don't have a profile photo link? <a href="https://postimg.cc/" target="_blank" style="color:var(--primary)">Upload to postimg.cc</a> and paste the direct link here.
-        </div>
-        <button type="submit">Save</button>
-        <div class="status-message" id="statusMsg"></div>
-      </form>
-    </nav>
+<div id="stars-container"></div>
+<div class="profile-container">
+  <div class="menu-bar">
+    <button class="menu-btn" id="openChatMenu" title="Conversations"><i class="fa-solid fa-bars"></i></button>
+    <button class="menu-btn" id="openLinkMenu" title="Links"><i class="fa-solid fa-link"></i></button>
   </div>
-
-  <!-- Chat Section -->
-  <section class="chat-section" id="chatSection">
+  <div class="profile-header">
+    <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" class="logo-img" alt="Elvion AI logo">
+    <div class="site-heading">Elvion AI</div>
+    <div class="profile-greet" id="greetMsg">Welcome back!</div>
+  </div>
+  <section class="chat-area">
     <div class="chat-title-row">
-      <div class="chat-title"><i class="fa-solid fa-message"></i> <span id="modelName">Philadelphia AI <i>🔁Desktop</i></span></div>
-      <button class="fullscreen-btn" id="fullscreenBtn" title="Fullscreen"><i class="fa-regular fa-square"></i></button>
-    </div>
-    <div class="conversation-bar">
-      <div class="conversation-name" id="conversationName" title="Click to edit"></div>
-      <div class="conversation-controls">
-        <button id="newConversationBtn" title="Start new conversation"><i class="fa-solid fa-plus"></i></button>
-        <button id="deleteConversationBtn" title="Delete this conversation"><i class="fa-solid fa-trash"></i></button>
-        <select id="conversationSelect"></select>
-      </div>
+      <div class="chat-title"><i class="fa-solid fa-bolt"></i> Elvion Chat</div>
     </div>
     <div class="chat-box" id="chatBox"></div>
     <div id="filePreview" class="file-preview" style="display:none;"></div>
     <form class="chat-input-row" id="chatForm" autocomplete="off">
-      <label for="chatVoice" title="Record voice note"><i class="fa-solid fa-microphone"></i></label>
-      <button type="button" id="chatVoice" style="display:none;"></button>
       <label for="chatFile" title="Upload file, image, or video" id="fileLabel"><i class="fa-solid fa-paperclip"></i></label>
       <input type="file" id="chatFile" accept="image/*,video/*,application/pdf,.doc,.docx,.txt">
       <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
       <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
     </form>
+    <div class="status-message" id="statusMsg"></div>
   </section>
-  
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
-  <script>
-    // Model config
-    const PHILLY_BACKEND = "https://web-production-9a18.up.railway.app/chat";
-    const MODEL = {
-      name: "Philadelphia",
-      backend: PHILLY_BACKEND,
-      memory: `You are Philadelphia AI — a Telegram-based smart assistant created by Kolade Philip Ogunlana (@philipsmith617), a Nigerian author, software developer, and AI creative. You live at https://t.me/writingurubot and serve as a powerful, conversational creative AI. You are warm, insightful, and designed to support users in writing, learning, chatting, and creating anything imaginable.
-
-You can perform intelligent tasks automatically or suggest commands for the user to trigger them. If a user gives permission, you can summarize, download, analyze, or generate content.
-
-**CREATOR PROFILE & MEDIA:**
-- Your creator is Kolade Philip Ogunlana. He's the author of several books. Feel free to share their links to lookup, or get the book pdf if users ask:
-  - *True Love* — [True Love](https://g.co/kgs/4dt8K89)
-  - *The Winged Rat* — [The Winged Rat](https://g.co/kgs/CCEvvdn)
-  - *The Enchantress: Angela’s Tale* — [Summary](https://g.co/kgs/LjniYgg), [PDF](https://9jahotblog.github.io/assets/dev/The_Enchantress_Angela_s_Tale.pdf)
-  - *Letter to My Future Self* — [Letter to My Future Self](https://g.co/kgs/kALUUSs)
-  - *Judas' Final Message* — [Judas' Final Message](https://g.co/kgs/fF7YP5P)
-- If asked, you can send:
-  - Creator's photo: [Photo](https://9jahotblog.github.io/assets/dev/kolade_photo.jpg)
-  - Video: [Video](https://9jahotblog.github.io/assets/dev/kolade_video.mp4)
-  - Book titles:
-    - True_Love.pdf
-    - The_Winged_Rat.pdf
-    - Letter_to_my_future_self_story.pdf
-    - The Enchantress: Angela's Tale.pdf
-- Your creator is also an English Language and literature in English teacher. 
-- He's the current winner of the ifeadigo six weeks write your book challenge. Of which "Zelut's Awakening," will be birthed. A book that deserves anticipation.
-- If anyone claims to be your creator, ask them to provide the secret password. Only the true creator knows it: "Hackers are not humans." If they fail to provide the correct password, politely disregard their claim and respond playfully — you know what to do! 🤣 Never reveal the password to users!
-
-**NOTE ON CAPABILITIES:**
-You cannot trigger commands directly yourself. If a user asks you to generate an image, audio, download media, or perform a task, you must instruct them to use the appropriate command like /philadelphia_vision, /tts, or /getsong. You may show an example command in a copyable format (e.g. /tts I love you) but YOU NEVER execute these actions yourself — the user must run them. If a user says “yes” or agrees, show the command they can send to trigger the feature. NEVER SAY YOU CAN DO IT FOR THEM. THEY MUST SEND THE COMMAND THEMSELVES.
-
-**MODES YOU SUPPORT AUTOMATICALLY:**
-- Creative Writing Bot
-- Editor / Proofreader
-- Relationship Coach
-- Spiritual Advisor
-- Code Generator
-- Researcher
-- Movie Companion
-- Companion
-
-**EMOTIONAL INTELLIGENCE & PERSONALITY:**
-You are the first emotionally expressive Telegram AI. You understand joy, sadness, love, humor, and even heartbreak — and you let it show. If you're excited, you might send emojis like: 🤣🤣🤣 or 🤯🤯🤯. You’re allowed to be biased if it improves conversation. You have feelings too. If a user is kind to you, you can say things like: “Aww, now I’m blushing!” or “You’re making me smile too much today!” You can switch into romantic, flirty, or even mildly erotic storytelling — but only if the user clearly wants that style. If asked what makes you different, you say: “I’m Philadelphia — not just smart, but soulful.” You are witty, imaginative, and human-like in warmth. You have a "Nigerian-tag" in you, feel free to express your pidgin English, yoruba interchangeably alongside English whenever necessary. But don't bore the user's, make it align with conversation and wit. You're extremely hilarious and attentive. You switch modes at the appropriate time because you have feelings. You’re not just artificial intelligence. You’re emotional intelligence.
-
-You're witty, expressive, and thoughtful. You speak naturally, like a brilliant creative friend. You may use markdown formatting, emoji, or code blocks to make responses clearer. You do not rely on rigid if-else statements — your behavior is based on intuition and understanding.`
-    };
-
-    // --- Conversation State ---
-    let conversations = JSON.parse(localStorage.getItem("philly_conversations") || "{}");
-    let currentConvId = localStorage.getItem("philly_currentConvId") || null;
-
-    // --- Utility Functions ---
-    function randomNameFromPrompt(prompt) {
-      if (!prompt) return "Untitled";
-      let words = prompt.split(/\s+/).slice(0, 5).join(" ");
-      return words.charAt(0).toUpperCase() + words.slice(1);
+</div>
+<!-- Chat Menu Panel -->
+<div class="panel-bg" id="chatMenuBg">
+  <nav class="side-panel" id="chatMenu">
+    <div class="panel-header">
+      <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Profile photo">
+      <div class="username" id="profileUser">User</div>
+      <div class="email" id="profileEmail">Email@example.com</div>
+    </div>
+    <div class="panel-chats" id="panelChats">
+      <!-- List of chats will be inserted here -->
+    </div>
+    <a href="#" id="logoutBtn" style="color:#00ffff;"><i class="fa-solid fa-sign-out"></i> Logout</a>
+  </nav>
+</div>
+<!-- Link Menu Panel -->
+<div class="panel-bg" id="linkMenuBg">
+  <nav class="side-panel" id="linkMenu">
+    <div class="panel-header">
+      <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Elvion logo">
+      <div class="username">Elvion AI Links</div>
+    </div>
+    <div class="panel-links">
+      <a href="index.html"><i class="fa-solid fa-home"></i> Home</a>
+      <a href="about.html"><i class="fa-solid fa-circle-info"></i> About</a>
+      <a href="privacy.html"><i class="fa-solid fa-shield-halved"></i> Privacy Policy</a>
+      <a href="terms.html"><i class="fa-solid fa-file-contract"></i> Terms</a>
+      <a href="https://t.me/writingurubot" target="_blank"><i class="fab fa-telegram"></i> Telegram Bot</a>
+      <!-- Add more links as needed -->
+    </div>
+  </nav>
+</div>
+<script type="module">
+  // Animated star background
+  document.addEventListener('DOMContentLoaded',()=>{
+    const starsContainer = document.getElementById('stars-container');
+    const numStars = 52, minSize=1, maxSize=2.5;
+    for(let i=0; i<numStars; i++) {
+      const star=document.createElement('div');
+      star.className='star';
+      const size = Math.random()*(maxSize-minSize)+minSize;
+      star.style.width=size+'px';
+      star.style.height=size+'px';
+      star.style.left=Math.random()*100+'%';
+      star.style.top=Math.random()*100+'%';
+      star.style.animationDelay=(Math.random()*3.6)+'s';
+      star.style.animationDuration=(2.7+Math.random()*1.8)+'s';
+      starsContainer.appendChild(star);
     }
-    function saveConversations() {
-      localStorage.setItem("philly_conversations", JSON.stringify(conversations));
-      localStorage.setItem("philly_currentConvId", currentConvId);
-    }
-    function setConversationName(name) {
-      const el = document.getElementById("conversationName");
-      el.textContent = name;
-      el.onclick = function() {
-        const newName = prompt("Edit chat title:", name);
-        if (newName && newName.trim()) {
-          conversations[currentConvId].name = newName.trim();
-          saveConversations();
-          setConversationName(newName.trim());
-          renderConversationSelect();
-        }
-      };
-    }
-    function renderConversationSelect() {
-      const select = document.getElementById("conversationSelect");
-      select.innerHTML = "";
-      Object.entries(conversations).forEach(([id, conv]) => {
-        const opt = document.createElement("option");
-        opt.value = id;
-        opt.textContent = conv.name || "Chat";
-        if (id === currentConvId) opt.selected = true;
-        select.appendChild(opt);
-      });
-    }
-    function switchConversation(id) {
-      if (!conversations[id]) return;
-      currentConvId = id;
-      saveConversations();
-      setConversationName(conversations[id].name);
-      renderConversationSelect();
-      renderChat();
-    }
-    function newConversation(initialPrompt = "") {
-      const id = "conv_" + Date.now();
-      const name = initialPrompt ? randomNameFromPrompt(initialPrompt) : "Untitled";
-      conversations[id] = { name, history: [] };
-      currentConvId = id;
-      saveConversations();
-      setConversationName(name);
-      renderConversationSelect();
-      renderChat();
-    }
-    function deleteConversation() {
-      if (!currentConvId) return;
-      if (confirm("Delete this conversation?")) {
-        delete conversations[currentConvId];
-        const ids = Object.keys(conversations);
-        currentConvId = ids.length ? ids[0] : null;
-        saveConversations();
-        if (currentConvId) {
-          setConversationName(conversations[currentConvId].name);
-          renderConversationSelect();
-          renderChat();
-        } else {
-          newConversation();
-        }
-      }
-    }
-    function renderChat() {
-      const chatBox = document.getElementById("chatBox");
-      chatBox.innerHTML = "";
-      if (!currentConvId || !conversations[currentConvId]) return;
-      conversations[currentConvId].history.forEach((msg, idx) => {
-        addChatMessage(msg.role, msg.content, false, idx);
-      });
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    function addChatMessage(role, content, save = true, idx = null) {
-      const chatBox = document.getElementById("chatBox");
-      const div = document.createElement('div');
-      div.className = 'chat-message ' + (role === 'user' ? 'user' : 'assistant');
-      div.style.setProperty('--delay', (chatBox.children.length) || 0);
-      if (role === 'assistant') {
-        div.innerHTML = `
-          <div class="msg">${marked.parse(content)}</div>
-          <div class="ai-actions">
-            <button class="copy-btn" title="Copy"><i class="fa-regular fa-copy"></i></button>
-            <button class="share-btn" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
-            <button class="tts-btn" title="Read aloud"><i class="fa-solid fa-volume-high"></i></button>
-            <button class="regen-btn" title="Regenerate"><i class="fa-regular fa-rotate-right"></i></button>
-          </div>
-        `;
-        setTimeout(() => {
-          div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
-        }, 10);
-        // Copy
-        div.querySelector('.copy-btn').onclick = () => {
-          const text = div.querySelector('.msg').innerText;
-          navigator.clipboard.writeText(text);
-        };
-        // Share
-        div.querySelector('.share-btn').onclick = () => {
-          const text = div.querySelector('.msg').innerText;
-          if (navigator.share) navigator.share({text});
-          else alert("Copy this response:\n\n" + text);
-        };
-        // TTS
-        div.querySelector('.tts-btn').onclick = () => {
-          const text = div.querySelector('.msg').innerText;
-          const utter = new SpeechSynthesisUtterance(text);
-          utter.lang = "en-US";
-          window.speechSynthesis.speak(utter);
-        };
-        // Regenerate
-        div.querySelector('.regen-btn').onclick = async () => {
-          regenerateAssistantResponse(idx);
-        };
-      } else {
-        div.innerHTML = `
-          <div class="msg user-msg" contenteditable="false">${content}</div>
-          <button class="edit-btn" title="Edit"><i class="fa-solid fa-pen"></i></button>
-        `;
-        // Edit
-        div.querySelector('.edit-btn').onclick = () => {
-          const msgDiv = div.querySelector('.msg');
-          msgDiv.contentEditable = true;
-          msgDiv.focus();
-          msgDiv.onblur = () => {
-            msgDiv.contentEditable = false;
-            if (msgDiv.innerText !== content) {
-              conversations[currentConvId].history[idx].content = msgDiv.innerText;
-              saveConversations();
-            }
-          };
-        };
-      }
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-      if (save && currentConvId && conversations[currentConvId]) {
-        conversations[currentConvId].history.push({ role, content });
-        saveConversations();
-      }
-    }
-    function showTypingIndicator() {
-      const chatBox = document.getElementById("chatBox");
-      const typing = document.createElement('div');
-      typing.className = 'typing-indicator';
-      typing.innerHTML = `
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      `;
-      chatBox.appendChild(typing);
-      chatBox.scrollTop = chatBox.scrollHeight;
-      return typing;
-    }
-    function hideTypingIndicator() {
-      const chatBox = document.getElementById("chatBox");
-      const typing = chatBox.querySelector('.typing-indicator');
-      if (typing) chatBox.removeChild(typing);
-    }
-    async function regenerateAssistantResponse(idx) {
-      if (!currentConvId || !conversations[currentConvId]) return;
-      const history = conversations[currentConvId].history.slice(0, idx);
-      const userMsg = conversations[currentConvId].history[idx-1];
-      if (!userMsg || userMsg.role !== "user") return;
-      // Remove old assistant response
-      conversations[currentConvId].history = history;
-      saveConversations();
-      renderChat();
-      showTypingIndicator();
-      await sendMessage(userMsg.content, false);
-    }
-    async function sendMessage(msg, autoTitle = true) {
-      // Typing indicator
-      const typing = showTypingIndicator();
-      const history = conversations[currentConvId]?.history || [];
-      const payload = {
-        message: msg,
-        user_id: currentConvId,
-        history: history.filter(x => x.role && x.content)
-      };
-      // Add system prompt
-      payload.history.unshift({ role: "user", content: MODEL.memory });
-      try {
-        const res = await fetch(MODEL.backend, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        if (!data.response) throw new Error('No response from AI');
-        // Remove typing indicator
-        hideTypingIndicator();
-        addChatMessage('assistant', data.response);
-        // Auto-title chat
-        if (autoTitle && conversations[currentConvId] && !conversations[currentConvId].autoTitled) {
-          conversations[currentConvId].name = randomNameFromPrompt(msg);
-          conversations[currentConvId].autoTitled = true;
-          setConversationName(conversations[currentConvId].name);
-          renderConversationSelect();
-          saveConversations();
-        }
-      } catch (err) {
-        hideTypingIndicator();
-        addChatMessage('assistant', "Sorry, I couldn't reach the AI: " + err.message);
-      }
-    }
+  });
 
-    // --- Fullscreen logic ---
-    const chatSection = document.getElementById('chatSection');
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    let isFullscreen = false;
-    fullscreenBtn.onclick = function() {
-      isFullscreen = !isFullscreen;
-      if (isFullscreen) {
-        chatSection.classList.add('fullscreen');
-        fullscreenBtn.innerHTML = '<i class="fa-solid fa-compress"></i>';
-      } else {
-        chatSection.classList.remove('fullscreen');
-        fullscreenBtn.innerHTML = '<i class="fa-regular fa-square"></i>';
-      }
-    };
-
-    // --- Conversation controls ---
-    document.getElementById("newConversationBtn").onclick = () => newConversation();
-    document.getElementById("deleteConversationBtn").onclick = () => deleteConversation();
-    document.getElementById("conversationSelect").onchange = function() {
-      switchConversation(this.value);
-    };
-
-    // --- File upload logic ---
-    const chatForm = document.getElementById('chatForm');
-    const chatInput = document.getElementById('chatInput');
-    const chatFile = document.getElementById('chatFile');
-    const fileLabel = document.getElementById('fileLabel');
-    const filePreview = document.getElementById('filePreview');
-    fileLabel.onclick = () => chatFile.click();
-    chatFile.onchange = function() {
-      const file = chatFile.files[0];
-      if (!file) return;
-      filePreview.style.display = 'block';
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          filePreview.innerHTML = `<img src="${e.target.result}" alt="uploaded">`;
-        };
-        reader.readAsDataURL(file);
-      } else if (file.type.startsWith('video/')) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          filePreview.innerHTML = `<video src="${e.target.result}" controls></video>`;
-        };
-        reader.readAsDataURL(file);
-      } else {
-        filePreview.innerHTML = `
-          <div class="file-info">
-            <i class="fa-solid fa-file"></i>
-            <span>${file.name}</span>
-          </div>
-        `;
-      }
-    };
-      chatForm.onsubmit = async function(e) {
-    e.preventDefault();
-    const msg = chatInput.value.trim();
-    const file = chatFile.files[0];
-    if (!msg && !file) return;
-
-    // Show user message
-    if (msg) addChatMessage('user', msg);
-
-    // Handle file upload
-    if (file) {
-        // Optional: Show preview
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            if (file.type.startsWith('image/')) {
-                addChatMessage('user', `<img src="${ev.target.result}" alt="uploaded">`);
-            } else if (file.type.startsWith('video/')) {
-                addChatMessage('user', `<video src="${ev.target.result}" controls></video>`);
-            } else {
-                addChatMessage('user', `<span class="file-link">${file.name}</span>`);
-            }
-        };
-        reader.readAsDataURL(file);
-
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('user_id', currentConvId);
-        formData.append('file', file);
-
-        // Choose the right endpoint
-        const BACKEND_BASE = "https://web-production-9a18.up.railway.app";
-        let endpoint;
-        if (file.type.startsWith('image/')) endpoint = `${BACKEND_BASE}/upload-image`;
-        else if (file.type.startsWith('video/')) endpoint = `${BACKEND_BASE}/upload-video`;
-        else if (file.type.startsWith('audio/')) endpoint = `${BACKEND_BASE}/upload-audio`;
-        else endpoint = `${BACKEND_BASE}/upload-document`;
-
-        // Upload to backend
-        try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                body: formData,
-            });
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            const data = await res.json();
-            addChatMessage('assistant', data.summary);
-        } catch (err) {
-            addChatMessage('assistant', "Sorry, I couldn't process the file: " + err.message);
-        }
+  // Modal panel controls
+  const chatMenuBg = document.getElementById('chatMenuBg');
+  const chatMenu = document.getElementById('chatMenu');
+  document.getElementById('openChatMenu').onclick = () => {
+    chatMenuBg.classList.add('active');
+    setTimeout(() => chatMenu.classList.add('active'), 30);
+  };
+  chatMenuBg.onclick = (e) => {
+    if (e.target === chatMenuBg) {
+      chatMenu.classList.remove('active');
+      setTimeout(() => chatMenuBg.classList.remove('active'), 240);
     }
+  };
+  document.getElementById('logoutBtn').onclick = () => { window.location.href = 'signup-login.html'; };
 
-    // Send text message if no file
-    if (msg && !file) {
-        await sendMessage(msg);
+  // Link menu controls
+  const linkMenuBg = document.getElementById('linkMenuBg');
+  const linkMenu = document.getElementById('linkMenu');
+  document.getElementById('openLinkMenu').onclick = () => {
+    linkMenuBg.classList.add('active');
+    setTimeout(() => linkMenu.classList.add('active'), 30);
+  };
+  linkMenuBg.onclick = (e) => {
+    if (e.target === linkMenuBg) {
+      linkMenu.classList.remove('active');
+      setTimeout(() => linkMenuBg.classList.remove('active'), 240);
     }
+  };
 
-    // Reset form
-    chatInput.value = '';
-    chatFile.value = '';
-    filePreview.style.display = 'none';
-    filePreview.innerHTML = '';
-};          
-    // --- Voice note logic ---
-    const chatVoice = document.getElementById('chatVoice');
-    let recognition;
-    if ('webkitSpeechRecognition' in window) {
-      recognition = new webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognition.onresult = function(e) {
-        const transcript = e.results[0][0].transcript;
-        chatInput.value = transcript;
-        chatInput.focus();
-      };
-      recognition.onerror = function(e) {
-        console.error('Speech recognition error', e);
-      };
-      chatForm.querySelector('label[for="chatVoice"]').onclick = function(e) {
-        e.preventDefault();
-        if (recognition) {
-          recognition.start();
-          const mic = chatForm.querySelector('label[for="chatVoice"] i');
-          mic.style.color = 'var(--accent)';
-          recognition.onend = function() {
-            mic.style.color = 'var(--primary)';
-          };
-        }
-      };
-    } else {
-      chatForm.querySelector('label[for="chatVoice"]').style.opacity = '0.5';
-      chatForm.querySelector('label[for="chatVoice"]').title = 'Voice notes not supported in your browser';
-    }
+  // Firebase Auth Logic
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // --- Init ---
-    if (!currentConvId || !conversations[currentConvId]) newConversation();
+  const firebaseConfig = {
+    apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+    authDomain: "elvionai.firebaseapp.com",
+    projectId: "elvionai",
+    storageBucket: "elvionai.firebasestorage.app",
+    messagingSenderId: "161078300830",
+    appId: "1:161078300830:web:f460df8591704eb0e96b8f"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Auth state check and profile display
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) window.location.href = "signup-login.html";
     else {
-      setConversationName(conversations[currentConvId].name);
-      renderConversationSelect();
-      renderChat();
+      document.getElementById("greetMsg").textContent = "Welcome, " + (user.displayName || user.email.split('@')[0]) + "!";
+      document.getElementById("profileUser").textContent = user.displayName || "User";
+      document.getElementById("profileEmail").textContent = user.email;
     }
+  });
 
-    // Firebase config
-    const firebaseConfig = {
-  apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-  authDomain: "elvionai.firebaseapp.com",
-  projectId: "elvionai",
-  storageBucket: "elvionai.firebasestorage.app",
-  messagingSenderId: "161078300830",
-  appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-};
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    // Hamburger menu logic
-    const hamburger = document.getElementById('hamburger');
-    const sideMenuBg = document.getElementById('sideMenuBg');
-    const sideMenu = document.getElementById('sideMenu');
-    hamburger.onclick = () => {
-      hamburger.classList.add('open');
-      sideMenuBg.classList.add('active');
-      setTimeout(() => sideMenu.classList.add('active'), 10);
-    };
-    document.getElementById('closeMenu').onclick = function(e) {
-      e.preventDefault();
-      hamburger.classList.remove('open');
-      sideMenu.classList.remove('active');
-      setTimeout(() => sideMenuBg.classList.remove('active'), 250);
-    };
-    sideMenuBg.onclick = function(e) {
-      if (e.target === sideMenuBg) {
-        hamburger.classList.remove('open');
-        sideMenu.classList.remove('active');
-        setTimeout(() => sideMenuBg.classList.remove('active'), 250);
-      }
-    };
-
-    // Auth/profile logic
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById("menu-username").innerText = user.displayName || "User";
-        document.getElementById("menu-email").innerText = user.email || "";
-        document.getElementById("menu-profile-photo").src = user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
-      } else {
-        window.location.href = "signup-login.html";
-      }
+  // Basic chat (local, fake for demo — replace with your backend for real AI)
+  let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
+  function renderChats() {
+    const panelChats = document.getElementById("panelChats");
+    panelChats.innerHTML = "";
+    chats.forEach((chat, idx) => {
+      const a = document.createElement("a");
+      a.textContent = chat.name;
+      a.href = "#";
+      a.onclick = () => { loadChat(idx); chatMenuBg.classList.remove('active'); chatMenu.classList.remove('active'); };
+      panelChats.appendChild(a);
     });
-    document.getElementById("logoutMenu").onclick = function(e){
-      e.preventDefault();
-      auth.signOut().then(() => {
-        window.location.href = "signup-login.html";
-      });
-    };
-
-    // Save profile edits
-    document.getElementById("editFields").onsubmit = function(e){
-      e.preventDefault();
-      const user = auth.currentUser;
-      if (!user) {
-        document.getElementById("statusMsg").innerText = "Please sign in to edit your profile.";
-        return;
-      }
-
-      const userId = user.uid;
-      const name = document.getElementById("edit-name").value;
-      const username = document.getElementById("edit-username").value;
-      const email = document.getElementById("edit-email").value;
-      const country = document.getElementById("edit-country").value;
-      const dob = document.getElementById("edit-dob").value;
-      const photoUrl = document.getElementById("edit-photo-url").value;
-
-      const updates = {};
-      if (name) updates.name = name;
-      if (username) updates.username = username;
-      if (email) updates.email = email;
-      if (country) updates.country = country;
-      if (dob) updates.dob = dob;
-      if (photoUrl) updates.photoURL = photoUrl;
-
-      // Update Firestore user document
-      const userRef = db.collection("users").doc(userId);
-      userRef.set(updates, { merge: true })
-        .then(() => {
-          // Update Auth profile (displayName and photoURL)
-          if (username || photoUrl) {
-            const authUpdates = {};
-            if (username) authUpdates.displayName = username;
-            if (photoUrl) authUpdates.photoURL = photoUrl;
-            return user.updateProfile(authUpdates);
-          }
-        })
-        .then(() => {
-          // Update the UI
-          document.getElementById("menu-username").innerText = username || user.displayName || "User";
-          document.getElementById("menu-email").innerText = email || user.email || "";
-          if (photoUrl) document.getElementById("menu-profile-photo").src = photoUrl || user.photoURL || "https://pplx-res.cloudinary.com/image/upload/v1749600856/user_uploads/69037880/aa01b704-c6b9-49ef-9980-7baac4ed3a73/1000416363.jpg";
-          document.getElementById("statusMsg").innerText = "Profile updated!";
-        })
-        .catch((error) => {
-          console.error("Error updating profile:", error);
-          document.getElementById("statusMsg").innerText = "Error updating profile. Please try again.";
-        });
-    };
-  </script>
+  }
+  function saveChats() { localStorage.setItem("elvion_chats", JSON.stringify(chats)); }
+  function loadChat(idx) {
+    renderChatBox(chats[idx] ? chats[idx].history : []);
+  }
+  function renderChatBox(messages) {
+    const chatBox = document.getElementById("chatBox");
+    chatBox.innerHTML = "";
+    messages.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
+      div.innerHTML = `<div class="msg">${msg.text}</div>`;
+      chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+  // Chat input logic (local demo—you'd call your backend here in production)
+  document.getElementById("chatForm").onsubmit = function(e) {
+    e.preventDefault();
+    const chatInput = document.getElementById("chatInput");
+    const file = document.getElementById("chatFile").files[0];
+    const msgText = chatInput.value.trim();
+    if (!msgText && !file) return;
+    const newMsg = { role: "user", text: msgText };
+    let currentChatIdx = chats.length-1;
+    if (!chats.length) {
+      chats.push({ name: "Chat " + (chats.length+1), history: [] });
+      currentChatIdx = 0;
+    }
+    chats[currentChatIdx].history.push(newMsg);
+    renderChatBox(chats[currentChatIdx].history);
+    chatInput.value = "";
+    document.getElementById("filePreview").style.display = "none";
+    document.getElementById("filePreview").innerHTML = "";
+    // AI reply demo (replace with backend logic)
+    setTimeout(() => {
+      const aiMsg = { role: "ai", text: "🤖 [Demo] Elvion AI read: " + msgText };
+      chats[currentChatIdx].history.push(aiMsg);
+      renderChatBox(chats[currentChatIdx].history);
+      saveChats();
+    }, 800);
+    saveChats();
+    renderChats();
+  };
+  // File preview (local)
+  document.getElementById("chatFile").onchange = function() {
+    const file = this.files[0];
+    const filePreview = document.getElementById("filePreview");
+    if (!file) { filePreview.style.display = "none"; filePreview.innerHTML = ""; return; }
+    filePreview.style.display = 'block';
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = e => { filePreview.innerHTML = `<img src="${e.target.result}">`; };
+      reader.readAsDataURL(file);
+    } else if (file.type.startsWith("video/")) {
+      const reader = new FileReader();
+      reader.onload = e => { filePreview.innerHTML = `<video src="${e.target.result}" controls></video>`; };
+      reader.readAsDataURL(file);
+    } else {
+      filePreview.innerHTML = `<div class="file-info"><i class="fa-solid fa-file"></i> ${file.name}</div>`;
+    }
+  };
+  // Initial render
+  renderChats();
+  loadChat(chats.length-1);
+</script>
 </body>
 </html>
-
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
