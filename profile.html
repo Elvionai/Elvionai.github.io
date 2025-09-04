@@ -356,13 +356,10 @@
   const escapeHTML = (str='') => str
     .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 
-  // Parse minimal markdown: code blocks, inline code, bold, italics, basic links
   function renderMarkdown(text=''){
-    // Extract triple-backtick code blocks first
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let html = '';
     let lastIndex = 0;
-    const blocks = [];
     text = text || '';
 
     text.replace(codeBlockRegex, (m, lang, code, offset) => {
@@ -375,25 +372,18 @@
         <pre data-block-id="${blockId}"><button class="copy-btn" data-copy="${blockId}">Copy</button>
           <code class="language-${language || 'plaintext'}">${safe}</code>
         </pre>`;
-      blocks.push(blockId);
       lastIndex = offset + m.length;
       return m;
     });
     html += inlineMarkdown(text.slice(lastIndex));
-
-    return { html, blocks };
+    return { html };
   }
 
   function inlineMarkdown(t=''){
-    // inline code
     let s = t.replace(/`([^`]+?)`/g, (_,a)=>`<code>${escapeHTML(a)}</code>`);
-    // bold **text**
     s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-    // italics *text*
     s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
-    // simple links [text](url)
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-    // line breaks
     return s.replace(/\n/g, '<br>');
   }
 
@@ -401,7 +391,6 @@
     container.querySelectorAll('pre').forEach(pre=>{
       const codeEl = pre.querySelector('code');
       if (window.hljs && codeEl) hljs.highlightElement(codeEl);
-
       const btn = pre.querySelector('.copy-btn');
       if(btn && codeEl){
         btn.addEventListener('click', async ()=>{
@@ -422,8 +411,6 @@
     (messages||[]).forEach(msg=>{
       const div=document.createElement('div');
       div.className="chat-message "+(msg.role==="user"?"user":"ai");
-
-      // File/image passthrough
       if(msg.text && /^(\[File\]|image:)/.test(msg.text)){
         div.innerHTML = msg.text.replace('image:','');
       } else if(msg.role === "ai") {
@@ -432,7 +419,6 @@
       } else {
         div.innerHTML = `<div class="msg">${escapeHTML(msg.text||'')}</div>`;
       }
-
       chatBox.appendChild(div);
     });
     enhanceCodeBlocks(chatBox);
@@ -444,7 +430,7 @@
     if(nearBottom) chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  /* ---------- Inline typing indicator at AI slot ---------- */
+  /* ---------- Typing Indicator ---------- */
   let typingNode = null;
   function showTypingAtNext(){
     removeTyping();
@@ -526,8 +512,6 @@
   }
   chatInput.addEventListener('input', autoResizeTextarea);
   autoResizeTextarea();
-
-  // Submit on Ctrl/Cmd+Enter; new line on Enter
   chatInput.addEventListener('keydown', (e)=>{
     if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
       e.preventDefault();
@@ -535,7 +519,7 @@
     }
   });
 
-  /* ---------- Submit ---------- */
+  /* ---------- Submit (updated) ---------- */
   document.getElementById("chatForm").onsubmit=async function(e){
     e.preventDefault();
     let file = uploadData, fp=document.getElementById("filePreview");
@@ -543,9 +527,9 @@
 
     if(currentChatIdx<0){chats.push({name:"Chat 1",history:[]});currentChatIdx=0;}
 
-    // If file upload
+    // File upload
     if(file){
-      showTypingAtNext(); // indicate processing
+      showTypingAtNext();
       try{
         const formData=new FormData();
         formData.append("file",file);
@@ -579,26 +563,28 @@
         chats[currentChatIdx].name=msgText.slice(0,25)+"..."; renderChatSelector();
       }
       renderChatBox(chats[currentChatIdx].history);
-
-      // Show typing bubble where AI reply will land
       showTypingAtNext();
 
       try{
         const history=chats[currentChatIdx].history.map(m=>({role:m.role,content:m.text}));
-        const res=await fetch("https://web-production-9a18.up.railway.app/chat",{
+        // 🔑 Auto-detect if it's a "site creation/edit" request
+        const looksLikeSite = /<\s*html|create\s+a\s+site|make\s+a\s+website|edit\s+site/i.test(msgText);
+        const endpoint = looksLikeSite
+          ? "https://web-production-9a18.up.railway.app/create-site"
+          : "https://web-production-9a18.up.railway.app/chat";
+
+        const res=await fetch(endpoint,{
           method:"POST",
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({message:msgText,user_id:"user",history})
         });
+
         let data;
         try{ data = await res.json(); }catch(_){ data = {response:"🤖 Bot replied."}; }
 
         removeTyping();
-
-        // Tidy bot text formatting expectations (let it use **bold**, *italics*, backticks, code blocks)
         const botText = data.response || "🤖 Bot replied.";
         chats[currentChatIdx].history.push({role:"ai",text:botText});
-
         saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx].history);
       }catch(err){
         removeTyping();
@@ -611,6 +597,6 @@
 
   /* ---------- Init ---------- */
   renderChatSelector(); loadChat(currentChatIdx);
-  </script>
+</script>
 </body>
 </html>
