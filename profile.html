@@ -258,8 +258,8 @@
   </div>
     <script type="module">
 /* ---------- Stars ---------- */
-document.addEventListener('DOMContentLoaded', () => {
-  const starsContainer = document.getElementById('stars-container');
+document.addEventListener('DOMContentLoaded', ()=>{
+  const starsContainer=document.getElementById('stars-container');
   for(let i=0;i<34;i++){
     const s=document.createElement('div'); s.className='star';
     const z=Math.random()*2.1+1; s.style.width=z+'px'; s.style.height=z+'px';
@@ -271,30 +271,31 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ---------- Fullscreen ---------- */
-const mainContainer = document.getElementById('mainContainer');
-const fullscreenBtn = document.getElementById('fullscreenBtn');
-let isFull = false;
-fullscreenBtn.onclick = function() {
-  isFull = !isFull;
+const mainContainer=document.getElementById('mainContainer');
+const fullscreenBtn=document.getElementById('fullscreenBtn');
+let isFull=false;
+fullscreenBtn.onclick=function(){
+  isFull=!isFull;
   if(isFull){
     mainContainer.classList.add('fullscreen');
-    fullscreenBtn.innerHTML = '<i class="fa-solid fa-compress"></i>';
+    fullscreenBtn.innerHTML='<i class="fa-solid fa-compress"></i>';
   }else{
     mainContainer.classList.remove('fullscreen');
-    fullscreenBtn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+    fullscreenBtn.innerHTML='<i class="fa-solid fa-expand"></i>';
   }
 };
 
 /* ---------- Panels/Modals ---------- */
-const profileMenuBg = document.getElementById('profileMenuBg'), profileMenu = document.getElementById('profileMenu');
-const linkMenuBg = document.getElementById('linkMenuBg'), linkMenu = document.getElementById('linkMenu');
-document.getElementById('openProfileMenu').onclick = () => { profileMenuBg.classList.add('active'); setTimeout(() => profileMenu.classList.add('active'), 10); };
-profileMenuBg.onclick = e => { if(e.target === profileMenuBg){ profileMenu.classList.remove('active'); setTimeout(() => profileMenuBg.classList.remove('active'), 110); } };
-document.getElementById('openLinksMenu').onclick = () => { linkMenuBg.classList.add('active'); setTimeout(() => linkMenu.classList.add('active'), 10); };
-linkMenuBg.onclick = e => { if(e.target === linkMenuBg){ linkMenu.classList.remove('active'); setTimeout(() => linkMenuBg.classList.remove('active'), 110); } };
-document.getElementById("logoutBtn").onclick = () => window.location.href = 'signup-login.html';
+const profileMenuBg=document.getElementById('profileMenuBg'),profileMenu=document.getElementById('profileMenu');
+const linkMenuBg=document.getElementById('linkMenuBg'),linkMenu=document.getElementById('linkMenu');
+document.getElementById('openProfileMenu').onclick=()=>{profileMenuBg.classList.add('active');setTimeout(()=>profileMenu.classList.add('active'),10);};
+profileMenuBg.onclick=e=>{if(e.target===profileMenuBg){profileMenu.classList.remove('active');setTimeout(()=>profileMenuBg.classList.remove('active'),110);}};
+document.getElementById('openLinksMenu').onclick=()=>{linkMenuBg.classList.add('active');setTimeout(()=>linkMenu.classList.add('active'),10);};
+linkMenuBg.onclick=e=>{if(e.target===linkMenuBg){linkMenu.classList.remove('active');setTimeout(()=>linkMenuBg.classList.remove('active'),110);}};
 
-/* ---------- Firebase Imports/Setup ---------- */
+document.getElementById("logoutBtn").onclick=()=>window.location.href='signup-login.html';
+
+/* ---------- Firebase: Auth, Storage, DB ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
@@ -312,7 +313,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const database = getDatabase(app);
 
-/* ---------- Auth/Profile ---------- */
+/* ---------- User Auth/Profile ---------- */
 let currentUser, userChats = [], currentChatIdx = 0;
 const chatSelector = document.getElementById("chatSelector");
 const chatBox = document.getElementById("chatBox");
@@ -360,8 +361,6 @@ async function uploadChatImage(base64String, filename = "chat_image.png") {
   await uploadString(imgRef, base64String, 'data_url');
   return await getDownloadURL(imgRef);
 }
-
-/* ---------- Firebase Chat Save/Load ---------- */
 async function saveChatsToFirebase() {
   if (!currentUser) return;
   await set(dbRef(database, "chats/" + currentUser.uid), userChats);
@@ -419,70 +418,44 @@ function renderChatBox(messages) {
 }
 
 /* ---------- Markdown & Code Rendering ---------- */
-// Escape HTML characters
-const escapeHTML = (str = '') => 
-  str.replaceAll('&', '&amp;')
-     .replaceAll('<', '&lt;')
-     .replaceAll('>', '&gt;');
-
-// Render markdown with code blocks
-function renderMarkdown(text = '') {
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g; // Correct regex for code blocks
-  let html = '';
-  let lastIndex = 0;
-  text = text || '';
-
-  text.replace(codeBlockRegex, (match, lang, code, offset) => {
-    // Text before code block
-    const before = text.slice(lastIndex, offset);
-    html += inlineMarkdown(before);
-
-    // Prepare code block
+const escapeHTML = (str = '') => str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+function renderMarkdown(text='') {
+  const codeBlockRegex = /``````/g;
+  let html = '', lastIndex = 0; text = text || '';
+  text.replace(codeBlockRegex, (m, lang, code, offset) => {
+    const before = text.slice(lastIndex, offset); html += inlineMarkdown(before);
     const language = (lang || '').toLowerCase().trim();
     const safe = escapeHTML(code);
     const blockId = 'code_' + Math.random().toString(36).slice(2);
-
-    html += `<pre data-block-id="${blockId}">
-      <button class="copy-btn" data-copy="${blockId}">Copy</button>
+    html += `<pre data-block-id="${blockId}"><button class="copy-btn" data-copy="${blockId}">Copy</button>
       <code class="language-${language || 'plaintext'}">${safe}</code>
     </pre>`;
-
-    lastIndex = offset + match.length;
-    return match;
+    lastIndex = offset + m.length;
+    return m;
   });
-
-  // Remaining text after last code block
   html += inlineMarkdown(text.slice(lastIndex));
   return { html };
 }
-
-// Inline markdown (bold, italics, links, inline code)
-function inlineMarkdown(t = '') {
-  let s = t.replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
+function inlineMarkdown(t='') {
+  let s = t.replace(/`([^`]+?)`/g, (_,a)=>`<code>${escapeHTML(a)}</code>`);
   s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   return s.replace(/\n/g, '<br>');
 }
-
-// Enhance code blocks with syntax highlighting and copy button
 function enhanceCodeBlocks(container) {
-  container.querySelectorAll('pre').forEach(pre => {
+  container.querySelectorAll('pre').forEach(pre=>{
     const codeEl = pre.querySelector('code');
     if (window.hljs && codeEl) hljs.highlightElement(codeEl);
-
     const btn = pre.querySelector('.copy-btn');
-    if (btn && codeEl) {
-      btn.addEventListener('click', async () => {
-        try {
+    if(btn && codeEl){
+      btn.addEventListener('click', async ()=>{
+        try{
           await navigator.clipboard.writeText(codeEl.innerText);
           const prev = btn.textContent;
-          btn.textContent = 'Copied!';
-          setTimeout(() => btn.textContent = prev, 800);
-        } catch (e) {
-          btn.textContent = 'Failed';
-          setTimeout(() => btn.textContent = 'Copy', 800);
-        }
+          btn.textContent='Copied!';
+          setTimeout(()=>btn.textContent=prev,800);
+        }catch(e){ btn.textContent='Failed'; setTimeout(()=>btn.textContent='Copy',800); }
       });
     }
   });
