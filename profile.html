@@ -567,31 +567,22 @@ if (msgText) {
   showTypingAtNext();
 
   try {
-    // Detect website creation intent (improved)
-    const looksLikeSite = /create\s+a\s+(website|site)|build\s+(me\s+)?a\s+(website|site)|make\s+a\s+(website|site)/i.test(msgText);
-
-    let res, data, botText;
-    if (looksLikeSite) {
-      // Send the creation request to /create-website
-      res = await fetch("https://web-production-9a18.up.railway.app/create-website", {
+        let res, data, botText;
+    // Image generation intent: customize regex as needed
+    const looksLikeImage = /draw|generate an image|create an image|show me (an|a) .+ picture|make an image|create a picture|generate a drawing/i.test(msgText);
+    if (looksLikeImage) {
+      // Send to /generate-image
+      res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: msgText,
-          user_id: currentUser?.uid || "user"
-        })
+        body: JSON.stringify(msgText)
       });
-
-      // Parse backend response
       try { data = await res.json(); } catch (_) { data = {}; }
       removeTyping();
-      if (data.site_url) {
-        botText = `✅ Your website is ready: <a href="${data.site_url}" target="_blank">${data.site_url}</a>`;
-        if (data.html_code) {
-          botText += `<br><details><summary>View HTML code</summary><pre><code class="language-html">${escapeHTML(data.html_code)}</code></pre></details>`;
-        }
+      if (data.image_b64) {
+        botText = `![Generated image](data:image/png;base64,${data.image_b64})<br><em>(Watermarked by Philadelphia AI)</em>`;
       } else {
-        botText = data.error || "❌ Website creation failed. Try again later.";
+        botText = data.error || "❌ Image generation failed. Try another prompt.";
       }
     } else {
       // Normal chat
