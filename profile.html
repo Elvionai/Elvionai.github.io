@@ -258,8 +258,7 @@
       </div>
     </nav>
   </div>
-
-  <script type="module">
+     <script type="module">
   /* ---------- Stars ---------- */
   document.addEventListener('DOMContentLoaded',()=>{
     const starsContainer=document.getElementById('stars-container');
@@ -359,7 +358,7 @@
     .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
 
   function renderMarkdown(text=''){
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    const codeBlockRegex = /``````/g;
     let html = '';
     let lastIndex = 0;
     text = text || '';
@@ -424,15 +423,10 @@
       chatBox.appendChild(div);
     });
     enhanceCodeBlocks(chatBox);
-    scrollToBottomIfNear();
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  function scrollToBottomIfNear(){
-    const nearBottom = (chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight) < 120;
-    if(nearBottom) chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-  /* ---------- Typing Indicator ---------- */
+  /* ---------- Typing Indicator & Animation ---------- */
   let typingNode = null;
   function showTypingAtNext(){
     removeTyping();
@@ -442,13 +436,30 @@
       <span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span>
     </span></div>`;
     chatBox.appendChild(typingNode);
-    scrollToBottomIfNear();
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
   function removeTyping(){
     if(typingNode && typingNode.parentNode){
       typingNode.parentNode.removeChild(typingNode);
       typingNode = null;
     }
+  }
+  async function typeBotMessage(finalText, onDone) {
+    removeTyping();
+    const div = document.createElement('div');
+    div.className = "chat-message ai";
+    const msg = document.createElement('div');
+    msg.className = "msg";
+    div.appendChild(msg);
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    let words = (finalText || "").split(/(\s+)/);
+    for (let word of words) {
+      msg.innerHTML += escapeHTML(word);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      await new Promise(res => setTimeout(res, 22 + Math.random()*70));
+    }
+    enhanceCodeBlocks(msg); if(onDone)onDone();
   }
 
   /* ---------- New/Delete Chat ---------- */
@@ -493,8 +504,7 @@
       recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
       this.innerHTML='<i class="fa-solid fa-microphone-lines"></i>';
       recognition.onresult=(e)=>{
-        const ta=document.getElementById('chatInput');
-        ta.value += (ta.value ? ' ' : '') + e.results[0][0].transcript;
+        chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
         autoResizeTextarea();
         document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';
       };
@@ -521,6 +531,21 @@
     }
   });
 
+  /* ---------- IMAGE BUTTON ---------- */
+  let imageBtn = document.createElement("button");
+  imageBtn.type = "button";
+  imageBtn.id = "imageBtn";
+  imageBtn.title = "Generate image";
+  imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
+  document.getElementById("chatForm").insertBefore(imageBtn, document.getElementById("sendBtn"));
+  imageBtn.onclick = async function () {
+    let prompt = prompt("Describe the image to generate:");
+    if (!prompt || !prompt.trim()) return;
+    chatInput.value = `/image ${prompt.trim()}`;
+    chatInput.dispatchEvent(new Event('input'));
+    document.getElementById("chatForm").dispatchEvent(new Event("submit", { bubbles: true }));
+  };
+
   /* ---------- Submit (updated) ---------- */
   document.getElementById("chatForm").onsubmit=async function(e){
     e.preventDefault();
@@ -528,6 +553,11 @@
     let msgText=chatInput.value.trim();
 
     if(currentChatIdx<0){chats.push({name:"Chat 1",history:[]});currentChatIdx=0;}
+    if (!msgText && !file) return;
+
+    // Always clear chat input box after submit
+    chatInput.value = "";
+    autoResizeTextarea();
 
     // File upload
     if(file){
@@ -552,67 +582,64 @@
         removeTyping();
         chats[currentChatIdx].history.push({role:"ai",text:"[File upload failed] "+(err.message||'no net')});
       }
-      chatInput.value=""; autoResizeTextarea();
       document.getElementById("chatFile").value=""; fp.style.display="none"; fp.innerHTML=""; uploadData=null;
       saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx].history);
       return;
     }
 
     // Text message handling
-if (msgText) {
-  chats[currentChatIdx].history.push({ role: "user", text: msgText });
-  if (chats[currentChatIdx].history.length === 1) {
-    chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
-    renderChatSelector();
-  }
-  renderChatBox(chats[currentChatIdx].history);
-  showTypingAtNext();
-
-  try {
-        let res, data, botText;
-    // Image generation intent: customize regex as needed
-    const looksLikeImage = /draw|generate an image|create an image|show me (an|a) .+ picture|make an image|create a picture|generate a drawing/i.test(msgText);
-    if (looksLikeImage) {
-      // Send to /generate-image
-      res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(msgText)
-      });
-      try { data = await res.json(); } catch (_) { data = {}; }
-      removeTyping();
-      if (data.image_b64) {
-        botText = `![Generated image](data:image/png;base64,${data.image_b64})<br><em>(Watermarked by Philadelphia AI)</em>`;
-      } else {
-        botText = data.error || "❌ Image generation failed. Try another prompt.";
-      }
-    } else {
-      // Normal chat
-      const history = chats[currentChatIdx].history.map(m => ({ role: m.role, content: m.text }));
-      res = await fetch("https://web-production-9a18.up.railway.app/chat", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || "user", history })
-      });
-      try { data = await res.json(); } catch (_) { data = {}; }
-      removeTyping();
-      botText = data.response || "🤖 Bot replied.";
+    chats[currentChatIdx].history.push({role:"user",text:msgText});
+    if(chats[currentChatIdx].history.length===1){
+      chats[currentChatIdx].name=msgText.slice(0,25)+"..."; renderChatSelector();
     }
-
-    chats[currentChatIdx].history.push({ role: "ai", text: botText });
-    saveChats();
-    renderChatSelector();
     renderChatBox(chats[currentChatIdx].history);
+    showTypingAtNext();
 
-  } catch (err) {
-    removeTyping();
-    chats[currentChatIdx].history.push({ role: "ai", text: "Sorry, bot error: " + err.message });
-    renderChatBox(chats[currentChatIdx].history);
-    saveChats();
-  }
-}
-chatInput.value = "";
-autoResizeTextarea();
+    try {
+      let res, data, botText;
+      // IMAGE generation ONLY if /image (no other regex):
+      if(/^\/image\s+/i.test(msgText)){
+        let imagePrompt = msgText.replace(/^\/image\s+/i, '');
+        res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(imagePrompt)
+        });
+        try { data = await res.json(); } catch (_) { data = {}; }
+        removeTyping();
+        if (data.image_b64) {
+          botText = `<img src="data:image/png;base64,${data.image_b64}" alt="${escapeHTML(imagePrompt)}" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin-top:3px;"><br><em>(Watermarked by Philadelphia AI)</em>`;
+        } else {
+          botText = data.error || "❌ Image generation failed. Try another prompt.";
+        }
+        chats[currentChatIdx].history.push({ role: "ai", text: botText });
+        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx].history);
+      } else {
+        // Normal chat
+        const history = chats[currentChatIdx].history.map(m => ({ role: m.role, content: m.text }));
+        res = await fetch("https://web-production-9a18.up.railway.app/chat", {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || "user", history })
+        });
+        try { data = await res.json(); } catch (_) { data = {}; }
+        removeTyping();
+        if (data.response) {
+          await typeBotMessage(data.response);
+          chats[currentChatIdx].history.push({ role: "ai", text: data.response });
+        } else {
+          await typeBotMessage("🤖 Bot replied (no response).");
+          chats[currentChatIdx].history.push({ role: "ai", text: "🤖 Bot replied (no response)." });
+        }
+        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx].history);
+      }
+    } catch (err) {
+      removeTyping();
+      await typeBotMessage("Sorry, bot error: " + err.message);
+      chats[currentChatIdx].history.push({ role: "ai", text: "Sorry, bot error: " + err.message });
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx].history);
+    }
+  };
 
   /* ---------- Init ---------- */
   renderChatSelector(); loadChat(currentChatIdx);
