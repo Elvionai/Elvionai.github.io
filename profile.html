@@ -556,44 +556,70 @@
       return;
     }
 
-    // Text message
-    if(msgText){
-      chats[currentChatIdx].history.push({role:"user",text:msgText});
-      if(chats[currentChatIdx].history.length===1){
-        chats[currentChatIdx].name=msgText.slice(0,25)+"..."; renderChatSelector();
+    // Text message handling
+if (msgText) {
+  chats[currentChatIdx].history.push({ role: "user", text: msgText });
+  if (chats[currentChatIdx].history.length === 1) {
+    chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
+    renderChatSelector();
+  }
+  renderChatBox(chats[currentChatIdx].history);
+  showTypingAtNext();
+
+  try {
+    // Detect website creation intent (improved)
+    const looksLikeSite = /create\s+a\s+(website|site)|build\s+(me\s+)?a\s+(website|site)|make\s+a\s+(website|site)/i.test(msgText);
+
+    let res, data, botText;
+    if (looksLikeSite) {
+      // Send the creation request to /create-website
+      res = await fetch("https://web-production-9a18.up.railway.app/create-website", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: msgText,
+          user_id: currentUser?.uid || "user"
+        })
+      });
+
+      // Parse backend response
+      try { data = await res.json(); } catch (_) { data = {}; }
+      removeTyping();
+      if (data.site_url) {
+        botText = `✅ Your website is ready: <a href="${data.site_url}" target="_blank">${data.site_url}</a>`;
+        if (data.html_code) {
+          botText += `<br><details><summary>View HTML code</summary><pre><code class="language-html">${escapeHTML(data.html_code)}</code></pre></details>`;
+        }
+      } else {
+        botText = data.error || "❌ Website creation failed. Try again later.";
       }
-      renderChatBox(chats[currentChatIdx].history);
-      showTypingAtNext();
-
-      try{
-        const history=chats[currentChatIdx].history.map(m=>({role:m.role,content:m.text}));
-        // 🔑 Auto-detect if it's a "site creation/edit" request
-        const looksLikeSite = /<\s*html|create\s+a\s+site|make\s+a\s+website|edit\s+site/i.test(msgText);
-        const endpoint = looksLikeSite
-          ? "https://web-production-9a18.up.railway.app/create-site"
-          : "https://web-production-9a18.up.railway.app/chat";
-
-        const res=await fetch(endpoint,{
-          method:"POST",
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({message:msgText,user_id:"user",history})
-        });
-
-        let data;
-        try{ data = await res.json(); }catch(_){ data = {response:"🤖 Bot replied."}; }
-
-        removeTyping();
-        const botText = data.response || "🤖 Bot replied.";
-        chats[currentChatIdx].history.push({role:"ai",text:botText});
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx].history);
-      }catch(err){
-        removeTyping();
-        chats[currentChatIdx].history.push({role:"ai",text:"Sorry, bot error: "+err.message});
-        renderChatBox(chats[currentChatIdx].history); saveChats();
-      }
+    } else {
+      // Normal chat
+      const history = chats[currentChatIdx].history.map(m => ({ role: m.role, content: m.text }));
+      res = await fetch("https://web-production-9a18.up.railway.app/chat", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || "user", history })
+      });
+      try { data = await res.json(); } catch (_) { data = {}; }
+      removeTyping();
+      botText = data.response || "🤖 Bot replied.";
     }
-    chatInput.value=""; autoResizeTextarea();
-  };
+
+    chats[currentChatIdx].history.push({ role: "ai", text: botText });
+    saveChats();
+    renderChatSelector();
+    renderChatBox(chats[currentChatIdx].history);
+
+  } catch (err) {
+    removeTyping();
+    chats[currentChatIdx].history.push({ role: "ai", text: "Sorry, bot error: " + err.message });
+    renderChatBox(chats[currentChatIdx].history);
+    saveChats();
+  }
+}
+chatInput.value = "";
+autoResizeTextarea();
 
   /* ---------- Init ---------- */
   renderChatSelector(); loadChat(currentChatIdx);
