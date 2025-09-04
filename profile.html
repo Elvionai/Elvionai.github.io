@@ -419,24 +419,44 @@ function renderChatBox(messages) {
 }
 
 /* ---------- Markdown & Code Rendering ---------- */
-const escapeHTML = (str = '') => str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+// Escape HTML characters
+const escapeHTML = (str = '') => 
+  str.replaceAll('&', '&amp;')
+     .replaceAll('<', '&lt;')
+     .replaceAll('>', '&gt;');
+
+// Render markdown with code blocks
 function renderMarkdown(text = '') {
-  const codeBlockRegex = /``````/g;
-  let html = '', lastIndex = 0; text = text || '';
-  text.replace(codeBlockRegex, (m, lang, code, offset) => {
-    const before = text.slice(lastIndex, offset); html += inlineMarkdown(before);
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g; // Correct regex for code blocks
+  let html = '';
+  let lastIndex = 0;
+  text = text || '';
+
+  text.replace(codeBlockRegex, (match, lang, code, offset) => {
+    // Text before code block
+    const before = text.slice(lastIndex, offset);
+    html += inlineMarkdown(before);
+
+    // Prepare code block
     const language = (lang || '').toLowerCase().trim();
     const safe = escapeHTML(code);
     const blockId = 'code_' + Math.random().toString(36).slice(2);
-    html += `<pre data-block-id="${blockId}"><button class="copy-btn" data-copy="${blockId}">Copy</button>
+
+    html += `<pre data-block-id="${blockId}">
+      <button class="copy-btn" data-copy="${blockId}">Copy</button>
       <code class="language-${language || 'plaintext'}">${safe}</code>
     </pre>`;
-    lastIndex = offset + m.length;
-    return m;
+
+    lastIndex = offset + match.length;
+    return match;
   });
+
+  // Remaining text after last code block
   html += inlineMarkdown(text.slice(lastIndex));
   return { html };
 }
+
+// Inline markdown (bold, italics, links, inline code)
 function inlineMarkdown(t = '') {
   let s = t.replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
   s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
@@ -444,10 +464,13 @@ function inlineMarkdown(t = '') {
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   return s.replace(/\n/g, '<br>');
 }
+
+// Enhance code blocks with syntax highlighting and copy button
 function enhanceCodeBlocks(container) {
   container.querySelectorAll('pre').forEach(pre => {
     const codeEl = pre.querySelector('code');
     if (window.hljs && codeEl) hljs.highlightElement(codeEl);
+
     const btn = pre.querySelector('.copy-btn');
     if (btn && codeEl) {
       btn.addEventListener('click', async () => {
@@ -456,7 +479,10 @@ function enhanceCodeBlocks(container) {
           const prev = btn.textContent;
           btn.textContent = 'Copied!';
           setTimeout(() => btn.textContent = prev, 800);
-        } catch (e) { btn.textContent = 'Failed'; setTimeout(() => btn.textContent = 'Copy', 800); }
+        } catch (e) {
+          btn.textContent = 'Failed';
+          setTimeout(() => btn.textContent = 'Copy', 800);
+        }
       });
     }
   });
