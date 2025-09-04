@@ -530,19 +530,41 @@
   });
 
   /* ---------- IMAGE BUTTON ---------- */
-  let imageBtn = document.createElement("button");
-  imageBtn.type = "button";
-  imageBtn.id = "imageBtn";
-  imageBtn.title = "Generate image";
-  imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
-  document.getElementById("chatForm").insertBefore(imageBtn, document.getElementById("sendBtn"));
-  imageBtn.onclick = async function () {
-    let prompt = prompt("Describe the image to generate:");
-    if (!prompt || !prompt.trim()) return;
-    chatInput.value = `/image ${prompt.trim()}`;
-    chatInput.dispatchEvent(new Event('input'));
-    document.getElementById("chatForm").dispatchEvent(new Event("submit", { bubbles: true }));
-  };
+  // Model cycling and smart placeholder for /image
+const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
+let currentModelIdx = 0;
+
+let imageBtn = document.createElement("button");
+imageBtn.type = "button";
+imageBtn.id = "imageBtn";
+imageBtn.title = "Generate image";
+imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
+document.getElementById("chatForm").insertBefore(imageBtn, document.getElementById("sendBtn"));
+
+imageBtn.onclick = function () {
+  // Cycle model
+  currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
+  let model = thenaModels[currentModelIdx];
+
+  // Show nice temporary placeholder and allow entry
+  let prevInput = chatInput.value.replace(/^\/image\s+\w+\s*/i, ""); // Remove /image model if present
+  chatInput.value = `/image ${model} ${prevInput}`.trim();
+  chatInput.focus();
+  // Move cursor to end and select only the prompt part (so user can immediately type)
+  setTimeout(() => {
+    chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+  }, 0);
+};
+
+// (Optional) On page load, default to /image photoreal
+document.addEventListener('DOMContentLoaded', () => {
+  currentModelIdx = 0;
+  if (chatInput) {
+    chatInput.value = "/image photoreal ";
+    chatInput.focus();
+    chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+  }
+});
 
   /* ---------- Submit (updated) ---------- */
   document.getElementById("chatForm").onsubmit=async function(e){
