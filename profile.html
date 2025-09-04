@@ -259,7 +259,7 @@
     <script type="module">
 /* ---------- Stars ---------- */
 document.addEventListener('DOMContentLoaded', ()=>{
-  const starsContainer=document.getElementById('stars-container');
+  const starsContainer = document.getElementById('stars-container');
   for(let i=0;i<34;i++){
     const s=document.createElement('div'); s.className='star';
     const z=Math.random()*2.1+1; s.style.width=z+'px'; s.style.height=z+'px';
@@ -286,20 +286,17 @@ fullscreenBtn.onclick=function(){
 };
 
 /* ---------- Panels/Modals ---------- */
-const profileMenuBg=document.getElementById('profileMenuBg'),profileMenu=document.getElementById('profileMenu');
-const linkMenuBg=document.getElementById('linkMenuBg'),linkMenu=document.getElementById('linkMenu');
-document.getElementById('openProfileMenu').onclick=()=>{profileMenuBg.classList.add('active');setTimeout(()=>profileMenu.classList.add('active'),10);};
-profileMenuBg.onclick=e=>{if(e.target===profileMenuBg){profileMenu.classList.remove('active');setTimeout(()=>profileMenuBg.classList.remove('active'),110);}};
-document.getElementById('openLinksMenu').onclick=()=>{linkMenuBg.classList.add('active');setTimeout(()=>linkMenu.classList.add('active'),10);};
-linkMenuBg.onclick=e=>{if(e.target===linkMenuBg){linkMenu.classList.remove('active');setTimeout(()=>linkMenuBg.classList.remove('active'),110);}};
-
+const profileMenuBg=document.getElementById('profileMenuBg'), profileMenu=document.getElementById('profileMenu');
+const linkMenuBg=document.getElementById('linkMenuBg'), linkMenu=document.getElementById('linkMenu');
+document.getElementById('openProfileMenu').onclick=()=>{profileMenuBg.classList.add('active'); setTimeout(()=>profileMenu.classList.add('active'),10);};
+profileMenuBg.onclick=e=>{if(e.target===profileMenuBg){ profileMenu.classList.remove('active'); setTimeout(()=>profileMenuBg.classList.remove('active'),110); }};
+document.getElementById('openLinksMenu').onclick=()=>{linkMenuBg.classList.add('active'); setTimeout(()=>linkMenu.classList.add('active'),10);};
+linkMenuBg.onclick=e=>{if(e.target===linkMenuBg){ linkMenu.classList.remove('active'); setTimeout(()=>linkMenuBg.classList.remove('active'),110); }};
 document.getElementById("logoutBtn").onclick=()=>window.location.href='signup-login.html';
 
-/* ---------- Firebase: Auth, Storage, DB ---------- */
+/* ---------- Firebase Auth (profile only) ---------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { getStorage, ref as storageRef, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
-import { getDatabase, ref as dbRef, set, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 const firebaseConfig = {
   apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
   authDomain: "elvionai.firebaseapp.com",
@@ -310,15 +307,9 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const storage = getStorage(app);
-const database = getDatabase(app);
+let currentUser;
 
-/* ---------- User Auth/Profile ---------- */
-let currentUser, userChats = [], currentChatIdx = 0;
-const chatSelector = document.getElementById("chatSelector");
-const chatBox = document.getElementById("chatBox");
-
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(auth, user => {
   if (!user) window.location.href = "signup-login.html";
   else {
     currentUser = user;
@@ -328,9 +319,8 @@ onAuthStateChanged(auth, async user => {
     document.getElementById("edit-name").value = user.displayName || "";
     document.getElementById("edit-photo").value = user.photoURL || "";
     document.getElementById("profilePicPreview").src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-    await loadChatsFromFirebase();
     renderChatSelector();
-    renderChatBox(userChats[currentChatIdx]?.history || []);
+    renderChatBox(chats[currentChatIdx]?.history || []);
   }
 });
 document.getElementById("edit-photo").oninput = function () {
@@ -338,112 +328,96 @@ document.getElementById("edit-photo").oninput = function () {
 };
 document.getElementById("profileForm").onsubmit = async function (e) {
   e.preventDefault(); if (!currentUser) return;
-  const status = document.getElementById("profileStatusMsg"); status.textContent = '';
-  const name = document.getElementById("edit-name").value.trim();
-  const photoURL = document.getElementById("edit-photo").value.trim();
+  const status=document.getElementById("profileStatusMsg"); status.textContent='';
+  const name=document.getElementById("edit-name").value.trim();
+  const photoURL=document.getElementById("edit-photo").value.trim();
   try {
-    await updateProfile(currentUser, { displayName: name, photoURL });
+    await updateProfile(currentUser, { displayName:name, photoURL });
     await auth.currentUser.reload();
     status.textContent = "Profile updated!";
     status.style.color = "#00ffff";
-    setTimeout(() => { profileMenu.classList.remove('active'); profileMenuBg.classList.remove('active'); }, 650);
-    document.getElementById("greetMsg").textContent = "Welcome, " + (auth.currentUser.displayName || auth.currentUser.email.split('@')[0]) + "!";
+    setTimeout(()=>{profileMenu.classList.remove('active'); profileMenuBg.classList.remove('active');}, 650);
+    document.getElementById("greetMsg").textContent = "Welcome, "+(auth.currentUser.displayName||auth.currentUser.email.split('@')[0])+"!";
   } catch (err) {
     status.textContent = err.message || "Update failed";
     status.style.color = "#ffd700";
   }
 };
 
-/* ---------- Firebase Storage Image Upload ---------- */
-async function uploadChatImage(base64String, filename = "chat_image.png") {
-  const imageKey = Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-  const imgRef = storageRef(storage, 'chat_images/' + imageKey + "_" + filename);
-  await uploadString(imgRef, base64String, 'data_url');
-  return await getDownloadURL(imgRef);
-}
-async function saveChatsToFirebase() {
-  if (!currentUser) return;
-  await set(dbRef(database, "chats/" + currentUser.uid), userChats);
-}
-async function loadChatsFromFirebase() {
-  if (!currentUser) return;
-  const dbRef_ = dbRef(database, "chats/" + currentUser.uid);
-  const snap = await get(dbRef_);
-  if (snap.exists()) {
-    userChats = snap.val();
-    if (!Array.isArray(userChats)) userChats = [];
-    currentChatIdx = (userChats.length - 1 >= 0) ? userChats.length - 1 : 0;
-  } else {
-    userChats = [];
-    currentChatIdx = 0;
-  }
-}
+/* ---------- LocalStorage Chat Logic, Excluding Images ---------- */
+let chats = JSON.parse(localStorage.getItem("elvion_chats")||"[]");
+let currentChatIdx = chats.length-1 >= 0 ? chats.length-1 : 0;
+const chatBox = document.getElementById("chatBox");
 
-/* ---------- Rendering ---------- */
+function saveChats(){
+  // Remove base64 images before saving
+  let sanitized = JSON.parse(JSON.stringify(chats));
+  sanitized.forEach(chat=>{
+    chat.history.forEach(msg=>{
+      if(msg.text && msg.text.includes("data:image/png;base64,")){
+        msg.text = "[image omitted]";
+      }
+    });
+  });
+  localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
+}
 function renderChatSelector() {
-  chatSelector.innerHTML = "";
-  userChats.forEach((chat, idx) => {
-    const option = document.createElement("option");
-    option.value = idx;
-    option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 25) || "Untitled");
+  const chatSelector = document.getElementById("chatSelector"); chatSelector.innerHTML="";
+  chats.forEach((chat,idx)=>{
+    const option=document.createElement("option");
+    option.value=idx;
+    option.textContent=chat.name||(chat.history?.[0]?.text?.slice(0,25)||"Untitled");
     chatSelector.appendChild(option);
-  });
-  chatSelector.value = currentChatIdx;
+  }); 
+  chatSelector.value=currentChatIdx;
 }
-chatSelector.onchange = function () {
-  currentChatIdx = parseInt(this.value) || 0;
-  renderChatBox(userChats[currentChatIdx]?.history || []);
-};
-function loadChat(idx) {
-  currentChatIdx = idx || 0;
-  renderChatBox(userChats[idx]?.history || []);
-}
-function renderChatBox(messages) {
-  chatBox.innerHTML = "";
-  (messages || []).forEach(msg => {
-    const div = document.createElement('div');
-    div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
-    if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
-      div.innerHTML = msg.text.replace('image:', '');
-    } else if (msg.role === "ai") {
-      const { html } = renderMarkdown(msg.text || '');
-      div.innerHTML = `<div class="msg">${html}</div>`;
-    } else {
-      div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
-    }
-    chatBox.appendChild(div);
-  });
-  enhanceCodeBlocks(chatBox);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+document.getElementById("chatSelector").onchange = function(){currentChatIdx=parseInt(this.value)||0; renderChatBox(chats[currentChatIdx]?.history || []);}
+function loadChat(idx){currentChatIdx=idx||0; renderChatBox(chats[idx]?.history || []);}
 
-/* ---------- Markdown & Code Rendering ---------- */
-const escapeHTML = (str = '') => str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-function renderMarkdown(text='') {
-  const codeBlockRegex = /``````/g;
-  let html = '', lastIndex = 0; text = text || '';
-  text.replace(codeBlockRegex, (m, lang, code, offset) => {
-    const before = text.slice(lastIndex, offset); html += inlineMarkdown(before);
+/* ---------- Markdown, Code, Copy, Share ---------- */
+const escapeHTML = (str = '') => 
+  str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+
+
+      function renderMarkdown(text = '') {
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  let html = '';
+  let lastIndex = 0;
+  text = text || '';
+
+  text.replace(codeBlockRegex, (match, lang, code, offset) => {
+    // Add the text before this code block
+    const before = text.slice(lastIndex, offset);
+    html += inlineMarkdown(before);
+
+    // Handle code block
     const language = (lang || '').toLowerCase().trim();
     const safe = escapeHTML(code);
     const blockId = 'code_' + Math.random().toString(36).slice(2);
-    html += `<pre data-block-id="${blockId}"><button class="copy-btn" data-copy="${blockId}">Copy</button>
+
+    html += `<pre data-block-id="${blockId}">
+      <button class="copy-btn" data-copy="${blockId}">Copy</button>
       <code class="language-${language || 'plaintext'}">${safe}</code>
     </pre>`;
-    lastIndex = offset + m.length;
-    return m;
+
+    lastIndex = offset + match.length;
+    return match;
   });
+
+  // Add any remaining text after the last code block
   html += inlineMarkdown(text.slice(lastIndex));
+
   return { html };
-}
-function inlineMarkdown(t='') {
+      }
+function inlineMarkdown(t=''){
   let s = t.replace(/`([^`]+?)`/g, (_,a)=>`<code>${escapeHTML(a)}</code>`);
   s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   return s.replace(/\n/g, '<br>');
 }
-function enhanceCodeBlocks(container) {
+function enhanceCodeBlocks(container){
+  // add code highlighting and copy for code blocks only
   container.querySelectorAll('pre').forEach(pre=>{
     const codeEl = pre.querySelector('code');
     if (window.hljs && codeEl) hljs.highlightElement(codeEl);
@@ -461,9 +435,56 @@ function enhanceCodeBlocks(container) {
   });
 }
 
-/* ---------- Typing Indicator & Animation ---------- */
+/* ---------- Chat Rendering with Copy/Share ---------- */
+function renderChatBox(messages){
+  chatBox.innerHTML="";
+  (messages||[]).forEach((msg, mi)=>{
+    const div=document.createElement('div');
+    div.className="chat-message "+(msg.role==="user"?"user":"ai");
+    if(msg.text && /^(\[File\]|image:)/.test(msg.text)){
+      div.innerHTML = msg.text.replace('image:','');
+    } else if(msg.role === "ai") {
+      const {html} = renderMarkdown(msg.text||'');
+      div.innerHTML = `<div class="msg">${html}
+        <div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">
+          <button class="inline-copy-btn" title="Copy whole AI response" data-idx="ai-${mi}">□ Copy</button>
+          <button class="inline-share-btn" title="Share this reply" data-idx="ai-${mi}"><i class="fa-solid fa-share"></i> Share</button>
+        </div></div>`;
+    } else {
+      div.innerHTML = `<div class="msg">${escapeHTML(msg.text||'')}</div>`;
+    }
+    chatBox.appendChild(div);
+  });
+  enhanceCodeBlocks(chatBox);
+
+  // Copy/share handlers:
+  chatBox.querySelectorAll('.inline-copy-btn').forEach(btn=>{
+    btn.onclick = function(){
+      const idx = parseInt(btn.getAttribute('data-idx').replace('ai-',''));
+      const text = (chats[currentChatIdx]?.history[idx]?.text)||"";
+      navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, "")); // strip HTML
+      btn.textContent = "Copied!";
+      setTimeout(()=>btn.textContent="□ Copy", 900);
+    }
+  });
+  chatBox.querySelectorAll('.inline-share-btn').forEach(btn=>{
+    btn.onclick = async function(){
+      const idx = parseInt(btn.getAttribute('data-idx').replace('ai-',''));
+      const text = (chats[currentChatIdx]?.history[idx]?.text)||"";
+      if(navigator.share){
+        await navigator.share({ title:"Philadelphia AI", text });
+      }else{
+        prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g, ""));
+      }
+    }
+  });
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/* ---------- Typing Dots/Animations ---------- */
 let typingNode = null;
-function showTypingAtNext() {
+function showTypingAtNext(){
   removeTyping();
   typingNode = document.createElement('div');
   typingNode.className = 'chat-message ai';
@@ -473,100 +494,121 @@ function showTypingAtNext() {
   chatBox.appendChild(typingNode);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-function removeTyping() {
-  if (typingNode && typingNode.parentNode) {
+function removeTyping(){
+  if(typingNode && typingNode.parentNode){
     typingNode.parentNode.removeChild(typingNode);
     typingNode = null;
   }
 }
-async function typeBotMessage(finalText, onDone) {
+async function typeBotMessage(text, onDone){
   removeTyping();
   const div = document.createElement('div');
   div.className = "chat-message ai";
-  const msg = document.createElement('div');
-  msg.className = "msg";
-  div.appendChild(msg);
+  const msgdiv = document.createElement('div');
+  msgdiv.className = "msg";
+  div.appendChild(msgdiv);
   chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
-  let words = (finalText || "").split(/(\s+)/);
-  for (let word of words) {
-    msg.innerHTML += escapeHTML(word);
+  let sofar = '';
+  // Animate as plain text to avoid partial markdown weirdness
+  for(const ch of text) {
+    sofar += ch;
+    msgdiv.innerHTML = renderMarkdown(sofar).html;
     chatBox.scrollTop = chatBox.scrollHeight;
-    await new Promise(res => setTimeout(res, 22 + Math.random() * 70));
+    await new Promise(res=>setTimeout(res, 6+Math.random()*18));
   }
-  enhanceCodeBlocks(msg); if (onDone) onDone();
+  // Render final markdown, add buttons
+  msgdiv.innerHTML = renderMarkdown(text).html
+    + `<div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">
+       <button class="inline-copy-btn" title="Copy whole AI response">□ Copy</button>
+       <button class="inline-share-btn" title="Share this reply"><i class="fa-solid fa-share"></i> Share</button>
+      </div>`;
+  enhanceCodeBlocks(msgdiv);
+  // add copy/share handlers just to this message
+  msgdiv.querySelector('.inline-copy-btn').onclick = () => {
+    navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g,""));
+    msgdiv.querySelector('.inline-copy-btn').textContent = "Copied!";
+    setTimeout(()=>msgdiv.querySelector('.inline-copy-btn').textContent="□ Copy",900);
+  };
+  msgdiv.querySelector('.inline-share-btn').onclick = async () => {
+    if(navigator.share){
+      await navigator.share({ title:"Philadelphia AI", text });
+    }else{
+      prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g,""));
+    }
+  };
+  if(onDone) onDone();
 }
 
 /* ---------- New/Delete Chat ---------- */
-document.getElementById("newChatBtn").onclick = async function () {
-  const name = "Chat " + (userChats.length + 1);
-  userChats.push({ name, history: [] });
-  currentChatIdx = userChats.length - 1;
-  await saveChatsToFirebase(); renderChatSelector(); loadChat(currentChatIdx);
+document.getElementById("newChatBtn").onclick=function(){
+  const name="Chat "+(chats.length+1);
+  chats.push({name,history:[]});
+  currentChatIdx=chats.length-1;
+  saveChats(); renderChatSelector(); loadChat(currentChatIdx);
 };
-document.getElementById("delChatBtn").onclick = async function () {
-  if (!userChats.length) return;
-  if (!confirm("Delete this chat?")) return;
-  userChats.splice(currentChatIdx, 1);
-  if (currentChatIdx >= userChats.length) currentChatIdx = userChats.length - 1;
-  await saveChatsToFirebase(); renderChatSelector(); loadChat(currentChatIdx);
+document.getElementById("delChatBtn").onclick=function(){
+  if(!chats.length)return;
+  if(!confirm("Delete this chat?"))return;
+  chats.splice(currentChatIdx,1);
+  if(currentChatIdx>=chats.length)currentChatIdx=chats.length-1;
+  saveChats(); renderChatSelector(); loadChat(currentChatIdx);
 };
 
-/* ---------- File Preview ---------- */
-let uploadData = null;
-document.getElementById("chatFile").onchange = function () {
-  const file = this.files[0], fp = document.getElementById("filePreview");
-  uploadData = null; if (!file) { fp.style.display = "none"; fp.innerHTML = ""; return; }
-  fp.style.display = 'block'; uploadData = file;
-  if (file.type.startsWith("image/")) {
-    const reader = new FileReader();
-    reader.onload = e => { fp.innerHTML = `<img src="${e.target.result}" alt="Selected image">`; };
+/* ---------- File Preview (images not saved) ---------- */
+let uploadData=null;
+document.getElementById("chatFile").onchange = function(){
+  const file=this.files[0],fp=document.getElementById("filePreview");
+  uploadData=null; if(!file){fp.style.display="none";fp.innerHTML="";return;}
+  fp.style.display='block'; uploadData=file;
+  if(file.type.startsWith("image/")){
+    const reader=new FileReader();
+    reader.onload=e=>{fp.innerHTML=`<img src="${e.target.result}" alt="Selected image">`;};
     reader.readAsDataURL(file);
-  } else if (file.type.startsWith("video/")) {
-    const reader = new FileReader();
-    reader.onload = e => { fp.innerHTML = `<video src="${e.target.result}" controls></video>`; };
+  }else if(file.type.startsWith("video/")){
+    const reader=new FileReader();
+    reader.onload=e=>{fp.innerHTML=`<video src="${e.target.result}" controls></video>`;};
     reader.readAsDataURL(file);
-  } else {
-    fp.innerHTML = `<div class="file-info"><i class="fa-solid fa-file"></i> ${file.name}</div>`;
+  }else{
+    fp.innerHTML=`<div class="file-info"><i class="fa-solid fa-file"></i> ${file.name}</div>`;
   }
 };
 
 /* ---------- Voice Input ---------- */
 let recognition;
-document.getElementById("voiceInputBtn").onclick = function () {
-  if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
-    this.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-    recognition.onresult = (e) => {
+document.getElementById("voiceInputBtn").onclick=function(){
+  if('webkitSpeechRecognition'in window){
+    recognition=new webkitSpeechRecognition();
+    recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
+    this.innerHTML='<i class="fa-solid fa-microphone-lines"></i>';
+    recognition.onresult=(e)=>{
       chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
       autoResizeTextarea();
-      document.getElementById("voiceInputBtn").innerHTML = '<i class="fa-solid fa-microphone"></i>';
+      document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';
     };
-    recognition.onend = () => { document.getElementById("voiceInputBtn").innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
-    recognition.onerror = () => { document.getElementById("voiceInputBtn").innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
+    recognition.onend=()=>{document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';};
+    recognition.onerror=()=>{document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';};
     recognition.start();
-  } else {
+  }else{
     alert("Speech recognition not supported in your browser.");
   }
 };
 
 /* ---------- Textarea auto-resize ---------- */
 const chatInput = document.getElementById('chatInput');
-function autoResizeTextarea() {
+function autoResizeTextarea(){
   chatInput.style.height = 'auto';
   chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
 }
 chatInput.addEventListener('input', autoResizeTextarea);
 autoResizeTextarea();
-chatInput.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+chatInput.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
     e.preventDefault();
     document.getElementById('sendBtn').click();
   }
 });
 
-/* ---------- IMAGE BUTTON (Model Cycling + Firebase) ---------- */
+/* ---------- IMAGE BUTTON (model cycling, no save) ---------- */
 const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
 let currentModelIdx = 0;
 let imageBtn = document.createElement("button");
@@ -594,20 +636,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* ---------- Submit Chat / Image ---------- */
-document.getElementById("chatForm").onsubmit = async function (e) {
+/* ---------- Chat Submit ---------- */
+document.getElementById("chatForm").onsubmit = async function(e){
   e.preventDefault();
   let file = uploadData, fp = document.getElementById("filePreview");
   let msgText = chatInput.value.trim();
 
-  if (userChats.length === 0) {
-    userChats.push({ name: "Chat 1", history: [] });
-    currentChatIdx = 0;
-  }
+  if (currentChatIdx < 0) { chats.push({ name: "Chat 1", history: [] }); currentChatIdx = 0; }
   if (!msgText && !file) return;
+  // Clear box right away
   chatInput.value = ""; autoResizeTextarea();
 
-  // File upload
+  // File upload (image not saved to storage!)
   if (file) {
     showTypingAtNext();
     try {
@@ -615,89 +655,74 @@ document.getElementById("chatForm").onsubmit = async function (e) {
       formData.append("file", file);
       formData.append("message", msgText);
       formData.append("user_id", "user");
-      const res = await fetch("https://web-production-9a18.up.railway.app/upload-file", { method: "POST", body: formData });
+      const res = await fetch("https://web-production-9a18.up.railway.app/upload-file",{method:"POST",body:formData});
       let data;
-      try { data = await res.json(); } catch (_) { data = { response: "🤖 File received." }; }
+      try{ data = await res.json(); }catch(_){ data = {response:"🤖 File received."}; }
       let isImg = /^image\//.test(file.type);
       let isVid = /^video\//.test(file.type);
       let bubble = isImg ? `<img src='${URL.createObjectURL(file)}' alt="Uploaded image">`
         : isVid ? `<video src='${URL.createObjectURL(file)}' controls></video>`
-          : `<div class="msg">[File] ${escapeHTML(msgText || file.name)}</div>`;
-      userChats[currentChatIdx].history.push({ role: "user", text: "image:" + bubble });
+        : `<div class="msg">[File] ${escapeHTML(msgText||file.name)}</div>`;
+      chats[currentChatIdx].history.push({role:"user",text:"image:"+bubble});
       removeTyping();
-      userChats[currentChatIdx].history.push({ role: "ai", text: data.response || "🤖 Bot file reply." });
-      await saveChatsToFirebase();
-    } catch (err) {
+      chats[currentChatIdx].history.push({role:"ai",text:data.response||"🤖 Bot file reply."});
+    }catch(err){
       removeTyping();
-      userChats[currentChatIdx].history.push({ role: "ai", text: "[File upload failed] " + (err.message || 'no net') });
-      await saveChatsToFirebase();
+      chats[currentChatIdx].history.push({role:"ai",text:"[File upload failed] "+(err.message||'no net')});
     }
-    document.getElementById("chatFile").value = ""; fp.style.display = "none"; fp.innerHTML = ""; uploadData = null;
-    renderChatSelector(); renderChatBox(userChats[currentChatIdx]?.history || []);
+    document.getElementById("chatFile").value=""; fp.style.display="none"; fp.innerHTML=""; uploadData=null;
+    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     return;
   }
 
-  // Text message handling
-  userChats[currentChatIdx].history.push({ role: "user", text: msgText });
-  if (userChats[currentChatIdx].history.length === 1) {
-    userChats[currentChatIdx].name = msgText.slice(0, 25) + "..."; renderChatSelector();
+  // Text message handling (AI markdown always correct NOW)
+  chats[currentChatIdx].history.push({role:"user",text:msgText});
+  if (chats[currentChatIdx].history.length === 1) {
+    chats[currentChatIdx].name = msgText.slice(0, 25) + "..."; renderChatSelector();
   }
-  renderChatBox(userChats[currentChatIdx]?.history || []);
+  renderChatBox(chats[currentChatIdx]?.history || []);
   showTypingAtNext();
 
   try {
     let res, data, botText;
-    if (/^\/image\s+\w+/i.test(msgText)) {
-      let split = msgText.match(/^\/image\s+(\w+)\s+(.+)$/i);
-      let model = split ? split[1] : "photoreal";
-      let userPrompt = split ? split[2] : msgText.replace(/^\/image\s+/i, '');
-
+    if(/^\/image\s+/i.test(msgText)){
+      let imagePrompt = msgText.replace(/^\/image\s+/i, '');
       res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, prompt: userPrompt })
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(imagePrompt)
       });
-      try { data = await res.json(); } catch (_) { data = {}; }
+      try { data = await res.json(); } catch(_) { data = {}; }
       removeTyping();
-      if (data.image_b64) {
-        let url = await uploadChatImage("data:image/png;base64," + data.image_b64, `${model}.png`);
-        let imageHtml = `<img src="${url}" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin-top:3px;"><br><em>(Watermarked by Philadelphia AI)</em>`;
-        userChats[currentChatIdx].history.push({ role: "ai", text: imageHtml });
-        await saveChatsToFirebase();
-        renderChatSelector(); renderChatBox(userChats[currentChatIdx]?.history || []);
+      if(data.image_b64){
+        let imageHtml = `<img src="data:image/png;base64,${data.image_b64}" alt="${escapeHTML(imagePrompt)}" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin-top:3px;"><br><em>(Watermarked by Philadelphia AI)</em>`;
+        chats[currentChatIdx].history.push({ role: "ai", text: imageHtml });
       } else {
-        botText = data.error || "❌ Image generation failed. Try another prompt.";
-        userChats[currentChatIdx].history.push({ role: "ai", text: botText });
-        await saveChatsToFirebase();
-        renderChatSelector(); renderChatBox(userChats[currentChatIdx]?.history || []);
+        chats[currentChatIdx].history.push({ role: "ai", text: data.error || "❌ Image generation failed. Try another prompt." });
       }
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     } else {
-      const history = userChats[currentChatIdx].history.map(m => ({ role: m.role, content: m.text }));
+      const history = chats[currentChatIdx].history.map(m=>({role:m.role,content:m.text}));
       res = await fetch("https://web-production-9a18.up.railway.app/chat", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || "user", history })
       });
-      try { data = await res.json(); } catch (_) { data = {}; }
+      try { data = await res.json(); } catch(_) { data = {}; }
       removeTyping();
       if (data.response) {
         await typeBotMessage(data.response);
-        userChats[currentChatIdx].history.push({ role: "ai", text: data.response });
+        chats[currentChatIdx].history.push({ role: "ai", text: data.response });
       } else {
         await typeBotMessage("🤖 Bot replied (no response).");
-        userChats[currentChatIdx].history.push({ role: "ai", text: "🤖 Bot replied (no response)." });
+        chats[currentChatIdx].history.push({ role: "ai", text: "🤖 Bot replied (no response)." });
       }
-      await saveChatsToFirebase();
-      renderChatSelector(); renderChatBox(userChats[currentChatIdx]?.history || []);
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     }
   } catch (err) {
     removeTyping();
     await typeBotMessage("Sorry, bot error: " + err.message);
-    userChats[currentChatIdx].history.push({ role: "ai", text: "Sorry, bot error: " + err.message });
-    await saveChatsToFirebase();
-    renderChatSelector(); renderChatBox(userChats[currentChatIdx]?.history || []);
+    chats[currentChatIdx].history.push({role:"ai",text:"Sorry, bot error: "+err.message});
+    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
   }
 };
 </script>
-</body>
-</html>
