@@ -237,6 +237,13 @@
 
     <div id="filePreview" class="file-preview" style="display:none;"></div>
 
+    <div id="pdf-understand-box" style="width:95%;margin:7px auto 9px auto;display:flex;gap:9px;align-items:center;">
+  <input type="file" id="pdfInput" accept="application/pdf" style="flex:1;">
+  <input type="text" id="pdfPrompt" placeholder="Ask about a PDF (e.g. 'Summarize')" style="flex:2;padding:5px 9px;border-radius:9px;border:1px solid #00ffff;background:#191a26;color:#fff;">
+  <input type="text" id="pdfUrlInput" placeholder="or paste PDF URL" style="flex:2;padding:5px 9px;border-radius:9px;border:1px solid #00ffff;background:#191a26;color:#fff;">
+  <button id="pdfSendBtn" style="padding:7px 18px;background:linear-gradient(90deg,#00ffff,#0090ff);color:#222;border:none;border-radius:8px;box-shadow:0 2px 7px #00fff2c7;cursor:pointer;font-weight:bold;">Ask PDF</button>
+</div>
+
     <!-- CHAT INPUT -->
     <form class="chat-input-row" id="chatForm" autocomplete="off">
       <label for="chatFile" title="Attach file"><i class="fa-solid fa-paperclip"></i></label>
@@ -766,6 +773,48 @@ document.getElementById("chatForm").onsubmit = async function(e){
 };
 </script>
 <script>
+  // UI Elements
+const pdfInput = document.getElementById("pdfInput");
+const pdfPrompt = document.getElementById("pdfPrompt");
+const pdfUrlInput = document.getElementById("pdfUrlInput");
+const pdfSendBtn = document.getElementById("pdfSendBtn");
+
+pdfSendBtn.onclick = async function(){
+  const prompt = pdfPrompt.value.trim();
+  if (!prompt) { alert("Type a question or instruction for the PDF first!"); return; }
+  let url = pdfUrlInput.value.trim();
+  let file = pdfInput.files[0];
+
+  // Add "user" message in chat (visually, not for API doc)
+  chats[currentChatIdx].history.push({ role:"user", text: `[PDF Q] ${prompt}`});
+  renderChatBox(chats[currentChatIdx]?.history || []);
+  showTypingAtNext();
+
+  // Prepare form data
+  let fd = new FormData();
+  fd.append("prompt", prompt);
+  if (file) fd.append("file", file);
+  else if (url) fd.append("pdf_url", url);
+
+  try {
+    let resp = await fetch("/understand-pdf", { method: "POST", body: fd });
+    let data = await resp.json();
+    removeTyping();
+    if (data && data.response) {
+      await typeBotMessage(data.response);
+      chats[currentChatIdx].history.push({ role: "ai", text: data.response });
+    } else {
+      await typeBotMessage("❌ Could not process the PDF or question.");
+      chats[currentChatIdx].history.push({ role: "ai", text: "❌ Could not process PDF." });
+    }
+  } catch (e) {
+    removeTyping();
+    await typeBotMessage("❌ Error: "+(e.message||e));
+    chats[currentChatIdx].history.push({ role: "ai", text: "❌ Error: "+(e.message||e) });
+  }
+  saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+};
+
   // Find nodes
 const aiPrevBox = document.getElementById('ai-image-preview');
 const aiPrevClose = document.getElementById('ai-image-close');
