@@ -722,20 +722,23 @@ document.getElementById("chatForm").onsubmit = async function(e){
   try {
     let res, data, botText;
     if(/^\/image\s+/i.test(msgText)){
-      let imagePrompt = msgText.replace(/^\/image\s+/i, '');
-      res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(imagePrompt)
-      });
-      try { data = await res.json(); } catch(_) { data = {}; }
-      removeTyping();
-      if(data.image_b64){
-        let imageHtml = `<img src="data:image/png;base64,${data.image_b64}" alt="${escapeHTML(imagePrompt)}" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin-top:3px;"><br><em>(Watermarked by Philadelphia AI)</em>`;
-        chats[currentChatIdx].history.push({ role: "ai", text: imageHtml });
-      } else {
-        chats[currentChatIdx].history.push({ role: "ai", text: data.error || "❌ Image generation failed. Try another prompt." });
-      }
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+  let imagePrompt = msgText.replace(/^\/image\s+/i, '');
+  res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(imagePrompt)
+  });
+  try { data = await res.json(); } catch(_) { data = {}; }
+  removeTyping();
+  if(data.image_b64){
+    showAIImagePreview(data.image_b64, "(Your image—download or close)");
+    chats[currentChatIdx].history.push({
+      role: "ai",
+      text: "✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)"
+    });
+  } else {
+    chats[currentChatIdx].history.push({ role: "ai", text: data.error || "❌ Image generation failed. Try another prompt." });
+  }
+  saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     } else {
       const history = chats[currentChatIdx].history.map(m=>({role:m.role,content:m.text}));
       res = await fetch("https://web-production-9a18.up.railway.app/chat", {
