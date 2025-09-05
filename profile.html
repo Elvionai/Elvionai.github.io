@@ -292,757 +292,115 @@
       </div>
     </nav>
   </div>
-    <script type="module">
-/* ---------- Stars ---------- */
-document.addEventListener('DOMContentLoaded', ()=>{
-  const starsContainer = document.getElementById('stars-container');
-  for(let i=0;i<34;i++){
-    const s=document.createElement('div'); s.className='star';
-    const z=Math.random()*2.1+1; s.style.width=z+'px'; s.style.height=z+'px';
-    s.style.left=Math.random()*100+'%'; s.style.top=Math.random()*100+'%';
-    s.style.animationDelay=(Math.random()*3.69)+'s';
-    s.style.animationDuration=(2.2+Math.random()*1.1)+'s';
-    starsContainer.appendChild(s);
-  }
+  <script type="module">
+    /* ---------- Fixed/Refactored profile script ---------- Key fixes made:
+
+All DOM access / event wiring moved into DOMContentLoaded to avoid null refs voiceBtn and imageBtn are created before any handler uses them Unified file-upload handling (uploadedFiles + uploadData) and removed duplicate handlers Added defensive checks (?.) to avoid throwing when elements are missing Kept original functionality; minor cleanup and comments added */ 
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"; import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+const firebaseConfig = { apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk", authDomain: "elvionai.firebaseapp.com", projectId: "elvionai", storageBucket: "elvionai.appspot.com", messagingSenderId: "161078300830", appId: "1:161078300830:web:f460df8591704eb0e96b8f" }; const app = initializeApp(firebaseConfig); const auth = getAuth(app);
+
+// Run DOM-related setup after DOM is ready window.addEventListener('DOMContentLoaded', () => { // Short helper const $ = id => document.getElementById(id);
+
+/* ---------- Elements (may be null if markup is different) ---------- */ const starsContainer = $('stars-container'); const mainContainer = $('mainContainer'); const fullscreenBtn = $('fullscreenBtn'); const profileMenuBg = $('profileMenuBg'); const profileMenu = $('profileMenu'); const linkMenuBg = $('linkMenuBg'); const linkMenu = $('linkMenu'); const logoutBtn = $('logoutBtn'); const greetMsg = $('greetMsg'); const profileMenuUser = $('profileMenuUser'); const profileMenuEmail = $('profileMenuEmail'); const editName = $('edit-name'); const editPhoto = $('edit-photo'); const profilePicPreview = $('profilePicPreview'); const profileForm = $('profileForm'); const chatBox = $('chatBox'); const chatSelector = $('chatSelector'); const newChatBtn = $('newChatBtn'); const delChatBtn = $('delChatBtn'); const chatForm = $('chatForm'); const chatInput = $('chatInput'); const sendBtn = $('sendBtn'); const chatFile = $('chatFile'); const filePreview = $('filePreview'); const voiceInputBtn = $('voiceInputBtn');
+
+/* ---------- Stars ---------- */ if (starsContainer) { for (let i = 0; i < 34; i++) { const s = document.createElement('div'); s.className = 'star'; const z = Math.random() * 2.1 + 1; s.style.width = z + 'px'; s.style.height = z + 'px'; s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%'; s.style.animationDelay = (Math.random() * 3.69) + 's'; s.style.animationDuration = (2.2 + Math.random() * 1.1) + 's'; starsContainer.appendChild(s); } }
+
+/* ---------- Fullscreen toggle ---------- */ if (fullscreenBtn && mainContainer) { let isFull = false; fullscreenBtn.addEventListener('click', () => { isFull = !isFull; mainContainer.classList.toggle('fullscreen', isFull); fullscreenBtn.innerHTML = isFull ? '' : ''; }); }
+
+/* ---------- Panels/Modals ---------- */ if (profileMenuBg && profileMenu && $('openProfileMenu')) { $('openProfileMenu').addEventListener('click', () => { profileMenuBg.classList.add('active'); setTimeout(() => profileMenu.classList.add('active'), 10); }); profileMenuBg.addEventListener('click', e => { if (e.target === profileMenuBg) { profileMenu.classList.remove('active'); setTimeout(() => profileMenuBg.classList.remove('active'), 110); } }); } if (linkMenuBg && linkMenu && $('openLinksMenu')) { $('openLinksMenu').addEventListener('click', () => { linkMenuBg.classList.add('active'); setTimeout(() => linkMenu.classList.add('active'), 10); }); linkMenuBg.addEventListener('click', e => { if (e.target === linkMenuBg) { linkMenu.classList.remove('active'); setTimeout(() => linkMenuBg.classList.remove('active'), 110); } }); } if (logoutBtn) logoutBtn.addEventListener('click', () => window.location.href = 'signup-login.html');
+
+/* ---------- Firebase Auth (profile only) ---------- */ let currentUser = null;
+
+onAuthStateChanged(auth, user => { if (!user) { // Not logged in window.location.href = "signup-login.html"; return; } currentUser = user; if (greetMsg) greetMsg.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]) + "!"; if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User"; if (profileMenuEmail) profileMenuEmail.textContent = user.email || ""; if (editName) editName.value = user.displayName || ""; if (editPhoto) editPhoto.value = user.photoURL || ""; if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
+
+// Render chat UI if functions exist try { renderChatSelector(); } catch (e) { console.warn('renderChatSelector error', e); } try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) { console.warn('renderChatBox error', e); } 
+
 });
 
-/* ---------- Fullscreen ---------- */
-const mainContainer=document.getElementById('mainContainer');
-const fullscreenBtn=document.getElementById('fullscreenBtn');
-let isFull=false;
-fullscreenBtn.onclick=function(){
-  isFull=!isFull;
-  if(isFull){
-    mainContainer.classList.add('fullscreen');
-    fullscreenBtn.innerHTML='<i class="fa-solid fa-compress"></i>';
-  }else{
-    mainContainer.classList.remove('fullscreen');
-    fullscreenBtn.innerHTML='<i class="fa-solid fa-expand"></i>';
-  }
-};
+if (editPhoto && profilePicPreview) { editPhoto.addEventListener('input', function () { profilePicPreview.src = this.value || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg"; }); }
 
-/* ---------- Panels/Modals ---------- */
-const profileMenuBg=document.getElementById('profileMenuBg'), profileMenu=document.getElementById('profileMenu');
-const linkMenuBg=document.getElementById('linkMenuBg'), linkMenu=document.getElementById('linkMenu');
-document.getElementById('openProfileMenu').onclick=()=>{profileMenuBg.classList.add('active'); setTimeout(()=>profileMenu.classList.add('active'),10);};
-profileMenuBg.onclick=e=>{if(e.target===profileMenuBg){ profileMenu.classList.remove('active'); setTimeout(()=>profileMenuBg.classList.remove('active'),110); }};
-document.getElementById('openLinksMenu').onclick=()=>{linkMenuBg.classList.add('active'); setTimeout(()=>linkMenu.classList.add('active'),10);};
-linkMenuBg.onclick=e=>{if(e.target===linkMenuBg){ linkMenu.classList.remove('active'); setTimeout(()=>linkMenuBg.classList.remove('active'),110); }};
-document.getElementById("logoutBtn").onclick=()=>window.location.href='signup-login.html';
+if (profileForm) { profileForm.addEventListener('submit', async function (e) { e.preventDefault(); if (!currentUser) return; const status = $('profileStatusMsg'); if (status) status.textContent = ''; const name = (editName ? editName.value.trim() : ''); const photoURL = (editPhoto ? editPhoto.value.trim() : ''); try { await updateProfile(currentUser, { displayName: name, photoURL }); await auth.currentUser.reload(); if (status) { status.textContent = "Profile updated!"; status.style.color = "#00ffff"; } setTimeout(() => { profileMenu?.classList.remove('active'); profileMenuBg?.classList.remove('active'); }, 650); if (greetMsg) greetMsg.textContent = "Welcome, " + (auth.currentUser.displayName || (auth.currentUser.email || '').split('@')[0]) + "!"; } catch (err) { if (status) { status.textContent = err.message || "Update failed"; status.style.color = "#ffd700"; } } }); }
 
-/* ---------- Firebase Auth (profile only) ---------- */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-const firebaseConfig = {
-  apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-  authDomain: "elvionai.firebaseapp.com",
-  projectId: "elvionai",
-  storageBucket: "elvionai.appspot.com",
-  messagingSenderId: "161078300830",
-  appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-let currentUser;
+/* ---------- LocalStorage Chat Logic, Excluding Images ---------- */ let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]"); let currentChatIdx = chats.length - 1 >= 0 ? chats.length - 1 : 0;
 
-onAuthStateChanged(auth, user => {
-  if (!user) window.location.href = "signup-login.html";
-  else {
-    currentUser = user;
-    document.getElementById("greetMsg").textContent = "Welcome, " + (user.displayName || user.email.split('@')[0]) + "!";
-    document.getElementById("profileMenuUser").textContent = user.displayName || "User";
-    document.getElementById("profileMenuEmail").textContent = user.email;
-    document.getElementById("edit-name").value = user.displayName || "";
-    document.getElementById("edit-photo").value = user.photoURL || "";
-    document.getElementById("profilePicPreview").src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-    renderChatSelector();
-    renderChatBox(chats[currentChatIdx]?.history || []);
-  }
+function saveChats() { try { let sanitized = JSON.parse(JSON.stringify(chats)); sanitized.forEach(chat => { chat.history.forEach(msg => { if (msg.text && typeof msg.text === 'string' && msg.text.includes("data:image")) { msg.text = "[image omitted]"; } }); }); localStorage.setItem("elvion_chats", JSON.stringify(sanitized)); } catch (e) { console.warn('saveChats failed', e); } }
+
+function renderChatSelector() { if (!chatSelector) return; chatSelector.innerHTML = ""; chats.forEach((chat, idx) => { const option = document.createElement("option"); option.value = idx; option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 25) || "Untitled"); chatSelector.appendChild(option); }); if (typeof currentChatIdx === 'number') chatSelector.value = currentChatIdx; }
+
+if (chatSelector) { chatSelector.addEventListener('change', function () { currentChatIdx = parseInt(this.value) || 0; renderChatBox(chats[currentChatIdx]?.history || []); }); }
+
+function loadChat(idx) { currentChatIdx = idx || 0; renderChatBox(chats[idx]?.history || []); }
+
+/* ---------- Markdown, Code, Copy, Share ---------- */ const escapeHTML = (str = '') => String(str).replaceAll('&', '&').replaceAll('<', '<').replaceAll('>', '>');
+
+function renderMarkdown(text = '') { const codeBlockRegex = /(\w+)?\n([\s\S]*?)/g; let html = ''; let lastIndex = 0; text = text || '';
+
+text.replace(codeBlockRegex, (match, lang, code, offset) => { const before = text.slice(lastIndex, offset); html += inlineMarkdown(before); const language = (lang || '').toLowerCase().trim(); const safe = escapeHTML(code); const blockId = 'code_' + Math.random().toString(36).slice(2); html += `<pre data-block-id="${blockId}">\n <button class="copy-btn" data-copy="${blockId}">Copy</button>\n <code class="language-${language || 'plaintext'}">${safe}</code>\n</pre>`; lastIndex = offset + match.length; return match; }); html += inlineMarkdown(text.slice(lastIndex)); return { html }; 
+
+}
+
+function inlineMarkdown(t = '') { let s = String(t).replace(/([^]+?)/g, (_, a) => ${escapeHTML(a)}`); s = s.replace(/**([^]+?)**/g, '$1'); s = s.replace(/(^|[\s(])*([^]+?)*(?=[\s).,!?:;]|$)/g, '$1$2'); s = s.replace(/[([^]]+)]((https?://[^\s)]+))/g, '$1'); return s.replace(/\n/g, '
+'); }
+
+function enhanceCodeBlocks(container) { if (!container) return; container.querySelectorAll('pre').forEach(pre => { const codeEl = pre.querySelector('code'); if (window.hljs && codeEl) try { hljs.highlightElement(codeEl); } catch (e) { /* ignore */ } const btn = pre.querySelector('.copy-btn'); if (btn && codeEl) { btn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(codeEl.innerText); const prev = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = prev, 800); } catch (e) { btn.textContent = 'Failed'; setTimeout(() => btn.textContent = 'Copy', 800); } }); } }); }
+
+/* ---------- Chat Rendering with Copy/Share ---------- */ function renderChatBox(messages) { if (!chatBox) return; chatBox.innerHTML = ""; (messages || []).forEach((msg, mi) => { const div = document.createElement('div'); div.className = "chat-message " + (msg.role === "user" ? "user" : "ai"); if (msg.text && /^([File]|image:)/.test(msg.text)) { div.innerHTML = msg.text.replace('image:', ''); } else if (msg.role === "ai") { const { html } = renderMarkdown(msg.text || ''); div.innerHTML = <div class="msg">${html}\n <div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">\n <button class="inline-copy-btn" title="Copy whole AI response" data-idx="ai-${mi}">□ Copy</button>\n <button class="inline-share-btn" title="Share this reply" data-idx="ai-${mi}"><i class="fa-solid fa-share"></i> Share</button>\n </div></div>; } else { div.innerHTML = <div class="msg">${escapeHTML(msg.text || '')}</div>; } chatBox.appendChild(div); }); enhanceCodeBlocks(chatBox);
+
+// Copy/share handlers chatBox.querySelectorAll('.inline-copy-btn').forEach(btn => { btn.onclick = function () { const idx = parseInt(btn.getAttribute('data-idx').replace('ai-', '')); const text = (chats[currentChatIdx]?.history[idx]?.text) || ""; navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, "")); const prev = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => btn.textContent = prev, 900); }; }); chatBox.querySelectorAll('.inline-share-btn').forEach(btn => { btn.onclick = async function () { const idx = parseInt(btn.getAttribute('data-idx').replace('ai-', '')); const text = (chats[currentChatIdx]?.history[idx]?.text) || ""; if (navigator.share) { try { await navigator.share({ title: "Philadelphia AI", text }); } catch (e) { /* ignore */ } } else { prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g, "")); } }; }); chatBox.scrollTop = chatBox.scrollHeight; 
+
+}
+
+/* ------- Typing / Animation Utilities ---- */ let typingNode = null; function showTypingAtNext() { removeTyping(); if (!chatBox) return; typingNode = document.createElement('div'); typingNode.className = 'chat-message ai'; typingNode.innerHTML = <div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>; chatBox.appendChild(typingNode); chatBox.scrollTop = chatBox.scrollHeight; } function removeTyping() { if (typingNode && typingNode.parentNode) { typingNode.parentNode.removeChild(typingNode); typingNode = null; } }
+
+async function typeBotMessage(text, onDone) { removeTyping(); if (!chatBox) return; const div = document.createElement('div'); div.className = "chat-message ai"; const msgdiv = document.createElement('div'); msgdiv.className = 'msg'; div.appendChild(msgdiv); chatBox.appendChild(div); let sofar = ''; for (const ch of text) { sofar += ch; msgdiv.innerHTML = renderMarkdown(sofar).html; chatBox.scrollTop = chatBox.scrollHeight; await new Promise(res => setTimeout(res, 6 + Math.random() * 18)); } msgdiv.innerHTML = renderMarkdown(text).html + \n <div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">\n <button class="inline-copy-btn" title="Copy whole AI response">□ Copy</button>\n <button class="inline-share-btn" title="Share this reply"><i class="fa-solid fa-share"></i> Share</button>\n </div>; enhanceCodeBlocks(msgdiv);
+
+// attach handlers to the newly appended buttons const copyBtn = msgdiv.querySelector('.inline-copy-btn'); if (copyBtn) copyBtn.onclick = () => { navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, "")); copyBtn.textContent = "Copied!"; setTimeout(() => copyBtn.textContent = "□ Copy", 900); }; const shareBtn = msgdiv.querySelector('.inline-share-btn'); if (shareBtn) shareBtn.onclick = async () => { if (navigator.share) { try { await navigator.share({ title: "Philadelphia AI", text }); } catch (e) { /* ignore */ } } else { prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g, "")); } }; if (onDone) onDone(); 
+
+}
+
+/* ---------- New/Delete Chat ---------- */ if (newChatBtn) newChatBtn.addEventListener('click', function () { const name = "Chat " + (chats.length + 1); chats.push({ name, history: [] }); currentChatIdx = chats.length - 1; saveChats(); renderChatSelector(); loadChat(currentChatIdx); }); if (delChatBtn) delChatBtn.addEventListener('click', function () { if (!chats.length) return; if (!confirm("Delete this chat?")) return; chats.splice(currentChatIdx, 1); if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1; saveChats(); renderChatSelector(); loadChat(currentChatIdx); });
+
+/* ---------- File Preview (images not saved) & Uploaded files state ---------- */ let uploadedFiles = []; let uploadData = null; // keep legacy name used in submit logic
+
+function renderFilePreview() { if (!filePreview) return; if (!uploadedFiles.length) { filePreview.style.display = 'none'; filePreview.innerHTML = ''; return; } filePreview.style.display = 'block'; filePreview.innerHTML = uploadedFiles.map((file, idx) => { let icon = file.type.startsWith('image/') ? '🖼️' : (file.type === 'application/pdf' ? '📄' : '📁'); return <div style="display:flex;align-items:center;gap:10px;border-radius:7px;margin-bottom:2px;">\n <span style="font-size:1.25em;">${icon}</span>\n <span style="color:#aee;font-size:.99em;">${file.name}</span>\n <button type="button" data-idx="${idx}" class="remove-file-btn" style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>\n</div>; }).join('');
+
+// Attach remove handlers filePreview.querySelectorAll('.remove-file-btn').forEach(btn => { btn.addEventListener('click', (e) => { const idx = parseInt(btn.getAttribute('data-idx')); uploadedFiles.splice(idx, 1); uploadData = uploadedFiles[0] || null; if (!uploadedFiles.length && chatFile) chatFile.value = ''; renderFilePreview(); }); }); 
+
+}
+
+if (chatFile) { chatFile.addEventListener('change', function () { const files = Array.from(this.files || []); uploadedFiles = files; uploadData = files[0] || null; // Quick inline preview for first image/video if (filePreview && uploadData) { if (uploadData.type.startsWith('image/')) { const reader = new FileReader(); reader.onload = e => { filePreview.style.display = 'block'; filePreview.innerHTML = <img src="${e.target.result}" alt="Selected image" style="max-width:200px;border-radius:8px;">; }; reader.readAsDataURL(uploadData); } else if (uploadData.type.startsWith('video/')) { const reader = new FileReader(); reader.onload = e => { filePreview.style.display = 'block'; filePreview.innerHTML = <video src="${e.target.result}" controls style="max-width:200px;border-radius:8px;"></video>; }; reader.readAsDataURL(uploadData); } else { renderFilePreview(); } } else { renderFilePreview(); } }); }
+
+/* ---------- Voice Input (browser speech recognition) ---------- */ if (voiceInputBtn && chatInput) { let recognition = null; voiceInputBtn.addEventListener('click', function () { if ('webkitSpeechRecognition' in window) { recognition = new webkitSpeechRecognition(); recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US'; this.innerHTML = ''; recognition.onresult = (e) => { chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript; chatInput.dispatchEvent(new Event('input')); this.innerHTML = ''; }; recognition.onend = () => { voiceInputBtn.innerHTML = ''; }; recognition.onerror = () => { voiceInputBtn.innerHTML = ''; }; recognition.start(); } else alert('Speech recognition not supported in your browser.'); }); }
+
+/* ---------- Textarea auto-resize ---------- */ if (chatInput) { function autoResizeTextarea() { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px'; } chatInput.addEventListener('input', autoResizeTextarea); autoResizeTextarea(); chatInput.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBtn?.click(); } }); }
+
+/* ---------- IMAGE & VOICE BUTTONS (create before handlers) ---------- */ const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore", "gemini6"]; let currentModelIdx = 0; let imageBtn = document.createElement('button'); imageBtn.type = 'button'; imageBtn.id = 'imageBtn'; imageBtn.title = 'Generate image'; imageBtn.innerHTML = ''; let voiceGenBtn = document.createElement('button'); voiceGenBtn.type = 'button'; voiceGenBtn.id = 'voiceBtn'; voiceGenBtn.title = 'Generate voice'; voiceGenBtn.innerHTML = ''; if (chatForm && sendBtn) chatForm.insertBefore(imageBtn, sendBtn); if (chatForm && sendBtn) chatForm.insertBefore(voiceGenBtn, sendBtn);
+
+// Image model cycling imageBtn.addEventListener('click', function () { currentModelIdx = (currentModelIdx + 1) % thenaModels.length; let model = thenaModels[currentModelIdx]; let prevInput = (chatInput ? chatInput.value.replace(/^/image\s+\w+\s*/i, "").replace(/^/imagine\s*/i, "") : ""); if (model === 'gemini6') { if (chatInput) chatInput.value = /imagine ${prevInput}.trim(); imageBtn.innerHTML = ''; } else { if (chatInput) chatInput.value = /image ${model} ${prevInput}.trim(); imageBtn.innerHTML = ''; } chatInput?.focus(); setTimeout(() => { try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) { } }, 0); });
+
+/* ---------- Voice Note Generation (use voiceGenBtn created above) ---------- */ voiceGenBtn.addEventListener('click', async function () { if (!chatInput) return; let msgText = chatInput.value.trim(); if (!msgText) { chatInput.focus(); return; } let style = $('voiceStyle') ? $('voiceStyle').value : 'podcast'; showTypingAtNext(); try { let fd = new FormData(); fd.append('text', msgText); fd.append('style', style); let res = await fetch('https://web-production-9a18.up.railway.app/voicegen', { method: 'POST', body: fd }); if (!res.ok) { let err = {}; try { err = await res.json(); } catch (_) { } removeTyping(); await typeBotMessage('❌ Voice generation failed: ' + (err.error || res.statusText)); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice generation failed.' }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); return; } let blob = await res.blob(); let url = URL.createObjectURL(blob); let audioPlayer = <audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>; removeTyping(); chats[currentChatIdx].history.push({ role: 'ai', text: 🗣️ Voice generated in *${style}* style:<br>${audioPlayer} }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } catch (err) { removeTyping(); await typeBotMessage('❌ Voice API/network error'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice API/network error' }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } });
+
+/* ---------- File / Upload handling and main chat submit ---------- */ if (chatForm) { chatForm.addEventListener('submit', async function (e) { e.preventDefault(); const file = uploadData; // first file if any const fp = filePreview; let msgText = (chatInput ? chatInput.value.trim() : '');
+
+// Ensure at least one chat exists if (currentChatIdx < 0 || !chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; saveChats(); } if (!msgText && !file) return; if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input')); } // --------- 1. /imagine handler --------- if (/^\/imagine\s+/i.test(msgText)) { const imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim(); const fd = new FormData(); fd.append('prompt', imaginePrompt); if (uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) fd.append('file', uploadedFiles[0]); showTypingAtNext(); try { const res = await fetch('https://web-production-9a18.up.railway.app/imagine', { method: 'POST', body: fd }); if (!res.ok) { let err = {}; try { err = await res.json(); } catch (_) { } removeTyping(); await typeBotMessage('❌ Image generation failed: ' + (err.error || res.statusText)); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Image generation failed.' }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } else { const blob = await res.blob(); const url = URL.createObjectURL(blob); showAIImagePreview(url, 'Your new Philadelphia AI image! (click Download if you like it)'); removeTyping(); chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)' }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } } catch (err) { removeTyping(); await typeBotMessage('❌ Philadelphia image API/network error'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Vision 6 image API/network error' }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } // reset if (chatFile) chatFile.value = ''; uploadedFiles = []; uploadData = null; renderFilePreview(); return; } // ----------- 2. FILE UPLOAD LOGIC: Multiple or Single ----------- if (uploadedFiles && uploadedFiles.length) { showTypingAtNext(); try { const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf'); const images = uploadedFiles.filter(f => /^image\//.test(f.type)); const audios = uploadedFiles.filter(f => /^audio\//.test(f.type)); const videos = uploadedFiles.filter(f => /^video\//.test(f.type)); if (pdfs.length) { let fd = new FormData(); fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.')); pdfs.forEach(f => fd.append('files', f)); let res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd }); let txt = await res.text(); let data; try { data = JSON.parse(txt); } catch (err) { removeTyping(); chats[currentChatIdx].history.push({ role: 'user', text: `[PDF] ${pdfs.map(f => f.name).join(', ')}${msgText ? ': ' + msgText : ''}` }); chats[currentChatIdx].history.push({ role: 'ai', text: `❌ PDF API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); return; } removeTyping(); chats[currentChatIdx].history.push({ role: 'user', text: `[PDF] ${pdfs.map(f => f.name).join(', ')}${msgText ? ': ' + msgText : ''}` }); if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the PDF(s).'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the PDF(s).' }); } } for (const img of images) { let fd = new FormData(); fd.append('prompt', msgText ? msgText : 'Describe this image in detail.'); fd.append('file', img); let res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd }); let txt = await res.text(); let data; try { data = JSON.parse(txt); } catch (err) { chats[currentChatIdx].history.push({ role: 'user', text: `[Image] ${img.name}${msgText ? ': ' + msgText : ''}` }); chats[currentChatIdx].history.push({ role: 'ai', text: `❌ Image API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` }); continue; } chats[currentChatIdx].history.push({ role: 'user', text: `[Image] ${img.name}${msgText ? ': ' + msgText : ''}` }); if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the image.'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the image.' }); } } for (const audio of audios) { let fd = new FormData(); fd.append('prompt', msgText ? msgText : 'Transcribe and summarize this audio file in simple English.'); fd.append('file', audio); let res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd }); let txt = await res.text(); let data; try { data = JSON.parse(txt); } catch (err) { chats[currentChatIdx].history.push({ role: 'user', text: `[Audio] ${audio.name}${msgText ? ': ' + msgText : ''}` }); chats[currentChatIdx].history.push({ role: 'ai', text: `❌ Audio API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` }); continue; } chats[currentChatIdx].history.push({ role: 'user', text: `[Audio] ${audio.name}${msgText ? ': ' + msgText : ''}` }); if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the audio.'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the audio.' }); } } for (const vid of videos) { let fd = new FormData(); fd.append('prompt', msgText ? msgText : 'Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.'); fd.append('file', vid); let res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd }); let txt = await res.text(); let data; try { data = JSON.parse(txt); } catch (err) { chats[currentChatIdx].history.push({ role: 'user', text: `[Video] ${vid.name}${msgText ? ': ' + msgText : ''}` }); chats[currentChatIdx].history.push({ role: 'ai', text: `❌ Video API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` }); continue; } chats[currentChatIdx].history.push({ role: 'user', text: `[Video] ${vid.name}${msgText ? ': ' + msgText : ''}` }); if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the video.'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the video.' }); } } if (chatFile) chatFile.value = ''; uploadedFiles = []; uploadData = null; renderFilePreview(); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); return; } catch (err) { removeTyping(); chats[currentChatIdx].history.push({ role: 'ai', text: '[File upload failed] ' + (err.message || 'no net') }); if (chatFile) chatFile.value = ''; uploadedFiles = []; uploadData = null; renderFilePreview(); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); return; } } // ----------- 3. TEXT/COMMAND CHAT LOGIC ----------- chats[currentChatIdx].history.push({ role: 'user', text: msgText }); if (chats[currentChatIdx].history.length === 1) { chats[currentChatIdx].name = msgText.slice(0, 25) + "..."; renderChatSelector(); } renderChatBox(chats[currentChatIdx]?.history || []); showTypingAtNext(); try { let res, data; if (/^\/image\s+/i.test(msgText)) { let imagePrompt = msgText.replace(/^\/image\s+/i, ''); res = await fetch('https://web-production-9a18.up.railway.app/generate-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imagePrompt) }); try { data = await res.json(); } catch (_) { data = {}; } removeTyping(); if (data.image_b64) { showAIImagePreview('data:image/png;base64,' + data.image_b64, '(Your image—download or close)'); chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)' }); } else { chats[currentChatIdx].history.push({ role: 'ai', text: data.error || '❌ Image generation failed. Try another prompt.' }); } saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } else { const history = chats[currentChatIdx].history.map(m => ({ role: m.role, content: m.text })); res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) }); try { data = await res.json(); } catch (_) { data = {}; } removeTyping(); if (data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('🤖 Bot replied (no response).'); chats[currentChatIdx].history.push({ role: 'ai', text: '🤖 Bot replied (no response).' }); } saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } } catch (err) { removeTyping(); await typeBotMessage('Sorry, bot error: ' + err.message); chats[currentChatIdx].history.push({ role: 'ai', text: 'Sorry, bot error: ' + err.message }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); } }); 
+
+}
+
+/* ---------- AI Image preview UI ---------- */ const aiPrevBox = $('ai-image-preview'); const aiPrevClose = $('ai-image-close'); const aiPrevDLBtn = $('ai-image-dl'); const aiPrevImgBox = $('ai-image-container');
+
+if (aiPrevClose && aiPrevBox && aiPrevImgBox) aiPrevClose.addEventListener('click', () => { aiPrevBox.style.display = 'none'; aiPrevImgBox.innerHTML = ''; }); if (aiPrevDLBtn && aiPrevImgBox) aiPrevDLBtn.addEventListener('click', () => { const img = aiPrevImgBox.querySelector('img'); if (img) { const url = img.src; const a = document.createElement('a'); a.href = url; a.download = 'generated_image.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); } });
+
+function showAIImagePreview(srcUrlOrBase64, caption = '') { if (!aiPrevBox || !aiPrevImgBox) return; let src = (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:') || srcUrlOrBase64.startsWith('blob:'))) ? srcUrlOrBase64 : 'data:image/png;base64,' + srcUrlOrBase64; aiPrevImgBox.innerHTML = <img src="${src}" alt="AI gen" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;"> + (caption ? ' 
+
+' + caption + '
+
+' : ''); aiPrevBox.style.display = 'block'; } 
+
+// Initial small UI setup: prefill chatInput with /image photoreal currentModelIdx = 0; if (chatInput) { chatInput.value = '/image photoreal '; chatInput.focus(); try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) { } }
+
 });
-document.getElementById("edit-photo").oninput = function () {
-  document.getElementById("profilePicPreview").src = this.value || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-};
-document.getElementById("profileForm").onsubmit = async function (e) {
-  e.preventDefault(); if (!currentUser) return;
-  const status=document.getElementById("profileStatusMsg"); status.textContent='';
-  const name=document.getElementById("edit-name").value.trim();
-  const photoURL=document.getElementById("edit-photo").value.trim();
-  try {
-    await updateProfile(currentUser, { displayName:name, photoURL });
-    await auth.currentUser.reload();
-    status.textContent = "Profile updated!";
-    status.style.color = "#00ffff";
-    setTimeout(()=>{profileMenu.classList.remove('active'); profileMenuBg.classList.remove('active');}, 650);
-    document.getElementById("greetMsg").textContent = "Welcome, "+(auth.currentUser.displayName||auth.currentUser.email.split('@')[0])+"!";
-  } catch (err) {
-    status.textContent = err.message || "Update failed";
-    status.style.color = "#ffd700";
-  }
-};
-
-/* ---------- LocalStorage Chat Logic, Excluding Images ---------- */
-let chats = JSON.parse(localStorage.getItem("elvion_chats")||"[]");
-let currentChatIdx = chats.length-1 >= 0 ? chats.length-1 : 0;
-const chatBox = document.getElementById("chatBox");
-
-function saveChats(){
-  // Remove base64 images before saving
-  let sanitized = JSON.parse(JSON.stringify(chats));
-  sanitized.forEach(chat=>{
-    chat.history.forEach(msg=>{
-      if(msg.text && msg.text.includes("data:image/png;base64,")){
-        msg.text = "[image omitted]";
-      }
-    });
-  });
-  localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
-}
-function renderChatSelector() {
-  const chatSelector = document.getElementById("chatSelector"); chatSelector.innerHTML="";
-  chats.forEach((chat,idx)=>{
-    const option=document.createElement("option");
-    option.value=idx;
-    option.textContent=chat.name||(chat.history?.[0]?.text?.slice(0,25)||"Untitled");
-    chatSelector.appendChild(option);
-  }); 
-  chatSelector.value=currentChatIdx;
-}
-document.getElementById("chatSelector").onchange = function(){currentChatIdx=parseInt(this.value)||0; renderChatBox(chats[currentChatIdx]?.history || []);}
-function loadChat(idx){currentChatIdx=idx||0; renderChatBox(chats[idx]?.history || []);}
-
-/* ---------- Markdown, Code, Copy, Share ---------- */
-const escapeHTML = (str = '') => 
-  str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-
-
-      function renderMarkdown(text = '') {
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  let html = '';
-  let lastIndex = 0;
-  text = text || '';
-
-  text.replace(codeBlockRegex, (match, lang, code, offset) => {
-    // Add the text before this code block
-    const before = text.slice(lastIndex, offset);
-    html += inlineMarkdown(before);
-
-    // Handle code block
-    const language = (lang || '').toLowerCase().trim();
-    const safe = escapeHTML(code);
-    const blockId = 'code_' + Math.random().toString(36).slice(2);
-
-    html += `<pre data-block-id="${blockId}">
-      <button class="copy-btn" data-copy="${blockId}">Copy</button>
-      <code class="language-${language || 'plaintext'}">${safe}</code>
-    </pre>`;
-
-    lastIndex = offset + match.length;
-    return match;
-  });
-
-  // Add any remaining text after the last code block
-  html += inlineMarkdown(text.slice(lastIndex));
-
-  return { html };
-      }
-function inlineMarkdown(t=''){
-  let s = t.replace(/`([^`]+?)`/g, (_,a)=>`<code>${escapeHTML(a)}</code>`);
-  s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-  s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
-  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  return s.replace(/\n/g, '<br>');
-}
-function enhanceCodeBlocks(container){
-  // add code highlighting and copy for code blocks only
-  container.querySelectorAll('pre').forEach(pre=>{
-    const codeEl = pre.querySelector('code');
-    if (window.hljs && codeEl) hljs.highlightElement(codeEl);
-    const btn = pre.querySelector('.copy-btn');
-    if(btn && codeEl){
-      btn.addEventListener('click', async ()=>{
-        try{
-          await navigator.clipboard.writeText(codeEl.innerText);
-          const prev = btn.textContent;
-          btn.textContent='Copied!';
-          setTimeout(()=>btn.textContent=prev,800);
-        }catch(e){ btn.textContent='Failed'; setTimeout(()=>btn.textContent='Copy',800); }
-      });
-    }
-  });
-}
-
-/* ---------- Chat Rendering with Copy/Share ---------- */
-function renderChatBox(messages){
-  chatBox.innerHTML="";
-  (messages||[]).forEach((msg, mi)=>{
-    const div=document.createElement('div');
-    div.className="chat-message "+(msg.role==="user"?"user":"ai");
-    if(msg.text && /^(\[File\]|image:)/.test(msg.text)){
-      div.innerHTML = msg.text.replace('image:','');
-    } else if(msg.role === "ai") {
-      const {html} = renderMarkdown(msg.text||'');
-      div.innerHTML = `<div class="msg">${html}
-        <div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">
-          <button class="inline-copy-btn" title="Copy whole AI response" data-idx="ai-${mi}">□ Copy</button>
-          <button class="inline-share-btn" title="Share this reply" data-idx="ai-${mi}"><i class="fa-solid fa-share"></i> Share</button>
-        </div></div>`;
-    } else {
-      div.innerHTML = `<div class="msg">${escapeHTML(msg.text||'')}</div>`;
-    }
-    chatBox.appendChild(div);
-  });
-  enhanceCodeBlocks(chatBox);
-
-  // Copy/share handlers:
-  chatBox.querySelectorAll('.inline-copy-btn').forEach(btn=>{
-    btn.onclick = function(){
-      const idx = parseInt(btn.getAttribute('data-idx').replace('ai-',''));
-      const text = (chats[currentChatIdx]?.history[idx]?.text)||"";
-      navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, "")); // strip HTML
-      btn.textContent = "Copied!";
-      setTimeout(()=>btn.textContent="□ Copy", 900);
-    }
-  });
-  chatBox.querySelectorAll('.inline-share-btn').forEach(btn=>{
-    btn.onclick = async function(){
-      const idx = parseInt(btn.getAttribute('data-idx').replace('ai-',''));
-      const text = (chats[currentChatIdx]?.history[idx]?.text)||"";
-      if(navigator.share){
-        await navigator.share({ title:"Philadelphia AI", text });
-      }else{
-        prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g, ""));
-      }
-    }
-  });
-
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-
-/* ------- Voice Note Generation ---- */
-voiceBtn.onclick = async function () {
-  let msgText = chatInput.value.trim();
-  if (!msgText) {
-    chatInput.focus();
-    return;
-  }
-  let style = document.getElementById("voiceStyle") ? document.getElementById("voiceStyle").value : "podcast";
-  showTypingAtNext();
-  try {
-    let fd = new FormData();
-    fd.append("text", msgText);
-    fd.append("style", style);
-
-    let res = await fetch("https://web-production-9a18.up.railway.app/voicegen", { method: "POST", body: fd });
-    if (!res.ok) {
-      let err = {};
-      try { err = await res.json(); } catch {}
-      removeTyping();
-      await typeBotMessage("❌ Voice generation failed: " + (err.error || res.statusText));
-      chats[currentChatIdx].history.push({role:"ai", text: "❌ Voice generation failed."});
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      return;
-    }
-    let blob = await res.blob();
-    let url = URL.createObjectURL(blob);
-    // Generate audio player
-    let audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
-    removeTyping();
-    chats[currentChatIdx].history.push({
-      role: "ai",
-      text: `🗣️ Voice generated in *${style}* style:<br>${audioPlayer}`
-    });
-    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-  } catch (err) {
-    removeTyping();
-    await typeBotMessage("❌ Voice API/network error");
-    chats[currentChatIdx].history.push({role:"ai", text: "❌ Voice API/network error"});
-    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-  }
-};
-
-/* ---------- Typing Dots/Animations ---------- */
-let typingNode = null;
-function showTypingAtNext(){
-  removeTyping();
-  typingNode = document.createElement('div');
-  typingNode.className = 'chat-message ai';
-  typingNode.innerHTML = `<div class="msg"><span class="typing-bubble">
-    <span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span>
-  </span></div>`;
-  chatBox.appendChild(typingNode);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-function removeTyping(){
-  if(typingNode && typingNode.parentNode){
-    typingNode.parentNode.removeChild(typingNode);
-    typingNode = null;
-  }
-}
-async function typeBotMessage(text, onDone){
-  removeTyping();
-  const div = document.createElement('div');
-  div.className = "chat-message ai";
-  const msgdiv = document.createElement('div');
-  msgdiv.className = "msg";
-  div.appendChild(msgdiv);
-  chatBox.appendChild(div);
-  let sofar = '';
-  // Animate as plain text to avoid partial markdown weirdness
-  for(const ch of text) {
-    sofar += ch;
-    msgdiv.innerHTML = renderMarkdown(sofar).html;
-    chatBox.scrollTop = chatBox.scrollHeight;
-    await new Promise(res=>setTimeout(res, 6+Math.random()*18));
-  }
-  // Render final markdown, add buttons
-  msgdiv.innerHTML = renderMarkdown(text).html
-    + `<div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">
-       <button class="inline-copy-btn" title="Copy whole AI response">□ Copy</button>
-       <button class="inline-share-btn" title="Share this reply"><i class="fa-solid fa-share"></i> Share</button>
-      </div>`;
-  enhanceCodeBlocks(msgdiv);
-  // add copy/share handlers just to this message
-  msgdiv.querySelector('.inline-copy-btn').onclick = () => {
-    navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g,""));
-    msgdiv.querySelector('.inline-copy-btn').textContent = "Copied!";
-    setTimeout(()=>msgdiv.querySelector('.inline-copy-btn').textContent="□ Copy",900);
-  };
-  msgdiv.querySelector('.inline-share-btn').onclick = async () => {
-    if(navigator.share){
-      await navigator.share({ title:"Philadelphia AI", text });
-    }else{
-      prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g,""));
-    }
-  };
-  if(onDone) onDone();
-}
-
-/* ---------- New/Delete Chat ---------- */
-document.getElementById("newChatBtn").onclick=function(){
-  const name="Chat "+(chats.length+1);
-  chats.push({name,history:[]});
-  currentChatIdx=chats.length-1;
-  saveChats(); renderChatSelector(); loadChat(currentChatIdx);
-};
-document.getElementById("delChatBtn").onclick=function(){
-  if(!chats.length)return;
-  if(!confirm("Delete this chat?"))return;
-  chats.splice(currentChatIdx,1);
-  if(currentChatIdx>=chats.length)currentChatIdx=chats.length-1;
-  saveChats(); renderChatSelector(); loadChat(currentChatIdx);
-};
-
-/* ---------- File Preview (images not saved) ---------- */
-let uploadData=null;
-document.getElementById("chatFile").onchange = function(){
-  const file=this.files[0],fp=document.getElementById("filePreview");
-  uploadData=null; if(!file){fp.style.display="none";fp.innerHTML="";return;}
-  fp.style.display='block'; uploadData=file;
-  if(file.type.startsWith("image/")){
-    const reader=new FileReader();
-    reader.onload=e=>{fp.innerHTML=`<img src="${e.target.result}" alt="Selected image">`;};
-    reader.readAsDataURL(file);
-  }else if(file.type.startsWith("video/")){
-    const reader=new FileReader();
-    reader.onload=e=>{fp.innerHTML=`<video src="${e.target.result}" controls></video>`;};
-    reader.readAsDataURL(file);
-  }else{
-    fp.innerHTML=`<div class="file-info"><i class="fa-solid fa-file"></i> ${file.name}</div>`;
-  }
-};
-
-/* ---------- Voice Input ---------- */
-let recognition;
-document.getElementById("voiceInputBtn").onclick=function(){
-  if('webkitSpeechRecognition'in window){
-    recognition=new webkitSpeechRecognition();
-    recognition.continuous=false; recognition.interimResults=false; recognition.lang='en-US';
-    this.innerHTML='<i class="fa-solid fa-microphone-lines"></i>';
-    recognition.onresult=(e)=>{
-      chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
-      autoResizeTextarea();
-      document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';
-    };
-    recognition.onend=()=>{document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';};
-    recognition.onerror=()=>{document.getElementById("voiceInputBtn").innerHTML='<i class="fa-solid fa-microphone"></i>';};
-    recognition.start();
-  }else{
-    alert("Speech recognition not supported in your browser.");
-  }
-};
-
-/* ---------- Textarea auto-resize ---------- */
-const chatInput = document.getElementById('chatInput');
-function autoResizeTextarea(){
-  chatInput.style.height = 'auto';
-  chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
-}
-chatInput.addEventListener('input', autoResizeTextarea);
-autoResizeTextarea();
-chatInput.addEventListener('keydown', (e)=>{
-  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
-    e.preventDefault();
-    document.getElementById('sendBtn').click();
-  }
-});
-
-/* ---------- IMAGE BUTTON (model cycling, no save) ---------- */
-const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore", "gemini6"];
-let currentModelIdx = 0;
-let imageBtn = document.createElement("button");
-imageBtn.type = "button";
-imageBtn.id = "imageBtn";
-imageBtn.title = "Generate image";
-imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
-document.getElementById("chatForm").insertBefore(imageBtn, document.getElementById("sendBtn"));
-
-let voiceBtn = document.createElement("button");
-voiceBtn.type = "button";
-voiceBtn.id = "voiceBtn";
-voiceBtn.title = "Generate voice";
-voiceBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-document.getElementById("chatForm").insertBefore(voiceBtn, document.getElementById("sendBtn"));
-
-imageBtn.onclick = function () {
-  currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
-  let model = thenaModels[currentModelIdx];
-  let prevInput = chatInput.value.replace(/^\/image\s+\w+\s*/i, "").replace(/^\/imagine\s*/i, "");
-  if (model === "gemini6") {
-    chatInput.value = `/imagine ${prevInput}`.trim();
-    imageBtn.innerHTML = '<i class="fa-brands fa-google"></i>'; // Gemini icon
-  } else {
-    chatInput.value = `/image ${model} ${prevInput}`.trim();
-    imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
-  }
-  chatInput.focus();
-  setTimeout(() => {
-    chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
-  }, 0);
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-  currentModelIdx = 0;
-  if (chatInput) {
-    chatInput.value = "/image photoreal ";
-    chatInput.focus();
-    chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
-  }
-});
-
-/* ------ Files Array ------*/
-let uploadedFiles = [];
-
-document.getElementById("chatFile").onchange = function() {
-  const files = Array.from(this.files);
-  uploadedFiles = files;
-  renderFilePreview();
-};
-
-function renderFilePreview() {
-  const fp = document.getElementById("filePreview");
-  if (!uploadedFiles.length) {
-    fp.style.display = "none";
-    fp.innerHTML = "";
-    return;
-  }
-  fp.style.display = "block";
-  fp.innerHTML = uploadedFiles.map((file, idx) => {
-    let icon = file.type.startsWith('image/') ? '🖼️' : (file.type === 'application/pdf' ? '📄' : '📁');
-    return `<div style="display:flex;align-items:center;gap:10px;border-radius:7px;margin-bottom:2px;">
-      <span style="font-size:1.25em;">${icon}</span>
-      <span style="color:#aee;font-size:.99em;">${file.name}</span>
-      <button type="button" onclick="removeSelectedFile(${idx})"
-        style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>
-    </div>`;
-  }).join("");
-}
-
-window.removeSelectedFile = function(idx) {
-  uploadedFiles.splice(idx, 1);
-  renderFilePreview();
-  if (!uploadedFiles.length) document.getElementById("chatFile").value = "";
-};
-
-/* ---------- Chat Submit ---------- */
-document.getElementById("chatForm").onsubmit = async function(e){
-  e.preventDefault();
-  let file = uploadData, fp = document.getElementById("filePreview");
-  let msgText = chatInput.value.trim();
-
-  // Always ensure a chat exists
-  if (currentChatIdx < 0) { 
-    chats.push({ name: "Chat 1", history: [] }); 
-    currentChatIdx = 0;
-    saveChats();
-  }
-  if (!msgText && !file) return;
-  chatInput.value = ""; autoResizeTextarea();
-
-  // --------- 1. PHILADELPHIA VISION /imagine HANDLER ---------
-  if (/^\/imagine\s+/i.test(msgText)) {
-    let imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
-    let fd = new FormData();
-    fd.append("prompt", imaginePrompt);
-
-    // Optional: include one image for remix/edit
-    if (uploadedFiles && uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) {
-      fd.append("file", uploadedFiles[0]);
-    }
-
-    showTypingAtNext();
-    try {
-      let res = await fetch("https://web-production-9a18.up.railway.app/imagine", { method: "POST", body: fd });
-      if (!res.ok) {
-        let err = {};
-        try { err = await res.json(); } catch {}
-        removeTyping();
-        await typeBotMessage("❌ Image generation failed: " + (err.error || res.statusText));
-        chats[currentChatIdx].history.push({role:"ai", text: "❌ Image generation failed."});
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      } else {
-        let blob = await res.blob();
-        let url = URL.createObjectURL(blob);
-        showAIImagePreview(url, "Your new Philadelphia AI image! (click Download if you like it)");
-        removeTyping();
-        chats[currentChatIdx].history.push({
-          role: "ai",
-          text: "✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)"
-        });
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      }
-    } catch (err) {
-      removeTyping();
-      await typeBotMessage("❌ Philadelphia image API/network error");
-      chats[currentChatIdx].history.push({role:"ai", text: "❌ Vision 6 image API/network error"});
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-    }
-    document.getElementById("chatFile").value="";
-    uploadedFiles = [];
-    renderFilePreview();
-    uploadData=null;
-    return;
-  }
-
-  // ----------- 2. FILE UPLOAD LOGIC: Multiple or Single -----------
-  if (uploadedFiles && uploadedFiles.length) {
-    showTypingAtNext();
-    try {
-      const pdfs = uploadedFiles.filter(f => f.type === "application/pdf");
-      const images = uploadedFiles.filter(f => /^image\//.test(f.type));
-      const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
-      const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
-
-      // ---- PDF(s): summarize as a set ----
-      if (pdfs.length) {
-        let fd = new FormData();
-        fd.append("prompt", msgText ? msgText : (pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document."));
-        pdfs.forEach(f => fd.append("files", f));
-        let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
-        let txt = await res.text();
-        let data;
-        try { data = JSON.parse(txt); }
-        catch (err) {
-          removeTyping();
-          chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
-          chats[currentChatIdx].history.push({
-            role:"ai",
-            text:`❌ PDF API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-          });
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          return;
-        }
-        removeTyping();
-        chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
-        if (data && data.response) {
-          await typeBotMessage(data.response);
-          chats[currentChatIdx].history.push({role:"ai", text: data.response});
-        } else {
-          await typeBotMessage("❌ Could not process the PDF(s).");
-          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF(s)."});
-        }
-      }
-
-      // ---- Image(s): one at a time (for analysis, NOT for generation) ----
-      for (const img of images) {
-        let fd = new FormData();
-        fd.append("prompt", msgText ? msgText : "Describe this image in detail.");
-        fd.append("file", img);
-        let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd });
-        let txt = await res.text();
-        let data;
-        try { data = JSON.parse(txt); }
-        catch (err) {
-          chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
-          chats[currentChatIdx].history.push({
-            role:"ai",
-            text:`❌ Image API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-          });
-          continue;
-        }
-        chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
-        if (data && data.response) {
-          await typeBotMessage(data.response);
-          chats[currentChatIdx].history.push({role:"ai", text: data.response});
-        } else {
-          await typeBotMessage("❌ Could not process the image.");
-          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the image."});
-        }
-      }
-
-      for (const audio of audios) {
-        let fd = new FormData();
-        fd.append("prompt", msgText ? msgText : "Transcribe and summarize this audio file in simple English.");
-        fd.append("file", audio);
-        let res = await fetch("https://web-production-9a18.up.railway.app/understand-audio", { method: "POST", body: fd });
-        let txt = await res.text();
-        let data;
-        try { data = JSON.parse(txt); }
-        catch (err) {
-          chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
-          chats[currentChatIdx].history.push({
-            role:"ai",
-            text:`❌ Audio API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-          });
-          continue;
-        }
-        chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
-        if (data && data.response) {
-          await typeBotMessage(data.response);
-          chats[currentChatIdx].history.push({role:"ai", text: data.response});
-        } else {
-          await typeBotMessage("❌ Could not process the audio.");
-          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the audio."});
-        }
-      }
-
-      for (const vid of videos) {
-        let fd = new FormData();
-        fd.append("prompt", msgText ? msgText : "Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.");
-        fd.append("file", vid);
-        let res = await fetch("https://web-production-9a18.up.railway.app/understand-video", { method: "POST", body: fd });
-        let txt = await res.text();
-        let data;
-        try { data = JSON.parse(txt); }
-        catch (err) {
-          chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
-          chats[currentChatIdx].history.push({
-            role:"ai",
-            text:`❌ Video API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-          });
-          continue;
-        }
-        chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
-        if (data && data.response) {
-          await typeBotMessage(data.response);
-          chats[currentChatIdx].history.push({role:"ai", text: data.response});
-        } else {
-          await typeBotMessage("❌ Could not process the video.");
-          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the video."});
-        }
-      }
-      document.getElementById("chatFile").value="";
-      uploadedFiles = [];
-      renderFilePreview();
-      uploadData=null;
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      return;
-    } catch (err) {
-      removeTyping();
-      chats[currentChatIdx].history.push({role:"ai",text:"[File upload failed] "+(err.message||'no net')});
-      document.getElementById("chatFile").value="";
-      uploadedFiles = [];
-      renderFilePreview();
-      uploadData=null;
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      return;
-    }
-  }
-
-  // ----------- 3. TEXT/COMMAND CHAT LOGIC -----------
-  chats[currentChatIdx].history.push({role:"user",text:msgText});
-  if (chats[currentChatIdx].history.length === 1) {
-    chats[currentChatIdx].name = msgText.slice(0, 25) + "..."; renderChatSelector();
-  }
-  renderChatBox(chats[currentChatIdx]?.history || []);
-  showTypingAtNext();
-
-  try {
-    let res, data;
-    if(/^\/image\s+/i.test(msgText)){
-      let imagePrompt = msgText.replace(/^\/image\s+/i, '');
-      res = await fetch("https://web-production-9a18.up.railway.app/generate-image", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(imagePrompt)
-      });
-      try { data = await res.json(); } catch(_) { data = {}; }
-      removeTyping();
-      if(data.image_b64){
-        showAIImagePreview("data:image/png;base64,"+data.image_b64, "(Your image—download or close)");
-        chats[currentChatIdx].history.push({
-          role: "ai",
-          text: "✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)"
-        });
-      } else {
-        chats[currentChatIdx].history.push({ role: "ai", text: data.error || "❌ Image generation failed. Try another prompt." });
-      }
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-    } else {
-      const history = chats[currentChatIdx].history.map(m=>({role:m.role,content:m.text}));
-      res = await fetch("https://web-production-9a18.up.railway.app/chat", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || "user", history })
-      });
-      try { data = await res.json(); } catch(_) { data = {}; }
-      removeTyping();
-      if (data.response) {
-        await typeBotMessage(data.response);
-        chats[currentChatIdx].history.push({ role: "ai", text: data.response });
-      } else {
-        await typeBotMessage("🤖 Bot replied (no response).");
-        chats[currentChatIdx].history.push({ role: "ai", text: "🤖 Bot replied (no response)." });
-      }
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-    }
-  } catch (err) {
-    removeTyping();
-    await typeBotMessage("Sorry, bot error: " + err.message);
-    chats[currentChatIdx].history.push({role:"ai",text:"Sorry, bot error: "+err.message});
-    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-  }
-};
-
-// Find nodes
-const aiPrevBox = document.getElementById('ai-image-preview');
-const aiPrevClose = document.getElementById('ai-image-close');
-const aiPrevDLBtn = document.getElementById('ai-image-dl');
-const aiPrevImgBox = document.getElementById('ai-image-container');
-
-// Close preview
-aiPrevClose.onclick = ()=>{ aiPrevBox.style.display="none"; aiPrevImgBox.innerHTML=""; };
-
-// Download handler
-aiPrevDLBtn.onclick = ()=>{
-  const img = aiPrevImgBox.querySelector('img');
-  if(img){
-    const url = img.src;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'generated_image.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-};
-      
-/* ---------- IMAGE PREVIEW, works for both blob and base64 ---------- */
-function showAIImagePreview(srcUrlOrBase64, caption="") {
-  let src = srcUrlOrBase64.startsWith("data:") || srcUrlOrBase64.startsWith("blob:") ? srcUrlOrBase64 : "data:image/png;base64,"+srcUrlOrBase64;
-  aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI gen" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">`
-    + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">'+caption+'</div>' : "");
-  aiPrevBox.style.display = "block";
-}
 </script>
 </body>
 </html>
