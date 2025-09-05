@@ -653,13 +653,14 @@ imageBtn.id = "imageBtn";
 imageBtn.title = "Generate image";
 imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
 document.getElementById("chatForm").insertBefore(imageBtn, document.getElementById("sendBtn"));
+
 imageBtn.onclick = function () {
   currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
   let model = thenaModels[currentModelIdx];
   let prevInput = chatInput.value.replace(/^\/image\s+\w+\s*/i, "").replace(/^\/imagine\s*/i, "");
   if (model === "gemini6") {
     chatInput.value = `/imagine ${prevInput}`.trim();
-    imageBtn.innerHTML = '<i class="fa-brands fa-google"></i>'; // Gemini icon (or any icon you like)
+    imageBtn.innerHTML = '<i class="fa-brands fa-google"></i>'; // Gemini icon
   } else {
     chatInput.value = `/image ${model} ${prevInput}`.trim();
     imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
@@ -669,6 +670,7 @@ imageBtn.onclick = function () {
     chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
   }, 0);
 };
+
 document.addEventListener('DOMContentLoaded', () => {
   currentModelIdx = 0;
   if (chatInput) {
@@ -679,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ------ Files Array ------*/
-let uploadedFiles = []; // Array for PDFs and images
+let uploadedFiles = [];
 
 document.getElementById("chatFile").onchange = function() {
   const files = Array.from(this.files);
@@ -712,53 +714,6 @@ window.removeSelectedFile = function(idx) {
   if (!uploadedFiles.length) document.getElementById("chatFile").value = "";
 };
 
-/* Generate image, Philadelphia */
-if (/^\/imagine\s+/i.test(msgText)) {
-  let imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
-  let fd = new FormData();
-  fd.append("prompt", imaginePrompt);
-
-  // Support prompt + initial image remix (optional)
-  if (uploadedFiles && uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) {
-    fd.append('file', uploadedFiles[0]);
-  }
-
-  showTypingAtNext();
-  try {
-    let res = await fetch("https://web-production-9a18.up.railway.app/imagine", { method: "POST", body: fd });
-    // if Gemini server returns image as blob
-    if (!res.ok) {
-      let err = {};
-      try { err = await res.json(); } catch {}
-      removeTyping();
-      await typeBotMessage("❌ Image generation failed: " + (err.error || res.statusText));
-      chats[currentChatIdx].history.push({role:"ai", text: "❌ Image generation failed."});
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-    } else {
-      let blob = await res.blob();
-      let url = URL.createObjectURL(blob);
-      showAIImagePreview(url, "Your new Philadelphia AI image! (click Download if you like it)");
-      removeTyping();
-      chats[currentChatIdx].history.push({
-        role: "ai",
-        text: "✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)"
-      });
-      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-    }
-  } catch (err) {
-    removeTyping();
-    await typeBotMessage("❌ Philadelphia image API/network error");
-    chats[currentChatIdx].history.push({role:"ai", text: "❌ Vision 6 image API/network error"});
-    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-  }
-  // Reset file preview/resources
-  document.getElementById("chatFile").value="";
-  uploadedFiles = [];
-  renderFilePreview();
-  uploadData=null;
-  return;
-}
-
 /* ---------- Chat Submit ---------- */
 document.getElementById("chatForm").onsubmit = async function(e){
   e.preventDefault();
@@ -774,146 +729,187 @@ document.getElementById("chatForm").onsubmit = async function(e){
   if (!msgText && !file) return;
   chatInput.value = ""; autoResizeTextarea();
 
-// ----------- FILE UPLOAD LOGIC: Multiple or Single -----------
-if (uploadedFiles && uploadedFiles.length) {
-  showTypingAtNext();
-  try {
-    const pdfs = uploadedFiles.filter(f => f.type === "application/pdf");
-    const images = uploadedFiles.filter(f => /^image\//.test(f.type));
-    const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
-    const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
+  // --------- 1. PHILADELPHIA VISION /imagine HANDLER ---------
+  if (/^\/imagine\s+/i.test(msgText)) {
+    let imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
+    let fd = new FormData();
+    fd.append("prompt", imaginePrompt);
 
-    // ---- PDF(s): summarize as a set ----
-    if (pdfs.length) {
-      let fd = new FormData();
-      fd.append("prompt", msgText ? msgText : (pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document."));
-      pdfs.forEach(f => fd.append("files", f));
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
-      let txt = await res.text();
-      let data;
-      try { data = JSON.parse(txt); }
-      catch (err) {
+    // Optional: include one image for remix/edit
+    if (uploadedFiles && uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) {
+      fd.append("file", uploadedFiles[0]);
+    }
+
+    showTypingAtNext();
+    try {
+      let res = await fetch("https://web-production-9a18.up.railway.app/imagine", { method: "POST", body: fd });
+      if (!res.ok) {
+        let err = {};
+        try { err = await res.json(); } catch {}
         removeTyping();
-        chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
+        await typeBotMessage("❌ Image generation failed: " + (err.error || res.statusText));
+        chats[currentChatIdx].history.push({role:"ai", text: "❌ Image generation failed."});
+        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+      } else {
+        let blob = await res.blob();
+        let url = URL.createObjectURL(blob);
+        showAIImagePreview(url, "Your new Philadelphia AI image! (click Download if you like it)");
+        removeTyping();
         chats[currentChatIdx].history.push({
-          role:"ai",
-          text:`❌ PDF API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+          role: "ai",
+          text: "✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)"
         });
         saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-        return;
       }
+    } catch (err) {
       removeTyping();
-      chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
-      if (data && data.response) {
-        await typeBotMessage(data.response);
-        chats[currentChatIdx].history.push({role:"ai", text: data.response});
-      } else {
-        await typeBotMessage("❌ Could not process the PDF(s).");
-        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF(s)."});
-      }
+      await typeBotMessage("❌ Philadelphia image API/network error");
+      chats[currentChatIdx].history.push({role:"ai", text: "❌ Vision 6 image API/network error"});
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     }
-
-    // ---- Image(s): one at a time ----
-    for (const img of images) {
-      let fd = new FormData();
-      fd.append("prompt", msgText ? msgText : "Describe this image in detail.");
-      fd.append("file", img);
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd });
-      let txt = await res.text();
-      let data;
-      try { data = JSON.parse(txt); }
-      catch (err) {
-        chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
-        chats[currentChatIdx].history.push({
-          role:"ai",
-          text:`❌ Image API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-        });
-        continue;
-      }
-      chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
-      if (data && data.response) {
-        await typeBotMessage(data.response);
-        chats[currentChatIdx].history.push({role:"ai", text: data.response});
-      } else {
-        await typeBotMessage("❌ Could not process the image.");
-        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the image."});
-      }
-    }
-
-    // ---- Audio(s): one at a time ----
-    for (const audio of audios) {
-      let fd = new FormData();
-      fd.append("prompt", msgText ? msgText : "Transcribe and summarize this audio file in simple English.");
-      fd.append("file", audio);
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-audio", { method: "POST", body: fd });
-      let txt = await res.text();
-      let data;
-      try { data = JSON.parse(txt); }
-      catch (err) {
-        chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
-        chats[currentChatIdx].history.push({
-          role:"ai",
-          text:`❌ Audio API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-        });
-        continue;
-      }
-      chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
-      if (data && data.response) {
-        await typeBotMessage(data.response);
-        chats[currentChatIdx].history.push({role:"ai", text: data.response});
-      } else {
-        await typeBotMessage("❌ Could not process the audio.");
-        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the audio."});
-      }
-    }
-
-    // ---- Video(s): one at a time ----
-    for (const vid of videos) {
-      let fd = new FormData();
-      fd.append("prompt", msgText ? msgText : "Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.");
-      fd.append("file", vid);
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-video", { method: "POST", body: fd });
-      let txt = await res.text();
-      let data;
-      try { data = JSON.parse(txt); }
-      catch (err) {
-        chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
-        chats[currentChatIdx].history.push({
-          role:"ai",
-          text:`❌ Video API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-        });
-        continue;
-      }
-      chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
-      if (data && data.response) {
-        await typeBotMessage(data.response);
-        chats[currentChatIdx].history.push({role:"ai", text: data.response});
-      } else {
-        await typeBotMessage("❌ Could not process the video.");
-        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the video."});
-      }
-    }
-    // Reset all file state and preview
     document.getElementById("chatFile").value="";
     uploadedFiles = [];
     renderFilePreview();
     uploadData=null;
-    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-    return;
-  } catch (err) {
-    removeTyping();
-    chats[currentChatIdx].history.push({role:"ai",text:"[File upload failed] "+(err.message||'no net')});
-    document.getElementById("chatFile").value="";
-    uploadedFiles = [];
-    renderFilePreview();
-    uploadData=null;
-    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     return;
   }
-}
 
-  // ----------- TEXT/COMMAND CHAT LOGIC -----------
-  // Save user input to chat
+  // ----------- 2. FILE UPLOAD LOGIC: Multiple or Single -----------
+  if (uploadedFiles && uploadedFiles.length) {
+    showTypingAtNext();
+    try {
+      const pdfs = uploadedFiles.filter(f => f.type === "application/pdf");
+      const images = uploadedFiles.filter(f => /^image\//.test(f.type));
+      const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
+      const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
+
+      // ---- PDF(s): summarize as a set ----
+      if (pdfs.length) {
+        let fd = new FormData();
+        fd.append("prompt", msgText ? msgText : (pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document."));
+        pdfs.forEach(f => fd.append("files", f));
+        let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
+        let txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); }
+        catch (err) {
+          removeTyping();
+          chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
+          chats[currentChatIdx].history.push({
+            role:"ai",
+            text:`❌ PDF API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+          });
+          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+          return;
+        }
+        removeTyping();
+        chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
+        if (data && data.response) {
+          await typeBotMessage(data.response);
+          chats[currentChatIdx].history.push({role:"ai", text: data.response});
+        } else {
+          await typeBotMessage("❌ Could not process the PDF(s).");
+          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF(s)."});
+        }
+      }
+
+      // ---- Image(s): one at a time (for analysis, NOT for generation) ----
+      for (const img of images) {
+        let fd = new FormData();
+        fd.append("prompt", msgText ? msgText : "Describe this image in detail.");
+        fd.append("file", img);
+        let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd });
+        let txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); }
+        catch (err) {
+          chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
+          chats[currentChatIdx].history.push({
+            role:"ai",
+            text:`❌ Image API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+          });
+          continue;
+        }
+        chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
+        if (data && data.response) {
+          await typeBotMessage(data.response);
+          chats[currentChatIdx].history.push({role:"ai", text: data.response});
+        } else {
+          await typeBotMessage("❌ Could not process the image.");
+          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the image."});
+        }
+      }
+
+      for (const audio of audios) {
+        let fd = new FormData();
+        fd.append("prompt", msgText ? msgText : "Transcribe and summarize this audio file in simple English.");
+        fd.append("file", audio);
+        let res = await fetch("https://web-production-9a18.up.railway.app/understand-audio", { method: "POST", body: fd });
+        let txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); }
+        catch (err) {
+          chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
+          chats[currentChatIdx].history.push({
+            role:"ai",
+            text:`❌ Audio API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+          });
+          continue;
+        }
+        chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
+        if (data && data.response) {
+          await typeBotMessage(data.response);
+          chats[currentChatIdx].history.push({role:"ai", text: data.response});
+        } else {
+          await typeBotMessage("❌ Could not process the audio.");
+          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the audio."});
+        }
+      }
+
+      for (const vid of videos) {
+        let fd = new FormData();
+        fd.append("prompt", msgText ? msgText : "Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.");
+        fd.append("file", vid);
+        let res = await fetch("https://web-production-9a18.up.railway.app/understand-video", { method: "POST", body: fd });
+        let txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); }
+        catch (err) {
+          chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
+          chats[currentChatIdx].history.push({
+            role:"ai",
+            text:`❌ Video API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+          });
+          continue;
+        }
+        chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
+        if (data && data.response) {
+          await typeBotMessage(data.response);
+          chats[currentChatIdx].history.push({role:"ai", text: data.response});
+        } else {
+          await typeBotMessage("❌ Could not process the video.");
+          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the video."});
+        }
+      }
+      document.getElementById("chatFile").value="";
+      uploadedFiles = [];
+      renderFilePreview();
+      uploadData=null;
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+      return;
+    } catch (err) {
+      removeTyping();
+      chats[currentChatIdx].history.push({role:"ai",text:"[File upload failed] "+(err.message||'no net')});
+      document.getElementById("chatFile").value="";
+      uploadedFiles = [];
+      renderFilePreview();
+      uploadData=null;
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+      return;
+    }
+  }
+
+  // ----------- 3. TEXT/COMMAND CHAT LOGIC -----------
   chats[currentChatIdx].history.push({role:"user",text:msgText});
   if (chats[currentChatIdx].history.length === 1) {
     chats[currentChatIdx].name = msgText.slice(0, 25) + "..."; renderChatSelector();
@@ -932,7 +928,7 @@ if (uploadedFiles && uploadedFiles.length) {
       try { data = await res.json(); } catch(_) { data = {}; }
       removeTyping();
       if(data.image_b64){
-        showAIImagePreview(data.image_b64, "(Your image—download or close)");
+        showAIImagePreview("data:image/png;base64,"+data.image_b64, "(Your image—download or close)");
         chats[currentChatIdx].history.push({
           role: "ai",
           text: "✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)"
@@ -966,9 +962,8 @@ if (uploadedFiles && uploadedFiles.length) {
     saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
   }
 };
-</script>
-<script>
-  // Find nodes
+
+// Find nodes
 const aiPrevBox = document.getElementById('ai-image-preview');
 const aiPrevClose = document.getElementById('ai-image-close');
 const aiPrevDLBtn = document.getElementById('ai-image-dl');
@@ -990,10 +985,12 @@ aiPrevDLBtn.onclick = ()=>{
     document.body.removeChild(a);
   }
 };
-
-function showAIImagePreview(b64,caption=""){
-  aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${b64}" alt="AI gen" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">`
-    +(caption?' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">'+caption+'</div>':"");
+      
+/* ---------- IMAGE PREVIEW, works for both blob and base64 ---------- */
+function showAIImagePreview(srcUrlOrBase64, caption="") {
+  let src = srcUrlOrBase64.startsWith("data:") || srcUrlOrBase64.startsWith("blob:") ? srcUrlOrBase64 : "data:image/png;base64,"+srcUrlOrBase64;
+  aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI gen" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">`
+    + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">'+caption+'</div>' : "");
   aiPrevBox.style.display = "block";
 }
 </script>
