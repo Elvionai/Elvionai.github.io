@@ -240,7 +240,7 @@
     <!-- CHAT INPUT -->
     <form class="chat-input-row" id="chatForm" autocomplete="off">
       <label for="chatFile" title="Attach file"><i class="fa-solid fa-paperclip"></i></label>
-      <input type="file" id="chatFile" accept="*">
+      <input type="file" id="chatFile" accept="application/pdf,image/*" multiple>
       <textarea id="chatInput" placeholder="Type here… (Shift+Enter = new line)"></textarea>
       <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
       <button type="button" id="voiceInputBtn" title="Record voice"><i class="fa-solid fa-microphone"></i></button>
@@ -672,6 +672,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* ------ Files Array ------*/
+let uploadedFiles = []; // Array for PDFs and images
+
+document.getElementById("chatFile").onchange = function() {
+  const files = Array.from(this.files);
+  uploadedFiles = files;
+  renderFilePreview();
+};
+
+function renderFilePreview() {
+  const fp = document.getElementById("filePreview");
+  if (!uploadedFiles.length) {
+    fp.style.display = "none";
+    fp.innerHTML = "";
+    return;
+  }
+  fp.style.display = "block";
+  fp.innerHTML = uploadedFiles.map((file, idx) => {
+    let icon = file.type.startsWith('image/') ? '🖼️' : (file.type === 'application/pdf' ? '📄' : '📁');
+    return `<div style="display:flex;align-items:center;gap:10px;border-radius:7px;margin-bottom:2px;">
+      <span style="font-size:1.25em;">${icon}</span>
+      <span style="color:#aee;font-size:.99em;">${file.name}</span>
+      <button type="button" onclick="removeSelectedFile(${idx})"
+        style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>
+    </div>`;
+  }).join("");
+}
+
+window.removeSelectedFile = function(idx) {
+  uploadedFiles.splice(idx, 1);
+  renderFilePreview();
+  if (!uploadedFiles.length) document.getElementById("chatFile").value = "";
+};
+
 /* ---------- Chat Submit ---------- */
 document.getElementById("chatForm").onsubmit = async function(e){
   e.preventDefault();
@@ -687,44 +721,89 @@ document.getElementById("chatForm").onsubmit = async function(e){
   if (!msgText && !file) return;
   chatInput.value = ""; autoResizeTextarea();
 
-  // ----------- FILE UPLOAD LOGIC -----------
-  if (file) {
-    showTypingAtNext();
-    try {
-      if (file.type === "application/pdf") {
-        // PDF: Use Gemini Document Understanding API
-        let fd = new FormData();
-        fd.append("prompt", msgText ? msgText : "Summarize this document.");
-        fd.append("file", file);
-        const res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
-        let txt = await res.text();
-        let data;
-        try { data = JSON.parse(txt); }
-        catch (err) {
-          removeTyping();
-          chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${file.name}${msgText ? ": "+msgText : ""}`});
-          chats[currentChatIdx].history.push({
-            role:"ai", 
-            text:`❌ API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
-          });
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          return;
-        }
+      // ----------- FILE UPLOAD LOGIC: Multiple or Single -----------
+if (uploadedFiles && uploadedFiles.length) {
+  showTypingAtNext();
+  try {
+    // Separate PDF/image
+    const pdfs = uploadedFiles.filter(f => f.type === "application/pdf");
+    const images = uploadedFiles.filter(f => /^image\//.test(f.type));
+    let summaries = [];
+
+    // ---- PDF(s): summarize as a set ----
+    if (pdfs.length) {
+      let fd = new FormData();
+      fd.append("prompt", msgText ? msgText : pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document.");
+      pdfs.forEach(f => fd.append("files", f)); // Note: "files", not "file" for multi!
+      let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
+      let txt = await res.text();
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (err) {
         removeTyping();
-        chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${file.name}${msgText ? ": "+msgText : ""}`});
-        if (data && data.response) {
-          await typeBotMessage(data.response);
-          chats[currentChatIdx].history.push({role:"ai", text: data.response});
-        } else {
-          await typeBotMessage("❌ Could not process the PDF.");
-          chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF."});
-        }
-        // Reset inputs and state
-        document.getElementById("chatFile").value="";
-        fp.style.display="none"; fp.innerHTML="";
-        uploadData=null;
+        chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
+        chats[currentChatIdx].history.push({
+          role:"ai",
+          text:`❌ PDF API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+        });
         saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
         return;
+      }
+      removeTyping();
+      chats[currentChatIdx].history.push({role:"user", text: `[PDF] ${pdfs.map(f=>f.name).join(", ")}${msgText ? ": "+msgText : ""}`});
+      if (data && data.response) {
+        await typeBotMessage(data.response);
+        chats[currentChatIdx].history.push({role:"ai", text: data.response});
+      } else {
+        await typeBotMessage("❌ Could not process the PDF(s).");
+        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF(s)."});
+      }
+    }
+
+    // ---- Image(s): one at a time ----
+    for (const img of images) {
+      let fd = new FormData();
+      fd.append("prompt", msgText ? msgText : "Describe this image in detail.");
+      fd.append("file", img);
+      let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd });
+      let txt = await res.text();
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (err) {
+        chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
+        chats[currentChatIdx].history.push({
+          role:"ai",
+          text:`❌ Image API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+        });
+        continue;
+      }
+      chats[currentChatIdx].history.push({role:"user", text: `[Image] ${img.name}${msgText ? ": "+msgText : ""}`});
+      if (data && data.response) {
+        await typeBotMessage(data.response);
+        chats[currentChatIdx].history.push({role:"ai", text: data.response});
+      } else {
+        await typeBotMessage("❌ Could not process the image.");
+        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the image."});
+      }
+    }
+
+    // Reset files and preview
+    document.getElementById("chatFile").value="";
+    uploadedFiles = [];
+    renderFilePreview();
+    uploadData=null;
+    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+    return;
+  } catch (err) {
+    removeTyping();
+    chats[currentChatIdx].history.push({role:"ai",text:"[File upload failed] "+(err.message||'no net')});
+    document.getElementById("chatFile").value="";
+    uploadedFiles = [];
+    renderFilePreview();
+    uploadData=null;
+    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+    return;
+  }
       } else {
         // Other files (images/videos/documents)
         const formData = new FormData();
