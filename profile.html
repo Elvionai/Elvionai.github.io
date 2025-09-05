@@ -645,7 +645,7 @@ chatInput.addEventListener('keydown', (e)=>{
 });
 
 /* ---------- IMAGE BUTTON (model cycling, no save) ---------- */
-const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
+const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore", "gemini6"];
 let currentModelIdx = 0;
 let imageBtn = document.createElement("button");
 imageBtn.type = "button";
@@ -656,8 +656,14 @@ document.getElementById("chatForm").insertBefore(imageBtn, document.getElementBy
 imageBtn.onclick = function () {
   currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
   let model = thenaModels[currentModelIdx];
-  let prevInput = chatInput.value.replace(/^\/image\s+\w+\s*/i, "");
-  chatInput.value = `/image ${model} ${prevInput}`.trim();
+  let prevInput = chatInput.value.replace(/^\/image\s+\w+\s*/i, "").replace(/^\/imagine\s*/i, "");
+  if (model === "gemini6") {
+    chatInput.value = `/imagine ${prevInput}`.trim();
+    imageBtn.innerHTML = '<i class="fa-brands fa-google"></i>'; // Gemini icon (or any icon you like)
+  } else {
+    chatInput.value = `/image ${model} ${prevInput}`.trim();
+    imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
+  }
   chatInput.focus();
   setTimeout(() => {
     chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
@@ -705,6 +711,53 @@ window.removeSelectedFile = function(idx) {
   renderFilePreview();
   if (!uploadedFiles.length) document.getElementById("chatFile").value = "";
 };
+
+/* Generate image, Philadelphia */
+if (/^\/imagine\s+/i.test(msgText)) {
+  let imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
+  let fd = new FormData();
+  fd.append("prompt", imaginePrompt);
+
+  // Support prompt + initial image remix (optional)
+  if (uploadedFiles && uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) {
+    fd.append('file', uploadedFiles[0]);
+  }
+
+  showTypingAtNext();
+  try {
+    let res = await fetch("https://web-production-9a18.up.railway.app/imagine", { method: "POST", body: fd });
+    // if Gemini server returns image as blob
+    if (!res.ok) {
+      let err = {};
+      try { err = await res.json(); } catch {}
+      removeTyping();
+      await typeBotMessage("❌ Image generation failed: " + (err.error || res.statusText));
+      chats[currentChatIdx].history.push({role:"ai", text: "❌ Image generation failed."});
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+    } else {
+      let blob = await res.blob();
+      let url = URL.createObjectURL(blob);
+      showAIImagePreview(url, "Your new Philadelphia AI image! (click Download if you like it)");
+      removeTyping();
+      chats[currentChatIdx].history.push({
+        role: "ai",
+        text: "✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)"
+      });
+      saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+    }
+  } catch (err) {
+    removeTyping();
+    await typeBotMessage("❌ Philadelphia image API/network error");
+    chats[currentChatIdx].history.push({role:"ai", text: "❌ Vision 6 image API/network error"});
+    saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
+  }
+  // Reset file preview/resources
+  document.getElementById("chatFile").value="";
+  uploadedFiles = [];
+  renderFilePreview();
+  uploadData=null;
+  return;
+}
 
 /* ---------- Chat Submit ---------- */
 document.getElementById("chatForm").onsubmit = async function(e){
