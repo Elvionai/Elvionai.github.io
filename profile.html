@@ -721,21 +721,19 @@ document.getElementById("chatForm").onsubmit = async function(e){
   if (!msgText && !file) return;
   chatInput.value = ""; autoResizeTextarea();
 
-      // ----------- FILE UPLOAD LOGIC: Multiple or Single -----------
+// ----------- FILE UPLOAD LOGIC: Multiple or Single -----------
 if (uploadedFiles && uploadedFiles.length) {
   showTypingAtNext();
   try {
     // Separate PDF/image
     const pdfs = uploadedFiles.filter(f => f.type === "application/pdf");
     const images = uploadedFiles.filter(f => /^image\//.test(f.type));
-    let summaries = [];
-
     // ---- PDF(s): summarize as a set ----
     if (pdfs.length) {
       let fd = new FormData();
-      fd.append("prompt", msgText ? msgText : pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document.");
-      pdfs.forEach(f => fd.append("files", f)); // Note: "files", not "file" for multi!
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
+      fd.append("prompt", msgText ? msgText : (pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document."));
+      pdfs.forEach(f => fd.append("files", f));
+      let res = await fetch("/understand-pdf", { method: "POST", body: fd }); // replace URL with yours if needed
       let txt = await res.text();
       let data;
       try { data = JSON.parse(txt); }
@@ -759,13 +757,12 @@ if (uploadedFiles && uploadedFiles.length) {
         chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF(s)."});
       }
     }
-
     // ---- Image(s): one at a time ----
     for (const img of images) {
       let fd = new FormData();
       fd.append("prompt", msgText ? msgText : "Describe this image in detail.");
       fd.append("file", img);
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd });
+      let res = await fetch("/understand-image", { method: "POST", body: fd }); // replace URL with yours if needed
       let txt = await res.text();
       let data;
       try { data = JSON.parse(txt); }
@@ -786,7 +783,6 @@ if (uploadedFiles && uploadedFiles.length) {
         chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the image."});
       }
     }
-
     // Reset files and preview
     document.getElementById("chatFile").value="";
     uploadedFiles = [];
@@ -804,32 +800,8 @@ if (uploadedFiles && uploadedFiles.length) {
     saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     return;
   }
-      } else {
-        // Other files (images/videos/documents)
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("message", msgText);
-        formData.append("user_id", "user");
-        const res = await fetch("https://web-production-9a18.up.railway.app/upload-file",{method:"POST",body:formData});
-        let data;
-        try{ data = await res.json(); }catch(_){ data = {response:"🤖 File received."}; }
-        let isImg = /^image\//.test(file.type);
-        let isVid = /^video\//.test(file.type);
-        let bubble = isImg ? `<img src='${URL.createObjectURL(file)}' alt="Uploaded image">`
-          : isVid ? `<video src='${URL.createObjectURL(file)}' controls></video>`
-          : `<div class="msg">[File] ${escapeHTML(msgText||file.name)}</div>`;
-        chats[currentChatIdx].history.push({role:"user",text:"image:"+bubble});
-        removeTyping();
-        chats[currentChatIdx].history.push({role:"ai",text:data.response||"🤖 Bot file reply."});
-        // Reset inputs and state
-        document.getElementById("chatFile").value="";
-        fp.style.display="none"; fp.innerHTML="";
-        uploadData=null;
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-        return;
-      }
-    } 
-
+}
+  
   // ----------- TEXT/COMMAND CHAT LOGIC -----------
   // Save user input to chat
   chats[currentChatIdx].history.push({role:"user",text:msgText});
