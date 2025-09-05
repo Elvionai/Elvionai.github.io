@@ -240,7 +240,7 @@
     <!-- CHAT INPUT -->
     <form class="chat-input-row" id="chatForm" autocomplete="off">
       <label for="chatFile" title="Attach file"><i class="fa-solid fa-paperclip"></i></label>
-      <input type="file" id="chatFile" accept="application/pdf,image/*" multiple>
+      <input type="file" id="chatFile" accept="application/pdf,image/*,audio/*,video/*" multiple>
       <textarea id="chatInput" placeholder="Type here… (Shift+Enter = new line)"></textarea>
       <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
       <button type="button" id="voiceInputBtn" title="Record voice"><i class="fa-solid fa-microphone"></i></button>
@@ -725,15 +725,17 @@ document.getElementById("chatForm").onsubmit = async function(e){
 if (uploadedFiles && uploadedFiles.length) {
   showTypingAtNext();
   try {
-    // Separate PDF/image
     const pdfs = uploadedFiles.filter(f => f.type === "application/pdf");
     const images = uploadedFiles.filter(f => /^image\//.test(f.type));
+    const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
+    const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
+
     // ---- PDF(s): summarize as a set ----
     if (pdfs.length) {
       let fd = new FormData();
       fd.append("prompt", msgText ? msgText : (pdfs.length > 1 ? "Please summarize and compare these documents:" : "Summarize this document."));
       pdfs.forEach(f => fd.append("files", f));
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd }); // replace URL with yours if needed
+      let res = await fetch("https://web-production-9a18.up.railway.app/understand-pdf", { method: "POST", body: fd });
       let txt = await res.text();
       let data;
       try { data = JSON.parse(txt); }
@@ -757,12 +759,13 @@ if (uploadedFiles && uploadedFiles.length) {
         chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the PDF(s)."});
       }
     }
+
     // ---- Image(s): one at a time ----
     for (const img of images) {
       let fd = new FormData();
       fd.append("prompt", msgText ? msgText : "Describe this image in detail.");
       fd.append("file", img);
-      let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd }); // replace URL with yours if needed
+      let res = await fetch("https://web-production-9a18.up.railway.app/understand-image", { method: "POST", body: fd });
       let txt = await res.text();
       let data;
       try { data = JSON.parse(txt); }
@@ -783,7 +786,61 @@ if (uploadedFiles && uploadedFiles.length) {
         chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the image."});
       }
     }
-    // Reset files and preview
+
+    // ---- Audio(s): one at a time ----
+    for (const audio of audios) {
+      let fd = new FormData();
+      fd.append("prompt", msgText ? msgText : "Transcribe and summarize this audio file in simple English.");
+      fd.append("file", audio);
+      let res = await fetch("https://web-production-9a18.up.railway.app/understand-audio", { method: "POST", body: fd });
+      let txt = await res.text();
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (err) {
+        chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
+        chats[currentChatIdx].history.push({
+          role:"ai",
+          text:`❌ Audio API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+        });
+        continue;
+      }
+      chats[currentChatIdx].history.push({role:"user", text: `[Audio] ${audio.name}${msgText ? ": "+msgText : ""}`});
+      if (data && data.response) {
+        await typeBotMessage(data.response);
+        chats[currentChatIdx].history.push({role:"ai", text: data.response});
+      } else {
+        await typeBotMessage("❌ Could not process the audio.");
+        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the audio."});
+      }
+    }
+
+    // ---- Video(s): one at a time ----
+    for (const vid of videos) {
+      let fd = new FormData();
+      fd.append("prompt", msgText ? msgText : "Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.");
+      fd.append("file", vid);
+      let res = await fetch("https://web-production-9a18.up.railway.app/understand-video", { method: "POST", body: fd });
+      let txt = await res.text();
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (err) {
+        chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
+        chats[currentChatIdx].history.push({
+          role:"ai",
+          text:`❌ Video API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\``
+        });
+        continue;
+      }
+      chats[currentChatIdx].history.push({role:"user", text: `[Video] ${vid.name}${msgText ? ": "+msgText : ""}`});
+      if (data && data.response) {
+        await typeBotMessage(data.response);
+        chats[currentChatIdx].history.push({role:"ai", text: data.response});
+      } else {
+        await typeBotMessage("❌ Could not process the video.");
+        chats[currentChatIdx].history.push({role:"ai", text: "❌ Could not process the video."});
+      }
+    }
+    // Reset all file state and preview
     document.getElementById("chatFile").value="";
     uploadedFiles = [];
     renderFilePreview();
@@ -801,7 +858,7 @@ if (uploadedFiles && uploadedFiles.length) {
     return;
   }
 }
-  
+
   // ----------- TEXT/COMMAND CHAT LOGIC -----------
   // Save user input to chat
   chats[currentChatIdx].history.push({role:"user",text:msgText});
