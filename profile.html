@@ -856,5 +856,174 @@ window.addEventListener('DOMContentLoaded', () => {
 
 /* ---------- End of fixed script ---------- */
 </script>
+<script>
+  // ---- In your main <script type="module"> block (inside DOMContentLoaded) ----
+
+// 1. Add Call Button Icon to Chat Form
+const callBtn = document.createElement("button");
+callBtn.type = "button";
+callBtn.id = "callBtn";
+callBtn.title = "AI Call";
+callBtn.innerHTML = '<i class="fa-solid fa-phone-volume"></i>';
+chatForm.insertBefore(callBtn, sendBtn);
+
+// 2. Dynamically add the modal to the end of <body>
+const aiCallModal = document.createElement("div");
+aiCallModal.id = "ai-call-modal";
+aiCallModal.style = `
+  display:none; position:fixed; z-index:2500; inset:0; background:rgba(20,20,40,0.96);
+  justify-content:center; align-items:center; flex-direction:column;
+  transition:opacity 0.2s;
+`;
+
+aiCallModal.innerHTML = `
+  <div style="max-width:420px;width:96vw;min-height:320px;padding:18px 14px;background:#181e2e;border-radius:21px;box-shadow:0 2px 24px #00ffff55;display:flex;flex-direction:column;align-items:center;position:relative;">
+    <button id="call-end-btn" style="position:absolute;top:12px;right:10px;background:transparent;border:none;color:#ff3131;font-size:2em;cursor:pointer;">&times;</button>
+    <div id="call-wave" style="margin:30px 0 14px 0;">
+      <canvas id="callWaveform" width="240" height="44" style="display:block"></canvas>
+    </div>
+    <div style="color:#aee;font-size:1.16em;">AI Conversation</div>
+    <div id="call-transcript" style="width:96%;max-width:360px;min-height:74px;margin:2px auto 0;background:#20253b;border-radius:10px;padding:10px 10px 6px 10px;font-size:1em;color:#eee;line-height:1.38;overflow:auto;max-height:120px;"></div>
+    <div id="call-controls" style="margin-top:28px;width:90%;display:flex;justify-content:center;gap:33px;">
+      <button id="call-mic-btn" title="Hold to speak" style="background:#00ffff;border:none;border-radius:800px;color:#191a26;width:62px;height:62px;font-size:2.3em;box-shadow:0 3px 24px #00fff233;outline:none;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-microphone"></i></button>
+    </div>
+    <div id="call-statusmsg" style="color:#77f;font-size:1em;margin:13px auto 3px auto;min-height:26px;"></div>
+  </div>
+`;
+document.body.appendChild(aiCallModal);
+
+// 3. Utility: Animate waveform (simulated)
+function animateWaveform(ctx, speaking=true) {
+  // Simple sine/fade while speaking, flat when silent
+  let t = 0; let anim;
+  function draw() {
+    ctx.clearRect(0,0,240,44);
+    ctx.lineWidth = 4; ctx.strokeStyle = speaking ? "#00ffff" : "#444";
+    ctx.beginPath();
+    for(let x=0;x<=240;x+=6){
+      const y = 22 + (speaking? Math.sin((x/32)+t)*17*Math.cos((t*0.7)+(x/55)) : 0);
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    if (speaking) t += 0.12;
+    anim = requestAnimationFrame(draw);
+  }
+  draw();
+  return ()=>cancelAnimationFrame(anim);
+}
+
+// 4. Voice Call State & Logic
+let callActive = false, stopWaveAnim = null, callTranscript=[], callListening = false;
+const callWaveCanvas = aiCallModal.querySelector("#callWaveform");
+const callTranscriptEl = aiCallModal.querySelector("#call-transcript");
+const callMicBtn = aiCallModal.querySelector("#call-mic-btn");
+const callStatusMsg = aiCallModal.querySelector("#call-statusmsg");
+const callEndBtn = aiCallModal.querySelector("#call-end-btn");
+const callCtx = callWaveCanvas.getContext("2d");
+
+// Speech recognition for user side (Web Speech API)
+let recognition = null;
+
+// 5. Open Call Modal and start conversation
+callBtn.onclick = async function() {
+  if(callActive) return;
+  callActive = true;
+  aiCallModal.style.display="flex";
+  callTranscript = [];
+  callTranscriptEl.innerHTML = "";
+  callStatusMsg.textContent = "Connecting...";
+  stopWaveAnim = animateWaveform(callCtx, false);
+  // Start by AI greeting
+  setTimeout(()=>doBotReply("Hello! You are now speaking to Philadelphia AI. You can talk to me by holding the microphone button below."), 700);
+}
+
+// 6. Close/end call logic
+callEndBtn.onclick = () => {
+  callActive = false;
+  aiCallModal.style.display="none";
+  stopWaveAnim && stopWaveAnim();
+  callTranscript = [];
+  callListening = false;
+  if(recognition) recognition.stop();
+};
+
+function appendTranscript(role, text, voice=false) {
+  callTranscript.push({role, text});
+  let html = callTranscript.map(msg=> msg.role==="bot"
+      ? `<div style="margin-bottom:7px;color:#0ef;text-align:left;"><b>AI:</b> ${escapeHTML(msg.text)}</div>`
+      : `<div style="margin-bottom:7px;color:#fff;text-align:right;"><b>You:</b> ${escapeHTML(msg.text)}</div>`).join("");
+  callTranscriptEl.innerHTML = html;
+}
+
+function escapeHTML(s) {
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+async function doBotReply(replyText) {
+  appendTranscript("bot", replyText);
+  callStatusMsg.textContent = "AI is speaking...";
+  stopWaveAnim && stopWaveAnim();
+  stopWaveAnim = animateWaveform(callCtx, true);
+
+  // TTS: generate voice
+  let fd = new FormData();
+  fd.append("text", replyText);
+  fd.append("style", "podcast");
+  let res = await fetch("https://web-production-9a18.up.railway.app/voicegen", { method: "POST", body: fd });
+  if(res.ok){
+    let blob = await res.blob();
+    let url = URL.createObjectURL(blob);
+    let audio = new Audio(url);
+    await new Promise(resolve=>{
+      audio.onended = resolve; audio.play();
+    });
+  }
+  stopWaveAnim && stopWaveAnim();
+  stopWaveAnim = animateWaveform(callCtx, false);
+  callStatusMsg.textContent = "Hold mic and speak your reply";
+  callListening = true;
+}
+
+// 7. User speaks, bot listens and replies
+callMicBtn.onmousedown = callMicBtn.ontouchstart = function(e){
+  if(!callActive||callListening===false) return;
+  callListening = false;
+  callStatusMsg.textContent = "Listening...";
+  stopWaveAnim && stopWaveAnim(); stopWaveAnim = animateWaveform(callCtx, false);
+  if('webkitSpeechRecognition' in window){
+    recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    recognition.onresult = function(ev){
+      let text = ev.results[0][0].transcript;
+      appendTranscript("user", text);
+      callStatusMsg.textContent = "AI is thinking...";
+      // Send user speech to Gemini
+      fetch("https://web-production-9a18.up.railway.app/chat", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, user_id: "user", history: callTranscript.map(m=>({role: m.role==="bot"?"assistant":"user", content: m.text})) })
+      })
+      .then(res=>res.json())
+      .then(data=>{
+        let reply = (data.response || "Sorry, I could not hear you.");
+        doBotReply(reply);
+      })
+      .catch(()=>{
+        doBotReply("Sorry, there was a problem processing your reply.");
+      });
+    };
+    recognition.onend = ()=>{ callStatusMsg.textContent = "Mic released. Thinking..."; };
+    recognition.onerror = ()=>{ callStatusMsg.textContent = "Speech recognition error."; };
+    recognition.start();
+  } else {
+    callStatusMsg.textContent = "Speech recognition not supported in your browser.";
+  }
+};
+callMicBtn.onmouseup = callMicBtn.ontouchend = function(){
+  recognition && recognition.stop && recognition.stop();
+};
+</script>
 </body>
 </html>
