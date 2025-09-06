@@ -857,8 +857,7 @@ window.addEventListener('DOMContentLoaded', () => {
 /* ---------- End of fixed script ---------- */
 </script>
 <script>
- // ==== AI CALL FEATURE ====
-// Add Call Button
+  // ==== AI CALL FEATURE ====
 const callBtn = document.createElement("button");
 callBtn.type = "button";
 callBtn.id = "callBtn";
@@ -866,63 +865,98 @@ callBtn.title = "AI Call";
 callBtn.innerHTML = '<i class="fa-solid fa-phone-volume"></i>';
 chatForm.insertBefore(callBtn, sendBtn);
 
-// Modal UI
 const aiCallModal = document.createElement("div");
 aiCallModal.id = "ai-call-modal";
 aiCallModal.style = `
   display:none;position:fixed;inset:0;z-index:3000;
-  background:rgba(0,0,0,0.9);justify-content:center;align-items:center;
+  background:rgba(0,0,0,0.92);justify-content:center;align-items:center;
+  font-family:system-ui,sans-serif;
 `;
 aiCallModal.innerHTML = `
-  <div style="width:96%;max-width:460px;background:#111c33;border-radius:20px;
-              padding:20px;box-shadow:0 0 30px #00ffff44;display:flex;
-              flex-direction:column;align-items:center;position:relative;">
+  <div style="width:96%;max-width:480px;background:#0b162b;border-radius:22px;
+              padding:22px;box-shadow:0 0 35px #00ffff55;
+              display:flex;flex-direction:column;align-items:center;position:relative;">
+    <!-- Header -->
     <button id="callEnd" style="position:absolute;top:10px;right:12px;
-              border:none;background:none;font-size:2em;color:#ff4444;cursor:pointer">&times;</button>
-    <div style="margin:10px 0 20px 0;">
-      <div style="width:120px;height:120px;border-radius:50%;
+              border:none;background:none;font-size:2em;color:#ff4444;
+              cursor:pointer;transition:0.3s;">&times;</button>
+    <div id="callTimer" style="position:absolute;top:14px;left:16px;color:#0ff;font-size:0.9em;">00:00</div>
+
+    <!-- Avatar -->
+    <div style="margin:14px 0 22px 0;position:relative;">
+      <div id="aiAvatar" style="width:130px;height:130px;border-radius:50%;
                   background:#222 url('https://i.postimg.cc/5yZ6THqK/IMG-20250824-133336-309.jpg') center/cover no-repeat;
-                  box-shadow:0 0 20px #00ffff66;animation:pulse 2s infinite;"></div>
+                  box-shadow:0 0 25px #00ffff88;animation:pulse 2s infinite;"></div>
     </div>
-    <div style="display:flex;gap:16px;width:100%;justify-content:center;">
-      <canvas id="userWave" width="180" height="80" style="background:#222;border-radius:8px;"></canvas>
-      <canvas id="aiWave" width="180" height="80" style="background:#222;border-radius:8px;"></canvas>
+
+    <!-- Waveforms -->
+    <div style="display:flex;gap:18px;width:100%;justify-content:center;">
+      <canvas id="userWave" width="190" height="90" style="background:#111;border-radius:10px;box-shadow:inset 0 0 10px #00ffff44;"></canvas>
+      <canvas id="aiWave" width="190" height="90" style="background:#111;border-radius:10px;box-shadow:inset 0 0 10px #ff00ff44;"></canvas>
     </div>
-    <div id="callTranscript" style="margin:20px 0;width:100%;max-height:150px;overflow-y:auto;
-                background:#1b2338;padding:10px;border-radius:10px;color:#eee;font-size:0.95em;"></div>
-    <button id="callMicBtn" style="margin-top:14px;width:70px;height:70px;border-radius:50%;
-                border:none;background:#00ffff;color:#111;font-size:1.6em;
-                box-shadow:0 0 20px #00ffff66;cursor:pointer;"><i class="fa-solid fa-microphone"></i></button>
-    <div id="callStatus" style="margin-top:10px;color:#7af;font-size:0.9em;"></div>
+
+    <!-- Transcript -->
+    <div id="callTranscript" style="margin:20px 0;width:100%;max-height:160px;overflow-y:auto;
+                background:#101a33;padding:12px;border-radius:12px;
+                color:#e5f6ff;font-size:0.95em;line-height:1.4;"></div>
+
+    <!-- Controls -->
+    <div style="display:flex;gap:14px;margin-top:10px;">
+      <button id="muteBtn" style="width:44px;height:44px;border-radius:50%;border:none;
+              background:#222;color:#0ff;font-size:1.2em;cursor:pointer;">🔇</button>
+      <button id="saveBtn" style="width:44px;height:44px;border-radius:50%;border:none;
+              background:#222;color:#ff0;font-size:1.2em;cursor:pointer;">💾</button>
+    </div>
+
+    <!-- Status -->
+    <div id="callStatus" style="margin-top:12px;color:#0ff;font-size:0.95em;"></div>
   </div>
   <style>
     @keyframes pulse {
       0% { box-shadow:0 0 0px #00ffff44; }
-      50% { box-shadow:0 0 30px #00ffffaa; }
+      50% { box-shadow:0 0 35px #00ffffaa; }
       100% { box-shadow:0 0 0px #00ffff44; }
     }
+    #callEnd:hover { transform:scale(1.2); color:#ff2222; }
   </style>
 `;
 document.body.appendChild(aiCallModal);
 
 // === State
 let callActive=false, recognition=null, mediaStream, analyser, dataArray;
-let audioCtx, aiAnimating=false;
+let audioCtx, aiAnimating=false, muted=false, callStartTime, timerInterval, ringtone;
 const userCtx = aiCallModal.querySelector("#userWave").getContext("2d");
 const aiCtx   = aiCallModal.querySelector("#aiWave").getContext("2d");
 const transcriptEl=aiCallModal.querySelector("#callTranscript");
 const callStatus=aiCallModal.querySelector("#callStatus");
+const timerEl=aiCallModal.querySelector("#callTimer");
+const aiAvatar=aiCallModal.querySelector("#aiAvatar");
 
 // === Utils
 function appendTranscript(role,text){
   const div=document.createElement("div");
-  div.style.marginBottom="6px";
+  div.style.marginBottom="8px";
   div.innerHTML = role==="ai"
     ? `<b style="color:#0ff">AI:</b> ${text}`
     : `<b style="color:#fff">You:</b> ${text}`;
   transcriptEl.appendChild(div);
   transcriptEl.scrollTop=transcriptEl.scrollHeight;
 }
+function formatTime(sec){
+  const m=Math.floor(sec/60).toString().padStart(2,"0");
+  const s=(sec%60).toString().padStart(2,"0");
+  return `${m}:${s}`;
+}
+
+// === Timer
+function startTimer(){
+  callStartTime=Date.now();
+  timerInterval=setInterval(()=>{
+    const elapsed=Math.floor((Date.now()-callStartTime)/1000);
+    timerEl.textContent=formatTime(elapsed);
+  },1000);
+}
+function stopTimer(){clearInterval(timerInterval);timerEl.textContent="00:00";}
 
 // === Waveforms
 function drawUserWave(){
@@ -944,17 +978,17 @@ function drawAIWave(){
   const c=aiCtx.canvas;
   aiCtx.clearRect(0,0,c.width,c.height);
   if(!aiAnimating) return;
-  aiCtx.lineWidth=2;aiCtx.strokeStyle="#8e44ad";
+  aiCtx.lineWidth=2;aiCtx.strokeStyle="#ff00ff";
   aiCtx.beginPath();const slice=c.width/64;let x=0;
   for(let i=0;i<64;i++){
-    const y=(Math.sin(i/3+Date.now()/180)+1)*c.height/2*0.7;
+    const y=(Math.sin(i/3+Date.now()/160)+1)*c.height/2*0.75;
     i===0?aiCtx.moveTo(x,y):aiCtx.lineTo(x,y);x+=slice;
   }
   aiCtx.stroke();
   requestAnimationFrame(drawAIWave);
 }
-function startAIWave(){aiAnimating=true;drawAIWave();}
-function stopAIWave(){aiAnimating=false;}
+function startAIWave(){aiAnimating=true;aiAvatar.style.animation="pulse 1s infinite";drawAIWave();}
+function stopAIWave(){aiAnimating=false;aiAvatar.style.animation="pulse 2s infinite";}
 
 // === Mic & STT
 async function startMic(){
@@ -966,7 +1000,32 @@ async function startMic(){
   dataArray=new Uint8Array(analyser.fftSize);
   drawUserWave();
 }
-function startRecognition(){
+
+function speakAI(text){
+  appendTranscript("ai", text);
+  callStatus.textContent="Speaking...";
+  startAIWave();
+
+  return fetch("https://web-production-9a18.up.railway.app/voicegen",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({text,voice:"podcast"})
+  })
+  .then(r=>r.blob())
+  .then(blob=>{
+    return new Promise(resolve=>{
+      const audio=new Audio(URL.createObjectURL(blob));
+      audio.onended=()=>{
+        stopAIWave();
+        callStatus.textContent=muted?"Muted":"Listening...";
+        resolve();
+      };
+      audio.play();
+    });
+  });
+}
+
+function startRecognitionLoop(){
+  if(!callActive||muted) return;
   recognition=new(window.SpeechRecognition||window.webkitSpeechRecognition)();
   recognition.lang="en-US";recognition.interimResults=false;
   recognition.onstart=()=>callStatus.textContent="Listening...";
@@ -974,34 +1033,62 @@ function startRecognition(){
     const userText=e.results[0][0].transcript;
     appendTranscript("user",userText);
     callStatus.textContent="Thinking...";
-    const res=await fetch("https://web-production-9a18.up.railway.app/chat",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({message:userText})});
-    const data=await res.json();const reply=data.reply||"Sorry, I didn’t catch that.";
-    appendTranscript("ai",reply);callStatus.textContent="Speaking...";
-    startAIWave();
-    const vres=await fetch("https://web-production-9a18.up.railway.app/voicegen",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({text:reply,voice:"podcast"})});
-    const blob=await vres.blob();const audio=new Audio(URL.createObjectURL(blob));
-    audio.onended=()=>{stopAIWave();callStatus.textContent="Tap mic to speak";};
-    audio.play();
+
+    const res=await fetch("https://web-production-9a18.up.railway.app/chat",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:userText})
+    });
+    const data=await res.json();
+    const reply=data.reply||"Sorry, I didn’t catch that.";
+
+    await speakAI(reply);
+
+    if(callActive) startRecognitionLoop();
   };
-  recognition.onend=()=>{callStatus.textContent="Tap mic to speak";};
+  recognition.onerror=()=>{ if(callActive) startRecognitionLoop(); };
+  recognition.onend=()=>{ if(callActive) startRecognitionLoop(); };
   recognition.start();
 }
 
 // === Events
 callBtn.onclick=()=>{if(callActive)return;callActive=true;
-  aiCallModal.style.display="flex";transcriptEl.innerHTML="";callStatus.textContent="Connecting...";
-  startMic().then(()=>{appendTranscript("ai","Hi babe! You’re now connected with me, Philadelphia AI.");
-    callStatus.textContent="Tap mic to speak";});
+  aiCallModal.style.display="flex";transcriptEl.innerHTML="";
+  callStatus.textContent="Ringing…";
+
+  // ringtone loop
+  ringtone=new Audio("https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg");
+  ringtone.loop=true;ringtone.play();
+
+  setTimeout(()=>{
+    if(!callActive) return;
+    ringtone.pause();
+    startTimer();
+    startMic().then(()=>{
+      speakAI("Hi love! You’re now connected with me, Philadelphia AI.")
+        .then(()=>{ if(callActive) startRecognitionLoop(); });
+    });
+  },2500); // simulate AI "answering"
 };
+
 aiCallModal.querySelector("#callEnd").onclick=()=>{
   callActive=false;aiCallModal.style.display="none";stopAIWave();
+  stopTimer();if(ringtone){ringtone.pause();}
   if(mediaStream)mediaStream.getTracks().forEach(t=>t.stop());
   if(recognition)recognition.stop();
 };
-aiCallModal.querySelector("#callMicBtn").onclick=()=>{
-  if(!callActive)return;startRecognition();
+
+aiCallModal.querySelector("#muteBtn").onclick=()=>{
+  muted=!muted;
+  callStatus.textContent=muted?"Muted":"Listening...";
+};
+
+aiCallModal.querySelector("#saveBtn").onclick=()=>{
+  let text=Array.from(transcriptEl.children).map(d=>d.innerText).join("\n");
+  const blob=new Blob([text],{type:"text/plain"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="ai_call_transcript.txt";a.click();
+  URL.revokeObjectURL(url);
 };
 </script>
 </body>
