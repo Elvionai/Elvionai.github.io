@@ -857,9 +857,8 @@ window.addEventListener('DOMContentLoaded', () => {
 /* ---------- End of fixed script ---------- */
 </script>
 <script>
-  // ---- In your main <script type="module"> block (inside DOMContentLoaded) ----
-
-// 1. Add Call Button Icon to Chat Form
+ // ==== AI CALL FEATURE ====
+// Add Call Button
 const callBtn = document.createElement("button");
 callBtn.type = "button";
 callBtn.id = "callBtn";
@@ -867,162 +866,142 @@ callBtn.title = "AI Call";
 callBtn.innerHTML = '<i class="fa-solid fa-phone-volume"></i>';
 chatForm.insertBefore(callBtn, sendBtn);
 
-// 2. Dynamically add the modal to the end of <body>
+// Modal UI
 const aiCallModal = document.createElement("div");
 aiCallModal.id = "ai-call-modal";
 aiCallModal.style = `
-  display:none; position:fixed; z-index:2500; inset:0; background:rgba(20,20,40,0.96);
-  justify-content:center; align-items:center; flex-direction:column;
-  transition:opacity 0.2s;
+  display:none;position:fixed;inset:0;z-index:3000;
+  background:rgba(0,0,0,0.9);justify-content:center;align-items:center;
 `;
-
 aiCallModal.innerHTML = `
-  <div style="max-width:420px;width:96vw;min-height:320px;padding:18px 14px;background:#181e2e;border-radius:21px;box-shadow:0 2px 24px #00ffff55;display:flex;flex-direction:column;align-items:center;position:relative;">
-    <button id="call-end-btn" style="position:absolute;top:12px;right:10px;background:transparent;border:none;color:#ff3131;font-size:2em;cursor:pointer;">&times;</button>
-    <div id="call-wave" style="margin:30px 0 14px 0;">
-      <canvas id="callWaveform" width="240" height="44" style="display:block"></canvas>
+  <div style="width:96%;max-width:460px;background:#111c33;border-radius:20px;
+              padding:20px;box-shadow:0 0 30px #00ffff44;display:flex;
+              flex-direction:column;align-items:center;position:relative;">
+    <button id="callEnd" style="position:absolute;top:10px;right:12px;
+              border:none;background:none;font-size:2em;color:#ff4444;cursor:pointer">&times;</button>
+    <div style="margin:10px 0 20px 0;">
+      <div style="width:120px;height:120px;border-radius:50%;
+                  background:#222 url('https://i.ibb.co/7jpMpXf/ai-avatar.png') center/cover no-repeat;
+                  box-shadow:0 0 20px #00ffff66;animation:pulse 2s infinite;"></div>
     </div>
-    <div style="color:#aee;font-size:1.16em;">AI Conversation</div>
-    <div id="call-transcript" style="width:96%;max-width:360px;min-height:74px;margin:2px auto 0;background:#20253b;border-radius:10px;padding:10px 10px 6px 10px;font-size:1em;color:#eee;line-height:1.38;overflow:auto;max-height:120px;"></div>
-    <div id="call-controls" style="margin-top:28px;width:90%;display:flex;justify-content:center;gap:33px;">
-      <button id="call-mic-btn" title="Hold to speak" style="background:#00ffff;border:none;border-radius:800px;color:#191a26;width:62px;height:62px;font-size:2.3em;box-shadow:0 3px 24px #00fff233;outline:none;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-microphone"></i></button>
+    <div style="display:flex;gap:16px;width:100%;justify-content:center;">
+      <canvas id="userWave" width="180" height="80" style="background:#222;border-radius:8px;"></canvas>
+      <canvas id="aiWave" width="180" height="80" style="background:#222;border-radius:8px;"></canvas>
     </div>
-    <div id="call-statusmsg" style="color:#77f;font-size:1em;margin:13px auto 3px auto;min-height:26px;"></div>
+    <div id="callTranscript" style="margin:20px 0;width:100%;max-height:150px;overflow-y:auto;
+                background:#1b2338;padding:10px;border-radius:10px;color:#eee;font-size:0.95em;"></div>
+    <button id="callMicBtn" style="margin-top:14px;width:70px;height:70px;border-radius:50%;
+                border:none;background:#00ffff;color:#111;font-size:1.6em;
+                box-shadow:0 0 20px #00ffff66;cursor:pointer;"><i class="fa-solid fa-microphone"></i></button>
+    <div id="callStatus" style="margin-top:10px;color:#7af;font-size:0.9em;"></div>
   </div>
+  <style>
+    @keyframes pulse {
+      0% { box-shadow:0 0 0px #00ffff44; }
+      50% { box-shadow:0 0 30px #00ffffaa; }
+      100% { box-shadow:0 0 0px #00ffff44; }
+    }
+  </style>
 `;
 document.body.appendChild(aiCallModal);
 
-// 3. Utility: Animate waveform (simulated)
-function animateWaveform(ctx, speaking=true) {
-  // Simple sine/fade while speaking, flat when silent
-  let t = 0; let anim;
-  function draw() {
-    ctx.clearRect(0,0,240,44);
-    ctx.lineWidth = 4; ctx.strokeStyle = speaking ? "#00ffff" : "#444";
-    ctx.beginPath();
-    for(let x=0;x<=240;x+=6){
-      const y = 22 + (speaking? Math.sin((x/32)+t)*17*Math.cos((t*0.7)+(x/55)) : 0);
-      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-    if (speaking) t += 0.12;
-    anim = requestAnimationFrame(draw);
+// === State
+let callActive=false, recognition=null, mediaStream, analyser, dataArray;
+let audioCtx, aiAnimating=false;
+const userCtx = aiCallModal.querySelector("#userWave").getContext("2d");
+const aiCtx   = aiCallModal.querySelector("#aiWave").getContext("2d");
+const transcriptEl=aiCallModal.querySelector("#callTranscript");
+const callStatus=aiCallModal.querySelector("#callStatus");
+
+// === Utils
+function appendTranscript(role,text){
+  const div=document.createElement("div");
+  div.style.marginBottom="6px";
+  div.innerHTML = role==="ai"
+    ? `<b style="color:#0ff">AI:</b> ${text}`
+    : `<b style="color:#fff">You:</b> ${text}`;
+  transcriptEl.appendChild(div);
+  transcriptEl.scrollTop=transcriptEl.scrollHeight;
+}
+
+// === Waveforms
+function drawUserWave(){
+  requestAnimationFrame(drawUserWave);
+  if(!analyser) return;
+  analyser.getByteTimeDomainData(dataArray);
+  const c=userCtx.canvas;
+  userCtx.clearRect(0,0,c.width,c.height);
+  userCtx.lineWidth=2;userCtx.strokeStyle="#00ffff";
+  userCtx.beginPath();
+  const slice=c.width/dataArray.length;let x=0;
+  for(let i=0;i<dataArray.length;i++){
+    const v=dataArray[i]/128.0;const y=v*c.height/2;
+    i===0?userCtx.moveTo(x,y):userCtx.lineTo(x,y);x+=slice;
   }
-  draw();
-  return ()=>cancelAnimationFrame(anim);
+  userCtx.stroke();
+}
+function drawAIWave(){
+  const c=aiCtx.canvas;
+  aiCtx.clearRect(0,0,c.width,c.height);
+  if(!aiAnimating) return;
+  aiCtx.lineWidth=2;aiCtx.strokeStyle="#8e44ad";
+  aiCtx.beginPath();const slice=c.width/64;let x=0;
+  for(let i=0;i<64;i++){
+    const y=(Math.sin(i/3+Date.now()/180)+1)*c.height/2*0.7;
+    i===0?aiCtx.moveTo(x,y):aiCtx.lineTo(x,y);x+=slice;
+  }
+  aiCtx.stroke();
+  requestAnimationFrame(drawAIWave);
+}
+function startAIWave(){aiAnimating=true;drawAIWave();}
+function stopAIWave(){aiAnimating=false;}
+
+// === Mic & STT
+async function startMic(){
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  mediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  const source=audioCtx.createMediaStreamSource(mediaStream);
+  analyser=audioCtx.createAnalyser();
+  source.connect(analyser);analyser.fftSize=2048;
+  dataArray=new Uint8Array(analyser.fftSize);
+  drawUserWave();
+}
+function startRecognition(){
+  recognition=new(window.SpeechRecognition||window.webkitSpeechRecognition)();
+  recognition.lang="en-US";recognition.interimResults=false;
+  recognition.onstart=()=>callStatus.textContent="Listening...";
+  recognition.onresult=async e=>{
+    const userText=e.results[0][0].transcript;
+    appendTranscript("user",userText);
+    callStatus.textContent="Thinking...";
+    const res=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:userText})});
+    const data=await res.json();const reply=data.reply||"Sorry, I didn’t catch that.";
+    appendTranscript("ai",reply);callStatus.textContent="Speaking...";
+    startAIWave();
+    const vres=await fetch("/voicegen",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({text:reply,voice:"podcast"})});
+    const blob=await vres.blob();const audio=new Audio(URL.createObjectURL(blob));
+    audio.onended=()=>{stopAIWave();callStatus.textContent="Tap mic to speak";};
+    audio.play();
+  };
+  recognition.onend=()=>{callStatus.textContent="Tap mic to speak";};
+  recognition.start();
 }
 
-// 4. Voice Call State & Logic
-let callActive = false, stopWaveAnim = null, callTranscript=[], callListening = false;
-const callWaveCanvas = aiCallModal.querySelector("#callWaveform");
-const callTranscriptEl = aiCallModal.querySelector("#call-transcript");
-const callMicBtn = aiCallModal.querySelector("#call-mic-btn");
-const callStatusMsg = aiCallModal.querySelector("#call-statusmsg");
-const callEndBtn = aiCallModal.querySelector("#call-end-btn");
-const callCtx = callWaveCanvas.getContext("2d");
-
-// Speech recognition for user side (Web Speech API)
-let recognition = null;
-
-// 5. Open Call Modal and start conversation
-callBtn.onclick = async function() {
-  if(callActive) return;
-  callActive = true;
-  aiCallModal.style.display="flex";
-  callTranscript = [];
-  callTranscriptEl.innerHTML = "";
-  callStatusMsg.textContent = "Connecting...";
-  stopWaveAnim = animateWaveform(callCtx, false);
-  // Start by AI greeting
-  setTimeout(()=>doBotReply("Hello! You are now speaking to Philadelphia AI. You can talk to me by holding the microphone button below."), 700);
-}
-
-// 6. Close/end call logic
-callEndBtn.onclick = () => {
-  callActive = false;
-  aiCallModal.style.display="none";
-  stopWaveAnim && stopWaveAnim();
-  callTranscript = [];
-  callListening = false;
-  if(recognition) recognition.stop();
+// === Events
+callBtn.onclick=()=>{if(callActive)return;callActive=true;
+  aiCallModal.style.display="flex";transcriptEl.innerHTML="";callStatus.textContent="Connecting...";
+  startMic().then(()=>{appendTranscript("ai","Hello! You’re now connected with Philadelphia AI.");
+    callStatus.textContent="Tap mic to speak";});
 };
-
-function appendTranscript(role, text, voice=false) {
-  callTranscript.push({role, text});
-  let html = callTranscript.map(msg=> msg.role==="bot"
-      ? `<div style="margin-bottom:7px;color:#0ef;text-align:left;"><b>AI:</b> ${escapeHTML(msg.text)}</div>`
-      : `<div style="margin-bottom:7px;color:#fff;text-align:right;"><b>You:</b> ${escapeHTML(msg.text)}</div>`).join("");
-  callTranscriptEl.innerHTML = html;
-}
-
-function escapeHTML(s) {
-  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-}
-
-async function doBotReply(replyText) {
-  appendTranscript("bot", replyText);
-  callStatusMsg.textContent = "AI is speaking...";
-  stopWaveAnim && stopWaveAnim();
-  stopWaveAnim = animateWaveform(callCtx, true);
-
-  // TTS: generate voice
-  let fd = new FormData();
-  fd.append("text", replyText);
-  fd.append("style", "podcast");
-  let res = await fetch("https://web-production-9a18.up.railway.app/voicegen", { method: "POST", body: fd });
-  if(res.ok){
-    let blob = await res.blob();
-    let url = URL.createObjectURL(blob);
-    let audio = new Audio(url);
-    await new Promise(resolve=>{
-      audio.onended = resolve; audio.play();
-    });
-  }
-  stopWaveAnim && stopWaveAnim();
-  stopWaveAnim = animateWaveform(callCtx, false);
-  callStatusMsg.textContent = "Hold mic and speak your reply";
-  callListening = true;
-}
-
-// 7. User speaks, bot listens and replies
-callMicBtn.onmousedown = callMicBtn.ontouchstart = function(e){
-  if(!callActive||callListening===false) return;
-  callListening = false;
-  callStatusMsg.textContent = "Listening...";
-  stopWaveAnim && stopWaveAnim(); stopWaveAnim = animateWaveform(callCtx, false);
-  if('webkitSpeechRecognition' in window){
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.continuous = false;
-    recognition.onresult = function(ev){
-      let text = ev.results[0][0].transcript;
-      appendTranscript("user", text);
-      callStatusMsg.textContent = "AI is thinking...";
-      // Send user speech to Gemini
-      fetch("https://web-production-9a18.up.railway.app/chat", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, user_id: "user", history: callTranscript.map(m=>({role: m.role==="bot"?"assistant":"user", content: m.text})) })
-      })
-      .then(res=>res.json())
-      .then(data=>{
-        let reply = (data.response || "Sorry, I could not hear you.");
-        doBotReply(reply);
-      })
-      .catch(()=>{
-        doBotReply("Sorry, there was a problem processing your reply.");
-      });
-    };
-    recognition.onend = ()=>{ callStatusMsg.textContent = "Mic released. Thinking..."; };
-    recognition.onerror = ()=>{ callStatusMsg.textContent = "Speech recognition error."; };
-    recognition.start();
-  } else {
-    callStatusMsg.textContent = "Speech recognition not supported in your browser.";
-  }
+aiCallModal.querySelector("#callEnd").onclick=()=>{
+  callActive=false;aiCallModal.style.display="none";stopAIWave();
+  if(mediaStream)mediaStream.getTracks().forEach(t=>t.stop());
+  if(recognition)recognition.stop();
 };
-callMicBtn.onmouseup = callMicBtn.ontouchend = function(){
-  recognition && recognition.stop && recognition.stop();
+aiCallModal.querySelector("#callMicBtn").onclick=()=>{
+  if(!callActive)return;startRecognition();
 };
 </script>
 </body>
