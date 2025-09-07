@@ -857,142 +857,388 @@ window.addEventListener('DOMContentLoaded', () => {
 /* ---------- End of fixed script ---------- */
 </script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  /* ---------- Call Widget ---------- */
-  const callUI = document.createElement("div");
-  callUI.innerHTML = `
-    <div id="call-widget" style="
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: linear-gradient(135deg, #0d47a1, #1976d2);
-      color: white;
-      padding: 14px 20px;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-family: system-ui, sans-serif;
-      z-index: 9999;
-    ">
-      <div id="call-status" style="flex:1;font-weight:500;">🔵 Connected</div>
-      <button id="mic-toggle" style="
-        background:#fff;
-        color:#1976d2;
-        border:none;
-        border-radius:50%;
-        width:42px;height:42px;
-        font-size:20px;
-        cursor:pointer;
-      ">🎤</button>
-      <button id="end-call" style="
-        background:#e53935;
-        color:#fff;
-        border:none;
-        border-radius:50%;
-        width:42px;height:42px;
-        font-size:20px;
-        cursor:pointer;
-      ">✖</button>
-    </div>
+// ---- REPLACEMENT: Hardened live AI call loop (paste inside DOMContentLoaded) ----
+(() => {
+  // === keep your existing UI creation (unchanged) ===
+  const callBtn = document.createElement("button");
+  callBtn.type = "button";
+  callBtn.id = "callBtn";
+  callBtn.title = "AI Call";
+  callBtn.innerHTML = '<i class="fa-solid fa-phone-volume"></i>';
+  // chatForm & sendBtn must already exist in DOM
+  const chatForm = document.getElementById("chatForm");
+  const sendBtn = document.getElementById("sendBtn");
+  if (chatForm && sendBtn) chatForm.insertBefore(callBtn, sendBtn);
+
+  // Recreate your modal HTML exactly (keeps look & positions)
+  const aiCallModal = document.createElement("div");
+  aiCallModal.id = "ai-call-modal";
+  aiCallModal.style = `
+    display:none;position:fixed;inset:0;z-index:3000;
+    background:rgba(0,0,0,0.92);justify-content:center;align-items:center;
   `;
-  document.body.appendChild(callUI);
+  aiCallModal.innerHTML = `
+    <div style="width:96%;max-width:460px;background:#0d1424;border-radius:20px;
+                padding:20px;box-shadow:0 0 40px #00ffff55;display:flex;
+                flex-direction:column;align-items:center;position:relative;">
+      <button id="callEnd" style="position:absolute;top:10px;right:12px;
+                border:none;background:none;font-size:2em;color:#ff4444;cursor:pointer">&times;</button>
+      <div style="margin:10px 0 20px 0;position:relative;">
+        <div id="avatarPulse" style="width:120px;height:120px;border-radius:50%;
+                    background:#222 url('https://i.postimg.cc/5yZ6THqK/IMG-20250824-133336-309.jpg') center/cover no-repeat;
+                    box-shadow:0 0 20px #00ffff66;animation:pulse 2s infinite;cursor:pointer;"></div>
+      </div>
+      <div style="display:flex;gap:16px;width:100%;justify-content:center;">
+        <canvas id="userWave" width="180" height="80" style="background:#1b1b2b;border-radius:8px;"></canvas>
+        <canvas id="aiWave" width="180" height="80" style="background:#1b1b2b;border-radius:8px;"></canvas>
+      </div>
+      <div id="callTranscript" style="margin:20px 0;width:100%;max-height:150px;overflow-y:auto;
+                  background:#141b2f;padding:10px;border-radius:10px;color:#eee;font-size:0.95em;"></div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button id="callMuteBtn" style="width:55px;height:55px;border-radius:50%;
+                  border:none;background:#ffaa00;color:#111;font-size:1.4em;
+                  box-shadow:0 0 15px #ffaa0044;cursor:pointer;"><i class="fa-solid fa-microphone-slash"></i></button>
+        <button id="callDownloadBtn" style="width:55px;height:55px;border-radius:50%;
+                  border:none;background:#00ff99;color:#111;font-size:1.4em;
+                  box-shadow:0 0 15px #00ff9944;cursor:pointer;"><i class="fa-solid fa-download"></i></button>
+      </div>
+      <div id="callStatus" style="margin-top:10px;color:#7af;font-size:0.9em;">Connecting...</div>
+      <div id="callTimer" style="margin-top:6px;color:#aaa;font-size:0.85em;"></div>
+    </div>
+    <style>
+      @keyframes pulse { 0% { box-shadow:0 0 0px #00ffff44; } 50% { box-shadow:0 0 35px #00ffffaa; } 100% { box-shadow:0 0 0px #00ffff44; } }
+      @keyframes talkPulse { 0% { transform:scale(1); } 50% { transform:scale(1.05); } 100% { transform:scale(1); } }
+      #callEnd:hover { transform:scale(1.15); color:#ff2222; }
+    </style>
+  `;
+  document.body.appendChild(aiCallModal);
 
-  const statusEl = document.getElementById("call-status");
-  const micBtn = document.getElementById("mic-toggle");
-  const endBtn = document.getElementById("end-call");
+  // === state & refs ===
+  let callActive = false;
+  let recognition = null;
+  let recognitionActive = false;
+  let aiSpeechOngoing = false;
+  let aiSpeechAudio = null;
+  let aiInterruptRequested = false;
+  let muted = false;
+  let audioCtx = null, mediaStream = null, analyser = null, dataArray = null;
+  let callStartTime = 0, callTimerInt = null;
 
-  /* ---------- Speech Recognition ---------- */
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = "en-US";
+  const userCanvas = aiCallModal.querySelector("#userWave");
+  const aiCanvas = aiCallModal.querySelector("#aiWave");
+  const userCtx = userCanvas.getContext("2d");
+  const aiCtx = aiCanvas.getContext("2d");
+  const transcriptEl = aiCallModal.querySelector("#callTranscript");
+  const callStatus = aiCallModal.querySelector("#callStatus");
+  const callTimer = aiCallModal.querySelector("#callTimer");
+  const avatarPulse = aiCallModal.querySelector("#avatarPulse");
 
-  let listening = true;
-  let callActive = true;
+  // ---- helpers ----
+  function log(...args){ console.debug("[AI-CALL]", ...args); }
+  function appendTranscript(role, text){
+    const div = document.createElement("div");
+    div.style.marginBottom = "6px";
+    div.innerHTML = role === "ai" ? `<b style="color:#0ff">AI:</b> ${escapeHTML(text)}` : `<b style="color:#fff">You:</b> ${escapeHTML(text)}`;
+    transcriptEl.appendChild(div);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+  function escapeHTML(s){ return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+  function formatTime(sec){ const m = String(Math.floor(sec/60)).padStart(2,"0"); const s = String(sec%60).padStart(2,"0"); return `${m}:${s}`; }
 
-  /* ---------- TTS ---------- */
-  function speak(text) {
-    if (!text) return;
-    // Try Google TTS (Web Speech API)
-    if ('speechSynthesis' in window) {
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = "en-US";
-      utter.rate = 1;
-      speechSynthesis.speak(utter);
-    } else {
-      console.log("🟡 Fallback: no TTS available.");
+  // ---- timer ----
+  function startTimer(){ callStartTime = Date.now(); callTimerInt = setInterval(()=> { const diff = Math.floor((Date.now()-callStartTime)/1000); callTimer.textContent = `Call Duration: ${formatTime(diff)}`; }, 1000); }
+  function stopTimer(){ clearInterval(callTimerInt); callTimer.textContent = ""; }
+
+  // ---- waveforms ----
+  function drawUserWave(){
+    requestAnimationFrame(drawUserWave);
+    if(!analyser || !userCtx) return;
+    analyser.getByteTimeDomainData(dataArray);
+    const c = userCtx.canvas;
+    userCtx.clearRect(0,0,c.width,c.height);
+    userCtx.lineWidth = 2; userCtx.strokeStyle = "#00ffff"; userCtx.beginPath();
+    const slice = c.width / dataArray.length; let x = 0;
+    for(let i=0;i<dataArray.length;i++){
+      const v = dataArray[i]/128.0; const y = v * c.height/2;
+      if(i===0) userCtx.moveTo(x,y); else userCtx.lineTo(x,y);
+      x+=slice;
+    }
+    userCtx.stroke();
+  }
+  function drawAIWave(){
+    const c = aiCtx?.canvas;
+    if(!aiCtx || !c) return;
+    aiCtx.clearRect(0,0,c.width,c.height);
+    if(!aiSpeechOngoing) return;
+    aiCtx.lineWidth = 2; aiCtx.strokeStyle = "#8e44ad"; aiCtx.beginPath();
+    const slice = c.width / 64; let x = 0;
+    for(let i=0;i<64;i++){
+      const y = (Math.sin(i/3 + Date.now()/160) + 1) * c.height/2 * 0.7;
+      if(i===0) aiCtx.moveTo(x,y); else aiCtx.lineTo(x,y);
+      x += slice;
+    }
+    aiCtx.stroke();
+    requestAnimationFrame(drawAIWave);
+  }
+  function startAIWave(){ aiSpeechOngoing = true; if(avatarPulse) avatarPulse.style.animation = "talkPulse 1.2s infinite"; drawAIWave(); }
+  function stopAIWave(){ aiSpeechOngoing = false; if(avatarPulse) avatarPulse.style.animation = "pulse 2s infinite"; }
+
+  // ---- mic start ----
+  async function startMic(){
+    try {
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const src = audioCtx.createMediaStreamSource(mediaStream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      src.connect(analyser);
+      dataArray = new Uint8Array(analyser.fftSize);
+      drawUserWave();
+      log("Mic started");
+    } catch (err){
+      console.error("Mic start failed:", err);
+      callStatus.textContent = "⚠️ Mic access denied or not available";
+      throw err;
     }
   }
 
-  /* ---------- Chat Fetch ---------- */
-  async function sendToChat(userText) {
+  // ---- safe audio play (handles autoplay rejections) ----
+  async function safePlayAudio(audioEl){
     try {
-      statusEl.textContent = "⏳ Thinking...";
+      const p = audioEl.play();
+      if(p && p.catch) await p.catch(err => { console.warn("Audio play blocked:", err); });
+    } catch(e){ console.warn("safePlayAudio err", e); }
+  }
+
+  // ---- TTS: use voicegen endpoint (FormData) ----
+  async function speakAI(text){
+    if(!text) return;
+    appendTranscript("ai", text);
+    callStatus.textContent = "Speaking...";
+    startAIWave();
+    aiInterruptRequested = false;
+
+    // stop any recognition while AI speaks (safe)
+    try { if(recognition && typeof recognition.abort === "function") recognition.abort(); } catch(e){}
+
+    // build formdata (voicegen expects formdata in original server)
+    const fd = new FormData();
+    fd.append("text", text);
+    fd.append("style", "podcast");
+
+    try {
+      const res = await fetch("https://web-production-9a18.up.railway.app/voicegen", { method: "POST", body: fd });
+      if (!res.ok) {
+        const txt = await res.text();
+        console.error("voicegen error status", res.status, txt);
+        callStatus.textContent = "❌ TTS error";
+        stopAIWave();
+        return;
+      }
+      const blob = await res.blob();
+      aiSpeechAudio = new Audio(URL.createObjectURL(blob));
+      // ensure audio plays (user gesture from callBtn click should allow this)
+      aiSpeechAudio.onended = () => {
+        aiSpeechAudio = null;
+        stopAIWave();
+        callStatus.textContent = muted ? "Muted" : "Listening...";
+        // restart recognition loop after short pause
+        setTimeout(()=>{ if(callActive && !muted) startRecognitionLoop(); }, 250);
+      };
+      aiSpeechAudio.onerror = (e) => {
+        console.error("TTS playback error", e);
+        aiSpeechAudio = null;
+        stopAIWave();
+        callStatus.textContent = "❌ TTS playback error";
+        if(callActive && !muted) setTimeout(startRecognitionLoop, 300);
+      };
+      await safePlayAudio(aiSpeechAudio);
+      log("AI voice playing");
+    } catch(err){
+      console.error("speakAI failure:", err);
+      stopAIWave();
+      callStatus.textContent = "❌ TTS failed";
+      if(callActive) setTimeout(startRecognitionLoop, 300);
+    }
+  }
+
+  // ---- interrupt AI by tapping avatar or AI waveform ----
+  function interruptAI(){
+    if(aiSpeechAudio){
+      aiInterruptRequested = true;
+      try { aiSpeechAudio.pause(); } catch(e){ /* ignore */ }
+      aiSpeechAudio = null;
+      stopAIWave();
+      callStatus.textContent = "AI interrupted. Listening...";
+      // restart recognition quickly
+      setTimeout(()=>{ if(callActive && !muted) startRecognitionLoop(); }, 200);
+    }
+  }
+  [avatarPulse, aiCanvas].forEach(el => {
+    if(!el) return;
+    el.addEventListener("click", (e)=>{ e.preventDefault(); interruptAI(); });
+    el.addEventListener("touchstart", (e)=>{ e.preventDefault(); interruptAI(); });
+  });
+
+  // ---- send to chat with robust JSON handling and logging ----
+  async function sendToChat(userText){
+    log("sendToChat:", userText);
+    callStatus.textContent = "Thinking...";
+    try {
       const res = await fetch("https://web-production-9a18.up.railway.app/chat", {
         method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({message: userText})
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userText, user_id: "callUser" })
       });
-      const data = await res.json();
-      console.log("🤖 Chat response:", data);
-      const reply = data.reply || data.response || "I couldn’t process that.";
-      statusEl.textContent = "🔊 Speaking...";
-      speak(reply);
-      statusEl.textContent = "🎤 Listening...";
-      if (listening) recognition.start();
-    } catch (err) {
-      console.error("❌ Chat error:", err);
-      statusEl.textContent = "⚠️ Error";
+      const raw = await res.clone().text();
+      log("chat raw response:", raw);
+      let data;
+      try { data = await res.json(); } catch(e){ data = { rawText: raw }; }
+      const reply = data.response || data.reply || data.text || (data.rawText || "").slice(0,500) || "Sorry, I didn't catch that.";
+      appendTranscript("ai", reply);
+      await speakAI(reply);
+    } catch (err){
+      console.error("sendToChat error:", err);
+      await speakAI("Sorry, there was a problem connecting to the AI.");
     }
   }
 
-  /* ---------- Recognition Flow ---------- */
-  recognition.onresult = e => {
-    const userText = e.results[0][0].transcript;
-    console.log("🎙 User:", userText);
-    sendToChat(userText);
-  };
-
-  recognition.onend = () => {
-    if (callActive && listening) {
-      console.log("🎤 Restarting recognition...");
-      recognition.start();
+  // ---- recognition loop (single-instance guard) ----
+  function startRecognitionLoop(){
+    if(!callActive || muted) { log("not starting recognition: inactive or muted"); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      callStatus.textContent = "SpeechRecognition not supported in this browser (use Chrome/Edge).";
+      log("SpeechRecognition unavailable");
+      return;
     }
-  };
 
-  recognition.onerror = err => {
-    console.error("❌ Recognition error:", err);
-    statusEl.textContent = "⚠️ Mic error";
-  };
-
-  /* ---------- Button Actions ---------- */
-  micBtn.addEventListener("click", () => {
-    listening = !listening;
-    if (listening) {
-      statusEl.textContent = "🎤 Listening...";
-      recognition.start();
-      micBtn.textContent = "🎤";
-    } else {
-      recognition.stop();
-      statusEl.textContent = "⏸ Paused";
-      micBtn.textContent = "🔇";
+    if(recognition && typeof recognition.abort === "function"){
+      try { recognition.abort(); } catch(e) { /* ignore */ }
+      recognition = null;
     }
+
+    recognition = new SR();
+    recognition.lang = "en-US";
+    recognition.continuous = false;       // listen per-utterance
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      log("recognition.onstart");
+      callStatus.textContent = "Listening...";
+    };
+    recognition.onresult = async (ev) => {
+      try {
+        const userText = ev.results[0][0].transcript;
+        log("recognition.onresult", userText);
+        appendTranscript("user", userText);
+        // immediately stop recognition so we don't get overlapping results
+        try { recognition.stop(); } catch(e){}
+        await sendToChat(userText);
+      } catch(e){
+        console.error("onresult handler error", e);
+      }
+    };
+    recognition.onerror = (err) => {
+      console.warn("recognition.onerror", err);
+      // show an informative message for common errors
+      if(err && err.error === "not-allowed") callStatus.textContent = "Mic permission denied.";
+      if(callActive && !aiSpeechOngoing) setTimeout(()=>startRecognitionLoop(), 400);
+    };
+    recognition.onend = () => {
+      log("recognition.onend");
+      // if AI is speaking, let it finish; else restart
+      if(callActive && !aiSpeechOngoing && !muted){
+        setTimeout(()=>startRecognitionLoop(), 300);
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error("recognition.start failed", err);
+      callStatus.textContent = "Mic error";
+      // try again shortly
+      setTimeout(()=>{ if(callActive && !muted) startRecognitionLoop(); }, 800);
+    }
+  }
+
+  // ---- events: call start / end / mute / download ----
+  callBtn.addEventListener("click", async () => {
+    if(callActive) return;
+    callActive = true;
+    aiCallModal.style.display = "flex";
+    transcriptEl.innerHTML = "";
+    callStatus.textContent = "Ringing…";
+    log("Call started by user click");
+
+    // play ringtone (user gesture allows audio)
+    let ringtone = null;
+    try {
+      ringtone = new Audio("https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg");
+      ringtone.loop = true;
+      await safePlayAudio(ringtone);
+    } catch(e){ log("ringtone play failed", e); }
+
+    // answer after delay
+    setTimeout(async () => {
+      if(!callActive) return;
+      try { if(ringtone){ ringtone.pause(); ringtone.currentTime = 0; } } catch(e){}
+      // get mic permission + start waveform
+      try {
+        await startMic();
+      } catch(e) {
+        // mic access failed — bail with a message
+        callStatus.textContent = "Mic access required. End call and enable mic.";
+        return;
+      }
+      // greet via TTS then begin recognition loop
+      await speakAI("Hello — you are now connected with Philadelphia AI. Speak anytime; tap to interrupt.");
+      startTimer();
+      // start listening loop
+      startRecognitionLoop();
+    }, 1400);
   });
 
-  endBtn.addEventListener("click", () => {
+  aiCallModal.querySelector("#callEnd").addEventListener("click", () => {
     callActive = false;
-    recognition.stop();
-    speechSynthesis.cancel();
-    document.getElementById("call-widget").remove();
+    aiCallModal.style.display = "none";
+    stopTimer();
+    stopAIWave();
+    try { if(mediaStream) mediaStream.getTracks().forEach(t => t.stop()); } catch(e){}
+    try { if(recognition && typeof recognition.abort === "function") recognition.abort(); } catch(e){}
+    if(aiSpeechAudio){ try{ aiSpeechAudio.pause(); } catch(e){} aiSpeechAudio = null; }
+    callStatus.textContent = "";
+    log("Call ended by user");
   });
 
-  /* ---------- Auto-start ---------- */
-  statusEl.textContent = "🎤 Listening...";
-  recognition.start();
-});
+  aiCallModal.querySelector("#callMuteBtn").addEventListener("click", () => {
+    muted = !muted;
+    callStatus.textContent = muted ? "Muted" : "Listening...";
+    const btn = aiCallModal.querySelector("#callMuteBtn");
+    btn.innerHTML = muted ? '<i class="fa-solid fa-microphone-slash"></i>' : '<i class="fa-solid fa-microphone"></i>';
+    if(muted && recognition && typeof recognition.abort === "function"){ try { recognition.abort(); } catch(e) {} }
+    if(!muted && callActive && !aiSpeechOngoing){ startRecognitionLoop(); }
+    log("muted:", muted);
+  });
+
+  aiCallModal.querySelector("#callDownloadBtn").addEventListener("click", () => {
+    const text = Array.from(transcriptEl.children).map(d => d.innerText).join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "call_transcript.txt"; a.click(); URL.revokeObjectURL(url);
+  });
+
+  // quick safety: if user navigates away while call active, end cleanly
+  window.addEventListener("beforeunload", () => {
+    if(callActive){
+      try { if(mediaStream) mediaStream.getTracks().forEach(t=>t.stop()); } catch(e){}
+    }
+  });
+
+  // ---- done ----
+  log("Call module loaded. Use Chrome/Edge on HTTPS or localhost. Watch console for logs.");
+})();
 </script>
 </body>
 </html>
