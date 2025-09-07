@@ -572,6 +572,7 @@ window.addEventListener('DOMContentLoaded', () => {
   function renderChatBox(messages) {
   if (!chatBox) return;
   chatBox.innerHTML = "";
+  let aiMsgIdx = 0;
   (messages || []).forEach((msg, mi) => {
     const div = document.createElement('div');
     div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
@@ -586,27 +587,35 @@ window.addEventListener('DOMContentLoaded', () => {
           <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
         </div>
       </div>`;
+      div.setAttribute('data-aiidx', aiMsgIdx++);
     } else {
       div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
     }
     chatBox.appendChild(div);
   });
   enhanceCodeBlocks(chatBox);
+  hookAiMsgControls();
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 function hookAiMsgControls() {
-  chatBox.querySelectorAll('.ai-msg-controls').forEach((controlsDiv, aiIdx) => {
-    const copyBtn = controlsDiv.querySelector('.inline-copy-btn');
-    const shareBtn = controlsDiv.querySelector('.inline-share-btn');
-    const regenBtn = controlsDiv.querySelector('.regen-btn');
+  chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
+    const aiIdx = Number(div.getAttribute('data-aiidx'));
+    const controls = div.querySelector('.ai-msg-controls');
+    if (!controls) return;
+    const copyBtn = controls.querySelector('.inline-copy-btn');
+    const shareBtn = controls.querySelector('.inline-share-btn');
+    const regenBtn = controls.querySelector('.regen-btn');
+
     if (copyBtn)
       copyBtn.onclick = () => {
         const aiOnly = chats[currentChatIdx]?.history?.filter(m => m.role === "ai") || [];
         const text = aiOnly[aiIdx]?.text || "";
         navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
         copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 900);
+        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
       };
+
     if (shareBtn)
       shareBtn.onclick = () => {
         const aiOnly = chats[currentChatIdx]?.history?.filter(m => m.role === "ai") || [];
@@ -619,9 +628,10 @@ function hookAiMsgControls() {
           prompt("Copy and share manually:", shareText);
         }
       };
+
     if (regenBtn)
       regenBtn.onclick = async () => {
-        // Find the previous user message for this AI reply
+        // Find which AI msg this is among all roles
         let aiMsgCount = 0, aiMsgIdx = -1;
         for (let i = 0; i < chats[currentChatIdx].history.length; i++) {
           if (chats[currentChatIdx].history[i].role === "ai") {
@@ -631,31 +641,34 @@ function hookAiMsgControls() {
         }
         const userMsgObj = chats[currentChatIdx]?.history?.[aiMsgIdx - 1];
         const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
-        if (!userMsg) { regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err"; setTimeout(()=>regenBtn.innerHTML="<i class='fa-solid fa-rotate-right'></i>",900); return; }
+        if (!userMsg) {
+          regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
+          setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
+          return;
+        }
         chats[currentChatIdx].history.splice(aiMsgIdx, 1);
         saveChats(); renderChatBox(chats[currentChatIdx].history);
         showTypingAtNext();
         try {
           let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({ message: userMsg, user_id:currentUser?.uid||"user", history:[] })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
           });
           let data = await res.json();
           removeTyping();
           if (data && data.response) {
-            chats[currentChatIdx].history.push({ role:'ai', text:data.response });
+            chats[currentChatIdx].history.push({ role: 'ai', text: data.response });
             saveChats(); renderChatBox(chats[currentChatIdx].history);
           }
-        } catch(err) {
+        } catch (err) {
           removeTyping();
-          chats[currentChatIdx].history.push({ role:'ai', text:"❌ Retry Error: "+(err.message||'') });
+          chats[currentChatIdx].history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
           saveChats(); renderChatBox(chats[currentChatIdx].history);
         }
       };
   });
 }
-
 
     chatBox.scrollTop = chatBox.scrollHeight;
   }
