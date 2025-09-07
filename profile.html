@@ -306,7 +306,292 @@
       <div id="callTimer"></div>
     </div>
   </div>
+  <script>
+    // ==== Philadelphia AI Script ====
 
-  <script src="script.js"></script>
+document.addEventListener("DOMContentLoaded", () => {
+  const chatWindow = document.getElementById("chatWindow");
+  const userInput = document.getElementById("userInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const imgGenBtn = document.getElementById("imgGenBtn");
+  const emojiBtn = document.getElementById("emojiBtn");
+  const callBtn = document.getElementById("callBtn");
+  const chatList = document.getElementById("chatList");
+  const newChatBtn = document.getElementById("newChatBtn");
+
+  let chats = [];
+  let currentChat = { id: Date.now(), title: "New Chat", messages: [] };
+
+  // === Utility ===
+  function addMessage(role, text) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `message ${role}`;
+    msgDiv.innerHTML = `
+      <div class="bubble">${text}</div>
+      ${role === "ai" ? `
+        <div class="msg-actions">
+          <i class="fa-solid fa-copy" title="Copy"></i>
+          <i class="fa-solid fa-share" title="Share"></i>
+          <i class="fa-solid fa-rotate-right" title="Regenerate"></i>
+        </div>` : ""}
+    `;
+    chatWindow.appendChild(msgDiv);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    if (role === "ai") {
+      const copyBtn = msgDiv.querySelector(".fa-copy");
+      const shareBtn = msgDiv.querySelector(".fa-share");
+      const regenBtn = msgDiv.querySelector(".fa-rotate-right");
+
+      copyBtn.onclick = () => navigator.clipboard.writeText(text);
+      shareBtn.onclick = () => {
+        const shareText = `${text}\n\nShared from Philadelphia AI: ${location.href}`;
+        navigator.clipboard.writeText(shareText);
+        alert("Copied to clipboard for sharing!");
+      };
+      regenBtn.onclick = () => sendToAI(currentChat.messages[currentChat.messages.length - 2].text);
+    }
+  }
+
+  function saveChat() {
+    if (!chats.find(c => c.id === currentChat.id)) {
+      chats.push(currentChat);
+    }
+    renderChatList();
+  }
+
+  function renderChatList() {
+    chatList.innerHTML = "";
+    chats.forEach(chat => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span contenteditable="true">${chat.title}</span>
+        <button><i class="fa-solid fa-trash"></i></button>`;
+      li.querySelector("span").onblur = e => chat.title = e.target.textContent;
+      li.querySelector("button").onclick = () => {
+        chats = chats.filter(c => c.id !== chat.id);
+        renderChatList();
+      };
+      li.onclick = () => {
+        currentChat = chat;
+        chatWindow.innerHTML = "";
+        chat.messages.forEach(m => addMessage(m.role, m.text));
+      };
+      chatList.appendChild(li);
+    });
+  }
+
+  // === Send Message ===
+  async function sendToAI(text) {
+    addMessage("user", text);
+    currentChat.messages.push({ role: "user", text });
+
+    const typingDiv = document.createElement("div");
+    typingDiv.className = "message ai";
+    typingDiv.innerHTML = `<div class="bubble">...</div>`;
+    chatWindow.appendChild(typingDiv);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    try {
+      const res = await fetch("https://web-production-9a18.up.railway.app/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      const reply = data.reply || data.response || "Hmm... I couldn’t process that.";
+      typingDiv.remove();
+      addMessage("ai", reply);
+      currentChat.messages.push({ role: "ai", text: reply });
+      saveChat();
+    } catch (err) {
+      typingDiv.remove();
+      addMessage("ai", "⚠️ Error reaching AI service.");
+    }
+  }
+
+  sendBtn.onclick = () => {
+    if (userInput.value.trim()) {
+      sendToAI(userInput.value.trim());
+      userInput.value = "";
+    }
+  };
+
+  userInput.addEventListener("keypress", e => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  // === Image Generation ===
+  imgGenBtn.onclick = async () => {
+    const prompt = userInput.value.trim();
+    if (!prompt) return;
+    addMessage("user", `[Image Request] ${prompt}`);
+    userInput.value = "";
+    try {
+      const res = await fetch("https://web-production-9a18.up.railway.app/imagegen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, style: "anime" })
+      });
+      const data = await res.json();
+      const imgUrl = data.url || "";
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "message ai";
+      msgDiv.innerHTML = `
+        <div class="bubble"><img src="${imgUrl}" alt="Generated Image" style="max-width:100%"></div>
+        <div class="msg-actions">
+          <i class="fa-solid fa-copy" title="Copy"></i>
+          <i class="fa-solid fa-share" title="Share"></i>
+        </div>
+      `;
+      chatWindow.appendChild(msgDiv);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    } catch (err) {
+      addMessage("ai", "⚠️ Image generation failed.");
+    }
+  };
+
+  // === Emojis (simple) ===
+  emojiBtn.onclick = () => {
+    userInput.value += "😊";
+    userInput.focus();
+  };
+
+  // === New Chat ===
+  newChatBtn.onclick = () => {
+    currentChat = { id: Date.now(), title: "New Chat", messages: [] };
+    chatWindow.innerHTML = "";
+    renderChatList();
+  };
+
+  // === Profile Modal ===
+  const profileModal = document.getElementById("profileModal");
+  const profileClose = document.getElementById("profileClose");
+  profileClose.onclick = () => profileModal.style.display = "none";
+
+  // === Logout ===
+  document.getElementById("logoutBtn").onclick = () => {
+    alert("Logged out!");
+  };
+
+  // ==== AI CALL FEATURE ====
+  const aiCallModal = document.getElementById("ai-call-modal");
+  const callEndBtn = document.getElementById("callEnd");
+  const callMuteBtn = document.getElementById("callMuteBtn");
+  const callDownloadBtn = document.getElementById("callDownloadBtn");
+  const transcriptEl = document.getElementById("callTranscript");
+  const callStatus = document.getElementById("callStatus");
+  const callTimer = document.getElementById("callTimer");
+
+  let callActive = false, recognition, mediaStream, muted = false;
+  let callStartTime, timerInterval;
+
+  function appendTranscript(role, text) {
+    const div = document.createElement("div");
+    div.innerHTML = `<b style="color:${role === "ai" ? "#0ff" : "#fff"}">${role.toUpperCase()}:</b> ${text}`;
+    transcriptEl.appendChild(div);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  function startTimer() {
+    callStartTime = Date.now();
+    timerInterval = setInterval(() => {
+      const diff = Math.floor((Date.now() - callStartTime) / 1000);
+      const m = String(Math.floor(diff / 60)).padStart(2, "0");
+      const s = String(diff % 60).padStart(2, "0");
+      callTimer.textContent = `Call Duration: ${m}:${s}`;
+    }, 1000);
+  }
+  function stopTimer() { clearInterval(timerInterval); callTimer.textContent = ""; }
+
+  async function speakAI(text) {
+    callStatus.textContent = "Speaking...";
+    try {
+      const vres = await fetch("https://web-production-9a18.up.railway.app/voicegen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: "podcast" })
+      });
+      const blob = await vres.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      return new Promise(res => {
+        audio.onended = () => { callStatus.textContent = "Listening..."; if (callActive && !muted) startRecognition(); res(); };
+        audio.play();
+      });
+    } catch (err) { appendTranscript("ai", "⚠️ Voice error."); }
+  }
+
+  function startRecognition() {
+    if (!callActive || muted) return;
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+
+    recognition.onresult = async e => {
+      const userText = e.results[0][0].transcript;
+      appendTranscript("user", userText);
+      callStatus.textContent = "Thinking...";
+      try {
+        const res = await fetch("https://web-production-9a18.up.railway.app/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userText })
+        });
+        const data = await res.json();
+        const reply = data.reply || data.response || "Hmm...";
+        appendTranscript("ai", reply);
+        await speakAI(reply);
+      } catch (err) { appendTranscript("ai", "⚠️ Error."); }
+    };
+    recognition.onend = () => { if (callActive && !muted) setTimeout(startRecognition, 500); };
+    recognition.start();
+  }
+
+  callBtn.onclick = () => {
+    if (callActive) return;
+    callActive = true;
+    aiCallModal.style.display = "flex";
+    transcriptEl.innerHTML = "";
+    callStatus.textContent = "Ringing...";
+    const ringtone = new Audio("https://actions.google.com/sounds/v1/alarms/phone_alerts_and_rings.ogg");
+    ringtone.loop = true; ringtone.play();
+    setTimeout(async () => {
+      ringtone.pause(); ringtone.currentTime = 0;
+      appendTranscript("ai", "Hello, this is Philadelphia AI. You're now connected.");
+      callStatus.textContent = "Listening...";
+      startTimer();
+      startRecognition();
+    }, 3000);
+  };
+
+  callEndBtn.onclick = () => {
+    callActive = false;
+    aiCallModal.style.display = "none";
+    stopTimer();
+    if (recognition) recognition.stop();
+    if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+  };
+
+  callMuteBtn.onclick = () => {
+    muted = !muted;
+    callStatus.textContent = muted ? "Muted" : "Listening...";
+    callMuteBtn.innerHTML = muted
+      ? '<i class="fa-solid fa-microphone-slash"></i>'
+      : '<i class="fa-solid fa-microphone"></i>';
+  };
+
+  callDownloadBtn.onclick = () => {
+    const blob = new Blob([transcriptEl.innerText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "call_transcript.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+});
+  </script>
 </body>
 </html>
