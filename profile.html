@@ -288,7 +288,7 @@ body {
   <button type="button" id="voiceBtn" title="Voice AI"><i class="fa-solid fa-microphone-lines"></i></button>
   <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
 </form>
-
+<div id="emojiPanel" style="display:none;position:absolute;bottom:63px;left:9px;z-index:90;background:#222a38d9;border-radius:13px;padding:13px;box-shadow:0 5px 19px #00fff287;"></div>
 
     <div class="status-message" id="statusMsg"></div>
   </div>
@@ -570,22 +570,29 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------- Chat Rendering with Copy/Share ---------- */
   function renderChatBox(messages) {
-    if (!chatBox) return;
-    chatBox.innerHTML = "";
-    (messages || []).forEach((msg, mi) => {
-      const div = document.createElement('div');
-      div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
-      if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
-        div.innerHTML = msg.text.replace('image:', '');
-      } else if (msg.role === "ai") {
-        const { html } = renderMarkdown(msg.text || '');
-        div.innerHTML = `<div class="msg">${html}\n  <div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">\n    <button class="inline-copy-btn" title="Copy whole AI response" data-idx="ai-${mi}">□ Copy</button>\n    <button class="inline-share-btn" title="Share this reply" data-idx="ai-${mi}"><i class="fa-solid fa-share"></i> Share</button>\n  </div></div>`;
-      } else {
-        div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
-      }
-      chatBox.appendChild(div);
-    });
-    enhanceCodeBlocks(chatBox);
+  if (!chatBox) return;
+  chatBox.innerHTML = "";
+  (messages || []).forEach((msg, mi) => {
+    const div = document.createElement('div');
+    div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
+    if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
+      div.innerHTML = msg.text.replace('image:', '');
+    } else if (msg.role === "ai") {
+      const { html } = renderMarkdown(msg.text || '');
+      div.innerHTML = `<div class="msg">${html}
+        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+          <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+          <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+        </div>
+      </div>`;
+    } else {
+      div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
+    }
+    chatBox.appendChild(div);
+  });
+  enhanceCodeBlocks(chatBox);
+}
 
     // Copy/share handlers
     chatBox.querySelectorAll('.inline-copy-btn').forEach(btn => {
