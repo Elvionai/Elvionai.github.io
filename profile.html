@@ -160,12 +160,40 @@ body {
   color:#23233a; border-radius:13px 12px 13px 7px; font-weight:700;
   box-shadow:0 2px 13px #00eaff3c;
 }
-/* File preview */
-.file-preview{width:95vw; margin:11px auto 0; border-radius:8px; overflow:hidden; background:rgba(35,35,58,.7); border:1px solid rgba(255,255,255,0.20);}
-.file-preview img,.file-preview video{max-width:96%; max-height:100px; display:block; margin:0 auto;}
-.file-preview .file-info{padding:7px; display:flex; align-items:center; font-size:.98em; color:var(--muted);}
-.file-preview .file-info i{margin-right:7px;}
-
+.file-preview {
+  background: #191e2f;
+  border-radius: 10px;
+  padding: 7px 8px 5px 8px;
+  color: #c0eefd;
+  font-size: 1em;
+  display: none;
+  margin: 2px auto 8px auto;
+  width: 99%;
+  max-width: 900px;
+  min-height: 0;
+  box-shadow: 0 4px 12px #00fff01b;
+  overflow-x: auto;
+}
+.file-preview img, .file-preview video {
+  max-width: 140px;
+  border-radius: 8px;
+  margin-right: 12px;
+}
+.file-preview audio {
+  width: 130px;
+  margin-right: 10px;
+}
+.file-preview .remove-file-btn {
+  color: #fff;
+  background: #e23333;
+  border: none;
+  border-radius: 12px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.18em;
+  margin-left: 7px;
+}
 .chat-box {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -333,6 +361,22 @@ body {
   padding: 6px 0;
   font-size: 1.04em;
   word-break: break-word;
+}
+.regen-btn {
+  color: #00ffff;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  padding: 0 9px;
+  cursor: pointer;
+  transition: color .14s;
+}
+.regen-btn:active,
+.regen-btn:focus,
+.regen-btn:hover {
+  color: #ffd139;
+  background: #133040b2;
 }
 .chat-message .msg {
   display: inline-block;
@@ -1013,37 +1057,42 @@ document.addEventListener('click', e => {
 
   /* ---------- File Preview (images not saved) & Uploaded files state ---------- */
   function renderFilePreview() {
-    if (!filePreview) return;
-    if (!uploadedFiles.length) {
-      filePreview.style.display = 'none';
-      filePreview.innerHTML = '';
-      return;
-    }
-    filePreview.style.display = 'block';
-    filePreview.innerHTML = uploadedFiles.map((file, idx) => {
-      let icon = file.type.startsWith('image/') ? '🖼️'
-                : file.type === 'application/pdf' ? '📄'
-                : file.type.startsWith('audio/') ? '🎵'
-                : file.type.startsWith('video/') ? '🎬'
-                : '📁';
-      return `
-        <div style="display:flex;align-items:center;gap:10px;border-radius:7px;margin-bottom:2px;">
-          <span style="font-size:1.25em;">${icon}</span>
-          <span style="color:#aee;font-size:.99em;">${file.name}</span>
-          <button type="button" data-idx="${idx}" class="remove-file-btn" style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>
-        </div>`;
-    }).join('');
-
-    filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const idx = parseInt(btn.getAttribute('data-idx'));
-        uploadedFiles.splice(idx, 1);
-        uploadData = uploadedFiles || null;
-        if (!uploadedFiles.length && chatFile) chatFile.value = '';
-        renderFilePreview();
-      });
-    });
+  if (!filePreview) return;
+  if (!uploadedFiles.length) {
+    filePreview.style.display = 'none';
+    filePreview.innerHTML = '';
+    return;
   }
+  filePreview.style.display = 'block';
+  filePreview.innerHTML = uploadedFiles.map((file, idx) => {
+    let preview = '';
+    if (file.type.startsWith('image/')) {
+      preview = `<img src="${URL.createObjectURL(file)}" style="max-width:92px;max-height:74px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
+    } else if (file.type.startsWith('video/')) {
+      preview = `<video src="${URL.createObjectURL(file)}" controls style="max-width:80px;height:42px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
+    } else if (file.type.startsWith('audio/')) {
+      preview = `<audio controls src="${URL.createObjectURL(file)}" style="vertical-align:middle;width:90px;margin-right:7px;"></audio>`;
+    } else if (file.type === 'application/pdf') {
+      preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
+    }
+    return `
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+        ${preview}
+        <span style="color:#aee;font-size:.99em;">${file.name}</span>
+        <button type="button" data-idx="${idx}" class="remove-file-btn">&times;</button>
+      </div>`;
+  }).join('');
+
+  filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(btn.getAttribute('data-idx'));
+      uploadedFiles.splice(idx, 1);
+      uploadData = uploadedFiles[0] || null;
+      if (!uploadedFiles.length && chatFile) chatFile.value = '';
+      renderFilePreview();
+    });
+  });
+}
 
   if (chatFile) {
     chatFile.addEventListener('change', function () {
