@@ -370,7 +370,10 @@ window.addEventListener('DOMContentLoaded', () => {
   const newChatBtn = $('newChatBtn');
   const chatsListEl = $('chatsList');
   const emojiPanel = $('emojiPanel');
-  
+  const imageBtn = $('imageBtn'); // from HTML
+  const voiceBtn = $('voiceBtn'); // from HTML
+  const voiceInputBtn = $('voiceInputBtn');
+
  /* For Emoji */
 const emojis = ["😀","😃","😂","🤣","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🫶","😜","🤖","👀"];
 emojiBtn.addEventListener('click', function(e) {
@@ -947,15 +950,13 @@ document.addEventListener('click', e => {
     chatInput.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBtn?.click(); } });
   }
 
-  /* ---------- IMAGE & VOICE BUTTONS (create before handlers) ---------- */
+  
+  /* ---------- Voice Note Generation (use voiceGenBtn created above) ---------- */
   const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore", "gemini6"];
-  let currentModelIdx = 0;
-  let imageBtn = document.createElement('button'); imageBtn.type = 'button'; imageBtn.id = 'imageBtn'; imageBtn.title = 'Generate image'; imageBtn.innerHTML = '<i class="fa-solid fa-image"></i>';
-  let voiceGenBtn = document.createElement('button'); voiceGenBtn.type = 'button'; voiceGenBtn.id = 'voiceBtn'; voiceGenBtn.title = 'Generate voice'; voiceGenBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-  if (chatForm && sendBtn) chatForm.insertBefore(imageBtn, sendBtn);
-  if (chatForm && sendBtn) chatForm.insertBefore(voiceGenBtn, sendBtn);
+let currentModelIdx = 0;
 
-  // Image model cycling
+// Only attach handlers, not create buttons!
+if (imageBtn) {
   imageBtn.addEventListener('click', function () {
     currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
     let model = thenaModels[currentModelIdx];
@@ -969,9 +970,10 @@ document.addEventListener('click', e => {
     }
     chatInput?.focus(); setTimeout(() => { try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) { } }, 0);
   });
+}
 
-  /* ---------- Voice Note Generation (use voiceGenBtn created above) ---------- */
-  voiceGenBtn.addEventListener('click', async function () {
+if (voiceBtn) {
+  voiceBtn.addEventListener('click', async function () {
     if (!chatInput) return;
     let msgText = chatInput.value.trim();
     if (!msgText) { chatInput.focus(); return; }
@@ -988,6 +990,8 @@ document.addEventListener('click', e => {
       saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
     } catch (err) { removeTyping(); await typeBotMessage('❌ Voice API/network error'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice API/network error' }); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []); }
   });
+}
+
 
   /* ---------- File / Upload handling and main chat submit ---------- */
   if (chatForm) {
