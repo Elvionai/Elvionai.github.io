@@ -399,7 +399,11 @@ function saveChats() {
   } catch (e) { console.warn('saveChats failed', e); }
 }
 
-// Run DOM-related setup after DOM is ready
+// Keep file/upload state
+let uploadedFiles = [];
+let uploadData = null;
+
+// ---------- All DOM & event wiring after DOM ready ----------
 window.addEventListener('DOMContentLoaded', () => {
   /* ---------- Elements (may be null if markup is different) ---------- */
   const starsContainer = $('stars-container');
@@ -410,7 +414,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const linkMenuBg = $('linkMenuBg');
   const linkMenu = $('linkMenu');
   const logoutBtn = $('logoutBtn');
-  const headerWelcome = $('headerWelcome'); 
+  const headerWelcome = $('headerWelcome');
   const profileMenuUser = $('profileMenuUser');
   const profileMenuEmail = $('profileMenuEmail');
   const editName = $('edit-name');
@@ -418,7 +422,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const profilePicPreview = $('profilePicPreview');
   const profileForm = $('profileForm');
   const chatBox = $('chatBox');
-  const chatSelector = $('chatSelector'); 
+  const chatSelector = $('chatSelector');
   const chatForm = $('chatForm');
   const chatInput = $('chatInput');
   const sendBtn = $('sendBtn');
@@ -427,6 +431,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const voiceInputBtn = $('voiceInputBtn');
   const addChatBtn = $('addChatBtn');
   const removeChatBtn = $('removeChatBtn');
+  const newChatBtn = $('newChatBtn');
+  const chatsListEl = $('chatsList');
 
   /* ---------- Stars ---------- */
   if (starsContainer) {
@@ -465,28 +471,29 @@ window.addEventListener('DOMContentLoaded', () => {
   let currentUser = null;
 
   onAuthStateChanged(auth, user => {
-  if (!user) {
-    window.location.href = "signup-login.html";
-    return;
-  }
-  currentUser = user;
-  if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]) + "!";
-  if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
-  if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
-  if (editName) editName.value = user.displayName || "";
-  if (editPhoto) editPhoto.value = user.photoURL || "";
-  if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-});
-
-    // Render chat UI if functions exist
-    try { renderChatSelector(); } catch (e) { console.warn('renderChatSelector error', e); }
-    try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
+    if (!user) {
+      window.location.href = "signup-login.html";
+      return;
+    }
+    currentUser = user;
+    if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]) + "!";
+    if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
+    if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
+    if (editName) editName.value = user.displayName || "";
+    if (editPhoto) editPhoto.value = user.photoURL || "";
+    if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
   });
 
+  // Render chat UI if functions exist (defined below)
+  try { renderChatSelector(); } catch (e) { console.warn('renderChatSelector error', e); }
+  try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
+
+  /* ---------- Profile photo input preview ---------- */
   if (editPhoto && profilePicPreview) {
     editPhoto.addEventListener('input', function () { profilePicPreview.src = this.value || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg"; });
   }
 
+  /* ---------- Profile form submit ---------- */
   if (profileForm) {
     profileForm.addEventListener('submit', async function (e) {
       e.preventDefault(); if (!currentUser) return;
@@ -501,6 +508,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         if (status) { status.textContent = "Profile updated!"; status.style.color = "#00ffff"; }
         setTimeout(() => { profileMenu?.classList.remove('active'); profileMenuBg?.classList.remove('active'); }, 650);
+        // use headerWelcome (was greetMsg previously)
         if (headerWelcome) headerWelcome.textContent = "Welcome, " + (auth.currentUser?.displayName || (auth.currentUser?.email || '').split('@')[0]) + "!";
       } catch (err) {
         if (status) { status.textContent = err.message || "Update failed"; status.style.color = "#ffd700"; }
@@ -508,100 +516,100 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-/* Sidebar */
-   function renderChatsListSidebar() {
-  const chatsList = $('chatsList');
-  if (!chatsList) return;
-  chatsList.innerHTML = '';
-  chats.forEach((chat, idx) => {
-    const container = document.createElement('div');
-    container.style.display = 'flex';
-    container.style.alignItems = 'center';
-    container.style.marginBottom = '4px';
+  /* ---------- Sidebar: render chat list ---------- */
+  function renderChatsListSidebar() {
+    if (!chatsListEl) return;
+    chatsListEl.innerHTML = '';
+    chats.forEach((chat, idx) => {
+      const container = document.createElement('div');
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.marginBottom = '4px';
 
-    // Title span with inline edit
-    const titleSpan = document.createElement('span');
-    titleSpan.textContent = chat.name || `Chat ${idx + 1}`;
-    titleSpan.style.flex = '1';
-    titleSpan.style.cursor = 'pointer';
-    titleSpan.onclick = () => {
-      // open this chat
-      currentChatIdx = idx;
-      renderChatBox(chat.history);
-      if (chatSelector) {
-        chatSelector.value = idx;
-      }
-      profileMenu.classList.remove('active');
-      profileMenuBg.classList.remove('active');
-    };
-
-    // Rename (✏️)
-    const renameBtn = document.createElement('button');
-    renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-    renameBtn.title = 'Rename';
-    renameBtn.style.margin = '0 6px 0 9px';
-    renameBtn.onclick = (e) => {
-      e.stopPropagation();
-      let newName = prompt("Rename chat:", chat.name || `Chat ${idx + 1}`);
-      if (newName) {
-        chat.name = newName.trim();
-        saveChats();
-        renderChatsListSidebar();
-        renderChatSelector(); // sync main selector
-      }
-    };
-
-    // Delete (🗑️)
-    const delBtn = document.createElement('button');
-    delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-    delBtn.title = 'Delete';
-    delBtn.style.marginLeft = '6px';
-    delBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (confirm("Delete this chat?")) {
-        chats.splice(idx, 1);
-        if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1;
-        if (!chats.length) {
-          chats.push({ name: 'Chat 1', history: [] });
-          currentChatIdx = 0;
+      // Title span with inline edit
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = chat.name || `Chat ${idx + 1}`;
+      titleSpan.style.flex = '1';
+      titleSpan.style.cursor = 'pointer';
+      titleSpan.onclick = () => {
+        currentChatIdx = idx;
+        renderChatBox(chat.history);
+        if (chatSelector) {
+          chatSelector.value = idx;
         }
-        saveChats();
-        renderChatsListSidebar();
-        renderChatSelector();
-        renderChatBox(chats[currentChatIdx]?.history || []);
-      }
-    };
+        profileMenu?.classList.remove('active');
+        profileMenuBg?.classList.remove('active');
+      };
 
-    // Open (▶)
-    const openBtn = document.createElement('button');
-    openBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-    openBtn.title = 'Open Chat';
-    openBtn.onclick = (e) => {
-      e.stopPropagation();
-      currentChatIdx = idx;
-      renderChatBox(chat.history);
-      if (chatSelector) chatSelector.value = idx;
-      profileMenu.classList.remove('active');
-      profileMenuBg.classList.remove('active');
-    };
+      // Rename (✏️)
+      const renameBtn = document.createElement('button');
+      renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      renameBtn.title = 'Rename';
+      renameBtn.style.margin = '0 6px 0 9px';
+      renameBtn.onclick = (e) => {
+        e.stopPropagation();
+        let newName = prompt("Rename chat:", chat.name || `Chat ${idx + 1}`);
+        if (newName) {
+          chat.name = newName.trim();
+          saveChats();
+          renderChatsListSidebar();
+          renderChatSelector(); // sync main selector
+        }
+      };
 
-    container.appendChild(titleSpan);
-    container.appendChild(renameBtn);
-    container.appendChild(delBtn);
-    container.appendChild(openBtn);
-    chatsList.appendChild(container);
-  });
-}
+      // Delete (🗑️)
+      const delBtn = document.createElement('button');
+      delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      delBtn.title = 'Delete';
+      delBtn.style.marginLeft = '6px';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm("Delete this chat?")) {
+          chats.splice(idx, 1);
+          if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1;
+          if (!chats.length) {
+            chats.push({ name: 'Chat 1', history: [] });
+            currentChatIdx = 0;
+          }
+          saveChats();
+          renderChatsListSidebar();
+          renderChatSelector();
+          renderChatBox(chats[currentChatIdx]?.history || []);
+        }
+      };
 
-// Wire up the "New Chat" button in sidebar only
-$('newChatBtn').onclick = function () {
-  chats.push({ name: "Chat " + (chats.length + 1), history: [] });
-  currentChatIdx = chats.length - 1;
-  saveChats();
-  renderChatsListSidebar();
-  renderChatSelector();
-  renderChatBox(chats[currentChatIdx]?.history || []);
-};
+      // Open (▶)
+      const openBtn = document.createElement('button');
+      openBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      openBtn.title = 'Open Chat';
+      openBtn.onclick = (e) => {
+        e.stopPropagation();
+        currentChatIdx = idx;
+        renderChatBox(chat.history);
+        if (chatSelector) chatSelector.value = idx;
+        profileMenu?.classList.remove('active');
+        profileMenuBg?.classList.remove('active');
+      };
+
+      container.appendChild(titleSpan);
+      container.appendChild(renameBtn);
+      container.appendChild(delBtn);
+      container.appendChild(openBtn);
+      chatsListEl.appendChild(container);
+    });
+  }
+
+  // Wire up the "New Chat" button in sidebar if present
+  if (newChatBtn) {
+    newChatBtn.addEventListener('click', () => {
+      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
+      currentChatIdx = chats.length - 1;
+      saveChats();
+      renderChatsListSidebar();
+      renderChatSelector();
+      renderChatBox(chats[currentChatIdx]?.history || []);
+    });
+  }
 
   /* ---------- LocalStorage Chat Logic, Excluding Images ---------- */
   function renderChatSelector() {
@@ -635,6 +643,7 @@ $('newChatBtn').onclick = function () {
       renderChatBox((chats[currentChatIdx] || {}).history || []);
     });
   }
+
   if (addChatBtn) {
     addChatBtn.addEventListener('click', function () {
       const name = "Chat " + (chats.length + 1);
@@ -645,6 +654,7 @@ $('newChatBtn').onclick = function () {
       renderChatBox((chats[currentChatIdx] || {}).history || []);
     });
   }
+
   if (removeChatBtn) {
     removeChatBtn.addEventListener('click', function () {
       if (!chats.length) return;
@@ -754,67 +764,82 @@ $('newChatBtn').onclick = function () {
 
       if (copyBtn)
         copyBtn.onclick = () => {
-          const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
-          const text = aiOnly[aiIdx]?.text || "";
-          navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
-          copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-          setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+          try {
+            const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+            const text = aiOnly[aiIdx]?.text || "";
+            navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
+            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+            setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+          } catch (e) {
+            console.warn('copy failed', e);
+          }
         };
 
       if (shareBtn)
         shareBtn.onclick = () => {
-          const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
-          const text = aiOnly[aiIdx]?.text || "";
-          const url = window.location.origin;
-          const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
-          if (navigator.share) {
-            navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
-          } else {
-            prompt("Copy and share manually:", shareText);
-          }
+          try {
+            const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+            const text = aiOnly[aiIdx]?.text || "";
+            const url = window.location.origin;
+            const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+            if (navigator.share) {
+              navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
+            } else {
+              prompt("Copy and share manually:", shareText);
+            }
+          } catch (e) { console.warn('share failed', e); }
         };
 
       if (regenBtn)
         regenBtn.onclick = async () => {
-          // Find which index among history this AI is
-          let aiMsgCount = 0, aiMsgIndexInHistory = -1;
-          const history = chats[currentChatIdx]?.history || [];
-          for (let i = 0; i < history.length; i++) {
-            if (history[i].role === "ai") {
-              if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
-              aiMsgCount++;
-            }
-          }
-          const userMsgObj = history[aiMsgIndexInHistory - 1];
-          const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
-          if (!userMsg) {
-            regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
-            setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
-            return;
-          }
-          // remove the ai message to be regenerated
-          if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
-          saveChats();
-          renderChatBox(history);
-          showTypingAtNext();
           try {
-            let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
-            });
-            let data = await res.json();
-            removeTyping();
-            if (data && data.response) {
-              history.push({ role: 'ai', text: data.response });
+            // Find which index among history this AI is
+            let aiMsgCount = 0, aiMsgIndexInHistory = -1;
+            const history = chats[currentChatIdx]?.history || [];
+            for (let i = 0; i < history.length; i++) {
+              if (history[i].role === "ai") {
+                if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
+                aiMsgCount++;
+              }
+            }
+            const userMsgObj = history[aiMsgIndexInHistory - 1];
+            const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
+            if (!userMsg) {
+              regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
+              setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
+              return;
+            }
+            // remove the ai message to be regenerated
+            if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
+            saveChats();
+            renderChatBox(history);
+            showTypingAtNext();
+            try {
+              let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
+              });
+              let data;
+              try { data = await res.json(); } catch (e) { data = {}; }
+              removeTyping();
+              if (data && data.response) {
+                history.push({ role: 'ai', text: data.response });
+                saveChats();
+                renderChatBox(history);
+              } else {
+                history.push({ role: 'ai', text: '❌ No response from server.' });
+                saveChats();
+                renderChatBox(history);
+              }
+            } catch (err) {
+              removeTyping();
+              history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
               saveChats();
               renderChatBox(history);
             }
           } catch (err) {
-            removeTyping();
-            history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
-            saveChats();
-            renderChatBox(history);
+            console.warn('regen error', err);
           }
         };
     });
@@ -860,41 +885,38 @@ $('newChatBtn').onclick = function () {
   }
 
   /* ---------- File Preview (images not saved) & Uploaded files state ---------- */
-  let uploadedFiles = [];
-  let uploadData = null; // keep legacy name used in submit logic
-
   function renderFilePreview() {
-  if (!filePreview) return;
-  if (!uploadedFiles.length) {
-    filePreview.style.display = 'none';
-    filePreview.innerHTML = '';
-    return;
-  }
-  filePreview.style.display = 'block';
-  filePreview.innerHTML = uploadedFiles.map((file, idx) => {
-    let icon = file.type.startsWith('image/') ? '🖼️'
-              : file.type === 'application/pdf' ? '📄'
-              : file.type.startsWith('audio/') ? '🎵'
-              : file.type.startsWith('video/') ? '🎬'
-              : '📁';
-    return `
-      <div style="display:flex;align-items:center;gap:10px;border-radius:7px;margin-bottom:2px;">
-        <span style="font-size:1.25em;">${icon}</span>
-        <span style="color:#aee;font-size:.99em;">${file.name}</span>
-        <button type="button" data-idx="${idx}" class="remove-file-btn" style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>
-      </div>`;
-  }).join('');
+    if (!filePreview) return;
+    if (!uploadedFiles.length) {
+      filePreview.style.display = 'none';
+      filePreview.innerHTML = '';
+      return;
+    }
+    filePreview.style.display = 'block';
+    filePreview.innerHTML = uploadedFiles.map((file, idx) => {
+      let icon = file.type.startsWith('image/') ? '🖼️'
+                : file.type === 'application/pdf' ? '📄'
+                : file.type.startsWith('audio/') ? '🎵'
+                : file.type.startsWith('video/') ? '🎬'
+                : '📁';
+      return `
+        <div style="display:flex;align-items:center;gap:10px;border-radius:7px;margin-bottom:2px;">
+          <span style="font-size:1.25em;">${icon}</span>
+          <span style="color:#aee;font-size:.99em;">${file.name}</span>
+          <button type="button" data-idx="${idx}" class="remove-file-btn" style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>
+        </div>`;
+    }).join('');
 
-  filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const idx = parseInt(btn.getAttribute('data-idx'));
-      uploadedFiles.splice(idx, 1);
-      uploadData = uploadedFiles || null;
-      if (!uploadedFiles.length && chatFile) chatFile.value = '';
-      renderFilePreview();
+    filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(btn.getAttribute('data-idx'));
+        uploadedFiles.splice(idx, 1);
+        uploadData = uploadedFiles || null;
+        if (!uploadedFiles.length && chatFile) chatFile.value = '';
+        renderFilePreview();
+      });
     });
-  });
-}
+  }
 
   if (chatFile) {
     chatFile.addEventListener('change', function () {
@@ -1074,6 +1096,7 @@ $('newChatBtn').onclick = function () {
       }
 
       // ----------- 3. TEXT/COMMAND CHAT LOGIC -----------
+      // push user message
       chats[currentChatIdx].history.push({ role: 'user', text: msgText });
       if (chats[currentChatIdx].history.length === 1) { chats[currentChatIdx].name = msgText.slice(0, 25) + "..."; renderChatSelector(); }
       renderChatBox(chats[currentChatIdx]?.history || []);
@@ -1083,11 +1106,19 @@ $('newChatBtn').onclick = function () {
         let res, data;
         if (/^\/image\s+/i.test(msgText)) {
           let imagePrompt = msgText.replace(/^\/image\s+/i, '');
-          res = await fetch('https://web-production-9a18.up.railway.app/generate-image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imagePrompt) });
+          res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: imagePrompt }) // FIXED: send object with prompt
+          });
           try { data = await res.json(); } catch (_) { data = {}; }
           removeTyping();
-          if (data.image_b64) { showAIImagePreview('data:image/png;base64,' + data.image_b64, '(Your image—download or close)'); chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)' }); }
-          else { chats[currentChatIdx].history.push({ role: 'ai', text: data.error || '❌ Image generation failed. Try another prompt.' }); }
+          if (data.image_b64) {
+            showAIImagePreview('data:image/png;base64,' + data.image_b64, '(Your image—download or close)');
+            chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)' });
+          } else {
+            chats[currentChatIdx].history.push({ role: 'ai', text: data.error || '❌ Image generation failed. Try another prompt.' });
+          }
           saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
         } else {
           const history = chats[currentChatIdx].history.map(m => ({ role: m.role, content: m.text }));
@@ -1124,7 +1155,10 @@ $('newChatBtn').onclick = function () {
   currentModelIdx = 0;
   if (chatInput) { chatInput.value = '/image photoreal '; chatInput.focus(); try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) { } }
 
-});
+  // final render of sidebar list
+  renderChatsListSidebar();
+
+}); // end DOMContentLoaded
 </script>
 </body>
 </html>
