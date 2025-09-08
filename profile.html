@@ -364,15 +364,6 @@ body {
     </nav>
   </div>
   <script type="module">
-    /* ---------- Fixed/Refactored profile script ----------
-   Key fixes made:
-   - All DOM access / event wiring moved into DOMContentLoaded to avoid null refs
-   - voiceBtn and imageBtn are created before any handler uses them
-   - Unified file-upload handling (uploadedFiles + uploadData) and removed duplicate handlers
-   - Added defensive checks (?.) to avoid throwing when elements are missing
-   - Kept original functionality; minor cleanup and comments added
-*/
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
@@ -387,11 +378,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+// Short helper
+const $ = id => document.getElementById(id);
+
+// ---------- Global chat storage (move BEFORE auth callback) ----------
+let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
+let currentChatIdx = chats.length - 1 >= 0 ? chats.length - 1 : 0;
+
+function saveChats() {
+  try {
+    let sanitized = JSON.parse(JSON.stringify(chats));
+    sanitized.forEach(chat => {
+      (chat.history || []).forEach(msg => {
+        if (msg.text && typeof msg.text === 'string' && msg.text.includes("data:image")) {
+          msg.text = "[image omitted]";
+        }
+      });
+    });
+    localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
+  } catch (e) { console.warn('saveChats failed', e); }
+}
+
 // Run DOM-related setup after DOM is ready
 window.addEventListener('DOMContentLoaded', () => {
-  // Short helper
-  const $ = id => document.getElementById(id);
-
   /* ---------- Elements (may be null if markup is different) ---------- */
   const starsContainer = $('stars-container');
   const mainContainer = $('mainContainer');
@@ -409,15 +418,15 @@ window.addEventListener('DOMContentLoaded', () => {
   const profilePicPreview = $('profilePicPreview');
   const profileForm = $('profileForm');
   const chatBox = $('chatBox');
-  const chatSelector = $('chatSelector');
+  const chatSelector = $('chatSelector'); // single declaration
   const chatForm = $('chatForm');
   const chatInput = $('chatInput');
   const sendBtn = $('sendBtn');
   const chatFile = $('chatFile');
   const filePreview = $('filePreview');
   const voiceInputBtn = $('voiceInputBtn');
-  const addChatBtn = $('addChatBtn')
-  const removeChatBtn =$('removeChatBtn')
+  const addChatBtn = $('addChatBtn');
+  const removeChatBtn = $('removeChatBtn');
 
   /* ---------- Stars ---------- */
   if (starsContainer) {
@@ -471,7 +480,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Render chat UI if functions exist
     try { renderChatSelector(); } catch (e) { console.warn('renderChatSelector error', e); }
-    try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) { console.warn('renderChatBox error', e); }
+    try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
   });
 
   if (editPhoto && profilePicPreview) {
@@ -486,10 +495,13 @@ window.addEventListener('DOMContentLoaded', () => {
       const photoURL = (editPhoto ? editPhoto.value.trim() : '');
       try {
         await updateProfile(currentUser, { displayName: name, photoURL });
-        await auth.currentUser.reload();
+        // reload current user if available
+        if (auth.currentUser && typeof auth.currentUser.reload === 'function') {
+          await auth.currentUser.reload();
+        }
         if (status) { status.textContent = "Profile updated!"; status.style.color = "#00ffff"; }
         setTimeout(() => { profileMenu?.classList.remove('active'); profileMenuBg?.classList.remove('active'); }, 650);
-        if (greetMsg) greetMsg.textContent = "Welcome, " + (auth.currentUser.displayName || (auth.currentUser.email || '').split('@')[0]) + "!";
+        if (greetMsg) greetMsg.textContent = "Welcome, " + (auth.currentUser?.displayName || (auth.currentUser?.email || '').split('@')[0]) + "!";
       } catch (err) {
         if (status) { status.textContent = err.message || "Update failed"; status.style.color = "#ffd700"; }
       }
@@ -497,65 +509,62 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------- LocalStorage Chat Logic, Excluding Images ---------- */
-  let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
-  let currentChatIdx = chats.length - 1 >= 0 ? chats.length - 1 : 0;
-
-  function saveChats() {
-    try {
-      let sanitized = JSON.parse(JSON.stringify(chats));
-      sanitized.forEach(chat => {
-        chat.history.forEach(msg => {
-          if (msg.text && typeof msg.text === 'string' && msg.text.includes("data:image")) {
-            msg.text = "[image omitted]";
-          }
-        });
-      });
-      localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
-    } catch (e) { console.warn('saveChats failed', e); }
+  function renderChatSelector() {
+    if (!chatSelector) return;
+    chatSelector.innerHTML = "";
+    chats.forEach((chat, idx) => {
+      const option = document.createElement("option");
+      option.value = idx;
+      option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 24) || "Untitled");
+      chatSelector.appendChild(option);
+    });
+    // ensure index validity
+    if (chats.length === 0) {
+      currentChatIdx = 0;
+      // add a default chat so UI has something to show
+      chats = [{ name: 'Chat 1', history: [] }];
+      saveChats();
+      // re-render the selector with default chat
+      renderChatSelector();
+      return;
+    }
+    if (typeof currentChatIdx === 'number') {
+      currentChatIdx = Math.min(Math.max(0, currentChatIdx), Math.max(0, chats.length - 1));
+      chatSelector.value = currentChatIdx;
+    }
   }
 
-  const chatSelector = document.getElementById('chatSelector');
-const addChatBtn = document.getElementById('addChatBtn');
-const removeChatBtn = document.getElementById('removeChatBtn');
-
-function renderChatSelector() {
-  chatSelector.innerHTML = "";
-  chats.forEach((chat, idx) => {
-    const option = document.createElement("option");
-    option.value = idx;
-    option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 24) || "Untitled");
-    chatSelector.appendChild(option);
-  });
-  if (typeof currentChatIdx === 'number') chatSelector.value = currentChatIdx;
-}
-
-if (chatSelector) {
-  chatSelector.addEventListener('change', function () {
-    currentChatIdx = parseInt(this.value) || 0;
-    renderChatBox(chats[currentChatIdx]?.history || []);
-  });
-}
-if (addChatBtn) {
-  addChatBtn.addEventListener('click', function () {
-    const name = "Chat " + (chats.length + 1);
-    chats.push({ name, history: [] });
-    currentChatIdx = chats.length - 1;
-    saveChats();
-    renderChatSelector();
-    renderChatBox(chats[currentChatIdx]?.history || []);
-  });
-}
-if (removeChatBtn) {
-  removeChatBtn.addEventListener('click', function () {
-    if (!chats.length) return;
-    if (!confirm("Delete this chat?")) return;
-    chats.splice(currentChatIdx, 1);
-    currentChatIdx = Math.max(0, currentChatIdx - 1);
-    saveChats();
-    renderChatSelector();
-    renderChatBox(chats[currentChatIdx]?.history || []);
-  });
-}
+  if (chatSelector) {
+    chatSelector.addEventListener('change', function () {
+      currentChatIdx = parseInt(this.value) || 0;
+      renderChatBox((chats[currentChatIdx] || {}).history || []);
+    });
+  }
+  if (addChatBtn) {
+    addChatBtn.addEventListener('click', function () {
+      const name = "Chat " + (chats.length + 1);
+      chats.push({ name, history: [] });
+      currentChatIdx = chats.length - 1;
+      saveChats();
+      renderChatSelector();
+      renderChatBox((chats[currentChatIdx] || {}).history || []);
+    });
+  }
+  if (removeChatBtn) {
+    removeChatBtn.addEventListener('click', function () {
+      if (!chats.length) return;
+      if (!confirm("Delete this chat?")) return;
+      chats.splice(currentChatIdx, 1);
+      currentChatIdx = Math.max(0, currentChatIdx - 1);
+      if (!chats.length) {
+        chats.push({ name: 'Chat 1', history: [] });
+        currentChatIdx = 0;
+      }
+      saveChats();
+      renderChatSelector();
+      renderChatBox((chats[currentChatIdx] || {}).history || []);
+    });
+  }
 
   /* ---------- Markdown, Code, Copy, Share ---------- */
   const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -610,108 +619,111 @@ if (removeChatBtn) {
 
   /* ---------- Chat Rendering with Copy/Share ---------- */
   function renderChatBox(messages) {
-  if (!chatBox) return;
-  chatBox.innerHTML = "";
-  let aiMsgIdx = 0;
-  (messages || []).forEach((msg, mi) => {
-    const div = document.createElement('div');
-    div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
-    if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
-      div.innerHTML = msg.text.replace('image:', '');
-    } else if (msg.role === "ai") {
-      const { html } = renderMarkdown(msg.text || '');
-      div.innerHTML = `<div class="msg">${html}
-        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-          <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-          <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-        </div>
-      </div>`;
-      div.setAttribute('data-aiidx', aiMsgIdx++);
-    } else {
-      div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
-    }
-    chatBox.appendChild(div);
-  });
-  enhanceCodeBlocks(chatBox);
-  hookAiMsgControls();
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
+    if (!chatBox) return;
+    chatBox.innerHTML = "";
+    let aiMsgIdx = 0;
+    (messages || []).forEach((msg, mi) => {
+      const div = document.createElement('div');
+      div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
+      if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
+        div.innerHTML = msg.text.replace('image:', '');
+      } else if (msg.role === "ai") {
+        const { html } = renderMarkdown(msg.text || '');
+        div.innerHTML = `<div class="msg">${html}
+          <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+            <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+            <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+            <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+        </div>`;
+        div.setAttribute('data-aiidx', aiMsgIdx++);
+      } else {
+        div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
+      }
+      chatBox.appendChild(div);
+    });
+    enhanceCodeBlocks(chatBox);
+    hookAiMsgControls();
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
 
-function hookAiMsgControls() {
-  chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
-    const aiIdx = Number(div.getAttribute('data-aiidx'));
-    const controls = div.querySelector('.ai-msg-controls');
-    if (!controls) return;
-    const copyBtn = controls.querySelector('.inline-copy-btn');
-    const shareBtn = controls.querySelector('.inline-share-btn');
-    const regenBtn = controls.querySelector('.regen-btn');
+  function hookAiMsgControls() {
+    if (!chatBox) return;
+    chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
+      const aiIdx = Number(div.getAttribute('data-aiidx'));
+      const controls = div.querySelector('.ai-msg-controls');
+      if (!controls) return;
+      const copyBtn = controls.querySelector('.inline-copy-btn');
+      const shareBtn = controls.querySelector('.inline-share-btn');
+      const regenBtn = controls.querySelector('.regen-btn');
 
-    if (copyBtn)
-      copyBtn.onclick = () => {
-        const aiOnly = chats[currentChatIdx]?.history?.filter(m => m.role === "ai") || [];
-        const text = aiOnly[aiIdx]?.text || "";
-        navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
-        copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
-      };
+      if (copyBtn)
+        copyBtn.onclick = () => {
+          const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+          const text = aiOnly[aiIdx]?.text || "";
+          navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
+          copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+          setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+        };
 
-    if (shareBtn)
-      shareBtn.onclick = () => {
-        const aiOnly = chats[currentChatIdx]?.history?.filter(m => m.role === "ai") || [];
-        const text = aiOnly[aiIdx]?.text || "";
-        const url = window.location.origin;
-        const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
-        if (navigator.share) {
-          navigator.share({ title: "Philadelphia AI", text: shareText, url });
-        } else {
-          prompt("Copy and share manually:", shareText);
-        }
-      };
-
-    if (regenBtn)
-      regenBtn.onclick = async () => {
-        // Find which index among history this AI is
-        let aiMsgCount = 0, aiMsgIdx = -1;
-        for (let i = 0; i < chats[currentChatIdx].history.length; i++) {
-          if (chats[currentChatIdx].history[i].role === "ai") {
-            if (aiMsgCount === aiIdx) { aiMsgIdx = i; break; }
-            aiMsgCount++;
+      if (shareBtn)
+        shareBtn.onclick = () => {
+          const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+          const text = aiOnly[aiIdx]?.text || "";
+          const url = window.location.origin;
+          const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+          if (navigator.share) {
+            navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
+          } else {
+            prompt("Copy and share manually:", shareText);
           }
-        }
-        const userMsgObj = chats[currentChatIdx]?.history?.[aiMsgIdx - 1];
-        const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
-        if (!userMsg) {
-          regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
-          setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
-          return;
-        }
-        chats[currentChatIdx].history.splice(aiMsgIdx, 1);
-        saveChats();
-        renderChatBox(chats[currentChatIdx].history);
-        showTypingAtNext();
-        try {
-          let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
-          });
-          let data = await res.json();
-          removeTyping();
-          if (data && data.response) {
-            chats[currentChatIdx].history.push({ role: 'ai', text: data.response });
-            saveChats();
-            renderChatBox(chats[currentChatIdx].history);
+        };
+
+      if (regenBtn)
+        regenBtn.onclick = async () => {
+          // Find which index among history this AI is
+          let aiMsgCount = 0, aiMsgIndexInHistory = -1;
+          const history = chats[currentChatIdx]?.history || [];
+          for (let i = 0; i < history.length; i++) {
+            if (history[i].role === "ai") {
+              if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
+              aiMsgCount++;
+            }
           }
-        } catch (err) {
-          removeTyping();
-          chats[currentChatIdx].history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+          const userMsgObj = history[aiMsgIndexInHistory - 1];
+          const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
+          if (!userMsg) {
+            regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
+            setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
+            return;
+          }
+          // remove the ai message to be regenerated
+          if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
           saveChats();
-          renderChatBox(chats[currentChatIdx].history);
-        }
-      };
-  });
-}
+          renderChatBox(history);
+          showTypingAtNext();
+          try {
+            let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
+            });
+            let data = await res.json();
+            removeTyping();
+            if (data && data.response) {
+              history.push({ role: 'ai', text: data.response });
+              saveChats();
+              renderChatBox(history);
+            }
+          } catch (err) {
+            removeTyping();
+            history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+            saveChats();
+            renderChatBox(history);
+          }
+        };
+    });
+  }
 
   /* ------- Typing / Animation Utilities ---- */
   let typingNode = null;
@@ -742,7 +754,7 @@ function hookAiMsgControls() {
     enhanceCodeBlocks(msgdiv);
 
     hookAiMsgControls();
-chatBox.scrollTop = chatBox.scrollHeight;
+    chatBox.scrollTop = chatBox.scrollHeight;
 
     // attach handlers to the newly appended buttons
     const copyBtn = msgdiv.querySelector('.inline-copy-btn');
@@ -751,7 +763,6 @@ chatBox.scrollTop = chatBox.scrollHeight;
     if (shareBtn) shareBtn.onclick = async () => { if (navigator.share) { try { await navigator.share({ title: "Philadelphia AI", text }); } catch (e) { /* ignore */ } } else { prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g, "")); } };
     if (onDone) onDone();
   }
-
 
   /* ---------- File Preview (images not saved) & Uploaded files state ---------- */
   let uploadedFiles = [];
@@ -1007,8 +1018,6 @@ chatBox.scrollTop = chatBox.scrollHeight;
   if (chatInput) { chatInput.value = '/image photoreal '; chatInput.focus(); try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) { } }
 
 });
-
-/* ---------- End of fixed script ---------- */
 </script>
 </body>
 </html>
