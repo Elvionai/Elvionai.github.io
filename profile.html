@@ -972,10 +972,10 @@ function showTypingAtNext() {
   typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
   chatBox.appendChild(typingNode);
   setTimeout(() => {
-    typingNode.scrollIntoView({behavior: "smooth", block: "end"});
-    chatBox.scrollTop = chatBox.scrollHeight + 999;
+    typingNode.scrollIntoView({ behavior: "smooth", block: "end" });
   }, 20);
 }
+
 function removeTyping() {
   if (typingNode && typingNode.parentNode) {
     typingNode.parentNode.removeChild(typingNode);
@@ -983,35 +983,46 @@ function removeTyping() {
   }
 }
 
-  async function typeBotMessage(text, onDone) {
-    removeTyping();
-    if (!chatBox) return;
-    const div = document.createElement('div'); div.className = "chat-message ai";
-    const msgdiv = document.createElement('div'); msgdiv.className = 'msg'; div.appendChild(msgdiv); chatBox.appendChild(div);
-    let sofar = '';
-    for (const ch of text) {
-      sofar += ch;
-      msgdiv.innerHTML = renderMarkdown(sofar).html;
-      chatBox.scrollTop = chatBox.scrollHeight;
-      await new Promise(res => setTimeout(res, 6 + Math.random() * 18));
-    }
-    msgdiv.innerHTML = renderMarkdown(text).html + `\n  <div style="display:flex;justify-content:end;gap:8px;margin-top:4px;">\n    <button class="inline-copy-btn" title="Copy whole AI response">□ Copy</button>\n    <button class="inline-share-btn" title="Share this reply"><i class="fa-solid fa-share"></i> Share</button>\n  </div>`;
-    enhanceCodeBlocks(msgdiv);
-    hookAiMsgControls();
-    chatBox.scrollTop = chatBox.scrollHeight;
+async function typeBotMessage(text) {
+  removeTyping();
+  if (!chatBox) return;
 
-    const copyBtn = msgdiv.querySelector('.inline-copy-btn');
-    if (copyBtn) copyBtn.onclick = () => {
-      try { navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, "")); copyBtn.textContent = "Copied!"; setTimeout(() => copyBtn.textContent = "□ Copy", 900); }
-      catch (e) { /* ignore */ }
-    };
-    const shareBtn = msgdiv.querySelector('.inline-share-btn');
-    if (shareBtn) shareBtn.onclick = async () => {
-      if (navigator.share) { try { await navigator.share({ title: "Philadelphia AI", text }); } catch (e) { /* ignore */ } }
-      else prompt("Copy and share:", text.replace(/<\/?[^>]+(>|$)/g, ""));
-    };
-    if (onDone) onDone();
+  const div = document.createElement('div');
+  div.className = "chat-message ai";
+  const msgdiv = document.createElement('div');
+  msgdiv.className = 'msg';
+  div.appendChild(msgdiv);
+  chatBox.appendChild(div);
+
+  let sofar = '';
+  const words = text.split(' ');
+
+  for (const word of words) {
+    sofar += word + ' ';
+    msgdiv.innerHTML = renderMarkdown(sofar).html;
+    chatBox.scrollTop = chatBox.scrollHeight;
+    await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
   }
+  
+  // Final rendering of the full message and controls
+  msgdiv.innerHTML = renderMarkdown(text).html + `
+    <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+        <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+        <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+        <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+    </div>
+  `;
+  enhanceCodeBlocks(msgdiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // Add the message to chat history only after typing is complete
+  chats[currentChatIdx].history.push({ role: 'ai', text: text });
+  saveChats();
+  renderChatSelector();
+
+  // Re-hook the event listeners for the new buttons
+  hookAiMsgControls();
+}
 
   /* ---------- File preview helpers ---------- */
 function renderFilePreview() {
