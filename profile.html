@@ -1174,10 +1174,10 @@ if (chatFile) {
   }
 
   /* ---------- Chat submit handler (main) ---------- */
-   if (chatForm) {
+   /* ---------- Chat submit handler (main) ---------- */
+if (chatForm) {
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
-    // Always ensure at least one chat exists (retain this)
     if (currentChatIdx < 0 || !chats.length) {
       chats.push({ name: 'Chat 1', history: [] });
       currentChatIdx = 0;
@@ -1186,27 +1186,96 @@ if (chatFile) {
 
     const msgText = chatInput ? chatInput.value.trim() : '';
 
-    // 1. --- File(s) upload logic: submit/clear immediately, don't wait for AI ---
-    if (uploadedFiles && uploadedFiles.length) {
-      renderFilePreview();
-      // Place your file API code here if needed:
-      // await sendFilesAPI(uploadedFiles); // <--- your logic, if you want, or process below
-      uploadedFiles = [];
-      uploadData = null;
-      if (chatFile) chatFile.value = '';
-      setTimeout(renderFilePreview, 80);
+    if (!msgText && !uploadedFiles.length) {
+      return; // Do nothing if there's no input
     }
 
-    // 2. --- Append user message, show typing right away ---
-    if (msgText) {
-      chats[currentChatIdx].history.push({ role: "user", text: msgText });
-      renderChatBox(chats[currentChatIdx].history);
-      if (chatInput) {
-        chatInput.value = '';
-        chatInput.dispatchEvent(new Event('input'));
+    if (chatInput) {
+      chatInput.value = '';
+      chatInput.dispatchEvent(new Event('input'));
+    }
+    showTypingAtNext();
+
+    try {
+      let data;
+      // 1. Handle image generation command
+      if (/^\/imagine\s+/i.test(msgText)) {
+        const imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
+        const fd = new FormData();
+        fd.append('prompt', imaginePrompt);
+        if (uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) {
+          fd.append('file', uploadedFiles[0]);
+        }
+        
+        const res = await fetch('https://web-production-9a18.up.railway.app/imagine', { method: 'POST', body: fd });
+        if (!res.ok) {
+          let err = await res.json().catch(() => ({}));
+          throw new Error(err.error || res.statusText);
+        }
+        
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        showAIImagePreview(url, 'Your new Philadelphia AI image! (click Download if you like it)');
+        chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)' });
+
+      // 2. Handle file uploads (PDF, image, audio, video)
+      } else if (uploadedFiles.length) {
+        let isSuccess = true;
+        
+        const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf');
+        const images = uploadedFiles.filter(f => /^image\//.test(f.type));
+        const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
+        const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
+        
+        if (pdfs.length) {
+          let fd = new FormData();
+          fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.'));
+          pdfs.forEach(f => fd.append('files', f));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
+          data = await res.json();
+          if (data && data.response) {
+            chats[currentChatIdx].history.push({ role: 'ai', text: data.response });
+          } else {
+            chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the PDF(s).' });
+            isSuccess = false;
+          }
+        }
+        
+        chats[currentChatIdx].history.push({ role: 'user', text: `[File(s)] uploaded: ${uploadedFiles.map(f => f.name).join(', ')}${msgText ? ': ' + msgText : ''}` });
+        
+      // 3. Handle regular text chat
+      } else if (msgText) {
+        if (chats[currentChatIdx].history.length === 0) {
+          chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
+        }
+        
+        const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
+        const res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
+        data = await res.json();
+        if (data && data.response) {
+          chats[currentChatIdx].history.push({ role: 'ai', text: data.response });
+        } else {
+          chats[currentChatIdx].history.push({ role: 'ai', text: '🤖 Bot replied (no response).' });
+        }
       }
-      showTypingAtNext();
-      // Now add any message/AI API fetch and handling below...
+      
+      // Final state updates after successful processing
+      removeTyping();
+      if (chatFile) chatFile.value = '';
+      uploadedFiles = [];
+      uploadData = null;
+      renderFilePreview();
+      saveChats();
+      renderChatSelector();
+      renderChatBox(chats[currentChatIdx]?.history || []);
+      
+    } catch (err) {
+      // General error handling for any network or API issue
+      removeTyping();
+      chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
+      saveChats();
+      renderChatSelector();
+      renderChatBox(chats[currentChatIdx]?.history || []);
     }
   });
 }
