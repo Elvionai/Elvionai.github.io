@@ -846,16 +846,16 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------- Chat rendering & controls ---------- */
-  function renderChatBox(messages = []) {
+function renderChatBox(messages = []) {
   if (!chatBox) return;
   chatBox.innerHTML = '';
   let aiMsgIdx = 0;
   (messages || []).forEach((msg) => {
     const div = document.createElement('div');
-    div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
+    div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
     if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
       div.innerHTML = msg.text.replace('image:', '');
-    } else if (msg.role === "ai") {
+    } else if (msg.role === 'ai') {
       const { html } = renderMarkdown(msg.text || '');
       div.innerHTML = `<div class="msg">${html}
         <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
@@ -872,10 +872,12 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   enhanceCodeBlocks(chatBox);
   hookAiMsgControls();
-  // --- Guarantee autoscroll after render ---
   setTimeout(() => {
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }, 0);
+    // Scroll to last message always
+    const last = chatBox.lastElementChild;
+    if (last) last.scrollIntoView({behavior: "smooth", block: "end"});
+    chatBox.scrollTop = chatBox.scrollHeight + 200;
+  }, 20);
 }
 
 function hookAiMsgControls() {
@@ -961,22 +963,25 @@ function hookAiMsgControls() {
   });
 }
   /* ---------- Typing / typewriter ---------- */
-  let typingNode = null;
-  function showTypingAtNext() {
-    removeTyping();
-    if (!chatBox) return;
-    typingNode = document.createElement('div');
-    typingNode.className = 'chat-message ai';
-    typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
-    chatBox.appendChild(typingNode);
-    chatBox.scrollTop = chatBox.scrollHeight;
+let typingNode = null;
+function showTypingAtNext() {
+  removeTyping();
+  if (!chatBox) return;
+  typingNode = document.createElement('div');
+  typingNode.className = 'chat-message ai';
+  typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
+  chatBox.appendChild(typingNode);
+  setTimeout(() => {
+    typingNode.scrollIntoView({behavior: "smooth", block: "end"});
+    chatBox.scrollTop = chatBox.scrollHeight + 999;
+  }, 20);
+}
+function removeTyping() {
+  if (typingNode && typingNode.parentNode) {
+    typingNode.parentNode.removeChild(typingNode);
+    typingNode = null;
   }
-  function removeTyping() {
-    if (typingNode && typingNode.parentNode) {
-      typingNode.parentNode.removeChild(typingNode);
-      typingNode = null;
-    }
-  }
+}
 
   async function typeBotMessage(text, onDone) {
     removeTyping();
@@ -1009,63 +1014,50 @@ function hookAiMsgControls() {
   }
 
   /* ---------- File preview helpers ---------- */
-  function renderFilePreview() {
-    if (!filePreview) return;
-    if (!uploadedFiles.length) {
-      filePreview.style.display = 'none';
-      filePreview.innerHTML = '';
-      return;
+function renderFilePreview() {
+  if (!filePreview) return;
+  if (!uploadedFiles.length) {
+    filePreview.style.display = 'none';
+    filePreview.innerHTML = '';
+    return;
+  }
+  filePreview.style.display = 'block';
+  filePreview.innerHTML = uploadedFiles.map((file, idx) => {
+    let preview = '';
+    if (file.type.startsWith('image/')) {
+      preview = `<img src="${URL.createObjectURL(file)}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
+    } else if (file.type.startsWith('video/')) {
+      preview = `<video src="${URL.createObjectURL(file)}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
+    } else if (file.type.startsWith('audio/')) {
+      preview = `<audio controls src="${URL.createObjectURL(file)}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
+    } else if (file.type === 'application/pdf') {
+      preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
     }
-    filePreview.style.display = 'block';
-    filePreview.innerHTML = uploadedFiles.map((file, idx) => {
-      let preview = '';
-      if (file.type.startsWith('image/')) {
-        preview = `<img src="${URL.createObjectURL(file)}" style="max-width:92px;max-height:74px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
-      } else if (file.type.startsWith('video/')) {
-        preview = `<video src="${URL.createObjectURL(file)}" controls style="max-width:80px;height:42px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
-      } else if (file.type.startsWith('audio/')) {
-        preview = `<audio controls src="${URL.createObjectURL(file)}" style="vertical-align:middle;width:90px;margin-right:7px;"></audio>`;
-      } else if (file.type === 'application/pdf') {
-        preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
-      }
-      return `
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
-        ${preview}
-        <span style="color:#aee;font-size:.99em;">${escapeHTML(file.name)}</span>
-        <button type="button" data-idx="${idx}" class="remove-file-btn" style="color:#fff;background:#d23;border:none;border-radius:12px;padding:0 9px;cursor:pointer;font-weight:bold;font-size:1.18em;">&times;</button>
-      </div>`;
-    }).join('');
-    filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.getAttribute('data-idx'));
-        uploadedFiles.splice(idx, 1);
-        uploadData = uploadedFiles[0] || null;
-        if (!uploadedFiles.length && chatFile) chatFile.value = '';
-        renderFilePreview();
-      });
+    return `
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:1px;">
+      ${preview}
+      <span style="color:#aee;font-size:.99em;">${escapeHTML(file.name)}</span>
+      <button type="button" data-idx="${idx}" class="remove-file-btn" aria-label="Remove file">&times;</button>
+    </div>`;
+  }).join('');
+  filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-idx'));
+      uploadedFiles.splice(idx, 1);
+      uploadData = uploadedFiles[0] || null;
+      if (!uploadedFiles.length && chatFile) chatFile.value = '';
+      renderFilePreview();
     });
-  }
-
-  if (chatFile) {
-    chatFile.addEventListener('change', function () {
-      const files = Array.from(this.files || []);
-      uploadedFiles = files;
-      uploadData = files[0] || null;
-      if (filePreview && uploadData) {
-        if (uploadData.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = e => { filePreview.style.display = 'block'; filePreview.innerHTML = `<img src="${e.target.result}" alt="Selected image" style="max-width:200px;border-radius:8px;">`; };
-          reader.readAsDataURL(uploadData);
-        } else if (uploadData.type.startsWith('video/')) {
-          const reader = new FileReader();
-          reader.onload = e => { filePreview.style.display = 'block'; filePreview.innerHTML = `<video src="${e.target.result}" controls style="max-width:200px;border-radius:8px;"></video>`; };
-          reader.readAsDataURL(uploadData);
-        } else {
-          renderFilePreview();
-        }
-      } else renderFilePreview();
-    });
-  }
+  });
+}
+if (chatFile) {
+  chatFile.addEventListener('change', function () {
+    const files = Array.from(this.files || []);
+    uploadedFiles = files;
+    uploadData = files[0] || null;
+    renderFilePreview();
+  });
+}
 
   /* ---------- Voice input via Web Speech ---------- */
   if (voiceInputBtn && chatInput) {
@@ -1183,19 +1175,40 @@ function hookAiMsgControls() {
 
   /* ---------- Chat submit handler (main) ---------- */
   if (chatForm) {
-    chatForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const file = uploadData;
-      let msgText = (chatInput ? chatInput.value.trim() : '');
+  chatForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    // Ensure at least one chat exists and is valid
+    if (currentChatIdx < 0 || !chats.length) {
+      chats.push({ name: 'Chat 1', history: [] });
+      currentChatIdx = 0;
+      saveChats();
+    }
 
-      // Ensure at least one chat exists
-      if (currentChatIdx < 0 || !chats.length) {
-        chats.push({ name: 'Chat 1', history: [] });
-        currentChatIdx = 0;
-        saveChats();
+    const msgText = chatInput ? chatInput.value.trim() : '';
+    // File(s) submit immediately and preview clears instantly
+    if (uploadedFiles && uploadedFiles.length) {
+      // Call your file upload/send logic here
+      renderFilePreview();
+      // (example) await sendFilesAPI(uploadedFiles);
+      uploadedFiles = [];
+      uploadData = null;
+      if (chatFile) chatFile.value = '';
+      setTimeout(renderFilePreview, 80);
+    }
+
+    // Send text only if it's non-empty
+    if (msgText) {
+      chats[currentChatIdx].history.push({ role: "user", text: msgText });
+      renderChatBox(chats[currentChatIdx].history);
+      if (chatInput) {
+        chatInput.value = '';
+        chatInput.dispatchEvent(new Event('input'));
       }
-      if (!msgText && !file) return;
-      if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input')); }
+      showTypingAtNext();
+      // ...proceed to get bot reply via API...
+    }
+  });
+}
 
       // --------- /imagine handler ----------
       if (/^\/imagine\s+/i.test(msgText)) {
