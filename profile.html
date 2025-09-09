@@ -798,117 +798,119 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------- Chat rendering & controls ---------- */
   function renderChatBox(messages = []) {
-    if (!chatBox) return;
-    chatBox.innerHTML = '';
-    let aiMsgIdx = 0;
-    (messages || []).forEach((msg) => {
-      const div = document.createElement('div');
-      div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
-      if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
-        div.innerHTML = msg.text.replace('image:', '');
-      } else if (msg.role === "ai") {
-        const { html } = renderMarkdown(msg.text || '');
-        div.innerHTML = `<div class="msg">${html}
-          <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-            <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-            <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-            <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-          </div>
-        </div>`;
-        div.setAttribute('data-aiidx', aiMsgIdx++);
-      } else {
-        div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
-      }
-      chatBox.appendChild(div);
-    });
-    enhanceCodeBlocks(chatBox);
-    hookAiMsgControls();
+  if (!chatBox) return;
+  chatBox.innerHTML = '';
+  let aiMsgIdx = 0;
+  (messages || []).forEach((msg) => {
+    const div = document.createElement('div');
+    div.className = "chat-message " + (msg.role === "user" ? "user" : "ai");
+    if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
+      div.innerHTML = msg.text.replace('image:', '');
+    } else if (msg.role === "ai") {
+      const { html } = renderMarkdown(msg.text || '');
+      div.innerHTML = `<div class="msg">${html}
+        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+          <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+          <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+        </div>
+      </div>`;
+      div.setAttribute('data-aiidx', aiMsgIdx++);
+    } else {
+      div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
+    }
+    chatBox.appendChild(div);
+  });
+  enhanceCodeBlocks(chatBox);
+  hookAiMsgControls();
+  // --- Guarantee autoscroll after render ---
+  setTimeout(() => {
     chatBox.scrollTop = chatBox.scrollHeight;
-  }
+  }, 0);
+}
 
-  function hookAiMsgControls() {
-    if (!chatBox) return;
-    chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
-      const aiIdx = Number(div.getAttribute('data-aiidx'));
-      const controls = div.querySelector('.ai-msg-controls');
-      if (!controls) return;
-      const copyBtn = controls.querySelector('.inline-copy-btn');
-      const shareBtn = controls.querySelector('.inline-share-btn');
-      const regenBtn = controls.querySelector('.regen-btn');
+function hookAiMsgControls() {
+  if (!chatBox) return;
+  chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
+    const aiIdx = Number(div.getAttribute('data-aiidx'));
+    const controls = div.querySelector('.ai-msg-controls');
+    if (!controls) return;
+    const copyBtn = controls.querySelector('.inline-copy-btn');
+    const shareBtn = controls.querySelector('.inline-share-btn');
+    const regenBtn = controls.querySelector('.regen-btn');
 
-      if (copyBtn) copyBtn.onclick = () => {
-        try {
-          const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
-          const text = aiOnly[aiIdx]?.text || "";
-          navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
-          copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-          setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
-        } catch (e) { console.warn('copy failed', e); }
-      };
+    if (copyBtn) copyBtn.onclick = () => {
+      try {
+        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+        const text = aiOnly[aiIdx]?.text || "";
+        navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
+        copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+      } catch (e) { console.warn('copy failed', e); }
+    };
 
-      if (shareBtn) shareBtn.onclick = () => {
-        try {
-          const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
-          const text = aiOnly[aiIdx]?.text || "";
-          const url = window.location.origin;
-          const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
-          if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
-          else prompt("Copy and share manually:", shareText);
-        } catch (e) { console.warn('share failed', e); }
-      };
+    if (shareBtn) shareBtn.onclick = () => {
+      try {
+        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+        const text = aiOnly[aiIdx]?.text || "";
+        const url = window.location.origin;
+        const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+        if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
+        else prompt("Copy and share manually:", shareText);
+      } catch (e) { console.warn('share failed', e); }
+    };
 
-      if (regenBtn) regenBtn.onclick = async () => {
-        try {
-          let aiMsgCount = 0, aiMsgIndexInHistory = -1;
-          const history = chats[currentChatIdx]?.history || [];
-          for (let i = 0; i < history.length; i++) {
-            if (history[i].role === "ai") {
-              if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
-              aiMsgCount++;
-            }
+    if (regenBtn) regenBtn.onclick = async () => {
+      try {
+        let aiMsgCount = 0, aiMsgIndexInHistory = -1;
+        const history = chats[currentChatIdx]?.history || [];
+        for (let i = 0; i < history.length; i++) {
+          if (history[i].role === "ai") {
+            if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
+            aiMsgCount++;
           }
-          const userMsgObj = history[aiMsgIndexInHistory - 1];
-          const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
-          if (!userMsg) {
-            regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
-            setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
-            return;
-          }
-          if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
-          saveChats();
-          renderChatBox(history);
-          showTypingAtNext();
-          try {
-            let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
-            });
-            let data;
-            try { data = await res.json(); } catch (e) { data = {}; }
-            removeTyping();
-            if (data && data.response) {
-              history.push({ role: 'ai', text: data.response });
-              saveChats();
-              renderChatBox(history);
-            } else {
-              history.push({ role: 'ai', text: '❌ No response from server.' });
-              saveChats();
-              renderChatBox(history);
-            }
-          } catch (err) {
-            removeTyping();
-            history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+        }
+        const userMsgObj = history[aiMsgIndexInHistory - 1];
+        const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
+        if (!userMsg) {
+          regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
+          setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
+          return;
+        }
+        if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
+        saveChats();
+        renderChatBox(history);       // <-- will autoscroll below
+        showTypingAtNext();
+        try {
+          let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
+          });
+          let data;
+          try { data = await res.json(); } catch (e) { data = {}; }
+          removeTyping();
+          if (data && data.response) {
+            history.push({ role: 'ai', text: data.response });
+            saveChats();
+            renderChatBox(history);
+          } else {
+            history.push({ role: 'ai', text: '❌ No response from server.' });
             saveChats();
             renderChatBox(history);
           }
         } catch (err) {
-          console.warn('regen error', err);
+          removeTyping();
+          history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+          saveChats();
+          renderChatBox(history);
         }
-      };
-    });
-  }
-
+      } catch (err) {
+        console.warn('regen error', err);
+      }
+    };
+  });
+}
   /* ---------- Typing / typewriter ---------- */
   let typingNode = null;
   function showTypingAtNext() {
