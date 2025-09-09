@@ -1203,23 +1203,30 @@ if (chatFile) {
     try {
       let data;
       // 1. Handle image generation command
-      if (/^\/imagine\s+/i.test(msgText)) {
-        const imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
-        const fd = new FormData();
-        fd.append('prompt', imaginePrompt);
-        if (uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) {
-          fd.append('file', uploadedFiles[0]);
-        }
-        
-        const res = await fetch('https://web-production-9a18.up.railway.app/imagine', { method: 'POST', body: fd });
+      if (/^\/image\s+/i.test(msgText)) {
+        const parts = msgText.replace(/^\/image\s+/i, '').trim().split(' ');
+        const model = parts.length > 1 ? parts[0] : 'anime';
+        const prompt = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
+
+        const payload = {
+            "prompt": prompt,
+            "model": model
+        };
+
+        const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
         if (!res.ok) {
-          let err = await res.json().catch(() => ({}));
-          throw new Error(err.error || res.statusText);
+            let err = await res.json().catch(() => ({}));
+            throw new Error(err.error || res.statusText);
         }
-        
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        showAIImagePreview(url, 'Your new Philadelphia AI image! (click Download if you like it)');
+
+        const data = await res.json();
+        const img_b64 = data.image_b64;
+        showAIImagePreview(img_b64, `Generated with model: **${model}**`);
         chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)' });
 
       // 2. Handle file uploads (PDF, image, audio, video)
@@ -1328,10 +1335,19 @@ if (chatFile) {
 
   function showAIImagePreview(srcUrlOrBase64, caption = '') {
     if (!aiPrevBox || !aiPrevImgBox) return;
-    let src = (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:') || srcUrlOrBase64.startsWith('blob:'))) ? srcUrlOrBase64 : 'data:image/png;base64,' + srcUrlOrBase64;
-    aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI gen" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">` + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">' + caption + '</div>' : '');
+    
+    // Check if the input is a URL (blob) or a Base64 string
+    let src;
+    if (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:image/') || srcUrlOrBase64.startsWith('blob:'))) {
+        src = srcUrlOrBase64;
+    } else {
+        src = 'data:image/png;base64,' + srcUrlOrBase64;
+    }
+
+    aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">` + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">' + caption + '</div>' : '');
     aiPrevBox.style.display = 'block';
-  }
+}
+
 
   // initial UI small setup
   currentModelIdx = 0;
