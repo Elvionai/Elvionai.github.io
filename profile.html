@@ -1174,8 +1174,7 @@ if (chatFile) {
   }
 
   /* ---------- Chat submit handler (main) ---------- */
-   /* ---------- Chat submit handler (main) ---------- */
-if (chatForm) {
+   if (chatForm) {
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     if (currentChatIdx < 0 || !chats.length) {
@@ -1189,11 +1188,16 @@ if (chatForm) {
     if (!msgText && !uploadedFiles.length) {
       return; // Do nothing if there's no input
     }
-
+    
+    // Add user message to history
+    chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+    renderChatBox(chats[currentChatIdx]?.history || []);
+    
     if (chatInput) {
       chatInput.value = '';
       chatInput.dispatchEvent(new Event('input'));
     }
+    
     showTypingAtNext();
 
     try {
@@ -1220,58 +1224,89 @@ if (chatForm) {
 
       // 2. Handle file uploads (PDF, image, audio, video)
       } else if (uploadedFiles.length) {
-        let isSuccess = true;
         
         const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf');
         const images = uploadedFiles.filter(f => /^image\//.test(f.type));
         const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
         const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
         
+        // Handle PDF
         if (pdfs.length) {
           let fd = new FormData();
           fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.'));
           pdfs.forEach(f => fd.append('files', f));
           const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
           data = await res.json();
-          if (data && data.response) {
-            chats[currentChatIdx].history.push({ role: 'ai', text: data.response });
-          } else {
-            chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the PDF(s).' });
-            isSuccess = false;
-          }
+          const botResponse = data && data.response ? data.response : '❌ Could not process the PDF(s).';
+          await typeBotMessage(botResponse);
+          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
         }
         
-        chats[currentChatIdx].history.push({ role: 'user', text: `[File(s)] uploaded: ${uploadedFiles.map(f => f.name).join(', ')}${msgText ? ': ' + msgText : ''}` });
+        // Handle Images
+        for (const img of images) {
+          let fd = new FormData();
+          fd.append('prompt', msgText ? msgText : 'Describe this image in detail.');
+          fd.append('file', img);
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
+          data = await res.json();
+          const botResponse = data && data.response ? data.response : '❌ Could not process the image.';
+          await typeBotMessage(botResponse);
+          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
+        }
         
+        // Handle Audio
+        for (const audio of audios) {
+          let fd = new FormData();
+          fd.append('prompt', msgText ? msgText : 'Transcribe and summarize this audio file in simple English.');
+          fd.append('file', audio);
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
+          data = await res.json();
+          const botResponse = data && data.response ? data.response : '❌ Could not process the audio.';
+          await typeBotMessage(botResponse);
+          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
+        }
+        
+        // Handle Video
+        for (const vid of videos) {
+          let fd = new FormData();
+          fd.append('prompt', msgText ? msgText : 'Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.');
+          fd.append('file', vid);
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
+          data = await res.json();
+          const botResponse = data && data.response ? data.response : '❌ Could not process the video.';
+          await typeBotMessage(botResponse);
+          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
+        }
+        
+        // Clear files after processing
+        uploadedFiles = [];
+        uploadData = null;
+        renderFilePreview();
+
       // 3. Handle regular text chat
       } else if (msgText) {
-        if (chats[currentChatIdx].history.length === 0) {
+        if (chats[currentChatIdx].history.length === 1) {
           chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
         }
         
         const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
         const res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
         data = await res.json();
-        if (data && data.response) {
-          chats[currentChatIdx].history.push({ role: 'ai', text: data.response });
-        } else {
-          chats[currentChatIdx].history.push({ role: 'ai', text: '🤖 Bot replied (no response).' });
-        }
+        const botResponse = data && data.response ? data.response : '🤖 Bot replied (no response).';
+        await typeBotMessage(botResponse);
+        chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
       }
       
-      // Final state updates after successful processing
+      // Final state updates
       removeTyping();
-      if (chatFile) chatFile.value = '';
-      uploadedFiles = [];
-      uploadData = null;
-      renderFilePreview();
       saveChats();
       renderChatSelector();
       renderChatBox(chats[currentChatIdx]?.history || []);
       
     } catch (err) {
-      // General error handling for any network or API issue
       removeTyping();
+      const userMessage = { role: 'user', text: msgText };
+      chats[currentChatIdx].history.push(userMessage);
       chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
       saveChats();
       renderChatSelector();
@@ -1279,168 +1314,6 @@ if (chatForm) {
     }
   });
 }
-
-      // --------- /imagine handler ----------
-      if (/^\/imagine\s+/i.test(msgText)) {
-        const imaginePrompt = msgText.replace(/^\/imagine\s+/i, '').trim();
-        const fd = new FormData(); fd.append('prompt', imaginePrompt);
-        if (uploadedFiles.length && /^image\//.test(uploadedFiles[0].type)) fd.append('file', uploadedFiles[0]);
-        showTypingAtNext();
-        try {
-          const res = await fetch('https://web-production-9a18.up.railway.app/imagine', { method: 'POST', body: fd });
-          if (!res.ok) {
-            let err = {}; try { err = await res.json(); } catch (_) {}
-            removeTyping();
-            await typeBotMessage('❌ Image generation failed: ' + (err.error || res.statusText));
-            chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Image generation failed.' });
-            saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          } else {
-            const blob = await res.blob(); const url = URL.createObjectURL(blob);
-            showAIImagePreview(url, 'Your new Philadelphia AI image! (click Download if you like it)');
-            removeTyping();
-            chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)' });
-            saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          }
-        } catch (err) {
-          removeTyping();
-          await typeBotMessage('❌ Philadelphia image API/network error');
-          chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Vision 6 image API/network error' });
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-        }
-        // reset file state
-        if (chatFile) chatFile.value = '';
-        uploadedFiles = []; uploadData = null; renderFilePreview();
-        return;
-      }
-
-      // --------- File upload logic (multiple) ----------
-      if (uploadedFiles && uploadedFiles.length) {
-        showTypingAtNext();
-        try {
-          const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf');
-          const images = uploadedFiles.filter(f => /^image\//.test(f.type));
-          const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
-          const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
-
-          if (pdfs.length) {
-            let fd = new FormData(); fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.'));
-            pdfs.forEach(f => fd.append('files', f));
-            let res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
-            let txt = await res.text();
-            let data;
-            try { data = JSON.parse(txt); } catch (err) {
-              removeTyping();
-              chats[currentChatIdx].history.push({ role: 'user', text: `[PDF] ${pdfs.map(f => f.name).join(', ')}${msgText ? ': ' + msgText : ''}` });
-              chats[currentChatIdx].history.push({ role: 'ai', text: `❌ PDF API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` });
-              saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-              return;
-            }
-            removeTyping();
-            chats[currentChatIdx].history.push({ role: 'user', text: `[PDF] ${pdfs.map(f => f.name).join(', ')}${msgText ? ': ' + msgText : ''}` });
-            if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the PDF(s).'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the PDF(s).' }); }
-          }
-
-          for (const img of images) {
-            let fd = new FormData(); fd.append('prompt', msgText ? msgText : 'Describe this image in detail.'); fd.append('file', img);
-            let res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
-            let txt = await res.text(); let data;
-            try { data = JSON.parse(txt); } catch (err) {
-              chats[currentChatIdx].history.push({ role: 'user', text: `[Image] ${img.name}${msgText ? ': ' + msgText : ''}` });
-              chats[currentChatIdx].history.push({ role: 'ai', text: `❌ Image API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` });
-              continue;
-            }
-            chats[currentChatIdx].history.push({ role: 'user', text: `[Image] ${img.name}${msgText ? ': ' + msgText : ''}` });
-            if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the image.'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the image.' }); }
-          }
-
-          for (const audio of audios) {
-            let fd = new FormData(); fd.append('prompt', msgText ? msgText : 'Transcribe and summarize this audio file in simple English.'); fd.append('file', audio);
-            let res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
-            let txt = await res.text(); let data;
-            try { data = JSON.parse(txt); } catch (err) {
-              chats[currentChatIdx].history.push({ role: 'user', text: `[Audio] ${audio.name}${msgText ? ': ' + msgText : ''}` });
-              chats[currentChatIdx].history.push({ role: 'ai', text: `❌ Audio API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` });
-              continue;
-            }
-            chats[currentChatIdx].history.push({ role: 'user', text: `[Audio] ${audio.name}${msgText ? ': ' + msgText : ''}` });
-            if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the audio.'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the audio.' }); }
-          }
-
-          for (const vid of videos) {
-            let fd = new FormData(); fd.append('prompt', msgText ? msgText : 'Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.'); fd.append('file', vid);
-            let res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
-            let txt = await res.text(); let data;
-            try { data = JSON.parse(txt); } catch (err) {
-              chats[currentChatIdx].history.push({ role: 'user', text: `[Video] ${vid.name}${msgText ? ': ' + msgText : ''}` });
-              chats[currentChatIdx].history.push({ role: 'ai', text: `❌ Video API error. Server did not return JSON. Raw response:\n\n\`\`\`\n${txt}\n\`\`\`` });
-              continue;
-            }
-            chats[currentChatIdx].history.push({ role: 'user', text: `[Video] ${vid.name}${msgText ? ': ' + msgText : ''}` });
-            if (data && data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); } else { await typeBotMessage('❌ Could not process the video.'); chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Could not process the video.' }); }
-          }
-
-          if (chatFile) chatFile.value = '';
-          uploadedFiles = []; uploadData = null; renderFilePreview(); saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          return;
-        } catch (err) {
-          removeTyping();
-          chats[currentChatIdx].history.push({ role: 'ai', text: '[File upload failed] ' + (err.message || 'no net') });
-          if (chatFile) chatFile.value = '';
-          uploadedFiles = []; uploadData = null;
-          renderFilePreview();
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          return;
-        }
-      }
-
-      // --------- TEXT / COMMAND chat logic ----------
-      // ensure the chat history array exists
-      if (!chats[currentChatIdx]) chats[currentChatIdx] = { name: `Chat ${currentChatIdx + 1}`, history: [] };
-
-      chats[currentChatIdx].history.push({ role: 'user', text: msgText });
-      if (chats[currentChatIdx].history.length === 1) {
-        chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
-        renderChatSelector();
-      }
-      renderChatBox(chats[currentChatIdx]?.history || []);
-      showTypingAtNext();
-
-      try {
-        let res, data;
-        if (/^\/image\s+/i.test(msgText)) {
-          const imagePrompt = msgText.replace(/^\/image\s+/i, '');
-          res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: imagePrompt })
-          });
-          try { data = await res.json(); } catch (_) { data = {}; }
-          removeTyping();
-          if (data.image_b64) {
-            showAIImagePreview('data:image/png;base64,' + data.image_b64, '(Your image—download or close)');
-            chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! (Use the floating preview box below to view or download. This image is NOT stored in chat history.)' });
-          } else {
-            chats[currentChatIdx].history.push({ role: 'ai', text: data.error || '❌ Image generation failed. Try another prompt.' });
-          }
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-        } else {
-          const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
-          res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
-          try { data = await res.json(); } catch (_) { data = {}; }
-          removeTyping();
-          if (data.response) { await typeBotMessage(data.response); chats[currentChatIdx].history.push({ role: 'ai', text: data.response }); }
-          else { await typeBotMessage('🤖 Bot replied (no response).'); chats[currentChatIdx].history.push({ role: 'ai', text: '🤖 Bot replied (no response).' }); }
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-        }
-      } catch (err) {
-        removeTyping();
-        await typeBotMessage('Sorry, bot error: ' + (err?.message || err));
-        if (!chats[currentChatIdx]) chats[currentChatIdx] = { history: [] };
-        chats[currentChatIdx].history.push({ role: 'ai', text: 'Sorry, bot error: ' + (err?.message || err) });
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      }
-    });
-  } // end chatForm
 
   /* ---------- AI Image preview UI ---------- */
   const aiPrevBox = $('ai-image-preview');
