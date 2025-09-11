@@ -395,8 +395,6 @@ pre:before {
       <input type="file" id="chatFile" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
       <textarea id="chatInput" placeholder="Type here… (Shift+Enter = new line)"></textarea>
       <button type="button" id="voiceInputBtn" title="Voice Typing"><i class="fa-solid fa-microphone"></i></button>
-      <button type="button" id="imageBtn" title="Image AI"><i class="fa-solid fa-image"></i></button>
-      <button type="button" id="voiceBtn" title="Voice AI"><i class="fa-solid fa-microphone-lines"></i></button>
       <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
     </form>
 
@@ -458,7 +456,7 @@ pre:before {
       </div>
     </nav>
   </div>
-  <script type="module">
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
@@ -532,8 +530,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const chatsListEl = $('chatsList');
   const emojiPanel = $('emojiPanel');
   const emojiBtn = $('emojiBtn'); // FIX: ensure emojiBtn is grabbed
-  const imageBtnHtml = $('imageBtn'); // may be present in HTML
-  const voiceBtnHtml = $('voiceBtn'); // may be present in HTML
 
   // Defensive: if essential elements missing, still continue but warn
   if (!chatForm) console.warn('chatForm not found in DOM. Chat submission disabled until element added.');
@@ -1123,85 +1119,7 @@ if (chatFile) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBtn?.click(); }
     });
   }
-
-  /* ---------- IMAGE & VOICE (prefer HTML buttons, otherwise create) ---------- */
-  const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore", "gemini6"];
-  let currentModelIdx = 0;
-
-  // image button element: prefer HTML button if present
-  let imageBtnEl = imageBtnHtml || null;
-  if (!imageBtnEl && chatForm && sendBtn) {
-    imageBtnEl = document.createElement('button');
-    imageBtnEl.type = 'button';
-    imageBtnEl.id = 'imageBtn';
-    imageBtnEl.title = 'Generate image';
-    imageBtnEl.innerHTML = '<i class="fa-solid fa-image"></i>';
-    chatForm.insertBefore(imageBtnEl, sendBtn);
-  }
-
-  // voice-gen button element: prefer HTML if present
-  let voiceGenBtnEl = voiceBtnHtml || null;
-  if (!voiceGenBtnEl && chatForm && sendBtn) {
-    voiceGenBtnEl = document.createElement('button');
-    voiceGenBtnEl.type = 'button';
-    voiceGenBtnEl.id = 'voiceBtn';
-    voiceGenBtnEl.title = 'Generate voice';
-    voiceGenBtnEl.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-    chatForm.insertBefore(voiceGenBtnEl, sendBtn);
-  }
-
-  // Image model cycling — inserts model prefix into text
-  if (imageBtnEl) {
-    imageBtnEl.addEventListener('click', function () {
-      currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
-      const model = thenaModels[currentModelIdx];
-      const prevInput = chatInput ? chatInput.value.replace(/^\/image\s+\w+\s*/i, "").replace(/^\/imagine\s*/i, "") : "";
-      if (model === 'gemini6') {
-        if (chatInput) chatInput.value = `/imagine ${prevInput}`.trim();
-        imageBtnEl.innerHTML = '<i class="fa-brands fa-google"></i>';
-      } else {
-        if (chatInput) chatInput.value = `/image ${model} ${prevInput}`.trim();
-        imageBtnEl.innerHTML = '<i class="fa-solid fa-image"></i>';
-      }
-      chatInput?.focus();
-      setTimeout(() => { try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) {} }, 0);
-    });
-  }
-
-  // Voice generation (TTS) — posts to /voicegen
-  if (voiceGenBtnEl) {
-    voiceGenBtnEl.addEventListener('click', async function () {
-      if (!chatInput) return;
-      const msgText = chatInput.value.trim();
-      if (!msgText) { chatInput.focus(); return; }
-      const style = $('voiceStyle') ? $('voiceStyle').value : 'podcast';
-      showTypingAtNext();
-      try {
-        const fd = new FormData(); fd.append('text', msgText); fd.append('style', style);
-        const res = await fetch('https://web-production-9a18.up.railway.app/voicegen', { method: 'POST', body: fd });
-        if (!res.ok) {
-          let err = {}; try { err = await res.json(); } catch (_) {}
-          removeTyping();
-          await typeBotMessage('❌ Voice generation failed: ' + (err.error || res.statusText));
-          chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice generation failed.' });
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          return;
-        }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
-        removeTyping();
-        chats[currentChatIdx].history.push({ role: 'ai', text: `🗣️ Voice generated in *${style}* style:<br>${audioPlayer}` });
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      } catch (err) {
-        removeTyping();
-        await typeBotMessage('❌ Voice API/network error');
-        chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice API/network error' });
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      }
-    });
-  }
-
+  
   /* ---------- Chat submit handler (main) ---------- */
    if (chatForm) {
   chatForm.addEventListener('submit', async function (e) {
@@ -1213,7 +1131,6 @@ if (chatFile) {
     }
 
     const msgText = chatInput ? chatInput.value.trim() : '';
-
     if (!msgText && !uploadedFiles.length) {
       return; // Do nothing if there's no input
     }
@@ -1230,122 +1147,76 @@ if (chatFile) {
     showTypingAtNext();
 
     try {
-      let data;
-      // 1. Handle image generation command
-      if (/^\/image\s+/i.test(msgText)) {
-        const parts = msgText.replace(/^\/image\s+/i, '').trim().split(' ');
-        const model = parts.length > 1 ? parts[0] : 'anime';
-        const prompt = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
-
-        const payload = {
-            "prompt": prompt,
-            "model": model
-        };
-
-        const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+      // Prepare files for the new unified endpoint
+      const filesForBackend = [];
+      for (const file of uploadedFiles) {
+        const fileContent = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
         });
-
-        if (!res.ok) {
-            let err = await res.json().catch(() => ({}));
-            throw new Error(err.error || res.statusText);
-        }
-
-        const data = await res.json();
-        const img_b64 = data.image_b64;
-        showAIImagePreview(img_b64, `Generated with model: **${model}**`);
-        chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)' });
-
-      // 2. Handle file uploads (PDF, image, audio, video)
-      } else if (uploadedFiles.length) {
-        
-        const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf');
-        const images = uploadedFiles.filter(f => /^image\//.test(f.type));
-        const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
-        const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
-        
-        // Handle PDF
-        if (pdfs.length) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.'));
-          pdfs.forEach(f => fd.append('files', f));
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : '❌ Could not process the PDF(s).';
-          await typeBotMessage(botResponse);
-          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
-        }
-        
-        // Handle Images
-        for (const img of images) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : 'Describe this image in detail.');
-          fd.append('file', img);
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : 'Could not process the image. Try sending again.';
-          await typeBotMessage(botResponse);
-        }
-        
-        // Handle Audio
-        for (const audio of audios) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : 'Transcribe and summarize this audio file in simple English.');
-          fd.append('file', audio);
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : '❌ Could not process the audio.';
-          await typeBotMessage(botResponse);
-          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
-        }
-        
-        // Handle Video
-        for (const vid of videos) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : 'Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.');
-          fd.append('file', vid);
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : '❌ Could not process the video.';
-          await typeBotMessage(botResponse);
-          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
-        }
-        
-        // Clear files after processing
-        uploadedFiles = [];
-        uploadData = null;
-        renderFilePreview();
-
-      // 3. Handle regular text chat
-      } else if (msgText) {
-        if (chats[currentChatIdx].history.length === 1) {
-          chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
-        }
-        
-        const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
-        const res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
-        data = await res.json();
-        const botResponse = data && data.response ? data.response : '🤖 Error. Try sending the text again.';
-        await typeBotMessage(botResponse);
+        const base64Data = btoa(String.fromCharCode(...new Uint8Array(fileContent)));
+        filesForBackend.push({
+          data: base64Data,
+          mime_type: file.type
+        });
       }
 
+      // Convert history for backend
+      const historyForBackend = (chats[currentChatIdx].history || []).map(m => ({
+        role: m.role,
+        content: m.text
+      }));
+
+      // Send a single request to the unified endpoint
+      const payload = {
+        message: msgText,
+        history: historyForBackend,
+        files: filesForBackend
+      };
+
+      const res = await fetch('https://web-production-9a18.up.railway.app/process-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       
-      // Final state updates
+      const data = await res.json();
       removeTyping();
+
+      if (data && data.response) {
+        let botResponse = '';
+        if (data.response.image_b64) {
+          botResponse = `✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)`;
+          showAIImagePreview(data.response.image_b64, 'Generated by Philadelphia AI');
+        } else if (data.response.audio_b64) {
+          const audioUrl = 'data:audio/wav;base64,' + data.response.audio_b64;
+          botResponse = `🗣️ Voice generated in *podcast* style:<br><audio controls src="${audioUrl}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
+        } else {
+          botResponse = data.response;
+        }
+        await typeBotMessage(botResponse);
+      } else {
+        await typeBotMessage('❌ An error occurred: Could not process the request.');
+      }
+      
+      // Clear files after processing
+      uploadedFiles = [];
+      uploadData = null;
+      renderFilePreview();
+
+      // Final state updates
       saveChats();
       renderChatSelector();
       renderChatBox(chats[currentChatIdx]?.history || []);
       
     } catch (err) {
       removeTyping();
-const userMessage = { role: 'user', text: msgText };
-chats[currentChatIdx].history.push(userMessage);
-chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
-saveChats();
-renderChatSelector();
-renderChatBox(chats[currentChatIdx]?.history || []);
+      chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
+      saveChats();
+      renderChatSelector();
+      renderChatBox(chats[currentChatIdx]?.history || []);
     }
   });
 }
@@ -1376,10 +1247,6 @@ renderChatBox(chats[currentChatIdx]?.history || []);
     aiPrevBox.style.display = 'block';
 }
 
-
-  // initial UI small setup
-  currentModelIdx = 0;
-  if (chatInput) { chatInput.value = '/image photoreal '; chatInput.focus(); try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) {} }
 
   // final initial render
   try { renderChatsListSidebar(); } catch (e) {}
