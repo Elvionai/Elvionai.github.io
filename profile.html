@@ -459,934 +459,882 @@ pre:before {
     </nav>
   </div>
   <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-  authDomain: "elvionai.firebaseapp.com",
-  projectId: "elvionai",
-  storageBucket: "elvionai.appspot.com",
-  messagingSenderId: "161078300830",
-  appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+  const firebaseConfig = {
+    apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+    authDomain: "elvionai.firebaseapp.com",
+    projectId: "elvionai",
+    storageBucket: "elvionai.appspot.com",
+    messagingSenderId: "161078300830",
+    appId: "1:161078300830:web:f460df8591704eb0e96b8f"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
-// Short helper
-const $ = id => document.getElementById(id);
+  // Short helper
+  const $ = id => document.getElementById(id);
 
-// ---------- Global chat storage ----------
-let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
-let currentChatIdx = (typeof localStorage !== 'undefined' && localStorage.getItem('elvion_current_idx') !== null)
-  ? Number(localStorage.getItem('elvion_current_idx')) : (chats.length - 1 >= 0 ? chats.length - 1 : 0);
+  // ---------- Global chat storage ----------
+  let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
+  let currentChatIdx = (typeof localStorage !== 'undefined' && localStorage.getItem('elvion_current_idx') !== null)
+    ? Number(localStorage.getItem('elvion_current_idx')) : (chats.length - 1 >= 0 ? chats.length - 1 : 0);
 
-function saveChats() {
-  try {
-    let sanitized = JSON.parse(JSON.stringify(chats));
-    sanitized.forEach(chat => {
-      (chat.history || []).forEach(msg => {
-        if (msg.text && typeof msg.text === 'string' && msg.text.includes("data:image")) {
-          msg.text = "[image omitted]";
-        }
-      });
-    });
-    localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
-    localStorage.setItem('elvion_current_idx', String(currentChatIdx));
-  } catch (e) { console.warn('saveChats failed', e); }
-}
-
-// Keep file/upload state
-let uploadedFiles = [];
-let uploadData = null;
-
-// ---------- DOM & wiring ----------
-window.addEventListener('DOMContentLoaded', () => {
-  /* ---------- Elements (may be null) ---------- */
-  const starsContainer = $('stars-container');
-  const mainContainer = $('mainContainer') || $('main-container') || document.body;
-  const fullscreenBtn = $('fullscreenBtn') || $('fullscreen-btn');
-  const profileMenuBg = $('profileMenuBg');
-  const profileMenu = $('profileMenu');
-  const linkMenuBg = $('linkMenuBg');
-  const linkMenu = $('linkMenu');
-  const logoutBtn = $('logoutBtn');
-  const headerWelcome = $('headerWelcome');
-  const profileMenuUser = $('profileMenuUser');
-  const profileMenuEmail = $('profileMenuEmail');
-  const editName = $('edit-name');
-  const editPhoto = $('edit-photo');
-  const profilePicPreview = $('profilePicPreview');
-  const profileForm = $('profileForm');
-  const chatBox = $('chatBox');
-  const chatSelector = $('chatSelector');
-  const chatForm = $('chatForm');
-  const chatInput = $('chatInput');
-  const sendBtn = $('sendBtn');
-  const chatFile = $('chatFile');
-  const filePreview = $('filePreview');
-  const voiceInputBtn = $('voiceInputBtn'); // declared once
-  const addChatBtn = $('addChatBtn');
-  const removeChatBtn = $('removeChatBtn');
-  const newChatBtn = $('newChatBtn');
-  const chatsListEl = $('chatsList');
-  const emojiPanel = $('emojiPanel');
-  const emojiBtn = $('emojiBtn'); // FIX: ensure emojiBtn is grabbed
-  const imageBtnHtml = $('imageBtn'); // may be present in HTML
-  const voiceBtnHtml = $('voiceBtn'); // may be present in HTML
-
-  // Defensive: if essential elements missing, still continue but warn
-  if (!chatForm) console.warn('chatForm not found in DOM. Chat submission disabled until element added.');
-  if (!chatBox) console.warn('chatBox not found in DOM. Chat rendering disabled until element added.');
-
-  /* ---------- Emoji ---------- */
-  const emojis = ["😀","😃","😂","🤣","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🫶","😜","🤖","👀"];
-  if (emojiBtn && emojiPanel && chatInput) {
-    emojiBtn.addEventListener('click', function (e) {
-      // toggle panel content
-      emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button" tabindex="0" aria-label="emoji">${em}</span>`).join('');
-      emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block';
-      // position it near button
-      try {
-        const rect = emojiBtn.getBoundingClientRect();
-        emojiPanel.style.left = `${Math.max(8, rect.left)}px`;
-      } catch (e) { /* ignore positioning errors */ }
-      // wire picks
-      emojiPanel.querySelectorAll('.emoji-pick').forEach(span => {
-        span.addEventListener('click', function () {
-          const text = this.textContent || '';
-          const start = chatInput.selectionStart || 0;
-          const end = chatInput.selectionEnd || 0;
-          chatInput.value = chatInput.value.slice(0, start) + text + chatInput.value.slice(end);
-          chatInput.focus();
-          chatInput.selectionStart = chatInput.selectionEnd = start + text.length;
-          emojiPanel.style.display = 'none';
-          chatInput.dispatchEvent(new Event('input'));
+  function saveChats() {
+    try {
+      let sanitized = JSON.parse(JSON.stringify(chats));
+      sanitized.forEach(chat => {
+        (chat.history || []).forEach(msg => {
+          if (msg.text && typeof msg.text === 'string' && msg.text.includes("data:image")) {
+            msg.text = "[image omitted]";
+          }
         });
       });
-    });
-    // click outside to close
-    document.addEventListener('click', e => {
-      if (!emojiPanel.contains(e.target) && e.target !== emojiBtn) {
-        emojiPanel.style.display = 'none';
-      }
-    });
+      localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
+      localStorage.setItem('elvion_current_idx', String(currentChatIdx));
+    } catch (e) { console.warn('saveChats failed', e); }
   }
 
-  /* ---------- Stars ---------- */
-  if (starsContainer) {
-    starsContainer.innerHTML = '';
-    for (let i = 0; i < 34; i++) {
-      const s = document.createElement('div'); s.className = 'star';
-      const z = Math.random() * 2.1 + 1; s.style.width = z + 'px'; s.style.height = z + 'px';
-      s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%';
-      s.style.animationDelay = (Math.random() * 3.69) + 's';
-      s.style.animationDuration = (2.2 + Math.random() * 1.1) + 's';
-      starsContainer.appendChild(s);
+  // Keep file/upload state
+  let uploadedFiles = [];
+  let uploadData = null;
+
+  // ---------- DOM & wiring ----------
+  window.addEventListener('DOMContentLoaded', () => {
+    /* ---------- Elements (may be null) ---------- */
+    const starsContainer = $('stars-container');
+    const mainContainer = $('mainContainer') || $('main-container') || document.body;
+    const fullscreenBtn = $('fullscreenBtn') || $('fullscreen-btn');
+    const profileMenuBg = $('profileMenuBg');
+    const profileMenu = $('profileMenu');
+    const linkMenuBg = $('linkMenuBg');
+    const linkMenu = $('linkMenu');
+    const logoutBtn = $('logoutBtn');
+    const headerWelcome = $('headerWelcome');
+    const profileMenuUser = $('profileMenuUser');
+    const profileMenuEmail = $('profileMenuEmail');
+    const editName = $('edit-name');
+    const editPhoto = $('edit-photo');
+    const profilePicPreview = $('profilePicPreview');
+    const profileForm = $('profileForm');
+    const chatBox = $('chatBox');
+    const chatSelector = $('chatSelector');
+    const chatForm = $('chatForm');
+    const chatInput = $('chatInput');
+    const sendBtn = $('sendBtn');
+    const chatFile = $('chatFile');
+    const filePreview = $('filePreview');
+    const voiceInputBtn = $('voiceInputBtn'); // declared once
+    const addChatBtn = $('addChatBtn');
+    const removeChatBtn = $('removeChatBtn');
+    const newChatBtn = $('newChatBtn');
+    const chatsListEl = $('chatsList');
+    const emojiPanel = $('emojiPanel');
+    const emojiBtn = $('emojiBtn'); // FIX: ensure emojiBtn is grabbed
+    const imageBtnHtml = $('imageBtn'); // may be present in HTML
+    const voiceBtnHtml = $('voiceBtn'); // may be present in HTML
+
+    // Defensive: if essential elements missing, still continue but warn
+    if (!chatForm) console.warn('chatForm not found in DOM. Chat submission disabled until element added.');
+    if (!chatBox) console.warn('chatBox not found in DOM. Chat rendering disabled until element added.');
+
+    /* ---------- Emoji ---------- */
+    const emojis = ["😀","😃","😂","🤣","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🫶","😜","🤖","👀"];
+    if (emojiBtn && emojiPanel && chatInput) {
+      emojiBtn.addEventListener('click', function (e) {
+        // toggle panel content
+        emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button" tabindex="0" aria-label="emoji">${em}</span>`).join('');
+        emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block';
+        // position it near button
+        try {
+          const rect = emojiBtn.getBoundingClientRect();
+          emojiPanel.style.left = `${Math.max(8, rect.left)}px`;
+        } catch (e) { /* ignore positioning errors */ }
+        // wire picks
+        emojiPanel.querySelectorAll('.emoji-pick').forEach(span => {
+          span.addEventListener('click', function () {
+            const text = this.textContent || '';
+            const start = chatInput.selectionStart || 0;
+            const end = chatInput.selectionEnd || 0;
+            chatInput.value = chatInput.value.slice(0, start) + text + chatInput.value.slice(end);
+            chatInput.focus();
+            chatInput.selectionStart = chatInput.selectionEnd = start + text.length;
+            emojiPanel.style.display = 'none';
+            chatInput.dispatchEvent(new Event('input'));
+          });
+        });
+      });
+      // click outside to close
+      document.addEventListener('click', e => {
+        if (!emojiPanel.contains(e.target) && e.target !== emojiBtn) {
+          emojiPanel.style.display = 'none';
+        }
+      });
     }
-  }
 
-  /* ---------- Fullscreen toggle ---------- */
-  if (fullscreenBtn && mainContainer) {
-    let isFull = false;
-    fullscreenBtn.addEventListener('click', () => {
-      isFull = !isFull;
-      mainContainer.classList.toggle('fullscreen', isFull);
-      try { fullscreenBtn.innerHTML = isFull ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>'; } catch (e) {}
-    });
-  }
-
-  /* ---------- Panels/Modals ---------- */
-  if (profileMenuBg && profileMenu && $('openProfileMenu')) {
-    $('openProfileMenu').addEventListener('click', () => {
-      profileMenuBg.classList.add('active');
-      setTimeout(() => profileMenu.classList.add('active'), 10);
-    });
-    profileMenuBg.addEventListener('click', e => {
-      if (e.target === profileMenuBg) {
-        profileMenu.classList.remove('active');
-        setTimeout(() => profileMenuBg.classList.remove('active'), 110);
+    /* ---------- Stars ---------- */
+    if (starsContainer) {
+      starsContainer.innerHTML = '';
+      for (let i = 0; i < 34; i++) {
+        const s = document.createElement('div'); s.className = 'star';
+        const z = Math.random() * 2.1 + 1; s.style.width = z + 'px'; s.style.height = z + 'px';
+        s.style.left = Math.random() * 100 + '%'; s.style.top = Math.random() * 100 + '%';
+        s.style.animationDelay = (Math.random() * 3.69) + 's';
+        s.style.animationDuration = (2.2 + Math.random() * 1.1) + 's';
+        starsContainer.appendChild(s);
       }
-    });
-  }
-  if (linkMenuBg && linkMenu && $('openLinksMenu')) {
-    $('openLinksMenu').addEventListener('click', () => {
-      linkMenuBg.classList.add('active');
-      setTimeout(() => linkMenu.classList.add('active'), 10);
-    });
-    linkMenuBg.addEventListener('click', e => {
-      if (e.target === linkMenuBg) {
-        linkMenu.classList.remove('active');
-        setTimeout(() => linkMenuBg.classList.remove('active'), 110);
-      }
-    });
-  }
-  if (logoutBtn) logoutBtn.addEventListener('click', () => window.location.href = 'signup-login.html');
-
-  /* ---------- Firebase auth (profile only) ---------- */
-  let currentUser = null;
-
-  onAuthStateChanged(auth, user => {
-    if (!user) {
-      // if not logged in, redirect to login
-      try { window.location.href = "signup-login.html"; } catch (e) {}
-      return;
     }
-    currentUser = user;
 
-    // populate profile UI if present
-    if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]);
-    if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
-    if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
-    if (editName) editName.value = user.displayName || "";
-    if (editPhoto) editPhoto.value = user.photoURL || "";
-    if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-
-    // ensure at least one chat
-    if (!Array.isArray(chats) || chats.length === 0) {
-      chats = [{ name: 'Chat 1', history: [] }];
-      currentChatIdx = 0;
-      saveChats();
+    /* ---------- Fullscreen toggle ---------- */
+    if (fullscreenBtn && mainContainer) {
+      let isFull = false;
+      fullscreenBtn.addEventListener('click', () => {
+        isFull = !isFull;
+        mainContainer.classList.toggle('fullscreen', isFull);
+        try { fullscreenBtn.innerHTML = isFull ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>'; } catch (e) {}
+      });
     }
-    // initial render
-    try { renderChatSelector(); } catch (e) { console.warn('renderChatSelector error', e); }
-    try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
-  });
 
-  /* ---------- Profile form submit (update Firebase profile) ---------- */
-  if (profileForm) {
-    profileForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentUser) return;
-      const status = $('profileStatusMsg');
-      if (status) status.textContent = '';
-      const name = editName ? editName.value.trim() : '';
-      const photoURL = editPhoto ? editPhoto.value.trim() : '';
-      try {
-        await updateProfile(currentUser, { displayName: name, photoURL });
-        if (auth.currentUser && typeof auth.currentUser.reload === 'function') await auth.currentUser.reload();
-        if (status) { status.textContent = "Profile updated!"; status.style.color = "#00ffff"; }
-        setTimeout(() => { profileMenu?.classList.remove('active'); profileMenuBg?.classList.remove('active'); }, 650);
-        if (headerWelcome) headerWelcome.textContent = "Welcome, " + (auth.currentUser?.displayName || (auth.currentUser?.email || '').split('@')[0]);
-      } catch (err) {
-        if (status) { status.textContent = err.message || "Update failed"; status.style.color = "#ffd700"; }
+    /* ---------- Panels/Modals ---------- */
+    if (profileMenuBg && profileMenu && $('openProfileMenu')) {
+      $('openProfileMenu').addEventListener('click', () => {
+        profileMenuBg.classList.add('active');
+        setTimeout(() => profileMenu.classList.add('active'), 10);
+      });
+      profileMenuBg.addEventListener('click', e => {
+        if (e.target === profileMenuBg) {
+          profileMenu.classList.remove('active');
+          setTimeout(() => profileMenuBg.classList.remove('active'), 110);
+        }
+      });
+    }
+    if (linkMenuBg && linkMenu && $('openLinksMenu')) {
+      $('openLinksMenu').addEventListener('click', () => {
+        linkMenuBg.classList.add('active');
+        setTimeout(() => linkMenu.classList.add('active'), 10);
+      });
+      linkMenuBg.addEventListener('click', e => {
+        if (e.target === linkMenuBg) {
+          linkMenu.classList.remove('active');
+          setTimeout(() => linkMenuBg.classList.remove('active'), 110);
+        }
+      });
+    }
+    if (logoutBtn) logoutBtn.addEventListener('click', () => window.location.href = 'signup-login.html');
+
+    /* ---------- Firebase auth (profile only) ---------- */
+    let currentUser = null;
+
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        // if not logged in, redirect to login
+        try { window.location.href = "signup-login.html"; } catch (e) {}
+        return;
       }
-    });
-  }
+      currentUser = user;
 
-  /* ---------- Sidebar / Chats list ---------- */
-  function renderChatsListSidebar() {
-    if (!chatsListEl) return;
-    chatsListEl.innerHTML = '';
-    chats.forEach((chat, idx) => {
-      const container = document.createElement('div');
-      container.style.display = 'flex';
-      container.style.alignItems = 'center';
-      container.style.marginBottom = '6px';
+      // populate profile UI if present
+      if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]);
+      if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
+      if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
+      if (editName) editName.value = user.displayName || "";
+      if (editPhoto) editPhoto.value = user.photoURL || "";
+      if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
 
-      const titleSpan = document.createElement('span');
-      titleSpan.textContent = chat.name || `Chat ${idx + 1}`;
-      titleSpan.style.flex = '1';
-      titleSpan.style.cursor = 'pointer';
-      titleSpan.onclick = () => {
-        currentChatIdx = idx;
+      // ensure at least one chat
+      if (!Array.isArray(chats) || chats.length === 0) {
+        chats = [{ name: 'Chat 1', history: [] }];
+        currentChatIdx = 0;
         saveChats();
-        renderChatBox(chat.history || []);
-        if (chatSelector) chatSelector.value = idx;
-        profileMenu?.classList.remove('active');
-        profileMenuBg?.classList.remove('active');
-      };
+      }
+      // initial render
+      try { renderChatSelector(); } catch (e) { console.warn('renderChatSelector error', e); }
+      try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
+    });
 
-      const renameBtn = document.createElement('button');
-      renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-      renameBtn.title = 'Rename';
-      renameBtn.style.margin = '0 6px 0 8px';
-      renameBtn.onclick = (e) => {
-        e.stopPropagation();
-        const newName = prompt("Rename chat:", chat.name || `Chat ${idx + 1}`);
-        if (newName) {
-          chat.name = newName.trim();
+    /* ---------- Profile form submit (update Firebase profile) ---------- */
+    if (profileForm) {
+      profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentUser) return;
+        const status = $('profileStatusMsg');
+        if (status) status.textContent = '';
+        const name = editName ? editName.value.trim() : '';
+        const photoURL = editPhoto ? editPhoto.value.trim() : '';
+        try {
+          await updateProfile(currentUser, { displayName: name, photoURL });
+          if (auth.currentUser && typeof auth.currentUser.reload === 'function') await auth.currentUser.reload();
+          if (status) { status.textContent = "Profile updated!"; status.style.color = "#00ffff"; }
+          setTimeout(() => { profileMenu?.classList.remove('active'); profileMenuBg?.classList.remove('active'); }, 650);
+          if (headerWelcome) headerWelcome.textContent = "Welcome, " + (auth.currentUser?.displayName || (auth.currentUser?.email || '').split('@')[0]);
+        } catch (err) {
+          if (status) { status.textContent = err.message || "Update failed"; status.style.color = "#ffd700"; }
+        }
+      });
+    }
+
+    /* ---------- Sidebar / Chats list ---------- */
+    function renderChatsListSidebar() {
+      if (!chatsListEl) return;
+      chatsListEl.innerHTML = '';
+      chats.forEach((chat, idx) => {
+        const container = document.createElement('div');
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.marginBottom = '6px';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = chat.name || `Chat ${idx + 1}`;
+        titleSpan.style.flex = '1';
+        titleSpan.style.cursor = 'pointer';
+        titleSpan.onclick = () => {
+          currentChatIdx = idx;
+          saveChats();
+          renderChatBox(chat.history || []);
+          if (chatSelector) chatSelector.value = idx;
+          profileMenu?.classList.remove('active');
+          profileMenuBg?.classList.remove('active');
+        };
+
+        const renameBtn = document.createElement('button');
+        renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+        renameBtn.title = 'Rename';
+        renameBtn.style.margin = '0 6px 0 8px';
+        renameBtn.onclick = (e) => {
+          e.stopPropagation();
+          const newName = prompt("Rename chat:", chat.name || `Chat ${idx + 1}`);
+          if (newName) {
+            chat.name = newName.trim();
+            saveChats();
+            renderChatsListSidebar();
+            renderChatSelector();
+          }
+        };
+
+        const delBtn = document.createElement('button');
+        delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        delBtn.title = 'Delete';
+        delBtn.style.marginLeft = '6px';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          if (!confirm("Delete this chat?")) return;
+          chats.splice(idx, 1);
+          if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1;
+          if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
           saveChats();
           renderChatsListSidebar();
           renderChatSelector();
-        }
-      };
+          renderChatBox(chats[currentChatIdx]?.history || []);
+        };
 
-      const delBtn = document.createElement('button');
-      delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-      delBtn.title = 'Delete';
-      delBtn.style.marginLeft = '6px';
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        if (!confirm("Delete this chat?")) return;
-        chats.splice(idx, 1);
-        if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1;
-        if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
+        const openBtn = document.createElement('button');
+        openBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        openBtn.title = 'Open Chat';
+        openBtn.onclick = (e) => {
+          e.stopPropagation();
+          currentChatIdx = idx;
+          renderChatBox(chat.history || []);
+          if (chatSelector) chatSelector.value = idx;
+          profileMenu?.classList.remove('active');
+          profileMenuBg?.classList.remove('active');
+        };
+
+        container.appendChild(titleSpan);
+        container.appendChild(renameBtn);
+        container.appendChild(delBtn);
+        container.appendChild(openBtn);
+        chatsListEl.appendChild(container);
+      });
+    }
+
+    if (newChatBtn) {
+      newChatBtn.addEventListener('click', () => {
+        chats.push({ name: "Chat " + (chats.length + 1), history: [] });
+        currentChatIdx = chats.length - 1;
         saveChats();
         renderChatsListSidebar();
         renderChatSelector();
         renderChatBox(chats[currentChatIdx]?.history || []);
-      };
-
-      const openBtn = document.createElement('button');
-      openBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-      openBtn.title = 'Open Chat';
-      openBtn.onclick = (e) => {
-        e.stopPropagation();
-        currentChatIdx = idx;
-        renderChatBox(chat.history || []);
-        if (chatSelector) chatSelector.value = idx;
-        profileMenu?.classList.remove('active');
-        profileMenuBg?.classList.remove('active');
-      };
-
-      container.appendChild(titleSpan);
-      container.appendChild(renameBtn);
-      container.appendChild(delBtn);
-      container.appendChild(openBtn);
-      chatsListEl.appendChild(container);
-    });
-  }
-
-  if (newChatBtn) {
-    newChatBtn.addEventListener('click', () => {
-      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
-      currentChatIdx = chats.length - 1;
-      saveChats();
-      renderChatsListSidebar();
-      renderChatSelector();
-      renderChatBox(chats[currentChatIdx]?.history || []);
-    });
-  }
-
-  /* ---------- Chat selector (dropdown) ---------- */
-  function renderChatSelector() {
-    if (!chatSelector) return;
-    chatSelector.innerHTML = '';
-    chats.forEach((chat, idx) => {
-      const option = document.createElement('option');
-      option.value = idx;
-      option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 24) || "Untitled");
-      chatSelector.appendChild(option);
-    });
-    if (!chats.length) {
-      chats = [{ name: 'Chat 1', history: [] }];
-      currentChatIdx = 0;
-      saveChats();
-      return renderChatSelector();
+      });
     }
-    if (typeof currentChatIdx === 'number') {
-      currentChatIdx = Math.min(Math.max(0, currentChatIdx), Math.max(0, chats.length - 1));
-      chatSelector.value = currentChatIdx;
-    }
-  }
 
-  if (chatSelector) {
-    chatSelector.addEventListener('change', function () {
-      currentChatIdx = parseInt(this.value) || 0;
-      saveChats();
-      renderChatBox((chats[currentChatIdx] || {}).history || []);
-    });
-  }
-
-  if (addChatBtn) {
-    addChatBtn.addEventListener('click', () => {
-      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
-      currentChatIdx = chats.length - 1;
-      saveChats();
-      renderChatSelector();
-      renderChatBox((chats[currentChatIdx] || {}).history || []);
-    });
-  }
-
-  if (removeChatBtn) {
-    removeChatBtn.addEventListener('click', () => {
-      if (!chats.length) return;
-      if (!confirm("Delete this chat?")) return;
-      chats.splice(currentChatIdx, 1);
-      currentChatIdx = Math.max(0, currentChatIdx - 1);
-      if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
-      saveChats();
-      renderChatSelector();
-      renderChatBox((chats[currentChatIdx] || {}).history || []);
-    });
-  }
-
-  /* ---------- Markdown/render helpers ---------- */
-  const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-
-  function inlineMarkdown(t = '') {
-    let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
-    s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-    s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-    return s.replace(/\n/g, '<br>');
-  }
-
-  function renderMarkdown(text = '') {
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-    let html = '';
-    let lastIndex = 0;
-    text = text || '';
-    text.replace(codeBlockRegex, (match, lang, code, offset) => {
-      const before = text.slice(lastIndex, offset);
-      html += inlineMarkdown(before);
-      const language = (lang || '').toLowerCase().trim();
-      const safe = escapeHTML(code);
-      const blockId = 'code_' + Math.random().toString(36).slice(2);
-      html += `<pre data-block-id="${blockId}">\n  <button class="copy-btn" data-copy="${blockId}">Copy</button>\n  <code class="language-${language || 'plaintext'}">${safe}</code>\n</pre>`;
-      lastIndex = offset + match.length;
-      return match;
-    });
-    html += inlineMarkdown(text.slice(lastIndex));
-    return { html };
-  }
-
-  function enhanceCodeBlocks(container) {
-    if (!container) return;
-    container.querySelectorAll('pre').forEach(pre => {
-      const codeEl = pre.querySelector('code');
-      if (window.hljs && codeEl) {
-        try { hljs.highlightElement(codeEl); } catch (e) { /* ignore */ }
-      }
-      const btn = pre.querySelector('.copy-btn');
-      if (btn && codeEl) {
-        btn.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(codeEl.innerText);
-            const prev = btn.textContent;
-            btn.textContent = 'Copied!';
-            setTimeout(() => btn.textContent = prev, 800);
-          } catch (e) { btn.textContent = 'Failed'; setTimeout(() => btn.textContent = 'Copy', 800); }
-        });
-      }
-    });
-  }
-
-  /* ---------- Chat rendering & controls ---------- */
-function renderChatBox(messages = []) {
-  if (!chatBox) return;
-  chatBox.innerHTML = '';
-  let aiMsgIdx = 0;
-  (messages || []).forEach((msg) => {
-    const div = document.createElement('div');
-    div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
-    if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
-      div.innerHTML = msg.text.replace('image:', '');
-    } else if (msg.role === 'ai') {
-      const { html } = renderMarkdown(msg.text || '');
-      div.innerHTML = `<div class="msg">${html}
-        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-          <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-          <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-        </div>
-      </div>`;
-      div.setAttribute('data-aiidx', aiMsgIdx++);
-    } else {
-      div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
-    }
-    chatBox.appendChild(div);
-  });
-  enhanceCodeBlocks(chatBox);
-  hookAiMsgControls();
-  setTimeout(() => {
-    // Scroll to last message always
-    const last = chatBox.lastElementChild;
-    if (last) last.scrollIntoView({behavior: "smooth", block: "end"});
-    chatBox.scrollTop = chatBox.scrollHeight + 200;
-  }, 20);
-}
-
-function hookAiMsgControls() {
-  if (!chatBox) return;
-  chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
-    const aiIdx = Number(div.getAttribute('data-aiidx'));
-    const controls = div.querySelector('.ai-msg-controls');
-    if (!controls) return;
-    const copyBtn = controls.querySelector('.inline-copy-btn');
-    const shareBtn = controls.querySelector('.inline-share-btn');
-    const regenBtn = controls.querySelector('.regen-btn');
-
-    if (copyBtn) copyBtn.onclick = () => {
-      try {
-        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
-        const text = aiOnly[aiIdx]?.text || "";
-        navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
-        copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
-      } catch (e) { console.warn('copy failed', e); }
-    };
-
-    if (shareBtn) shareBtn.onclick = () => {
-      try {
-        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
-        const text = aiOnly[aiIdx]?.text || "";
-        const url = window.location.origin;
-        const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
-        if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
-        else prompt("Copy and share manually:", shareText);
-      } catch (e) { console.warn('share failed', e); }
-    };
-
-    if (regenBtn) regenBtn.onclick = async () => {
-      try {
-        let aiMsgCount = 0, aiMsgIndexInHistory = -1;
-        const history = chats[currentChatIdx]?.history || [];
-        for (let i = 0; i < history.length; i++) {
-          if (history[i].role === "ai") {
-            if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
-            aiMsgCount++;
-          }
-        }
-        const userMsgObj = history[aiMsgIndexInHistory - 1];
-        const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
-        if (!userMsg) {
-          regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
-          setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
-          return;
-        }
-        if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
+    /* ---------- Chat selector (dropdown) ---------- */
+    function renderChatSelector() {
+      if (!chatSelector) return;
+      chatSelector.innerHTML = '';
+      chats.forEach((chat, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 24) || "Untitled");
+        chatSelector.appendChild(option);
+      });
+      if (!chats.length) {
+        chats = [{ name: 'Chat 1', history: [] }];
+        currentChatIdx = 0;
         saveChats();
-        renderChatBox(history);       // <-- will autoscroll below
-        showTypingAtNext();
-        try {
-          let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
+        return renderChatSelector();
+      }
+      if (typeof currentChatIdx === 'number') {
+        currentChatIdx = Math.min(Math.max(0, currentChatIdx), Math.max(0, chats.length - 1));
+        chatSelector.value = currentChatIdx;
+      }
+    }
+
+    if (chatSelector) {
+      chatSelector.addEventListener('change', function () {
+        currentChatIdx = parseInt(this.value) || 0;
+        saveChats();
+        renderChatBox((chats[currentChatIdx] || {}).history || []);
+      });
+    }
+
+    if (addChatBtn) {
+      addChatBtn.addEventListener('click', () => {
+        chats.push({ name: "Chat " + (chats.length + 1), history: [] });
+        currentChatIdx = chats.length - 1;
+        saveChats();
+        renderChatSelector();
+        renderChatBox((chats[currentChatIdx] || {}).history || []);
+      });
+    }
+
+    if (removeChatBtn) {
+      removeChatBtn.addEventListener('click', () => {
+        if (!chats.length) return;
+        if (!confirm("Delete this chat?")) return;
+        chats.splice(currentChatIdx, 1);
+        currentChatIdx = Math.max(0, currentChatIdx - 1);
+        if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
+        saveChats();
+        renderChatSelector();
+        renderChatBox((chats[currentChatIdx]?.history || []));
+      });
+    }
+
+    /* ---------- Markdown/render helpers ---------- */
+    const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+    function inlineMarkdown(t = '') {
+      let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
+      s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
+      s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      return s.replace(/\n/g, '<br>');
+    }
+
+    function renderMarkdown(text = '') {
+      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+      let html = '';
+      let lastIndex = 0;
+      text = text || '';
+      text.replace(codeBlockRegex, (match, lang, code, offset) => {
+        const before = text.slice(lastIndex, offset);
+        html += inlineMarkdown(before);
+        const language = (lang || '').toLowerCase().trim();
+        const safe = escapeHTML(code);
+        const blockId = 'code_' + Math.random().toString(36).slice(2);
+        html += `<pre data-block-id="${blockId}">\n  <button class="copy-btn" data-copy="${blockId}">Copy</button>\n  <code class="language-${language || 'plaintext'}">${safe}</code>\n</pre>`;
+        lastIndex = offset + match.length;
+        return match;
+      });
+      html += inlineMarkdown(text.slice(lastIndex));
+      return { html };
+    }
+
+    function enhanceCodeBlocks(container) {
+      if (!container) return;
+      container.querySelectorAll('pre').forEach(pre => {
+        const codeEl = pre.querySelector('code');
+        if (window.hljs && codeEl) {
+          try { hljs.highlightElement(codeEl); } catch (e) { /* ignore */ }
+        }
+        const btn = pre.querySelector('.copy-btn');
+        if (btn && codeEl) {
+          btn.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(codeEl.innerText);
+              const prev = btn.textContent;
+              btn.textContent = 'Copied!';
+              setTimeout(() => btn.textContent = prev, 800);
+            } catch (e) { btn.textContent = 'Failed'; setTimeout(() => btn.textContent = 'Copy', 800); }
           });
-          let data;
-          try { data = await res.json(); } catch (e) { data = {}; }
-          removeTyping();
-          if (data && data.response) {
-            history.push({ role: 'ai', text: data.response });
+        }
+      });
+    }
+
+    /* ---------- Chat rendering & controls ---------- */
+    function renderChatBox(messages = []) {
+      if (!chatBox) return;
+      chatBox.innerHTML = '';
+      let aiMsgIdx = 0;
+      (messages || []).forEach((msg) => {
+        const div = document.createElement('div');
+        div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
+        if (msg.text && /^(\[File\]|image:)/.test(msg.text)) {
+          div.innerHTML = msg.text.replace('image:', '');
+        } else if (msg.role === 'ai') {
+          const { html } = renderMarkdown(msg.text || '');
+          div.innerHTML = `<div class="msg">${html}
+            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+              <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+              <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+              <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+          </div>`;
+          div.setAttribute('data-aiidx', aiMsgIdx++);
+        } else {
+          div.innerHTML = `<div class="msg">${escapeHTML(msg.text || '')}</div>`;
+        }
+        chatBox.appendChild(div);
+      });
+      enhanceCodeBlocks(chatBox);
+      hookAiMsgControls();
+      setTimeout(() => {
+        // Scroll to last message always
+        const last = chatBox.lastElementChild;
+        if (last) last.scrollIntoView({behavior: "smooth", block: "end"});
+        chatBox.scrollTop = chatBox.scrollHeight + 200;
+      }, 20);
+    }
+
+    function hookAiMsgControls() {
+      if (!chatBox) return;
+      chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
+        const aiIdx = Number(div.getAttribute('data-aiidx'));
+        const controls = div.querySelector('.ai-msg-controls');
+        if (!controls) return;
+        const copyBtn = controls.querySelector('.inline-copy-btn');
+        const shareBtn = controls.querySelector('.inline-share-btn');
+        const regenBtn = controls.querySelector('.regen-btn');
+
+        if (copyBtn) copyBtn.onclick = () => {
+          try {
+            const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+            const text = aiOnly[aiIdx]?.text || "";
+            navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
+            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+            setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+          } catch (e) { console.warn('copy failed', e); }
+        };
+
+        if (shareBtn) shareBtn.onclick = () => {
+          try {
+            const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+            const text = aiOnly[aiIdx]?.text || "";
+            const url = window.location.origin;
+            const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+            if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
+            else prompt("Copy and share manually:", shareText);
+          } catch (e) { console.warn('share failed', e); }
+        };
+
+        if (regenBtn) regenBtn.onclick = async () => {
+          try {
+            let aiMsgCount = 0, aiMsgIndexInHistory = -1;
+            const history = chats[currentChatIdx]?.history || [];
+            for (let i = 0; i < history.length; i++) {
+              if (history[i].role === "ai") {
+                if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
+                aiMsgCount++;
+              }
+            }
+            const userMsgObj = history[aiMsgIndexInHistory - 1];
+            const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
+            if (!userMsg) {
+              regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
+              setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
+              return;
+            }
+            if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
             saveChats();
-            renderChatBox(history);
-          } else {
-            history.push({ role: 'ai', text: '❌ No response from server.' });
-            saveChats();
-            renderChatBox(history);
+            renderChatBox(history);       // <-- will autoscroll below
+            showTypingAtNext();
+            try {
+              let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
+              });
+              let data;
+              try { data = await res.json(); } catch (e) { data = {}; }
+              removeTyping();
+              if (data && data.response) {
+                history.push({ role: 'ai', text: data.response });
+                saveChats();
+                renderChatBox(history);
+              } else {
+                history.push({ role: 'ai', text: '❌ No response from server.' });
+                saveChats();
+                renderChatBox(history);
+              }
+            } catch (err) {
+              removeTyping();
+              history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+              saveChats();
+              renderChatBox(history);
+            }
+          } catch (err) {
+            console.warn('regen error', err);
           }
+        };
+      });
+    }
+
+    /* ---------- Typing / typewriter ---------- */
+    let typingNode = null;
+    function showTypingAtNext() {
+      removeTyping();
+      if (!chatBox) return;
+      typingNode = document.createElement('div');
+      typingNode.className = 'chat-message ai';
+      typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
+      chatBox.appendChild(typingNode);
+      setTimeout(() => {
+        typingNode.scrollIntoView({ behavior: "smooth", block: "end" });
+      }, 20);
+    }
+
+    function removeTyping() {
+      if (typingNode && typingNode.parentNode) {
+        typingNode.parentNode.removeChild(typingNode);
+        typingNode = null;
+      }
+    }
+
+    async function typeBotMessage(text) {
+      removeTyping();
+      if (!chatBox) return;
+
+      const div = document.createElement('div');
+      div.className = "chat-message ai";
+      const msgdiv = document.createElement('div');
+      msgdiv.className = 'msg';
+      div.appendChild(msgdiv);
+      chatBox.appendChild(div);
+
+      let sofar = '';
+      const words = text.split(' ');
+
+      for (const word of words) {
+        sofar += word + ' ';
+        msgdiv.innerHTML = renderMarkdown(sofar).html;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
+      }
+      
+      // Final rendering of the full message and controls
+      msgdiv.innerHTML = renderMarkdown(text).html + `
+        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+            <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+            <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+            <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+        </div>
+      `;
+      enhanceCodeBlocks(msgdiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // Add the message to chat history only after typing is complete
+      chats[currentChatIdx].history.push({ role: 'ai', text: text });
+      saveChats();
+      renderChatSelector();
+
+      // Re-hook the event listeners for the new buttons
+      hookAiMsgControls();
+    }
+
+    /* ---------- File preview helpers ---------- */
+    function renderFilePreview() {
+      if (!filePreview) return;
+      if (!uploadedFiles.length) {
+        filePreview.style.display = 'none';
+        filePreview.innerHTML = '';
+        return;
+      }
+      filePreview.style.display = 'block';
+      filePreview.innerHTML = uploadedFiles.map((file, idx) => {
+        let preview = '';
+        if (file.type.startsWith('image/')) {
+          preview = `<img src="${URL.createObjectURL(file)}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
+        } else if (file.type.startsWith('video/')) {
+          preview = `<video src="${URL.createObjectURL(file)}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
+        } else if (file.type.startsWith('audio/')) {
+          preview = `<audio controls src="${URL.createObjectURL(file)}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
+        } else if (file.type === 'application/pdf') {
+          preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
+        }
+        return `
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:1px;">
+          ${preview}
+          <span style="color:#aee;font-size:.99em;">${escapeHTML(file.name)}</span>
+          <button type="button" data-idx="${idx}" class="remove-file-btn" aria-label="Remove file">&times;</button>
+        </div>`;
+      }).join('');
+      filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-idx'));
+          uploadedFiles.splice(idx, 1);
+          uploadData = uploadedFiles[0] || null;
+          if (!uploadedFiles.length && chatFile) chatFile.value = '';
+          renderFilePreview();
+        });
+      });
+    }
+    if (chatFile) {
+      chatFile.addEventListener('change', function () {
+        const files = Array.from(this.files || []);
+        uploadedFiles = files;
+        uploadData = files[0] || null;
+        renderFilePreview();
+      });
+    }
+
+    /* ---------- Voice input via Web Speech ---------- */
+    if (voiceInputBtn && chatInput) {
+      let recognition = null;
+      voiceInputBtn.addEventListener('click', function () {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+          const R = window.webkitSpeechRecognition || window.SpeechRecognition;
+          recognition = new R();
+          recognition.continuous = false;
+          recognition.interimResults = false;
+          recognition.lang = 'en-US';
+          voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
+          recognition.onresult = (e) => {
+            chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
+            chatInput.dispatchEvent(new Event('input'));
+            voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+          };
+          recognition.onend = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
+          recognition.onerror = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
+          recognition.start();
+        } else alert('Speech recognition not supported in your browser.');
+      });
+    }
+
+    /* ---------- Textarea auto-resize ---------- */
+    if (chatInput) {
+      function autoResizeTextarea() {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
+      }
+      chatInput.addEventListener('input', autoResizeTextarea);
+      autoResizeTextarea();
+      chatInput.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBtn?.click(); }
+      });
+    }
+
+    /* ---------- AI Image preview UI ---------- */
+    const aiPrevBox = $('ai-image-preview');
+    const aiPrevClose = $('ai-image-close');
+    const aiPrevDLBtn = $('ai-image-dl');
+    const aiPrevImgBox = $('ai-image-container');
+
+    if (aiPrevClose && aiPrevBox && aiPrevImgBox) aiPrevClose.addEventListener('click', () => { aiPrevBox.style.display = 'none'; aiPrevImgBox.innerHTML = ''; });
+    if (aiPrevDLBtn && aiPrevImgBox) aiPrevDLBtn.addEventListener('click', () => {
+      const img = aiPrevImgBox.querySelector('img'); if (img) { const url = img.src; const a = document.createElement('a'); a.href = url; a.download = 'generated_image.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+    });
+
+    function showAIImagePreview(srcUrlOrBase64, caption = '') {
+      if (!aiPrevBox || !aiPrevImgBox) return;
+      
+      // Check if the input is a URL (blob) or a Base64 string
+      let src;
+      if (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:image/') || srcUrlOrBase64.startsWith('blob:'))) {
+          src = srcUrlOrBase64;
+      } else {
+          src = 'data:image/png;base64,' + srcUrlOrBase64;
+      }
+
+      aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">` + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">' + caption + '</div>' : '');
+      aiPrevBox.style.display = 'block';
+    }
+
+
+    /* ---------- Handle multi-type backend response ---------- */
+    async function handleBackendResponse(responseData) {
+      removeTyping();
+      if (!chatBox) return;
+
+      const messages = (responseData && responseData.response) ? responseData.response : [];
+      let finalMessage = null;
+
+      for (const item of messages) {
+        if (item.type === 'text') {
+          // Display a text message
+          await typeBotMessage(item.data);
+          // Store the last text message for history if needed
+          finalMessage = { role: 'ai', text: item.data };
+        } else if (item.type === 'image_thena') {
+          // Display an image
+          const div = document.createElement('div');
+          div.className = "chat-message ai";
+          const msgDiv = document.createElement('div');
+          msgDiv.className = 'msg';
+          msgDiv.innerHTML = `<div style="text-align:center;">
+                                <p style="font-weight:bold;">🖼️ Image Generated</p>
+                                <img src="data:image/png;base64,${item.data}" alt="${item.prompt}" style="max-width:95%;border-radius:12px;margin:8px 0;box-shadow:0 0 10px #00ffe5;">
+                                <p style="font-size:0.9em;color:#aaa;">Prompt: *${item.prompt}*</p>
+                              </div>`;
+          div.appendChild(msgDiv);
+          chatBox.appendChild(div);
+          chatBox.scrollTop = chatBox.scrollHeight;
+          finalMessage = { role: 'ai', text: `[Image: ${item.prompt}]` };
+
+        } else if (item.type === 'audio') {
+          // Display an audio player
+          const div = document.createElement('div');
+          div.className = "chat-message ai";
+          const msgDiv = document.createElement('div');
+          msgDiv.className = 'msg';
+          msgDiv.innerHTML = `<p style="font-weight:bold;">🗣️ Audio Generated</p>
+                              <audio controls src="${item.data}" style="width:99%;margin-top:8px;"></audio>`;
+          div.appendChild(msgDiv);
+          chatBox.appendChild(div);
+          chatBox.scrollTop = chatBox.scrollHeight;
+          finalMessage = { role: 'ai', text: `[Audio: ${item.data}]` };
+        }
+      }
+
+      // Add the final message to history
+      if (finalMessage) {
+        chats[currentChatIdx].history.push(finalMessage);
+        saveChats();
+        renderChatSelector();
+      } else {
+        await typeBotMessage('❌ No valid response from server.');
+        chats[currentChatIdx].history.push({ role: 'ai', text: '❌ No valid response from server.' });
+        saveChats();
+        renderChatSelector();
+      }
+      
+      // Re-render and hook controls for the final state
+      renderChatBox(chats[currentChatIdx]?.history || []);
+    }
+
+
+    /* ---------- Chat submit handler (main) ---------- */
+    if (chatForm) {
+      chatForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (currentChatIdx < 0 || !chats.length) {
+          chats.push({ name: 'Chat 1', history: [] });
+          currentChatIdx = 0;
+          saveChats();
+        }
+
+        const msgText = chatInput ? chatInput.value.trim() : '';
+
+        if (!msgText && !uploadedFiles.length) {
+          return; // Do nothing if there's no input
+        }
+        
+        // Add user message to history
+        chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+        renderChatBox(chats[currentChatIdx]?.history || []);
+        
+        if (chatInput) {
+          chatInput.value = '';
+          chatInput.dispatchEvent(new Event('input'));
+        }
+        
+        showTypingAtNext();
+
+        try {
+          // 1. Handle file uploads first
+          if (uploadedFiles.length) {
+            
+            const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf');
+            const images = uploadedFiles.filter(f => /^image\//.test(f.type));
+            const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
+            const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
+            
+            // Handle PDF
+            if (pdfs.length) {
+              let fd = new FormData();
+              fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.'));
+              pdfs.forEach(f => fd.append('files', f));
+              const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
+              const data = await res.json();
+              await handleBackendResponse(data);
+            }
+            
+            // Handle Images
+            for (const img of images) {
+              let fd = new FormData();
+              fd.append('prompt', msgText ? msgText : 'Describe this image in detail.');
+              fd.append('file', img);
+              const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
+              const data = await res.json();
+              await handleBackendResponse(data);
+            }
+            
+            // Handle Audio
+            for (const audio of audios) {
+              let fd = new FormData();
+              fd.append('prompt', msgText ? msgText : 'Transcribe and summarize this audio file in simple English.');
+              fd.append('file', audio);
+              const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
+              const data = await res.json();
+              await handleBackendResponse(data);
+            }
+            
+            // Handle Video
+            for (const vid of videos) {
+              let fd = new FormData();
+              fd.append('prompt', msgText ? msgText : 'Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.');
+              fd.append('file', vid);
+              const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
+              const data = await res.json();
+              await handleBackendResponse(data);
+            }
+            
+            // Clear files after processing
+            uploadedFiles = [];
+            uploadData = null;
+            renderFilePreview();
+            
+            removeTyping();
+            
+          } else if (msgText) {
+            // 2. Handle regular text chat (which includes image/audio generation intents)
+            if (chats[currentChatIdx].history.length === 1) {
+              chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
+            }
+            
+            const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
+            const res = await fetch('https://web-production-9a18.up.railway.app/chat', { 
+              method: 'POST', 
+              headers: { 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) 
+            });
+            const data = await res.json();
+            await handleBackendResponse(data);
+          }
+          
         } catch (err) {
           removeTyping();
-          history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+          const userMessage = { role: 'user', text: msgText };
+          chats[currentChatIdx].history.push(userMessage);
+          chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
           saveChats();
-          renderChatBox(history);
+          renderChatSelector();
+          renderChatBox(chats[currentChatIdx]?.history || []);
         }
-      } catch (err) {
-        console.warn('regen error', err);
-      }
-    };
-  });
-}
-  /* ---------- Typing / typewriter ---------- */
-let typingNode = null;
-function showTypingAtNext() {
-  removeTyping();
-  if (!chatBox) return;
-  typingNode = document.createElement('div');
-  typingNode.className = 'chat-message ai';
-  typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
-  chatBox.appendChild(typingNode);
-  setTimeout(() => {
-    typingNode.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, 20);
-}
-
-function removeTyping() {
-  if (typingNode && typingNode.parentNode) {
-    typingNode.parentNode.removeChild(typingNode);
-    typingNode = null;
-  }
-}
-
-async function typeBotMessage(text) {
-  removeTyping();
-  if (!chatBox) return;
-
-  const div = document.createElement('div');
-  div.className = "chat-message ai";
-  const msgdiv = document.createElement('div');
-  msgdiv.className = 'msg';
-  div.appendChild(msgdiv);
-  chatBox.appendChild(div);
-
-  let sofar = '';
-  const words = text.split(' ');
-
-  for (const word of words) {
-    sofar += word + ' ';
-    msgdiv.innerHTML = renderMarkdown(sofar).html;
-    chatBox.scrollTop = chatBox.scrollHeight;
-    await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
-  }
-  
-  // Final rendering of the full message and controls
-  msgdiv.innerHTML = renderMarkdown(text).html + `
-    <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-        <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-        <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-        <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-    </div>
-  `;
-  enhanceCodeBlocks(msgdiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  // Add the message to chat history only after typing is complete
-  chats[currentChatIdx].history.push({ role: 'ai', text: text });
-  saveChats();
-  renderChatSelector();
-
-  // Re-hook the event listeners for the new buttons
-  hookAiMsgControls();
-}
-
-  /* ---------- File preview helpers ---------- */
-function renderFilePreview() {
-  if (!filePreview) return;
-  if (!uploadedFiles.length) {
-    filePreview.style.display = 'none';
-    filePreview.innerHTML = '';
-    return;
-  }
-  filePreview.style.display = 'block';
-  filePreview.innerHTML = uploadedFiles.map((file, idx) => {
-    let preview = '';
-    if (file.type.startsWith('image/')) {
-      preview = `<img src="${URL.createObjectURL(file)}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
-    } else if (file.type.startsWith('video/')) {
-      preview = `<video src="${URL.createObjectURL(file)}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
-    } else if (file.type.startsWith('audio/')) {
-      preview = `<audio controls src="${URL.createObjectURL(file)}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
-    } else if (file.type === 'application/pdf') {
-      preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
-    }
-    return `
-    <div style="display:flex;align-items:center;gap:7px;margin-bottom:1px;">
-      ${preview}
-      <span style="color:#aee;font-size:.99em;">${escapeHTML(file.name)}</span>
-      <button type="button" data-idx="${idx}" class="remove-file-btn" aria-label="Remove file">&times;</button>
-    </div>`;
-  }).join('');
-  filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.getAttribute('data-idx'));
-      uploadedFiles.splice(idx, 1);
-      uploadData = uploadedFiles[0] || null;
-      if (!uploadedFiles.length && chatFile) chatFile.value = '';
-      renderFilePreview();
-    });
-  });
-}
-if (chatFile) {
-  chatFile.addEventListener('change', function () {
-    const files = Array.from(this.files || []);
-    uploadedFiles = files;
-    uploadData = files[0] || null;
-    renderFilePreview();
-  });
-}
-
-  /* ---------- Voice input via Web Speech ---------- */
-  if (voiceInputBtn && chatInput) {
-    let recognition = null;
-    voiceInputBtn.addEventListener('click', function () {
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const R = window.webkitSpeechRecognition || window.SpeechRecognition;
-        recognition = new R();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-        recognition.onresult = (e) => {
-          chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
-          chatInput.dispatchEvent(new Event('input'));
-          voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
-        };
-        recognition.onend = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
-        recognition.onerror = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
-        recognition.start();
-      } else alert('Speech recognition not supported in your browser.');
-    });
-  }
-
-  /* ---------- Textarea auto-resize ---------- */
-  if (chatInput) {
-    function autoResizeTextarea() {
-      chatInput.style.height = 'auto';
-      chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
-    }
-    chatInput.addEventListener('input', autoResizeTextarea);
-    autoResizeTextarea();
-    chatInput.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBtn?.click(); }
-    });
-  }
-
-  /* ---------- IMAGE & VOICE (prefer HTML buttons, otherwise create) ---------- */
-  const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore", "gemini6"];
-  let currentModelIdx = 0;
-
-  // image button element: prefer HTML button if present
-  let imageBtnEl = imageBtnHtml || null;
-  if (!imageBtnEl && chatForm && sendBtn) {
-    imageBtnEl = document.createElement('button');
-    imageBtnEl.type = 'button';
-    imageBtnEl.id = 'imageBtn';
-    imageBtnEl.title = 'Generate image';
-    imageBtnEl.innerHTML = '<i class="fa-solid fa-image"></i>';
-    chatForm.insertBefore(imageBtnEl, sendBtn);
-  }
-
-  // voice-gen button element: prefer HTML if present
-  let voiceGenBtnEl = voiceBtnHtml || null;
-  if (!voiceGenBtnEl && chatForm && sendBtn) {
-    voiceGenBtnEl = document.createElement('button');
-    voiceGenBtnEl.type = 'button';
-    voiceGenBtnEl.id = 'voiceBtn';
-    voiceGenBtnEl.title = 'Generate voice';
-    voiceGenBtnEl.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-    chatForm.insertBefore(voiceGenBtnEl, sendBtn);
-  }
-
-  // Image model cycling — inserts model prefix into text
-  if (imageBtnEl) {
-    imageBtnEl.addEventListener('click', function () {
-      currentModelIdx = (currentModelIdx + 1) % thenaModels.length;
-      const model = thenaModels[currentModelIdx];
-      const prevInput = chatInput ? chatInput.value.replace(/^\/image\s+\w+\s*/i, "").replace(/^\/imagine\s*/i, "") : "";
-      if (model === 'gemini6') {
-        if (chatInput) chatInput.value = `/imagine ${prevInput}`.trim();
-        imageBtnEl.innerHTML = '<i class="fa-brands fa-google"></i>';
-      } else {
-        if (chatInput) chatInput.value = `/image ${model} ${prevInput}`.trim();
-        imageBtnEl.innerHTML = '<i class="fa-solid fa-image"></i>';
-      }
-      chatInput?.focus();
-      setTimeout(() => { try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) {} }, 0);
-    });
-  }
-
-  // Voice generation (TTS) — posts to /voicegen
-  if (voiceGenBtnEl) {
-    voiceGenBtnEl.addEventListener('click', async function () {
-      if (!chatInput) return;
-      const msgText = chatInput.value.trim();
-      if (!msgText) { chatInput.focus(); return; }
-      const style = $('voiceStyle') ? $('voiceStyle').value : 'podcast';
-      showTypingAtNext();
-      try {
-        const fd = new FormData(); fd.append('text', msgText); fd.append('style', style);
-        const res = await fetch('https://web-production-9a18.up.railway.app/voicegen', { method: 'POST', body: fd });
-        if (!res.ok) {
-          let err = {}; try { err = await res.json(); } catch (_) {}
-          removeTyping();
-          await typeBotMessage('❌ Voice generation failed: ' + (err.error || res.statusText));
-          chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice generation failed.' });
-          saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-          return;
-        }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
-        removeTyping();
-        chats[currentChatIdx].history.push({ role: 'ai', text: `🗣️ Voice generated in *${style}* style:<br>${audioPlayer}` });
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      } catch (err) {
-        removeTyping();
-        await typeBotMessage('❌ Voice API/network error');
-        chats[currentChatIdx].history.push({ role: 'ai', text: '❌ Voice API/network error' });
-        saveChats(); renderChatSelector(); renderChatBox(chats[currentChatIdx]?.history || []);
-      }
-    });
-  }
-
-  /* ---------- Chat submit handler (main) ---------- */
-   if (chatForm) {
-  chatForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    if (currentChatIdx < 0 || !chats.length) {
-      chats.push({ name: 'Chat 1', history: [] });
-      currentChatIdx = 0;
-      saveChats();
+      });
     }
 
-    const msgText = chatInput ? chatInput.value.trim() : '';
+    // initial UI small setup
+    currentModelIdx = 0;
+    if (chatInput) { chatInput.value = '/image photoreal '; chatInput.focus(); try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) {} }
 
-    if (!msgText && !uploadedFiles.length) {
-      return; // Do nothing if there's no input
-    }
-    
-    // Add user message to history
-    chats[currentChatIdx].history.push({ role: 'user', text: msgText });
-    renderChatBox(chats[currentChatIdx]?.history || []);
-    
-    if (chatInput) {
-      chatInput.value = '';
-      chatInput.dispatchEvent(new Event('input'));
-    }
-    
-    showTypingAtNext();
+    // final initial render
+    try { renderChatsListSidebar(); } catch (e) {}
+    try { renderChatSelector(); } catch (e) {}
+    try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) {}
 
-    try {
-      let data;
-      // 1. Handle image generation command
-      if (/^\/image\s+/i.test(msgText)) {
-        const parts = msgText.replace(/^\/image\s+/i, '').trim().split(' ');
-        const model = parts.length > 1 ? parts[0] : 'anime';
-        const prompt = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
-
-        const payload = {
-            "prompt": prompt,
-            "model": model
-        };
-
-        const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-            let err = await res.json().catch(() => ({}));
-            throw new Error(err.error || res.statusText);
-        }
-
-        const data = await res.json();
-        const img_b64 = data.image_b64;
-        showAIImagePreview(img_b64, `Generated with model: **${model}**`);
-        chats[currentChatIdx].history.push({ role: 'ai', text: '✅ Image generated! Use the floating image box below to view or download. (Not stored in chat history.)' });
-
-      // 2. Handle file uploads (PDF, image, audio, video)
-      } else if (uploadedFiles.length) {
-        
-        const pdfs = uploadedFiles.filter(f => f.type === 'application/pdf');
-        const images = uploadedFiles.filter(f => /^image\//.test(f.type));
-        const audios = uploadedFiles.filter(f => /^audio\//.test(f.type));
-        const videos = uploadedFiles.filter(f => /^video\//.test(f.type));
-        
-        // Handle PDF
-        if (pdfs.length) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : (pdfs.length > 1 ? 'Please summarize and compare these documents:' : 'Summarize this document.'));
-          pdfs.forEach(f => fd.append('files', f));
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : '❌ Could not process the PDF(s).';
-          await typeBotMessage(botResponse);
-          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
-        }
-        
-        // Handle Images
-        for (const img of images) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : 'Describe this image in detail.');
-          fd.append('file', img);
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : 'Could not process the image. Try sending again.';
-          await typeBotMessage(botResponse);
-        }
-        
-        // Handle Audio
-        for (const audio of audios) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : 'Transcribe and summarize this audio file in simple English.');
-          fd.append('file', audio);
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : '❌ Could not process the audio.';
-          await typeBotMessage(botResponse);
-          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
-        }
-        
-        // Handle Video
-        for (const vid of videos) {
-          let fd = new FormData();
-          fd.append('prompt', msgText ? msgText : 'Watch this video and explain what it’s about in simple English. Give a visual description and audio transcript if possible.');
-          fd.append('file', vid);
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
-          data = await res.json();
-          const botResponse = data && data.response ? data.response : '❌ Could not process the video.';
-          await typeBotMessage(botResponse);
-          chats[currentChatIdx].history.push({ role: 'ai', text: botResponse });
-        }
-        
-        // Clear files after processing
-        uploadedFiles = [];
-        uploadData = null;
-        renderFilePreview();
-
-      // 3. Handle regular text chat
-      } else if (msgText) {
-        if (chats[currentChatIdx].history.length === 1) {
-          chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
-        }
-        
-        const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
-        const res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
-        data = await res.json();
-        const botResponse = data && data.response ? data.response : '🤖 Error. Try sending the text again.';
-        await typeBotMessage(botResponse);
-      }
-
-      
-      // Final state updates
-      removeTyping();
-      saveChats();
-      renderChatSelector();
-      renderChatBox(chats[currentChatIdx]?.history || []);
-      
-    } catch (err) {
-      removeTyping();
-const userMessage = { role: 'user', text: msgText };
-chats[currentChatIdx].history.push(userMessage);
-chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
-saveChats();
-renderChatSelector();
-renderChatBox(chats[currentChatIdx]?.history || []);
-    }
-  });
-}
-
-  /* ---------- AI Image preview UI ---------- */
-  const aiPrevBox = $('ai-image-preview');
-  const aiPrevClose = $('ai-image-close');
-  const aiPrevDLBtn = $('ai-image-dl');
-  const aiPrevImgBox = $('ai-image-container');
-
-  if (aiPrevClose && aiPrevBox && aiPrevImgBox) aiPrevClose.addEventListener('click', () => { aiPrevBox.style.display = 'none'; aiPrevImgBox.innerHTML = ''; });
-  if (aiPrevDLBtn && aiPrevImgBox) aiPrevDLBtn.addEventListener('click', () => {
-    const img = aiPrevImgBox.querySelector('img'); if (img) { const url = img.src; const a = document.createElement('a'); a.href = url; a.download = 'generated_image.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
-  });
-
-  function showAIImagePreview(srcUrlOrBase64, caption = '') {
-    if (!aiPrevBox || !aiPrevImgBox) return;
-    
-    // Check if the input is a URL (blob) or a Base64 string
-    let src;
-    if (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:image/') || srcUrlOrBase64.startsWith('blob:'))) {
-        src = srcUrlOrBase64;
-    } else {
-        src = 'data:image/png;base64,' + srcUrlOrBase64;
-    }
-
-    aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">` + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">' + caption + '</div>' : '');
-    aiPrevBox.style.display = 'block';
-}
-
-
-  // initial UI small setup
-  currentModelIdx = 0;
-  if (chatInput) { chatInput.value = '/image photoreal '; chatInput.focus(); try { chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length); } catch (_) {} }
-
-  // final initial render
-  try { renderChatsListSidebar(); } catch (e) {}
-  try { renderChatSelector(); } catch (e) {}
-  try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) {}
-
-}); // end DOMContentLoaded
+  }); // end DOMContentLoaded
 </script>
 </body>
 </html>
