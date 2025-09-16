@@ -244,7 +244,7 @@ pre:before {
   margin-top:6px; margin-right: 3px; cursor:pointer;
   box-shadow:0 2px 7px #17f6fe51;transition:background .14s,color .13s;
 }
-.inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover{background:#009cff; color:#fff;}
+.inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover{background:#009cff;color:#fff;}
 
 /* --- ENHANCED File Preview with X Button --- */
 .file-preview{
@@ -291,8 +291,8 @@ pre:before {
   display: flex; align-items: stretch; gap: 8px;
   background: rgba(17,29,47,0.94); backdrop-filter: blur(8px);
   border: 1.5px solid #1af8ff51; border-radius: 23px 23px 0 0;
-  width: 100vw; max-width: 635px; /* LIMIT WIDTH ON DESKTOP */
-  margin: 0 auto; /* CENTER IT */
+  width: 100vw; max-width: 635px;
+  margin: 0 auto;
   padding: 9px 12px 10px 13px; box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
   z-index: 1003;
 }
@@ -464,14 +464,14 @@ pre:before {
             <div class="username" style="font-size:1.2em;margin-left:-8px;text-align:center;">Philadelphia AI Tools</div>
         </div>
         <div class="panel-links">
-    <a href="#" class="tool-link" data-tool="image"><i class="fa-solid fa-image"></i> Generate Image</a>
-    <a href="#" class="tool-link" data-tool="comic"><i class="fa-solid fa-book-open"></i> Create Comic</a>
-    <a href="#" class="tool-link" data-tool="website"><i class="fa-solid fa-globe"></i> Create Website</a>
-    <a href="#" class="tool-link" data-tool="research"><i class="fa-solid fa-magnifying-glass"></i> Research</a>
-    <a href="#" class="tool-link" data-tool="remove-bg"><i class="fa-solid fa-cut"></i> Remove Background</a>
-    <a href="#" class="tool-link" data-tool="voice-gen"><i class="fa-solid fa-microphone-lines"></i> Generate Voice</a>
-    <a href="#" class="tool-link" data-tool="audio-narration"><i class="fa-solid fa-file-audio"></i> Audio Narration</a>
-</div>
+            <a href="#" class="tool-link" data-tool="image"><i class="fa-solid fa-image"></i> Generate Image</a>
+            <a href="#" class="tool-link" data-tool="comic"><i class="fa-solid fa-book-open"></i> Create Comic</a>
+            <a href="#" class="tool-link" data-tool="website"><i class="fa-solid fa-globe"></i> Create Website</a>
+            <a href="#" class="tool-link" data-tool="research"><i class="fa-solid fa-magnifying-glass"></i> Research</a>
+            <a href="#" class="tool-link" data-tool="remove-bg"><i class="fa-solid fa-cut"></i> Remove Background</a>
+            <a href="#" class="tool-link" data-tool="voice-gen"><i class="fa-solid fa-microphone-lines"></i> Generate Voice</a>
+            <a href="#" class="tool-link" data-tool="audio-narration"><i class="fa-solid fa-file-audio"></i> Audio Narration</a>
+        </div>
         <button class="submit-btn" style="margin-top:17px;" onclick="closeToolMenu();">Close</button>
     </nav>
   </div>
@@ -492,6 +492,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 // Short helper
 const $ = id => document.getElementById(id);
@@ -503,14 +504,12 @@ let currentChatHistory = [];
 let userUnsubscribe = null;
 let chatUnsubscribe = null;
 
-const db = getFirestore(app);
+const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
+let pendingToolAction = null;
 
 // Keep file/upload state
 let uploadedFiles = [];
 let uploadData = null;
-
-let pendingToolAction = null;
-
 
 // Helper to remove any pending subscriptions
 function unsubscribeAll() {
@@ -535,7 +534,6 @@ async function saveMessage(role, text) {
 // Function to update the chat history from a snapshot
 function updateChatHistory(docs) {
   currentChatHistory = docs.map(d => d.data());
-  // The rest of the functions now just use currentChatHistory
   renderChatBox(currentChatHistory);
   renderChatsListSidebar();
 }
@@ -689,7 +687,7 @@ window.addEventListener('DOMContentLoaded', () => {
   /* ---------- Firebase auth (profile only) ---------- */
   let currentUser = null;
 
-    onAuthStateChanged(auth, user => {
+  onAuthStateChanged(auth, user => {
     unsubscribeAll(); // Clean up previous listeners
     if (!user) {
       try { signOut(auth); window.location.href = "signup-login.html"; } catch (e) {}
@@ -795,10 +793,8 @@ window.addEventListener('DOMContentLoaded', () => {
       titleSpan.style.flex = '1';
       titleSpan.style.cursor = 'pointer';
       titleSpan.onclick = () => {
-        currentChatIdx = idx;
-        saveChats();
-        renderChatBox(chat.history || []);
-        if (chatSelector) chatSelector.value = idx;
+        currentChatId = chat.id;
+        subscribeToChatMessages(currentChatId);
         profileMenu?.classList.remove('active');
         profileMenuBg?.classList.remove('active');
       };
@@ -811,10 +807,8 @@ window.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         const newName = prompt("Rename chat:", chat.name || `Chat ${idx + 1}`);
         if (newName) {
-          chat.name = newName.trim();
-          saveChats();
-          renderChatsListSidebar();
-          renderChatSelector();
+          const chatRef = doc(db, `users/${currentUser.uid}/chats/${chat.id}`);
+          updateDoc(chatRef, { name: newName.trim() });
         }
       };
 
@@ -825,13 +819,8 @@ window.addEventListener('DOMContentLoaded', () => {
       delBtn.onclick = (e) => {
         e.stopPropagation();
         if (!confirm("Delete this chat?")) return;
-        chats.splice(idx, 1);
-        if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1;
-        if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
-        saveChats();
-        renderChatsListSidebar();
-        renderChatSelector();
-        renderChatBox(chats[currentChatIdx]?.history || []);
+        const chatRef = doc(db, `users/${currentUser.uid}/chats/${chat.id}`);
+        deleteDoc(chatRef);
       };
 
       const openBtn = document.createElement('button');
@@ -839,9 +828,8 @@ window.addEventListener('DOMContentLoaded', () => {
       openBtn.title = 'Open Chat';
       openBtn.onclick = (e) => {
         e.stopPropagation();
-        currentChatIdx = idx;
-        renderChatBox(chat.history || []);
-        if (chatSelector) chatSelector.value = idx;
+        currentChatId = chat.id;
+        subscribeToChatMessages(currentChatId);
         profileMenu?.classList.remove('active');
         profileMenuBg?.classList.remove('active');
       };
@@ -856,12 +844,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (newChatBtn) {
     newChatBtn.addEventListener('click', () => {
-      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
-      currentChatIdx = chats.length - 1;
-      saveChats();
-      renderChatsListSidebar();
-      renderChatSelector();
-      renderChatBox(chats[currentChatIdx]?.history || []);
+      createNewChat("Chat " + (chats.length + 1));
     });
   }
 
@@ -877,31 +860,20 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     if (!chats.length) {
       chats = [{ name: 'Chat 1', history: [] }];
-      currentChatIdx = 0;
-      saveChats();
-      return renderChatSelector();
-    }
-    if (typeof currentChatIdx === 'number') {
-      currentChatIdx = Math.min(Math.max(0, currentChatIdx), Math.max(0, chats.length - 1));
-      chatSelector.value = currentChatIdx;
+      currentChatId = 0;
     }
   }
 
   if (chatSelector) {
     chatSelector.addEventListener('change', function () {
-      currentChatIdx = parseInt(this.value) || 0;
-      saveChats();
-      renderChatBox((chats[currentChatIdx] || {}).history || []);
+      currentChatId = parseInt(this.value) || 0;
+      subscribeToChatMessages(currentChatId);
     });
   }
 
   if (addChatBtn) {
     addChatBtn.addEventListener('click', () => {
-      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
-      currentChatIdx = chats.length - 1;
-      saveChats();
-      renderChatSelector();
-      renderChatBox((chats[currentChatIdx] || {}).history || []);
+      createNewChat("Chat " + (chats.length + 1));
     });
   }
 
@@ -909,12 +881,8 @@ window.addEventListener('DOMContentLoaded', () => {
     removeChatBtn.addEventListener('click', () => {
       if (!chats.length) return;
       if (!confirm("Delete this chat?")) return;
-      chats.splice(currentChatIdx, 1);
-      currentChatIdx = Math.max(0, currentChatIdx - 1);
-      if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
-      saveChats();
-      renderChatSelector();
-      renderChatBox((chats[currentChatIdx]?.history || []) || []);
+      const chatRef = doc(db, `users/${currentUser.uid}/chats/${currentChatId}`);
+      deleteDoc(chatRef);
     });
   }
 
@@ -970,7 +938,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------- Chat rendering & controls ---------- */
-   function renderChatBox(messages = []) {
+function renderChatBox(messages = []) {
   if (!chatBox) return;
   chatBox.innerHTML = '';
   (messages || []).forEach((msg, idx) => {
@@ -1042,7 +1010,7 @@ function hookAiMsgControls() {
 
     if (copyBtn) copyBtn.onclick = () => {
       try {
-        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+        const aiOnly = (currentChatHistory || []).filter(m => m.role === "ai") || [];
         const text = aiOnly[aiIdx]?.text || "";
         navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
         copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
@@ -1052,7 +1020,7 @@ function hookAiMsgControls() {
 
     if (shareBtn) shareBtn.onclick = () => {
       try {
-        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+        const aiOnly = (currentChatHistory || []).filter(m => m.role === "ai") || [];
         const text = aiOnly[aiIdx]?.text || "";
         const url = window.location.origin;
         const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
@@ -1064,7 +1032,7 @@ function hookAiMsgControls() {
     if (regenBtn) regenBtn.onclick = async () => {
       try {
         let aiMsgCount = 0, aiMsgIndexInHistory = -1;
-        const history = chats[currentChatIdx]?.history || [];
+        const history = currentChatHistory || [];
         for (let i = 0; i < history.length; i++) {
           if (history[i].role === "ai") {
             if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
@@ -1078,9 +1046,10 @@ function hookAiMsgControls() {
           setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
           return;
         }
-        if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
-        saveChats();
-        renderChatBox(history);       // <-- will autoscroll below
+        if (aiMsgIndexInHistory >= 0) {
+          const messageRef = doc(db, `users/${currentUser.uid}/chats/${currentChatId}/messages/${history[aiMsgIndexInHistory].id}`);
+          deleteDoc(messageRef);
+        }
         showTypingAtNext();
         try {
           let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
@@ -1092,19 +1061,13 @@ function hookAiMsgControls() {
           try { data = await res.json(); } catch (e) { data = {}; }
           removeTyping();
           if (data && data.response) {
-            history.push({ role: 'ai', text: data.response });
-            saveChats();
-            renderChatBox(history);
+            await saveMessage('ai', data.response);
           } else {
-            history.push({ role: 'ai', text: '❌ No response from server.' });
-            saveChats();
-            renderChatBox(history);
+            await saveMessage('ai', '❌ No response from server.');
           }
         } catch (err) {
           removeTyping();
-          history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
-          saveChats();
-          renderChatBox(history);
+          await saveMessage('ai', "❌ Retry Error: " + (err.message || ''));
         }
       } catch (err) {
         console.warn('regen error', err);
@@ -1124,7 +1087,7 @@ function hookUserMsgControls() {
 
     if (copyBtn) copyBtn.onclick = () => {
       try {
-        const text = chats[currentChatIdx]?.history?.[userIdx]?.text || "";
+        const text = currentChatHistory?.[userIdx]?.text || "";
         navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
         copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
         setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
@@ -1132,14 +1095,18 @@ function hookUserMsgControls() {
     };
     if (editBtn) editBtn.onclick = () => {
       try {
-        const text = chats[currentChatIdx]?.history?.[userIdx]?.text || "";
+        const text = currentChatHistory?.[userIdx]?.text || "";
         if (!text) return;
         chatInput.value = text;
         chatInput.focus();
         // Remove the original user message and its corresponding AI response (if any)
-        chats[currentChatIdx].history = chats[currentChatIdx].history.slice(0, userIdx);
-        saveChats();
-        renderChatBox(chats[currentChatIdx].history);
+        const chatRef = doc(db, `users/${currentUser.uid}/chats/${currentChatId}`);
+        const userMsgRef = doc(collection(chatRef, 'messages'), currentChatHistory[userIdx].id);
+        deleteDoc(userMsgRef);
+        if (currentChatHistory[userIdx + 1]?.role === 'ai') {
+          const aiMsgRef = doc(collection(chatRef, 'messages'), currentChatHistory[userIdx + 1].id);
+          deleteDoc(aiMsgRef);
+        }
       } catch (e) { console.warn('edit failed', e); }
     };
   });
@@ -1164,47 +1131,6 @@ function removeTyping() {
     typingNode.parentNode.removeChild(typingNode);
     typingNode = null;
   }
-}
-
-async function typeBotMessage(text) {
-  removeTyping();
-  if (!chatBox) return;
-
-  const div = document.createElement('div');
-  div.className = "chat-message ai";
-  const msgdiv = document.createElement('div');
-  msgdiv.className = 'msg';
-  div.appendChild(msgdiv);
-  chatBox.appendChild(div);
-
-  let sofar = '';
-  const words = text.split(' ');
-
-  for (const word of words) {
-    sofar += word + ' ';
-    msgdiv.innerHTML = renderMarkdown(sofar).html;
-    chatBox.scrollTop = chatBox.scrollHeight;
-    await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
-  }
-  
-  // Final rendering of the full message and controls
-  msgdiv.innerHTML = renderMarkdown(text).html + `
-    <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-        <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-        <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-        <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-    </div>
-  `;
-  enhanceCodeBlocks(msgdiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  // Add the message to chat history only after typing is complete
-  chats[currentChatIdx].history.push({ role: 'ai', text: text });
-  saveChats();
-  renderChatSelector();
-
-  // Re-hook the event listeners for the new buttons
-  hookAiMsgControls();
 }
 
   /* ---------- File preview helpers ---------- */
@@ -1290,9 +1216,7 @@ if (chatFile) {
   }
 
   /* ---------- NEW: TOOL-BASED CHAT HANDLING ---------- */
-  const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-  let pendingToolAction = null;
-
+  
   document.querySelectorAll('.tool-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1302,9 +1226,7 @@ if (chatFile) {
     });
   });
 
-  
-        
-        async function handleToolPrompt(tool) {
+  async function handleToolPrompt(tool) {
     let responseText = '';
     
     // Clear any pending actions
@@ -1350,79 +1272,16 @@ if (chatFile) {
     }
   }
 
-  // API Call functions (can be reused from existing code)
-  async function callImageApi(prompt, model) {
-    try {
-      const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, model })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || res.statusText);
-      showAIImagePreview(data.image_b64, `Generated with model: **${model}**`);
-      return '✅ Image generated! Check the floating image box to view or download.';
-    } catch (err) {
-      return `❌ Image generation failed: ${err.message}`;
-    }
-  }
-
-  async function callComicApi(story, style, panels) {
-      try {
-          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/generate-comic', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ story, style, panels, user: currentUser?.displayName || "User" })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || res.statusText);
-          const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" style="max-width:100%;border-radius:12px;margin-bottom:15px;box-shadow:0 0 8px #00fff2c7;">`).join('');
-          return `🖼️ Comic successfully created! ${imagesHtml}`;
-      } catch (err) {
-          return `❌ Comic generation failed: ${err.message}`;
-      }
-  }
-
-  async function callWebsiteApi(prompt) {
-      try {
-          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/create-website', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt, user_id: currentUser?.uid || "user" })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || res.statusText);
-          return `🌐 Website deployed successfully! [View here](${data.url})`;
-      } catch (err) {
-          return `❌ Website creation failed: ${err.message}`;
-      }
-  }
-
-  async function callVoiceGenApi(text, style) {
-      try {
-          const fd = new FormData(); fd.append('text', text); fd.append('style', style);
-          const res = await fetch('https://web-production-9a18.up.railway.app/voicegen', { method: 'POST', body: fd });
-          if (!res.ok) throw new Error(res.statusText);
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
-          return `🗣️ Voice generated in *${style}* style:<br>${audioPlayer}`;
-      } catch (err) {
-          return `❌ Voice generation failed: ${err.message}`;
-      }
-  }
-
   /* ---------- Chat submit handler (main) ---------- */
    if (chatForm) {
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
-    if (currentChatIdx < 0 || !chats.length) {
-      chats.push({ name: 'Chat 1', history: [] });
-      currentChatIdx = 0;
-      saveChats();
+    if (!currentChatId) {
+      await createNewChat("New Chat");
     }
 
     const msgText = chatInput ? chatInput.value.trim() : '';
-        
+    
     // --- NEW: Handle pending tool actions conversationally ---
     if (pendingToolAction) {
         if (!msgText && !uploadedFiles.length) return; // Wait for user input
@@ -1550,92 +1409,35 @@ if (chatFile) {
 
         removeTyping();
         await saveMessage('ai', botResponse);
-        renderChatBox(currentChatHistory);
         return;
-    }
-
-      // Default file upload handling for understanding
-      const files = uploadedFiles;
-      chats[currentChatIdx].history.push({ role: 'user', text: msgText });
-      renderChatBox(chats[currentChatIdx]?.history || []);
-      showTypingAtNext();
-      
-      let botResponse = 'Could not process the file(s).';
-
-      try {
-        if (files.some(f => f.type === 'application/pdf')) {
-          const fd = new FormData();
-          fd.append('prompt', msgText || 'Summarize this document.');
-          files.filter(f => f.type === 'application/pdf').forEach(f => fd.append('file', f));
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
-          const data = await res.json();
-          botResponse = data?.response || '❌ Could not process the PDF(s).';
-        } else if (files.some(f => /^image\//.test(f.type))) {
-          const fd = new FormData();
-          fd.append('prompt', msgText || 'Describe this image in detail.');
-          fd.append('file', files.find(f => /^image\//.test(f.type)));
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
-          const data = await res.json();
-          botResponse = data?.response || '❌ Could not process the image.';
-        } else if (files.some(f => /^audio\//.test(f.type))) {
-          const fd = new FormData();
-          fd.append('prompt', msgText || 'Transcribe and summarize this audio file in simple English.');
-          fd.append('file', files.find(f => /^audio\//.test(f.type)));
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
-          const data = await res.json();
-          botResponse = data?.response || '❌ Could not process the audio.';
-        } else if (files.some(f => /^video\//.test(f.type))) {
-          const fd = new FormData();
-          fd.append('prompt', msgText || 'Explain what this video is about.');
-          fd.append('file', files.find(f => /^video\//.test(f.type)));
-          const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
-          const data = await res.json();
-          botResponse = data?.response || '❌ Could not process the video.';
-        }
-      } catch (err) {
-        botResponse = `❌ File processing failed: ${err.message}`;
-      }
-      removeTyping();
-      await typeBotMessage(botResponse);
-      uploadedFiles = [];
-      uploadData = null;
-      renderFilePreview();
-      saveChats();
-      renderChatBox(chats[currentChatIdx]?.history || []);
-      return;
     }
 
     // Regular text chat
     if (msgText) {
-      if (chats[currentChatIdx].history.length === 1) {
-        chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
+      if (!currentChatId || chats.length === 0) {
+        await createNewChat(msgText.slice(0, 25) + "...");
+      } else {
+         const currentChatRef = doc(db, `users/${currentUser.uid}/chats/${currentChatId}`);
+         await updateDoc(currentChatRef, { name: msgText.slice(0, 25) + "..." });
       }
-      chats[currentChatIdx].history.push({ role: 'user', text: msgText });
-      renderChatBox(chats[currentChatIdx]?.history || []);
+
+      await saveMessage('user', msgText);
       chatInput.value = '';
       chatInput.dispatchEvent(new Event('input'));
       
       showTypingAtNext();
       try {
-        const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
+        const history = (currentChatHistory || []).map(m => ({ role: m.role, content: m.text }));
         const res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
         const data = await res.json();
         const botResponse = data?.response || '🤖 Error. Try sending the text again.';
-        await typeBotMessage(botResponse);
+        removeTyping();
+        await saveMessage('ai', botResponse);
       } catch (err) {
         removeTyping();
-        const userMessage = { role: 'user', text: msgText };
-        chats[currentChatIdx].history.push(userMessage);
-        chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
-        saveChats();
-        renderChatSelector();
-        renderChatBox(chats[currentChatIdx]?.history || []);
+        await saveMessage('ai', '❌ An error occurred: ' + (err.message || 'Please check your connection.'));
       }
     }
-    
-    saveChats();
-    renderChatSelector();
-    renderChatBox(chats[currentChatIdx]?.history || []);
   });
 }
 
@@ -1673,9 +1475,9 @@ if (chatFile) {
   // final initial render
   try { renderChatsListSidebar(); } catch (e) {}
   try { renderChatSelector(); } catch (e) {}
-  try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) {}
+  try { renderChatBox(currentChatHistory || []); } catch (e) {}
 
 }); // end DOMContentLoaded
 </script>
 </body>
-  </html>
+</html>
