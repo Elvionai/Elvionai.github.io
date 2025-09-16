@@ -1,853 +1,541 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Philadelphia AI</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-    <link rel="icon" href="https://i.ibb.co/tPg5B3b/philly-ai.png" type="image/x-icon">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #0f1c2d, #000);
-            color: #fff;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        
-        #stars-container {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 0;
-            overflow: hidden;
-            pointer-events: none;
-        }
+  <meta charset="UTF-8" />
+  <title>Philadelphia AI Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
+  <style>
+:root {
+  --cyan: #00fff7;
+  --blue: #0a8afe;
+  --dark-bg: #070b1a;
+  --fade-blue: #133c8b;
+  --gradient-1: linear-gradient(120deg, #000a2e 39%, #04336a 68%, #10bfff 97%);
+  --gradient-user: linear-gradient(120deg, #0857ee 32%, #00fff0 89%);
+  --glass: rgba(25, 38, 67, 0.82);
+  --bubble-glow: 0 0 13px #00d8ffb1, 0 0 24px #0197ff40;
+  --user-glow: 0 0 22px #0fffd555, 0 0 14px #36f9ff70;
+  --header-glass: rgba(17,29,47,0.92);
+  --code-bg: linear-gradient(92deg,#031d39 79%,#092ff8 120%);
+  --code-border: #15faff;
+  --code-text: #17fafd;
+}
+/* -- BG & Star Layer -- */
+html, body {
+  height: 100vh; width: 100vw; margin: 0; padding: 0;
+  color: #e1fafe;
+  background:
+    radial-gradient(circle at 60% 45%, #112250 37%, #060e1e 88%, #1e0942 100%) fixed,
+    repeating-linear-gradient(100deg,#061c4c 0 9%,#080e20 16% 19%,#030721 30% 41%,#052650 44% 62%,#050b16 74% 89%,#041048 99% 100%);
+  background-blend-mode: lighten, color-dodge;
+  font-family: 'Roboto','Inter',system-ui,-apple-system,Segoe UI,sans-serif;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+body { overflow: hidden; min-height: 100vh; width: 100vw; }
+#stars-container {
+  pointer-events: none;
+  position: fixed; left:0; top:0;right:0;bottom:0;
+  width:100vw; height:100vh; z-index:1;
+  overflow: hidden;
+}
+.star {
+  position:absolute;
+  background: #08ecff;
+  box-shadow:0 0 12px #00fff9cc,0 0 22px #1bf2f2cc;
+  opacity: 0.23;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: star-twinkle 2.7s infinite alternate;
+}
+@keyframes star-twinkle {
+  0% { opacity:.18; }
+  41% { opacity:.88; }
+  100%{ opacity:.09;}
+}
 
-        .star {
-            position: absolute;
-            background: #fff;
-            border-radius: 50%;
-            opacity: 0;
-            animation: twinkle 4s ease-in-out infinite;
-        }
+/* -- Neon Header/Sticky Keyboard -- */
+.header-bar {
+  position: fixed; top: 0; left: 0; width: 100vw;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--header-glass);
+  z-index: 1003;
+  padding: 0 0 0 0;
+  box-shadow: 0 7px 48px #00aaff27, 0 3px 41px #09fcfe15;
+  border-radius: 0 0 22px 22px;
+  height: 70px;
+}
+.menu-btn {
+  background: none; border: none;
+  color: var(--cyan); font-size: 2em; cursor: pointer;
+  border-radius: 14px; margin-left: 17px; margin-right: 3px;
+  padding: 7px 11px;
+}
+.menu-btn:hover { background: #00eaff28; color: #fff; }
+.site-heading {
+  font-family: 'Orbitron',sans-serif;
+  font-size: 1.28em; font-weight: 700;
+  text-align: center; flex: 1;
+  letter-spacing: .27px;
+  white-space:nowrap;
+  background: linear-gradient(90deg,#00fff1,#00b4ff 40%,#fff 59%,#1093f1 89%,#24e0fa 100%);
+  background-size: 250% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  animation: neonglow 4.2s ease-in-out infinite alternate;
+  text-shadow: 0 0 12px #00ffe0cc, 0 0 27px #178fcf88;
+  user-select: none; margin-left: 8px; margin-right: 10px;
+}
+@keyframes neonglow {
+  0% { text-shadow: 0 0 17px #00e7ff70,0 0 30px #0b8fff44;}
+  100% { text-shadow: 0 0 29px #00ffe9ee,0 0 44px #31d2ff82;}
+}
+.header-welcome {
+  color: #68e6fd; font-size: .97em; margin: -2px 0 .7em 0; text-align: center;
+  text-shadow: 0 0 14px #00bcb4a8;
+}
 
-        @keyframes twinkle {
-            0%, 100% { opacity: 0; transform: scale(0.5); }
-            50% { opacity: 1; transform: scale(1); }
-        }
+/* New: Main content area to hold everything else */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow-y: hidden;
+    position: relative;
+    padding-top: 70px; /* Space for the header */
+    padding-bottom: 86px; /* Space for the footer */
+    box-sizing: border-box;
+}
+.card-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100vw;
+    height: 100%;
+    min-height: 100%;
+    background: transparent;
+    box-sizing: border-box;
+    position: relative;
+}
 
-        #main-container {
-            width: 95%;
-            max-width: 1000px;
-            height: 90vh;
-            max-height: 800px;
-            background: rgba(15, 28, 45, 0.7);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 1;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        #main-container.fullscreen {
-            width: 100vw;
-            max-width: 100vw;
-            height: 100vh;
-            max-height: 100vh;
-            border-radius: 0;
-        }
+/* -- Chat area FIXED SCROLLING -- */
+.chat-box {
+  flex: 1 1 0px; 
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100vw; max-width: 635px; margin: 0 auto;
+  box-sizing: border-box;
+  padding: 15px 8px 40px 8px;
+  position: relative;
+  z-index:3;
+  scroll-behavior: smooth;
+  /* FORCE SCROLL TO BOTTOM */
+  display: flex;
+  flex-direction: column;
+}
+.chat-message {
+  width: 100%; display: flex; gap:9px; align-items: flex-end;
+  margin: 8px 0; max-width:100vw;
+  flex-shrink: 0;
+}
+.chat-message .msg {
+  font-size: 1.01em; line-height: 1.58;
+  max-width: 62vw; min-width:0; 
+  padding: 11px 16px 12px 15px;
+  border-radius: 16px 14px 11px 12px;
+  word-break: break-word; white-space: pre-wrap; overflow-x: auto;
+  background: var(--gradient-1); color: #e1fafe;
+  text-shadow: 0 0 3px #23d8ff15;
+  box-shadow: var(--bubble-glow);
+  margin-right: auto; margin-left: 0;
+  border: 1.2px solid #0090ffa0; position:relative;
+  transition:background .15s;
+}
+.chat-message.user { justify-content: flex-end; }
+.chat-message.user .msg {
+  background: var(--gradient-user);
+  color: #141825; font-weight: 700;
+  text-shadow: 0 0 5px #00e0ff77, 0 0 2px #00ffe033;
+  border-radius: 17px 13px 15px 11px;
+  margin-left: auto; margin-right: 0;
+  box-shadow: var(--user-glow);
+  border: 1.2px solid #04eef4c9;
+  max-width: 68vw;
+}
+@media (max-width:790px) {
+  .chat-box { max-width:100vw; padding: 15px 4px 40px 4px; }
+  .chat-message .msg { font-size: .97em; padding:9px 4vw 10px 5vw; max-width:80vw;}
+  .chat-message.user .msg { max-width: 83vw; }
+}
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 25px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            z-index: 10;
-        }
+/* -- ENHANCED Typing Dots (MORE VISIBLE) -- */
+.typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 4px 12px;
+  margin: 6px 4px;
+  border-radius: 15px;
+  background: linear-gradient(90deg,#0a4477dd 30%,#0ebfff88 95%);
+  box-shadow: 0 2px 12px #0dfcff77;
+  border: 1px solid #00ffff55;
+}
+.dot-anim {
+  display:inline-block;
+  width: 8px; height: 8px;
+  margin:0 3px; 
+  background: #05fff9;
+  border-radius: 50%;
+  opacity: 0.85;
+  animation: typing-blink 1.4s infinite both;
+  box-shadow: 0 0 6px #05fff9aa;
+}
+.dot-anim:nth-child(2){animation-delay:.3s;}
+.dot-anim:nth-child(3){animation-delay:.6s;}
+@keyframes typing-blink {
+  0%,100% {opacity:.25; transform: scale(0.8);}
+  25%  {opacity:.95; transform: scale(1.1);}
+  50%  {opacity:1; transform: scale(1.2);}
+  75%  {opacity:.65; transform: scale(1);}
+}
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+/* -- Code block glow, copy button -- */
+pre, code {
+  font-family: 'JetBrains Mono','Fira Mono','Menlo',monospace;
+  font-size: .99em;
+  background: var(--code-bg);
+  border-radius: 11px;
+  border: 1.7px solid var(--code-border);
+  color: var(--code-text);
+  box-shadow: 0 0 19px #00eaff38, 0 0 48px #0beaff38 inset;
+}
+pre {
+  overflow-x: auto;
+  padding: 1.18em 1.3em 1.16em 1.13em;
+  margin: 1.15em 0 1em 0; position: relative;
+}
+pre:before {
+  content: "CODE";
+  color: #07eefb;
+  font-size: 0.82em;
+  font-family: 'Orbitron', monospace;
+  position: absolute; top: 5px; right: 29px; opacity: 0.17;
+  letter-spacing: 0.13em; pointer-events: none;
+}
+.copy-btn {
+  position: absolute; top: 10px; right: 13px; z-index: 3;
+  border-radius: 8px; border: none; padding: 3px 15px;
+  background: linear-gradient(95deg,#0cf3ff 40%,#0980ff 120%);
+  color: #06182f; font-size: .98em; font-family: 'Inter'; font-weight: bold;
+  box-shadow: 0 2px 9px #18e3ffc5,0 0 7px #00ffd7a4;
+  transition: background .15s, color .15s;
+  cursor: pointer; outline: none; border: 1px solid #0cf3ff35;
+}
+.copy-btn:hover { background: #008cee; color: #fff; }
 
-        .logo-img {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            box-shadow: 0 0 15px #00ffff;
-            animation: pulse 2.5s infinite;
-        }
+/* -- Chat controls ALWAYS VISIBLE -- */
+.inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
+  padding:4px 10px; border-radius:7px; border:none;
+  background:linear-gradient(94deg,#00fff6,#0090ff 97%);
+  color:#0f1a31; font-family:'Inter',Arial,sans-serif; font-size:.96em;
+  font-weight:600; display:inline-flex; align-items:center; gap:4px; 
+  margin-top:6px; margin-right: 3px; cursor:pointer;
+  box-shadow:0 2px 7px #17f6fe51;transition:background .14s,color .13s;
+}
+.inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover{background:#009cff; color:#fff;}
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 15px #00ffff; }
-            50% { box-shadow: 0 0 25px #00ffff, 0 0 35px #00eaff; }
-            100% { box-shadow: 0 0 15px #00ffff; }
-        }
+/* New: styles for files displayed in chat */
+.file-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+    max-width: 100%;
+}
+.chat-media-preview {
+  max-width: 100%;
+  max-height: 250px;
+  border-radius: 12px;
+  display: block;
+}
+.image-preview-thumb {
+  border: 2px solid #00fff2;
+  box-shadow: 0 0 10px #00eaff88;
+}
+.video-preview-thumb {
+  background: #000;
+  border: 2px solid #00b4ff;
+  box-shadow: 0 0 10px #00b4ff88;
+}
+.audio-preview-thumb {
+  width: 90%;
+  min-height: 40px;
+  border-radius: 10px;
+}
+.file-link {
+  display: inline-block;
+  padding: 8px 12px;
+  background: #0b2447;
+  border: 1px solid #1af8ff51;
+  border-radius: 10px;
+  color: #00fff6;
+  text-decoration: none;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+.file-link i {
+  margin-right: 5px;
+}
 
-        h1 {
-            font-size: 1.5rem;
-            margin: 0;
-            font-weight: 600;
-            background: linear-gradient(45deg, #00ffff, #00eaff, #ff00ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+/* --- ENHANCED File Preview with X Button --- */
+.file-preview{
+  display:none;
+  background:rgba(15,36,65,0.98);
+  border-radius:12px;color:#c4f2ff;font-size:.98em;
+  box-shadow:0 3px 15px #00aac0bb;
+  margin:0 auto 10px auto;width:94vw;max-width:520px;
+  padding:10px 14px 10px 15px;
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  z-index: 1002;
+  border: 1.5px solid #00ffff44;
+}
+.file-preview img, .file-preview video {
+  max-width:58px;max-height:41px;border-radius:6px;margin-right:6px;vertical-align: middle;
+}
+.file-preview audio { width:52px; margin-right:7px; }
+.remove-file-btn {
+  color: #fff !important; 
+  background:#d23 !important;
+  border:none !important; 
+  border-radius:50% !important;
+  padding:2px 6px !important; 
+  cursor:pointer !important;
+  font-size:1.2em !important; 
+  font-weight:bold !important;
+  margin-left:8px !important;
+  transition: background .16s, color .16s !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.remove-file-btn:hover { 
+  background:#ff4444 !important; 
+  color:#fff !important;
+  transform: scale(1.1) !important;
+}
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .header-right button {
-            background: transparent;
-            border: none;
-            color: #fff;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-        
-        .header-right button:hover {
-            color: #00ffff;
-        }
+/* -- Sticky Footer/Keyboard -- */
+.chat-input-row {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  background: rgba(17, 29, 47, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid #1af8ff51;
+  border-radius: 23px 23px 0 0;
+  width: 100vw;
+  max-width: 635px; /* Added: Constrain width for a better feel */
+  margin: 0 auto;  /* Added: Center the input bar on wide screens */
+  padding: 9px 12px 10px 13px;
+  box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
+  z-index: 1003;
+}
+/* Adjustments for smaller screens to make it less wide */
+@media (max-width: 650px) {
+  .chat-input-row {
+    max-width: 100vw;
+  }
+}
+.chat-input-row textarea{
+  flex:1 1 auto;resize:none;min-height:36px;max-height:80px;
+  background:#09284c;color:#f5ffff;font-size:1em;
+  padding:10px 12px;border:none;border-radius:11px;
+  box-shadow:0 1px 6px #00f2ff27;
+}
+.chat-input-row button, .chat-input-row label{
+  background:none;border:none;color:#07eaff;font-size:1.21em;
+  cursor:pointer;border-radius:10px;transition:color .13s,background .15s;padding:0 0;
+  display:flex;align-items:center;justify-content:center;min-width:33px;
+  box-shadow: 0 0 3px #00eaff20;
+}
+.chat-input-row button:hover, .chat-input-row label:hover{color:#fff;background:#00cdf247;}
+.file-upload-btn{cursor:pointer;}
+.file-upload-btn:hover{color:#00ffdf;background:#08d3ce9a;}
 
-        #chat-box {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            scroll-behavior: smooth;
-        }
+/* -- Emoji panel (ABOVE INPUT) -- */
+#emojiPanel {
+  display:none;
+  position: fixed;
+  left:10px;
+  bottom:110px;
+  z-index:2222;
+  background: #051f46f9;
+  border-radius: 15px;
+  padding: 16px 15px 12px 15px;
+  box-shadow: 0 5px 22px #00fff194;
+  border: 1px solid #00ffff66;
+}
+.emoji-pick {
+  font-size:1.23em;
+  cursor:pointer;
+  padding:4px 8px;
+  border-radius:10px;
+  transition:background .13s;
+  user-select:none;
+}
+.emoji-pick:hover { background:#35cdfd66; }
 
-        #chat-box::-webkit-scrollbar {
-            width: 8px;
-        }
-        #chat-box::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        #chat-box::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-        }
-        #chat-box::-webkit-scrollbar-thumb:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
+/* -- Status message -- */
+.status-message{padding:6px 13px;color:#12ffc7;font-size:.98em;min-height:17px;text-align:center;margin:4px auto 0 auto;max-width:430px;word-break:break-word;}
 
-        .chat-message {
-            max-width: 85%;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .chat-message.user {
-            align-self: flex-end;
-            margin-right: 0;
-        }
+/* -- Modal/panel, sharp -- */
+.panel-bg {
+  display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(13,20,52,0.86);z-index:1200;
+}
+.panel-bg.active{display:block;}
+.side-panel{position:absolute;top:0;left:0;height:100vh;width:325px;background:linear-gradient(118deg,#131642 80%,#1629af 200%);border-right:2.5px solid #00fbffcb;box-shadow:0 0 42px #25f8ffc9;z-index:1212;
+  padding:18px 16px 20px 15px;overflow-y:auto;border-radius:0 24px 32px 0;}
+.side-panel .panel-header{text-align:center;margin:18px 0 13px 0;}
+.side-panel img{width:56px;height:56px;border-radius:53%;margin-bottom:8px;border:2px solid #31f6ffea;}
+.side-panel .username{font-weight:700;font-size:1.11em;color:#08d0fe;font-family:'Orbitron',sans-serif;text-shadow:0 0 8px #00eaffbb;}
+.side-panel .email{font-size:.97em;color:#a8eaff;}
+.panel-links a{color:#13efff;text-decoration:none;font-weight:500;font-size:1.08em;padding:8px 4px;display:block;border-radius:9px;transition:background .14s;}
+.panel-links a:hover{background:#00eaff55;color:#f4fdff;}
 
-        .chat-message.ai {
-            align-self: flex-start;
-            margin-left: 0;
-        }
-
-        .chat-message .msg {
-            padding: 15px;
-            border-radius: 20px;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            animation: fadeIn 0.3s ease-out;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .chat-message.user .msg {
-            background: linear-gradient(135deg, #00ffff, #00aaff);
-            color: #1a1a1a;
-            border-bottom-right-radius: 5px;
-        }
-
-        .chat-message.ai .msg {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-bottom-left-radius: 5px;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        code {
-            font-family: 'Courier New', Courier, monospace;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 2px 6px;
-            border-radius: 6px;
-            color: #00ffff;
-        }
-        
-        .chat-message.user code {
-            color: #000;
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        pre {
-            background: #282c34;
-            color: #abb2bf;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            overflow-x: auto;
-            position: relative;
-            margin-top: 10px;
-        }
-        
-        pre .copy-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #3e4451;
-            color: #abb2bf;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: background 0.2s ease;
-        }
-        
-        pre .copy-btn:hover {
-            background: #4b5260;
-        }
-
-        .chat-form-container {
-            padding: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(15, 28, 45, 0.7);
-        }
-        
-        #filePreview {
-            padding: 5px 10px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            margin-bottom: 8px;
-            display: none;
-            color: #aee;
-        }
-
-        #filePreview .remove-file-btn {
-            background: none;
-            border: none;
-            color: #ff5555;
-            font-size: 1.2rem;
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        #chatForm {
-            display: flex;
-            align-items: flex-end;
-            gap: 10px;
-        }
-
-        #chatInput {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            padding: 12px 20px;
-            color: #fff;
-            font-size: 1rem;
-            resize: none;
-            min-height: 50px;
-            max-height: 168px;
-            transition: border-color 0.3s;
-        }
-
-        #chatInput:focus {
-            outline: none;
-            border-color: #00ffff;
-        }
-        
-        #sendBtn, .icon-btn {
-            background: linear-gradient(45deg, #00ffff, #00eaff);
-            border: none;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            color: #1a1a1a;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-shrink: 0;
-            transition: all 0.3s ease;
-        }
-        
-        .icon-btn.active {
-            box-shadow: 0 0 15px #00ffff;
-        }
-
-        #sendBtn:hover, .icon-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-        }
-
-        .footer-logo {
-            width: 30px;
-            height: 30px;
-            margin-right: 10px;
-        }
-
-        .chat-message .file-attachments {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .chat-message .chat-media-preview {
-            max-width: 100px;
-            height: auto;
-            border-radius: 8px;
-        }
-        
-        .chat-message .file-link {
-            color: #00ffff;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .chat-message .file-link:hover {
-            text-decoration: underline;
-        }
-        
-        .chat-message .file-link i {
-            color: #fff;
-        }
-        
-        /* Modal / Profile / Links */
-        .modal-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 99;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        
-        .modal-bg.active {
-            display: flex;
-            opacity: 1;
-        }
-        
-        .modal-content {
-            background: #1a2a40;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
-            width: 90%;
-            max-width: 500px;
-            transform: scale(0.9);
-            opacity: 0;
-            transition: transform 0.2s ease, opacity 0.2s ease;
-            position: relative;
-        }
-        
-        .modal-content.active {
-            transform: scale(1);
-            opacity: 1;
-        }
-
-        .modal-content h2 {
-            text-align: center;
-            color: #00ffff;
-            margin-bottom: 20px;
-        }
-        
-        .modal-content .close-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-        
-        .modal-content input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            color: #fff;
-            font-size: 1rem;
-        }
-        
-        .modal-content button[type="submit"] {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(45deg, #00ffff, #00eaff);
-            color: #1a1a1a;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-        
-        .modal-content button[type="submit"]:hover {
-            transform: translateY(-2px);
-        }
-
-        #profilePicPreview {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            display: block;
-            margin: 0 auto 15px;
-            object-fit: cover;
-            border: 3px solid #00ffff;
-        }
-        
-        .link-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .link-list li {
-            margin-bottom: 10px;
-        }
-        
-        .link-list a {
-            display: block;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            color: #fff;
-            text-decoration: none;
-            transition: background 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .link-list a:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .link-list a i {
-            font-size: 1.5rem;
-            color: #00ffff;
-        }
-
-        .chat-box-footer {
-            padding: 10px 20px;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 0.8rem;
-        }
-
-        .chat-box-footer a {
-            color: #00ffff;
-            text-decoration: none;
-        }
-        
-        .chat-box-footer a:hover {
-            text-decoration: underline;
-        }
-
-        #chatSelector {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            cursor: pointer;
-        }
-        
-        #chatSelector option {
-            background: #1a2a40;
-            color: #fff;
-        }
-
-        .chat-controls-bottom {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .chat-controls-bottom button {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-
-        .chat-controls-bottom button:hover {
-            color: #00ffff;
-        }
-        
-        .chat-controls-bottom input[type="file"] {
-            display: none;
-        }
-        
-        #ai-image-preview {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(15, 28, 45, 0.85);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 15px;
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            z-index: 9;
-        }
-
-        #ai-image-preview button {
-            background: #00ffff;
-            color: #1a1a1a;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        
-        #ai-image-close {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .typing-bubble {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            margin-left: 10px;
-        }
-
-        .dot-anim {
-            width: 8px;
-            height: 8px;
-            background-color: #00ffff;
-            border-radius: 50%;
-            display: inline-block;
-            animation: bounce 1.4s infinite ease-in-out;
-        }
-        
-        .dot-anim:nth-child(1) { animation-delay: -0.32s; }
-        .dot-anim:nth-child(2) { animation-delay: -0.16s; }
-        .dot-anim:nth-child(3) { animation-delay: 0s; }
-
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1.0); }
-        }
-
-        /* NEW: Tool menu styling */
-        .tools-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            display: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .tools-modal.active {
-            display: block;
-            opacity: 1;
-        }
-
-        .tools-panel {
-            position: absolute;
-            top: 0;
-            left: -350px;
-            width: 320px;
-            height: 100%;
-            background: #1a2a40;
-            box-shadow: 5px 0 25px rgba(0, 255, 255, 0.3);
-            transition: left 0.3s ease;
-            padding: 20px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .tools-modal.active .tools-panel {
-            left: 0;
-        }
-
-        .tools-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #00ffff;
-            padding-bottom: 10px;
-        }
-
-        .tools-header h2 {
-            margin: 0;
-            font-size: 1.6rem;
-            color: #00ffff;
-            font-weight: 600;
-        }
-
-        .tools-close-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.8rem;
-            cursor: pointer;
-            transition: color 0.2s ease;
-        }
-
-        .tools-close-btn:hover {
-            color: #ff00ff;
-        }
-        
-        .tool-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        .tool-list::-webkit-scrollbar { width: 8px; }
-        .tool-list::-webkit-scrollbar-track { background: transparent; }
-        .tool-list::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-        .tool-list::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
-
-        .tool-item a {
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 12px;
-            color: #fff;
-            text-decoration: none;
-            transition: background 0.2s ease, transform 0.2s ease;
-            border: 1px solid transparent;
-        }
-
-        .tool-item a:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateY(-3px);
-            border-color: #00ffff;
-        }
-
-        .tool-item i {
-            font-size: 2rem;
-            color: #00ffff;
-            margin-right: 15px;
-            flex-shrink: 0;
-        }
-
-        .tool-details {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .tool-details h4 {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .tool-details p {
-            margin: 5px 0 0;
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .file-upload-btn.glow {
-            animation: glow-pulse 1.2s infinite alternate;
-        }
-        
-        @keyframes glow-pulse {
-            from { box-shadow: 0 0 5px #00ffff; }
-            to { box-shadow: 0 0 15px #00ffff; }
-        }
-        
-        .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
-            background: none;
-            border: none;
-            color: #aaa;
-            font-size: 0.9em;
-            cursor: pointer;
-            transition: color 0.2s ease;
-            padding: 2px;
-        }
-        
-        .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover {
-            color: #00ffff;
-        }
-    </style>
+#chatsList button{background:none;border:none;cursor:pointer;outline:none;font-size:1.11em;margin:0 5px;vertical-align:middle;border-radius:7px;padding:3px 5px;}
+#chatsList .fa-pen{color:#0fe0ee;transition:color .13s;}
+#chatsList .fa-pen:hover{color:#ffd800;}
+#chatsList .fa-trash{color:#ff244e;transition:color .10s;}
+#chatsList .fa-trash:hover{color:#fff900;}
+#chatsList .fa-play{color:#04ea70;font-size:1.2em;}
+#chatsList .fa-play:hover{color:#31adff;}
+.edit-form label{display:block;margin-top:10px;font-size:.99em;color:#38e4ff;text-shadow:0 1px 14px #11aaff71;}
+.edit-form input{
+  width:99%;padding:7px 11px;margin-top:5px;
+  border:1.7px solid #13f0ff95;border-radius:9px;background:#071f35;color:#fff;font-size:1.02em;
+  box-shadow:0 0 8px #04f6fd81 inset;transition:border-color .17s,box-shadow .17s;}
+.edit-form input:focus{border-color:#27eeff;background:#273f5d;color:#fff;}
+.submit-btn{
+  margin-top:14px; padding:10px 20px;
+  background:linear-gradient(94deg,#00ffff,#0090ff 90%);
+  border:none; border-radius:10px;
+  color:#102649; font-weight:bold; cursor:pointer; font-size:1.11em;
+  box-shadow:0 2px 13px #00fff292; transition:background .14s,color .13s;}
+.submit-btn:hover{background:#008cff;color:#fff;}
+  </style>
 </head>
 <body>
-    <div id="stars-container"></div>
-    <div id="main-container">
-        <header class="header">
-            <div class="header-left">
-                <img src="https://i.ibb.co/tPg5B3b/philly-ai.png" alt="Philadelphia AI Logo" class="logo-img">
-                <h1>Philadelphia AI</h1>
-            </div>
-            <div class="header-right">
-                <button id="toolBtn" title="AI Tools"><i class="fa-solid fa-wrench"></i></button>
-                <button id="fullscreenBtn" title="Toggle Fullscreen"><i class="fa-solid fa-expand"></i></button>
-                <button id="openLinksMenu" title="Links"><i class="fa-solid fa-link"></i></button>
-                <button id="openProfileMenu" title="Profile"><i class="fa-solid fa-user"></i></button>
-            </div>
-        </header>
+  <div id="stars-container"></div>
 
-        <main id="chat-box">
-            <div class="chat-message ai">
-                <div class="msg">
-                    <p>Hello! I am a general-purpose AI, but I can do some very specific things with my tools. Click the **wrench** icon to get started.</p>
-                </div>
-            </div>
-        </main>
-
-        <div class="chat-form-container">
-            <div id="filePreview"></div>
-            <form id="chatForm">
-                <label for="chatFile" class="icon-btn file-upload-btn" title="Upload File">
-                    <i class="fa-solid fa-paperclip"></i>
-                </label>
-                <input type="file" id="chatFile" multiple>
-                <button type="button" class="icon-btn" id="voiceInputBtn" title="Voice Input"><i class="fa-solid fa-microphone"></i></button>
-                <button type="button" class="icon-btn" id="emojiBtn" title="Emojis"><i class="fa-solid fa-face-smile"></i></button>
-                <textarea id="chatInput" placeholder="Type your message..." rows="1"></textarea>
-                <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
-            </form>
-            <div id="emojiPanel" style="display: none; position: absolute; bottom: 80px; left: 10px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; backdrop-filter: blur(10px); z-index: 100;"></div>
-        </div>
-
-    </div>
-
-    <div id="ai-image-preview">
-        <button id="ai-image-close" aria-label="Close">&times;</button>
-        <h4>Generated Image</h4>
-        <div id="ai-image-container"></div>
-        <button id="ai-image-dl">Download</button>
-    </div>
-
-    <div id="profileMenuBg" class="modal-bg">
-        <div id="profileMenu" class="modal-content">
-            <button class="close-btn" onclick="this.parentNode.parentNode.classList.remove('active')">&times;</button>
-            <h2>My Profile</h2>
-            <form id="profileForm">
-                <img id="profilePicPreview" src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Profile Picture">
-                <div id="headerWelcome" style="text-align:center;margin-bottom:10px;font-size:1.1em;color:#fff;">Welcome</div>
-                <div id="profileMenuUser" style="text-align:center;font-weight:bold;font-size:1.2em;color:#00ffff;"></div>
-                <div id="profileMenuEmail" style="text-align:center;font-size:0.9em;color:#aaa;margin-bottom:20px;"></div>
-                <label for="edit-name">Display Name</label>
-                <input type="text" id="edit-name" placeholder="Enter new name">
-                <label for="edit-photo">Photo URL</label>
-                <input type="text" id="edit-photo" placeholder="Enter photo URL">
-                <button type="submit">Update Profile</button>
-                <p id="profileStatusMsg" style="text-align:center;margin-top:10px;font-size:0.9em;"></p>
-                <button id="logoutBtn" type="button" style="background:#555;margin-top:10px;">Logout</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="linkMenuBg" class="modal-bg">
-        <div id="linkMenu" class="modal-content">
-            <button class="close-btn" onclick="this.parentNode.parentNode.classList.remove('active')">&times;</button>
-            <h2>Important Links</h2>
-            <ul class="link-list">
-                <li><a href="https://github.com/your-repo" target="_blank"><i class="fa-brands fa-github"></i><span>GitHub Repository</span></a></li>
-                <li><a href="mailto:support@philly.ai" target="_blank"><i class="fa-solid fa-envelope"></i><span>Contact Support</span></a></li>
-                <li><a href="https://your-website.com/docs" target="_blank"><i class="fa-solid fa-file-alt"></i><span>Documentation</span></a></li>
-                <li><a href="https://www.linkedin.com/in/elvion-ekong-6804a8220" target="_blank"><i class="fa-brands fa-linkedin"></i><span>Elvion Ekong</span></a></li>
-            </ul>
-        </div>
-    </div>
+  <div class="main-content">
     
-    <div id="toolsMenuBg" class="tools-modal">
-        <div id="toolsMenu" class="tools-panel">
-            <div class="tools-header">
-                <h2>Philadelphia AI Tools</h2>
-                <button onclick="closeToolMenu()" class="tools-close-btn">&times;</button>
-            </div>
-            <ul class="tool-list">
-                <li class="tool-item"><a href="#" data-tool="image" class="tool-link"><i class="fa-solid fa-image"></i><div class="tool-details"><h4>Generate Image</h4><p>Create an image from a text prompt.</p></div></a></li>
-                <li class="tool-item"><a href="#" data-tool="comic" class="tool-link"><i class="fa-solid fa-book-open"></i><div class="tool-details"><h4>Create Comic</h4><p>Turn a story into a multi-panel comic.</p></div></a></li>
-                <li class="tool-item"><a href="#" data-tool="website" class="tool-link"><i class="fa-solid fa-globe"></i><div class="tool-details"><h4>Create Website</h4><p>Generate HTML/CSS/JS for a website.</p></div></a></li>
-                <li class="tool-item"><a href="#" data-tool="remove-bg" class="tool-link"><i class="fa-solid fa-cut"></i><div class="tool-details"><h4>Remove Background</h4><p>Upload an image and get it back with a transparent background.</p></div></a></li>
-                <li class="tool-item"><a href="#" data-tool="voice-gen" class="tool-link"><i class="fa-solid fa-microphone-lines"></i><div class="tool-details"><h4>Generate Voice</h4><p>Create audio narration from text.</p></div></a></li>
-                <li class="tool-item"><a href="#" data-tool="audio-narration" class="tool-link"><i class="fa-solid fa-file-audio"></i><div class="tool-details"><h4>Audio Narration</h4><p>Transcribe or narrate a document or audio file.</p></div></a></li>
-                <li class="tool-item"><a href="#" data-tool="research-report" class="tool-link"><i class="fa-solid fa-flask-vial"></i><div class="tool-details"><h4>Research Report</h4><p>Generate a detailed research report on a topic.</p></div></a></li>
-            </ul>
-        </div>
+    <div class="header-bar">
+      <button class="menu-btn" id="openProfileMenu" aria-label="Open profile menu"><i class="fa-solid fa-user"></i></button>
+      <div class="header-titles">
+        <span class="site-heading">🦅Philadelphia AI🦅</span>
+        <div class="header-welcome" id="headerWelcome"></div>
+      </div>
+      <button class="menu-btn" id="openLinksMenu" aria-label="Open links menu"><i class="fa-solid fa-link"></i></button>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
-    <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    <div class="chat-box" id="chatBox"></div>
+
+    <form class="chat-input-row" id="chatForm" autocomplete="off">
+      <button type="button" id="emojiBtn" title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
+      <label for="chatFile" class="file-upload-btn" title="Attach file"><i class="fa-solid fa-paperclip"></i></label>
+      <input type="file" id="chatFile" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
+      <textarea id="chatInput" placeholder="Type here… (Shift+Enter = new line)"></textarea>
+      <button type="button" id="toolBtn" title="Philadelphia Tools" aria-controls="toolMenu" aria-expanded="false"><i class="fa-solid fa-wrench"></i></button>
+      <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+
+  </div>
+  
+  <div id="emojiPanel"></div>
+  <div class="status-message" id="statusMsg"></div>
+
+  <div id="filePreview" class="file-preview"></div>
+  
+  <div class="panel-bg" id="profileMenuBg">
+    <nav class="side-panel" id="profileMenu">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:1.17em;font-weight:700;color:#00ffff;margin:18px 0 0 13px;">Chats</span>
+        <button style="font-size:1.55em;color:#f44;background:transparent;border:none;margin:13px 11px 0 0;cursor:pointer;border-radius:7px;"
+          onclick="profileMenuBg.classList.remove('active');">&times;</button>
+      </div>
+      <div id="chatsList" style="margin:7px 0 8px 6px;max-height:161px;overflow-y:auto;"></div>
+      <button id="newChatBtn" class="submit-btn" style="margin:0 0 12px 11px;"><i class="fa-solid fa-plus"></i> New Chat</button>
+      <hr style="width:91%;margin:11px 0 7px 3%;border:1px solid #00fff031;">
+      <div class="panel-header">
+        <img id="profilePicPreview" src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Profile photo">
+        <div class="username" id="profileMenuUser">User</div>
+        <div class="email" id="profileMenuEmail">email@example.com</div>
+      </div>
+      <form class="edit-form" id="profileForm" autocomplete="off" style="padding:0 6px;">
+        <label for="edit-name">Name</label>
+        <input type="text" id="edit-name" required>
+        <label for="edit-photo">Photo URL</label>
+        <input type="url" id="edit-photo" placeholder="Paste image link">
+        <span style="font-size:0.83em;color:#aae;display:block;margin:5px 0 7px 2px;">
+          Tip: <a href="https://postimg.cc/" target="_blank" style="color:#19fcff;">Upload at postimg.cc</a>
+        </span>
+        <button type="submit" class="submit-btn">Save</button>
+        <div class="status-message" id="profileStatusMsg"></div>
+      </form>
+      <button class="submit-btn" id="logoutBtn" style="background:#10213b;color:#00eefd;margin:7px 7px 17px 7px;">Logout</button>
+    </nav>
+  </div>
+  
+  <div id="ai-image-preview" style="display:none;position:fixed;z-index:1210;right:22px;bottom:100px;max-width:320px;background:#191a26e9;padding:12px;border-radius:17px;box-shadow:0 2px 19px #00fff2b8;">
+    <button id="ai-image-close" style="float:right;background:#23233a;border:none;border-radius:7px;color:#00ffff;font-size:1.5em;cursor:pointer;margin-left:5px;">&times;</button>
+    <div id="ai-image-container"></div>
+    <button id="ai-image-dl" style="margin-top:9px;padding:7px 20px;background:linear-gradient(90deg,#00ffff,#0090ff);color:#222;border:none;border-radius:8px;box-shadow:0 2px 7px #00fff2c7;cursor:pointer;font-weight:bold;">Download</button>
+  </div>
+  
+  <div class="panel-bg" id="linkMenuBg">
+    <nav class="side-panel" id="linkMenu">
+      <div class="panel-header">
+        <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Elvion logo">
+        <div class="username">Elvion AI</div>
+      </div>
+      <div class="panel-links">
+        <a href="index.html"><i class="fa-solid fa-home"></i> Home</a>
+        <a href="about.html"><i class="fa-solid fa-circle-info"></i> About</a>
+        <a href="privacy.html"><i class="fa-solid fa-shield-halved"></i> Privacy Policy</a>
+        <a href="terms.html"><i class="fa-solid fa-file-contract"></i> Terms</a>
+        <a href="https://t.me/writingurubot" target="_blank"><i class="fab fa-telegram"></i> Telegram Bot</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="panel-bg" id="toolsMenuBg" style="display:none;">
+    <nav class="side-panel" id="toolsMenu">
+        <div class="panel-header" style="text-align:left;">
+            <div class="username" style="font-size:1.2em;margin-left:-8px;text-align:center;">Philadelphia AI Tools</div>
+        </div>
+        <div class="panel-links">
+            <a href="#" class="tool-link" data-tool="image"><i class="fa-solid fa-image"></i> Generate Image</a>
+            <a href="#" class="tool-link" data-tool="comic"><i class="fa-solid fa-book-open"></i> Create Comic</a>
+            <a href="#" class="tool-link" data-tool="website"><i class="fa-solid fa-globe"></i> Create Website</a>
+            <a href="#" class="tool-link" data-tool="remove-bg"><i class="fa-solid fa-cut"></i> Remove Background</a>
+            <a href="#" class="tool-link" data-tool="voice-gen"><i class="fa-solid fa-microphone-lines"></i> Generate Voice</a>
+            <a href="#" class="tool-link" data-tool="audio-narration"><i class="fa-solid fa-file-audio"></i> Audio Narration</a>
+            <a href="#" class="tool-link" data-tool="research-report"><i class="fa-solid fa-flask-vial"></i> Research Report</a>
+        </div>
+        <button class="submit-btn" style="margin-top:17px;" onclick="closeToolMenu();">Close</button>
+    </nav>
+  </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 const firebaseConfig = {
@@ -922,28 +610,31 @@ window.addEventListener('DOMContentLoaded', () => {
   const newChatBtn = $('newChatBtn');
   const chatsListEl = $('chatsList');
   const emojiPanel = $('emojiPanel');
-  const emojiBtn = $('emojiBtn');
-  const imageBtnHtml = $('imageBtn');
-  const voiceBtnHtml = $('voiceBtn');
-  
+  const emojiBtn = $('emojiBtn'); // FIX: ensure emojiBtn is grabbed
+  const imageBtnHtml = $('imageBtn'); // may be present in HTML
+  const voiceBtnHtml = $('voiceBtn'); // may be present in HTML
+
+  // Defensive: if essential elements missing, still continue but warn
   if (!chatForm) console.warn('chatForm not found in DOM. Chat submission disabled until element added.');
   if (!chatBox) console.warn('chatBox not found in DOM. Chat rendering disabled until element added.');
   
+  // New state variables for conversational tools
   let pendingToolAction = null;
   let toolPromptState = {};
-  
-  const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-  
+
   /* ---------- Emoji ---------- */
   const emojis = ["😀","😃","😂","🤣","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🫶","😜","🤖","👀"];
   if (emojiBtn && emojiPanel && chatInput) {
     emojiBtn.addEventListener('click', function (e) {
+      // toggle panel content
       emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button" tabindex="0" aria-label="emoji">${em}</span>`).join('');
       emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block';
+      // position it near button
       try {
         const rect = emojiBtn.getBoundingClientRect();
         emojiPanel.style.left = `${Math.max(8, rect.left)}px`;
-      } catch (e) { }
+      } catch (e) { /* ignore positioning errors */ }
+      // wire picks
       emojiPanel.querySelectorAll('.emoji-pick').forEach(span => {
         span.addEventListener('click', function () {
           const text = this.textContent || '';
@@ -957,6 +648,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
       });
     });
+    // click outside to close
     document.addEventListener('click', e => {
       if (!emojiPanel.contains(e.target) && e.target !== emojiBtn) {
         emojiPanel.style.display = 'none';
@@ -989,10 +681,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------- Panels/Modals ---------- */
   window.closeToolMenu = () => {
-    if (toolsMenuBg) toolsMenuBg.style.display = 'none';
+    if (toolsMenuBg) toolsMenuBg.classList.remove('active');
   };
   window.openToolMenu = () => {
-    if (toolsMenuBg) toolsMenuBg.style.display = 'block';
+    if (toolsMenuBg) toolsMenuBg.classList.add('active');
   };
 
   if (profileMenuBg && profileMenu && $('openProfileMenu')) {
@@ -1019,9 +711,28 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  
+
+  // Handle new tool button logic
   if (toolBtn) {
-    toolBtn.addEventListener('click', openToolMenu);
+    toolBtn.addEventListener('click', () => {
+      const toolOptions = [
+        "**Image Generation**",
+        "**Create Comic**",
+        "**Create Website**",
+        "**Remove Background**",
+        "**Voice Generation**",
+        "**Audio Narration**",
+        "**Research Report**"
+      ].join('\n');
+      
+      const message = { role: 'ai', text: `Hello! I'm Philadelphia AI's tool suite. What would you like to do today?\n\n${toolOptions}\n\nJust type the name of the tool you want to use.` };
+      chats[currentChatIdx].history.push(message);
+      saveChats();
+      renderChatBox(chats[currentChatIdx].history);
+      
+      // Set the pending tool action to "select" to wait for user's choice
+      pendingToolAction = { type: 'select' };
+    });
     if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => {
       if (e.target === toolsMenuBg) {
         closeToolMenu();
@@ -1036,10 +747,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
   onAuthStateChanged(auth, user => {
     if (!user) {
+      // if not logged in, redirect to login
       try { window.location.href = "signup-login.html"; } catch (e) {}
       return;
     }
     currentUser = user;
+
+    // populate profile UI if present
     if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]);
     if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
     if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
@@ -1047,11 +761,13 @@ window.addEventListener('DOMContentLoaded', () => {
     if (editPhoto) editPhoto.value = user.photoURL || "";
     if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
 
+    // ensure at least one chat
     if (!Array.isArray(chats) || chats.length === 0) {
       chats = [{ name: 'Chat 1', history: [] }];
       currentChatIdx = 0;
       saveChats();
     }
+    // initial render
     try { renderChatsListSidebar(); } catch (e) { console.warn('renderChatSelector error', e); }
     try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
   });
@@ -1198,7 +914,7 @@ window.addEventListener('DOMContentLoaded', () => {
       currentChatIdx = chats.length - 1;
       saveChats();
       renderChatSelector();
-      renderChatBox((chats[currentChatIdx] || {}).history || []);
+      renderChatBox(chats[currentChatIdx] || []);
     });
   }
 
@@ -1375,7 +1091,7 @@ function hookAiMsgControls() {
         }
         if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
         saveChats();
-        renderChatBox(history);
+        renderChatBox(history);       // <-- will autoscroll below
         showTypingAtNext();
         try {
           let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
@@ -1431,6 +1147,7 @@ function hookUserMsgControls() {
         if (!text) return;
         chatInput.value = text;
         chatInput.focus();
+        // Remove the original user message and its corresponding AI response (if any)
         chats[currentChatIdx].history = chats[currentChatIdx].history.slice(0, userIdx);
         saveChats();
         renderChatBox(chats[currentChatIdx].history);
@@ -1463,20 +1180,25 @@ function removeTyping() {
 async function typeBotMessage(text) {
   removeTyping();
   if (!chatBox) return;
+
   const div = document.createElement('div');
   div.className = "chat-message ai";
   const msgdiv = document.createElement('div');
   msgdiv.className = 'msg';
   div.appendChild(msgdiv);
   chatBox.appendChild(div);
+
   let sofar = '';
   const words = text.split(' ');
+
   for (const word of words) {
     sofar += word + ' ';
     msgdiv.innerHTML = renderMarkdown(sofar).html;
     chatBox.scrollTop = chatBox.scrollHeight;
     await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
   }
+  
+  // Final rendering of the full message and controls
   msgdiv.innerHTML = renderMarkdown(text).html + `
     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
         <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
@@ -1486,9 +1208,13 @@ async function typeBotMessage(text) {
   `;
   enhanceCodeBlocks(msgdiv);
   chatBox.scrollTop = chatBox.scrollHeight;
+
+  // Add the message to chat history only after typing is complete
   chats[currentChatIdx].history.push({ role: 'ai', text: text });
   saveChats();
   renderChatSelector();
+
+  // Re-hook the event listeners for the new buttons
   hookAiMsgControls();
 }
 
@@ -1575,6 +1301,8 @@ if (chatFile) {
   }
 
   /* ---------- NEW: TOOL-BASED CHAT HANDLING ---------- */
+  const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
+
   async function callImageApi(prompt, model) {
     try {
       const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
@@ -1651,69 +1379,8 @@ if (chatFile) {
       return `❌ Research report failed: ${err.message}`;
     }
   }
-  
-  if (toolsMenu) {
-    toolsMenu.querySelectorAll('.tool-link').forEach(link => {
-      link.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const tool = link.getAttribute('data-tool');
-        closeToolMenu();
-        let responseText = '';
-        let userText = `Used the **${link.textContent.trim()}** tool.`;
-        
-        switch (tool) {
-          case 'image':
-            pendingToolAction = { type: 'image_prompt' };
-            responseText = "What's the image prompt and style? Please format your message like this: `[prompt] style: [style name]`";
-            break;
-          case 'comic':
-            pendingToolAction = { type: 'comic_story' };
-            responseText = "Tell me the story for your comic. Use `[INSTRUCTION]`, `[DIALOGUE]`, and `[NARRATION]` to define panels.";
-            break;
-          case 'website':
-            pendingToolAction = { type: 'website_prompt' };
-            responseText = "What kind of website do you want? Give me a detailed description.";
-            break;
-          case 'remove-bg':
-            pendingToolAction = { type: 'remove_background_file' };
-            responseText = "Okay, I'm ready to remove the background. Please upload the image using the paperclip icon.";
-            break;
-          case 'voice-gen':
-            pendingToolAction = { type: 'voice_style' };
-            responseText = "What voice style do you want? You can choose from: `podcast`, `cinematic`, `upbeat`, `soft`, `dramatic`.";
-            break;
-          case 'audio-narration':
-            pendingToolAction = { type: 'audio_file' };
-            responseText = "Please upload the document (PDF/text) or audio file you want to narrate using the paperclip icon.";
-            break;
-          case 'research-report':
-            pendingToolAction = { type: 'research_topic' };
-            responseText = "What topic would you like me to research and create a PDF report on?";
-            break;
-          default:
-            pendingToolAction = null;
-            responseText = "That tool is not yet implemented. Please choose another.";
-            userText = `Attempted to use unknown tool: ${tool}`;
-        }
-        
-        if (chats[currentChatIdx].history.length === 1) {
-          chats[currentChatIdx].name = userText.slice(0, 25) + "...";
-        }
-        chats[currentChatIdx].history.push({ role: 'user', text: userText });
-        renderChatBox(chats[currentChatIdx].history);
-        showTypingAtNext();
-        
-        await typeBotMessage(responseText);
-        saveChats();
-        
-        if (['remove-bg', 'audio-narration'].includes(tool)) {
-          // Highlight the paperclip button to guide the user
-          document.querySelector('.file-upload-btn').classList.add('glow');
-        }
-      });
-    });
-  }
 
+  /* ---------- Chat submit handler (main) ---------- */
    if (chatForm) {
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -1724,113 +1391,120 @@ if (chatFile) {
     }
 
     const msgText = chatInput ? chatInput.value.trim() : '';
-    document.querySelector('.file-upload-btn')?.classList.remove('glow');
+    if (!msgText && !uploadedFiles.length) { return; }
     
     // Check for pending tool action
     if (pendingToolAction) {
       let responseText = '';
-      let userMsg = { role: 'user', text: msgText };
-      if (uploadedFiles.length) {
-          userMsg.files = uploadedFiles.map(file => ({
-            name: file.name,
-            type: file.type,
-            url: URL.createObjectURL(file)
-          }));
-      }
-
-      chats[currentChatIdx].history.push(userMsg);
-      renderChatBox(chats[currentChatIdx]?.history || []);
-      chatInput.value = '';
-      chatInput.dispatchEvent(new Event('input'));
-      uploadedFiles = [];
-      renderFilePreview();
-      showTypingAtNext();
-      
-      try {
-        switch (pendingToolAction.type) {
-          case 'image_prompt':
-            const promptRegex = /(.+)\s+style:\s+(.+)/i;
-            const match = msgText.match(promptRegex);
-            if (match) {
-              const prompt = match[1].trim();
-              const style = match[2].trim().toLowerCase();
-              if (thenaModels.includes(style)) {
-                responseText = await callImageApi(prompt, style);
-                pendingToolAction = null;
-              } else {
-                responseText = `Invalid style: **${style}**. Please choose from: ${thenaModels.join(', ')}.`;
-              }
-            } else {
-              responseText = "Invalid format. Please use: `[prompt] style: [style name]`";
-            }
-            break;
-          case 'remove_background_file':
-            const file = uploadedFiles[0];
-            if (!file || !file.type.startsWith('image/')) {
-              responseText = "Please upload an image for background removal.";
-            } else {
-              const fd = new FormData(); fd.append('file', file);
-              const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/remove-background', { method: 'POST', body: fd });
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              const imageHtml = `<img src="${url}" alt="Image with background removed" style="max-width:100%;border-radius:12px;box-shadow:0 0 8px #00fff2c7;">`;
-              responseText = `✅ Background removed! ${imageHtml}`;
-              pendingToolAction = null;
-            }
-            break;
-          case 'audio_file':
-              const audioFile = uploadedFiles[0];
-              if (!audioFile) {
-                responseText = "Please upload a document or audio file for narration.";
-              } else {
-                const fd = new FormData(); fd.append('file', audioFile); fd.append('style', 'podcast');
-                const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/audio-narration', { method: 'POST', body: fd });
-                if (!res.ok) throw new Error(res.statusText);
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
-                responseText = `🗣️ Narration generated! ${audioPlayer}`;
-                pendingToolAction = null;
-              }
+      switch (pendingToolAction.type) {
+        case 'select':
+          const toolName = msgText.toLowerCase().replace(/\s/g, '');
+          switch (toolName) {
+            case 'imagegeneration':
+              pendingToolAction = { type: 'image_prompt' };
+              responseText = "What's the image prompt and style? Please format your message like this: `[prompt] style: [style name]`";
               break;
-          case 'voice_style':
-            const validStyles = ["podcast", "cinematic", "upbeat", "soft", "dramatic"];
-            const style = msgText.toLowerCase().trim();
-            if (validStyles.includes(style)) {
-              pendingToolAction = { type: 'voice_text', style };
-              responseText = "Great! Now, please type the text you want me to read aloud.";
+            case 'createcomic':
+              pendingToolAction = { type: 'comic_story' };
+              responseText = "Tell me the story you want to create. Use `[INSTRUCTION]`, `[DIALOGUE]`, and `[NARRATION]` to define panels.";
+              break;
+            case 'createwebsite':
+              pendingToolAction = { type: 'website_prompt' };
+              responseText = "What kind of website do you want? Give me a detailed description.";
+              break;
+            case 'removebackground':
+              pendingToolAction = { type: 'remove_background_file' }; // We need a file next
+              responseText = "Okay, please upload the image you want to remove the background from using the paperclip icon.";
+              break;
+            case 'voicegeneration':
+              pendingToolAction = { type: 'voice_style' };
+              responseText = "What style? You can choose from: `podcast`, `cinematic`, `upbeat`, `soft`, `dramatic`.";
+              break;
+            case 'audionarration':
+              pendingToolAction = { type: 'audio_file' }; // We need a file next
+              responseText = "Please upload the document (PDF/text) or audio file you want to narrate.";
+              break;
+            case 'researchreport':
+              pendingToolAction = { type: 'research_topic' };
+              responseText = "What topic would you like me to research and create a PDF report on?";
+              break;
+            default:
+              responseText = "I didn't recognize that tool. Please try again.";
+              pendingToolAction = { type: 'select' }; // Reset to selection
+          }
+          chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+          removeTyping();
+          await typeBotMessage(responseText);
+          saveChats();
+          return;
+
+        case 'image_prompt':
+          const promptRegex = /(.+)\s+style:\s+(.+)/i;
+          const match = msgText.match(promptRegex);
+          if (match) {
+            const prompt = match[1].trim();
+            const style = match[2].trim().toLowerCase();
+            if (thenaModels.includes(style)) {
+              chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+              renderChatBox(chats[currentChatIdx]?.history || []);
+              showTypingAtNext();
+              responseText = await callImageApi(prompt, style);
+              pendingToolAction = null;
             } else {
-              responseText = "Invalid style. Please choose from: " + validStyles.join(', ');
+              responseText = `Invalid style: **${style}**. Please choose from: ${thenaModels.join(', ')}.`;
+              pendingToolAction = { type: 'image_prompt' };
             }
-            break;
-          case 'voice_text':
-            responseText = await callVoiceGenApi(msgText, pendingToolAction.style);
-            pendingToolAction = null;
-            break;
-          case 'research_topic':
-            responseText = await callResearchApi(msgText);
-            pendingToolAction = null;
-            break;
-          default:
-            responseText = "I'm not sure how to handle that. Please select a tool again from the menu.";
-            pendingToolAction = null;
-        }
-      } catch (err) {
-        responseText = `❌ An error occurred: ${err.message || 'Please check your connection and try again.'}`;
-        pendingToolAction = null;
+          } else {
+            responseText = "Invalid format. Please use: `[prompt] style: [style name]`";
+            pendingToolAction = { type: 'image_prompt' };
+          }
+          break;
+        case 'comic_story':
+          // ... handle comic story input
+          break;
+        case 'website_prompt':
+          // ... handle website prompt input
+          break;
+        case 'voice_style':
+          const validStyles = ["podcast", "cinematic", "upbeat", "soft", "dramatic"];
+          const style = msgText.toLowerCase().trim();
+          if (validStyles.includes(style)) {
+            pendingToolAction = { type: 'voice_text', style };
+            responseText = "Great! Now, please type the text you want me to read aloud.";
+          } else {
+            responseText = "Invalid style. Please choose from: " + validStyles.join(', ');
+            pendingToolAction = { type: 'voice_style' };
+          }
+          break;
+        case 'voice_text':
+          chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+          renderChatBox(chats[currentChatIdx]?.history || []);
+          showTypingAtNext();
+          responseText = await callVoiceGenApi(msgText, pendingToolAction.style);
+          pendingToolAction = null;
+          break;
+        case 'research_topic':
+          chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+          renderChatBox(chats[currentChatIdx]?.history || []);
+          showTypingAtNext();
+          responseText = await callResearchApi(msgText);
+          pendingToolAction = null;
+          break;
+        default:
+          // Handle other tool inputs in a similar way
+          break;
       }
-      
-      removeTyping();
-      await typeBotMessage(responseText);
-      saveChats();
-      return;
+      if (pendingToolAction?.type !== 'select') {
+        removeTyping();
+        await typeBotMessage(responseText);
+        saveChats();
+        return;
+      }
     }
 
-    // Regular text chat
-    if (msgText || uploadedFiles.length) {
-      if (chats[currentChatIdx].history.length === 1) {
-        chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
-      }
+    // Existing code for handling file uploads (modified to be conversational)
+    if (uploadedFiles.length) {
+      // Create a list of file objects to store in history
       const filesForHistory = uploadedFiles.map(file => ({
         name: file.name,
         type: file.type,
@@ -1838,10 +1512,121 @@ if (chatFile) {
       }));
       chats[currentChatIdx].history.push({ role: 'user', text: msgText, files: filesForHistory });
       renderChatBox(chats[currentChatIdx]?.history || []);
-      chatInput.value = '';
-      chatInput.dispatchEvent(new Event('input'));
+      showTypingAtNext();
+
+      // Handle remove-background
+      if (pendingToolAction?.type === "remove_background_file") {
+        const file = uploadedFiles[0];
+        if (!file || !file.type.startsWith('image/')) {
+          const responseText = "Please upload an image for background removal.";
+          removeTyping();
+          await typeBotMessage(responseText);
+          uploadedFiles = [];
+          renderFilePreview();
+          return;
+        }
+        let responseText;
+        try {
+          const fd = new FormData(); fd.append('file', file);
+          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/remove-background', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(res.statusText);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const imageHtml = `<img src="${url}" alt="Image with background removed" style="max-width:100%;border-radius:12px;box-shadow:0 0 8px #00fff2c7;">`;
+          responseText = `✅ Background removed! ${imageHtml}`;
+        } catch (err) {
+          responseText = `❌ Background removal failed: ${err.message}`;
+        }
+        removeTyping();
+        await typeBotMessage(responseText);
+        pendingToolAction = null;
+        uploadedFiles = [];
+        renderFilePreview();
+        return;
+      }
+      // Handle audio-narration
+      if (pendingToolAction?.type === "audio_file") {
+        const file = uploadedFiles[0];
+        if (!file) {
+          const responseText = "Please upload a document or audio file for narration.";
+          removeTyping();
+          await typeBotMessage(responseText);
+          uploadedFiles = [];
+          renderFilePreview();
+          return;
+        }
+        let responseText;
+        try {
+          const fd = new FormData(); fd.append('file', file); fd.append('style', 'podcast');
+          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/audio-narration', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(res.statusText);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
+          responseText = `🗣️ Narration generated! ${audioPlayer}`;
+        } catch (err) {
+          responseText = `❌ Audio narration failed: ${err.message}`;
+        }
+        removeTyping();
+        await typeBotMessage(responseText);
+        pendingToolAction = null;
+        uploadedFiles = [];
+        renderFilePreview();
+        return;
+      }
+      
+      // Default file upload handling for understanding
+      let botResponse = 'Could not process the file(s).';
+
+      try {
+        if (filesForHistory.some(f => f.type === 'application/pdf')) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Summarize this document.');
+          uploadedFiles.filter(f => f.type === 'application/pdf').forEach(f => fd.append('file', f));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the PDF(s).';
+        } else if (filesForHistory.some(f => /^image\//.test(f.type))) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Describe this image in detail.');
+          fd.append('file', uploadedFiles.find(f => /^image\//.test(f.type)));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the image.';
+        } else if (filesForHistory.some(f => /^audio\//.test(f.type))) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Transcribe and summarize this audio file in simple English.');
+          fd.append('file', uploadedFiles.find(f => /^audio\//.test(f.type)));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the audio.';
+        } else if (filesForHistory.some(f => /^video\//.test(f.type))) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Explain what this video is about.');
+          fd.append('file', uploadedFiles.find(f => /^video\//.test(f.type)));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the video.';
+        }
+      } catch (err) {
+        botResponse = `❌ File processing failed: ${err.message}`;
+      }
+      removeTyping();
+      await typeBotMessage(botResponse);
       uploadedFiles = [];
       renderFilePreview();
+      return;
+    }
+
+    // Regular text chat
+    if (msgText) {
+      if (chats[currentChatIdx].history.length === 1) {
+        chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
+      }
+      chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+      renderChatBox(chats[currentChatIdx]?.history || []);
+      chatInput.value = '';
+      chatInput.dispatchEvent(new Event('input'));
       
       showTypingAtNext();
       try {
@@ -1876,23 +1661,30 @@ if (chatFile) {
 
   function showAIImagePreview(srcUrlOrBase64, caption = '') {
     if (!aiPrevBox || !aiPrevImgBox) return;
+    
+    // Check if the input is a URL (blob) or a Base64 string
     let src;
     if (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:image/') || srcUrlOrBase64.startsWith('blob:'))) {
         src = srcUrlOrBase64;
     } else {
         src = 'data:image/png;base64,' + srcUrlOrBase64;
     }
+
     aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">` + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">' + caption + '</div>' : '');
     aiPrevBox.style.display = 'block';
 }
 
 
+  // initial UI small setup
+  // NOTE: removed auto-inserting of /image into input
   if (chatInput) { chatInput.focus(); }
+
+  // final initial render
   try { renderChatsListSidebar(); } catch (e) {}
   try { renderChatSelector(); } catch (e) {}
   try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) {}
-}); // end DOMContentLoaded
-    </script>
 
+}); // end DOMContentLoaded
+</script>
 </body>
 </html>
