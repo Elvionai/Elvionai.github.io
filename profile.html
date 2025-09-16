@@ -331,7 +331,8 @@ pre:before {
 /* -- Sticky Footer/Keyboard -- */
 .chat-input-row {
   position: fixed;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 0;
   display: flex;
   align-items: stretch;
@@ -341,8 +342,7 @@ pre:before {
   border: 1.5px solid #1af8ff51;
   border-radius: 23px 23px 0 0;
   width: 100vw;
-  max-width: 635px; /* Added: Constrain width for a better feel */
-  margin: 0 auto;  /* Added: Center the input bar on wide screens */
+  max-width: 635px;
   padding: 9px 12px 10px 13px;
   box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
   z-index: 1003;
@@ -351,6 +351,8 @@ pre:before {
 @media (max-width: 650px) {
   .chat-input-row {
     max-width: 100vw;
+    left: 0;
+    transform: none;
   }
 }
 .chat-input-row textarea{
@@ -417,11 +419,12 @@ pre:before {
 #chatsList .fa-play{color:#04ea70;font-size:1.2em;}
 #chatsList .fa-play:hover{color:#31adff;}
 .edit-form label{display:block;margin-top:10px;font-size:.99em;color:#38e4ff;text-shadow:0 1px 14px #11aaff71;}
-.edit-form input{
+.edit-form input, .edit-form textarea, .edit-form select{
   width:99%;padding:7px 11px;margin-top:5px;
   border:1.7px solid #13f0ff95;border-radius:9px;background:#071f35;color:#fff;font-size:1.02em;
   box-shadow:0 0 8px #04f6fd81 inset;transition:border-color .17s,box-shadow .17s;}
-.edit-form input:focus{border-color:#27eeff;background:#273f5d;color:#fff;}
+.edit-form input:focus, .edit-form textarea:focus, .edit-form select:focus{border-color:#27eeff;background:#273f5d;color:#fff;}
+.edit-form textarea { resize:vertical; min-height: 80px; }
 .submit-btn{
   margin-top:14px; padding:10px 20px;
   background:linear-gradient(94deg,#00ffff,#0090ff 90%);
@@ -515,7 +518,7 @@ pre:before {
     </nav>
   </div>
 
-  <div class="panel-bg" id="toolsMenuBg" style="display:none;">
+  <div class="panel-bg" id="toolsMenuBg">
     <nav class="side-panel" id="toolsMenu">
         <div class="panel-header" style="text-align:left;">
             <div class="username" style="font-size:1.2em;margin-left:-8px;text-align:center;">Philadelphia AI Tools</div>
@@ -530,6 +533,19 @@ pre:before {
             <a href="#" class="tool-link" data-tool="research-report"><i class="fa-solid fa-flask-vial"></i> Research Report</a>
         </div>
         <button class="submit-btn" style="margin-top:17px;" onclick="closeToolMenu();">Close</button>
+    </nav>
+  </div>
+
+  <div class="panel-bg" id="toolFormModalBg">
+    <nav class="side-panel" id="toolFormModal">
+      <div class="panel-header">
+        <div class="username" id="toolFormTitle">Tool Title</div>
+      </div>
+      <form class="edit-form" id="toolForm" style="padding:0 6px;"></form>
+      <button id="toolFormBackBtn" class="submit-btn" style="background:#10213b;color:#00eefd;margin:7px 7px 17px 7px;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Tools
+      </button>
+      <div class="status-message" id="toolStatusMsg"></div>
     </nav>
   </div>
   
@@ -613,6 +629,13 @@ window.addEventListener('DOMContentLoaded', () => {
   const emojiBtn = $('emojiBtn'); // FIX: ensure emojiBtn is grabbed
   const imageBtnHtml = $('imageBtn'); // may be present in HTML
   const voiceBtnHtml = $('voiceBtn'); // may be present in HTML
+
+  // New Tooling elements
+  const toolFormModalBg = $('toolFormModalBg');
+  const toolFormModal = $('toolFormModal');
+  const toolForm = $('toolForm');
+  const toolFormTitle = $('toolFormTitle');
+  const toolFormBackBtn = $('toolFormBackBtn');
 
   // Defensive: if essential elements missing, still continue but warn
   if (!chatForm) console.warn('chatForm not found in DOM. Chat submission disabled until element added.');
@@ -711,31 +734,30 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-
-  // Handle new tool button logic
+  
   if (toolBtn) {
     toolBtn.addEventListener('click', () => {
-      const toolOptions = [
-        "**Image Generation**",
-        "**Create Comic**",
-        "**Create Website**",
-        "**Remove Background**",
-        "**Voice Generation**",
-        "**Audio Narration**",
-        "**Research Report**"
-      ].join('\n');
-      
-      const message = { role: 'ai', text: `Hello! I'm Philadelphia AI's tool suite. What would you like to do today?\n\n${toolOptions}\n\nJust type the name of the tool you want to use.` };
-      chats[currentChatIdx].history.push(message);
-      saveChats();
-      renderChatBox(chats[currentChatIdx].history);
-      
-      // Set the pending tool action to "select" to wait for user's choice
-      pendingToolAction = { type: 'select' };
+      openToolMenu();
     });
-    if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => {
-      if (e.target === toolsMenuBg) {
-        closeToolMenu();
+  }
+
+  if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => {
+    if (e.target === toolsMenuBg) {
+      closeToolMenu();
+    }
+  });
+
+  if (toolFormBackBtn) {
+    toolFormBackBtn.addEventListener('click', () => {
+      toolFormModalBg.classList.remove('active');
+      openToolMenu();
+    });
+  }
+
+  if (toolFormModalBg) {
+    toolFormModalBg.addEventListener('click', e => {
+      if (e.target === toolFormModalBg) {
+        toolFormModalBg.classList.remove('active');
       }
     });
   }
@@ -1300,7 +1322,7 @@ if (chatFile) {
     });
   }
 
-  /* ---------- NEW: TOOL-BASED CHAT HANDLING ---------- */
+  /* ---------- NEW: TOOL-BASED CHAT HANDLING (modal-based) ---------- */
   const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
 
   async function callImageApi(prompt, model) {
@@ -1380,6 +1402,235 @@ if (chatFile) {
     }
   }
 
+  // New logic for handling tool forms
+  if (toolsMenu) {
+    toolsMenu.addEventListener('click', (e) => {
+      const toolLink = e.target.closest('.tool-link');
+      if (!toolLink) return;
+      e.preventDefault();
+      const tool = toolLink.getAttribute('data-tool');
+      closeToolMenu();
+      displayToolForm(tool);
+    });
+  }
+
+  function displayToolForm(tool) {
+    if (!toolForm || !toolFormModalBg || !toolFormTitle) return;
+    toolForm.innerHTML = '';
+    toolFormModalBg.classList.add('active');
+
+    let formHtml = '';
+    let formTitle = '';
+
+    switch (tool) {
+      case 'image':
+        formTitle = 'Generate Image';
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Create stunning visuals from a text prompt. Choose a style for best results.</div>
+          <label for="image-prompt">Image Prompt</label>
+          <textarea id="image-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required></textarea>
+          <label for="image-style">Image Style</label>
+          <select id="image-style">
+            ${thenaModels.map(s => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const prompt = $('image-prompt').value;
+          const style = $('image-style').value;
+          if (prompt) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Generated an image: "${prompt}" in ${style} style.` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const result = await callImageApi(prompt, style);
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+      case 'comic':
+        formTitle = 'Create Comic';
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Write a story and watch it transform into a comic strip. Use tags like [PANEL 1], [DIALOGUE], [NARRATION].</div>
+          <label for="comic-story">Comic Story</label>
+          <textarea id="comic-story" placeholder="[PANEL 1] A superhero sits on a skyscraper rooftop, looking at the city. [DIALOGUE] 'Another night...' [PANEL 2] A villain's silhouette appears behind him."></textarea>
+          <label for="comic-style">Comic Style</label>
+          <select id="comic-style">
+            <option value="realistic">Realistic</option>
+            <option value="anime">Anime</option>
+            <option value="cartoon">Cartoon</option>
+          </select>
+          <label for="comic-panels">Number of Panels</label>
+          <input type="number" id="comic-panels" value="3" min="1" max="10" />
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const story = $('comic-story').value;
+          const style = $('comic-style').value;
+          const panels = $('comic-panels').value;
+          if (story) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Created a comic with story: "${story.substring(0, 50)}..."` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const result = await callComicApi(story, style, panels);
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+      case 'website':
+        formTitle = 'Create Website';
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Describe the website you want to build and get a live, working prototype.</div>
+          <label for="website-prompt">Website Description</label>
+          <textarea id="website-prompt" placeholder="A simple portfolio website for a graphic designer, with a dark theme, a gallery of their work, and a contact form." required></textarea>
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-globe"></i> Generate Website</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const prompt = $('website-prompt').value;
+          if (prompt) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Requested a website: "${prompt.substring(0, 50)}..."` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const result = await callWebsiteApi(prompt);
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+      case 'remove-bg':
+        formTitle = 'Remove Background';
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Select an image file to automatically remove its background.</div>
+          <label for="remove-bg-file" style="display:block;">Select Image File</label>
+          <input type="file" id="remove-bg-file" accept="image/*" required style="display:block;margin-top:10px;">
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-cut"></i> Remove Background</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const fileInput = $('remove-bg-file');
+          const file = fileInput.files[0];
+          if (file) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Requested background removal for file: "${file.name}"` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const fd = new FormData(); fd.append('file', file);
+            let result = `❌ Background removal failed.`;
+            try {
+                const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/remove-background', { method: 'POST', body: fd });
+                if (!res.ok) throw new Error(res.statusText);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const imageHtml = `<img src="${url}" alt="Image with background removed" style="max-width:100%;border-radius:12px;box-shadow:0 0 8px #00fff2c7;">`;
+                result = `✅ Background removed! ${imageHtml}`;
+            } catch(err) {
+                result = `❌ Background removal failed: ${err.message}`;
+            }
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+      case 'voice-gen':
+        formTitle = 'Generate Voice';
+        const voiceStyles = ["podcast", "cinematic", "upbeat", "soft", "dramatic"];
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Transform text into realistic speech. Choose a style that fits your content.</div>
+          <label for="voice-text">Text to Speak</label>
+          <textarea id="voice-text" placeholder="The eagle soars high above the Philadelphia skyline." required></textarea>
+          <label for="voice-style">Voice Style</label>
+          <select id="voice-style">
+            ${voiceStyles.map(s => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-microphone"></i> Generate Voice</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const text = $('voice-text').value;
+          const style = $('voice-style').value;
+          if (text) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Generated voice for text: "${text.substring(0, 50)}..."` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const result = await callVoiceGenApi(text, style);
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+      case 'audio-narration':
+        formTitle = 'Audio Narration';
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Upload a PDF, text file, or audio file to get a narrated audio version.</div>
+          <label for="narration-file" style="display:block;">Select File for Narration</label>
+          <input type="file" id="narration-file" accept="application/pdf, text/plain, audio/*" required style="display:block;margin-top:10px;">
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const fileInput = $('narration-file');
+          const file = fileInput.files[0];
+          if (file) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Requested audio narration for file: "${file.name}"` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('style', 'podcast');
+            let result = '❌ Audio narration failed.';
+            try {
+                const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/audio-narration', { method: 'POST', body: fd });
+                if (!res.ok) throw new Error(res.statusText);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
+                result = `🗣️ Narration generated! ${audioPlayer}`;
+            } catch(err) {
+                result = `❌ Audio narration failed: ${err.message}`;
+            }
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+      case 'research-report':
+        formTitle = 'Research Report';
+        formHtml = `
+          <div class="tool-description" style="color:#a8eaff;font-size:.9em;margin-bottom:12px;">Generate a comprehensive research report in PDF format on any topic.</div>
+          <label for="research-topic">Research Topic</label>
+          <input type="text" id="research-topic" placeholder="The history of artificial intelligence" required>
+          <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-flask-vial"></i> Generate Report</button>
+        `;
+        toolForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const topic = $('research-topic').value;
+          if (topic) {
+            toolFormModalBg.classList.remove('active');
+            chats[currentChatIdx].history.push({ role: 'user', text: `Requested a research report on: "${topic}"` });
+            renderChatBox(chats[currentChatIdx]?.history || []);
+            showTypingAtNext();
+            const result = await callResearchApi(topic);
+            removeTyping();
+            await typeBotMessage(result);
+          }
+        };
+        break;
+    }
+
+    toolFormTitle.textContent = formTitle;
+    toolForm.innerHTML = formHtml;
+  }
+
+
   /* ---------- Chat submit handler (main) ---------- */
    if (chatForm) {
   chatForm.addEventListener('submit', async function (e) {
@@ -1393,7 +1644,7 @@ if (chatFile) {
     const msgText = chatInput ? chatInput.value.trim() : '';
     if (!msgText && !uploadedFiles.length) { return; }
     
-    // Check for pending tool action
+    // Check for pending tool action (This section is now largely obsolete due to the modal forms, but kept for legacy/fallback)
     if (pendingToolAction) {
       let responseText = '';
       switch (pendingToolAction.type) {
