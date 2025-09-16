@@ -246,6 +246,49 @@ pre:before {
 }
 .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover{background:#009cff; color:#fff;}
 
+/* New: styles for files displayed in chat */
+.file-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+    max-width: 100%;
+}
+.chat-media-preview {
+  max-width: 100%;
+  max-height: 250px;
+  border-radius: 12px;
+  display: block;
+}
+.image-preview-thumb {
+  border: 2px solid #00fff2;
+  box-shadow: 0 0 10px #00eaff88;
+}
+.video-preview-thumb {
+  background: #000;
+  border: 2px solid #00b4ff;
+  box-shadow: 0 0 10px #00b4ff88;
+}
+.audio-preview-thumb {
+  width: 90%;
+  min-height: 40px;
+  border-radius: 10px;
+}
+.file-link {
+  display: inline-block;
+  padding: 8px 12px;
+  background: #0b2447;
+  border: 1px solid #1af8ff51;
+  border-radius: 10px;
+  color: #00fff6;
+  text-decoration: none;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+.file-link i {
+  margin-right: 5px;
+}
+
 /* --- ENHANCED File Preview with X Button --- */
 .file-preview{
   display:none;
@@ -287,13 +330,28 @@ pre:before {
 
 /* -- Sticky Footer/Keyboard -- */
 .chat-input-row {
-  position: fixed; left: 0; bottom: 0;
-  display: flex; align-items: stretch; gap: 8px;
-  background: rgba(17,29,47,0.94); backdrop-filter: blur(8px);
-  border: 1.5px solid #1af8ff51; border-radius: 23px 23px 0 0;
-  width: 100vw; max-width:100vw;
-  padding: 9px 12px 10px 13px; box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  background: rgba(17, 29, 47, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid #1af8ff51;
+  border-radius: 23px 23px 0 0;
+  width: 100vw;
+  max-width: 635px; /* Added: Constrain width for a better feel */
+  margin: 0 auto;  /* Added: Center the input bar on wide screens */
+  padding: 9px 12px 10px 13px;
+  box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
   z-index: 1003;
+}
+/* Adjustments for smaller screens to make it less wide */
+@media (max-width: 650px) {
+  .chat-input-row {
+    max-width: 100vw;
+  }
 }
 .chat-input-row textarea{
   flex:1 1 auto;resize:none;min-height:36px;max-height:80px;
@@ -371,23 +429,6 @@ pre:before {
   color:#102649; font-weight:bold; cursor:pointer; font-size:1.11em;
   box-shadow:0 2px 13px #00fff292; transition:background .14s,color .13s;}
 .submit-btn:hover{background:#008cff;color:#fff;}
-.modal {
-  display:none;position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.6);
-}
-.modal-content {
-  background-color:#112244;color:#f3f3f3;margin:15% auto;padding:22px;border:1px solid #00f8ff;width:80%;max-width:400px;
-  border-radius:15px;box-shadow:0 4px 18px #00fff099,0 0 12px #00aeffbb inset;
-}
-.modal-content h3{margin-top:0;font-family:'Orbitron',sans-serif;color:#00ffff;text-shadow:0 0 8px #00aaff;}
-.modal-content .close-btn {color:#aaa;float:right;font-size:28px;font-weight:bold;}
-.modal-content .close-btn:hover,.modal-content .close-btn:focus {color:#fff;text-decoration:none;cursor:pointer;}
-.modal-content label{display:block;margin-bottom:8px;}
-.modal-content input, .modal-content select{width:100%;padding:10px;margin-bottom:15px;border:1px solid #00bfff;border-radius:8px;background:#071e35;color:#fff;box-sizing:border-box;}
-.modal-content button{
-  display:block;width:100%;padding:10px 0;background-color:#00aaff;color:#fff;border:none;border-radius:8px;
-  font-size:1.1em;cursor:pointer;transition:background-color .2s;
-}
-.modal-content button:hover{background-color:#0088cc;}
   </style>
 </head>
 <body>
@@ -411,7 +452,7 @@ pre:before {
       <label for="chatFile" class="file-upload-btn" title="Attach file"><i class="fa-solid fa-paperclip"></i></label>
       <input type="file" id="chatFile" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
       <textarea id="chatInput" placeholder="Type here… (Shift+Enter = new line)"></textarea>
-      <button type="button" id="toolBtn" title="Philadelphia Tools" aria-controls="toolMenu" aria-expanded="false"><i class="fa-solid fa-earth-americas"></i></button>
+      <button type="button" id="toolBtn" title="Philadelphia Tools" aria-controls="toolMenu" aria-expanded="false"><i class="fa-solid fa-wrench"></i></button>
       <button type="submit" id="sendBtn" title="Send"><i class="fa-solid fa-paper-plane"></i></button>
     </form>
 
@@ -474,46 +515,28 @@ pre:before {
     </nav>
   </div>
 
-  <div class="panel-bg" id="toolsMenuBg">
+  <div class="panel-bg" id="toolsMenuBg" style="display:none;">
     <nav class="side-panel" id="toolsMenu">
         <div class="panel-header" style="text-align:left;">
             <div class="username" style="font-size:1.2em;margin-left:-8px;text-align:center;">Philadelphia AI Tools</div>
         </div>
         <div class="panel-links">
             <a href="#" class="tool-link" data-tool="image"><i class="fa-solid fa-image"></i> Generate Image</a>
-            <a href="#" class="tool-link" data-tool="research"><i class="fa-solid fa-microscope"></i> Research Report</a>
             <a href="#" class="tool-link" data-tool="comic"><i class="fa-solid fa-book-open"></i> Create Comic</a>
             <a href="#" class="tool-link" data-tool="website"><i class="fa-solid fa-globe"></i> Create Website</a>
             <a href="#" class="tool-link" data-tool="remove-bg"><i class="fa-solid fa-cut"></i> Remove Background</a>
-            <a href="#" class="tool-link" data-tool="audio-narration"><i class="fa-solid fa-file-audio"></i> Audio Narration</a>
             <a href="#" class="tool-link" data-tool="voice-gen"><i class="fa-solid fa-microphone-lines"></i> Generate Voice</a>
+            <a href="#" class="tool-link" data-tool="audio-narration"><i class="fa-solid fa-file-audio"></i> Audio Narration</a>
+            <a href="#" class="tool-link" data-tool="research-report"><i class="fa-solid fa-flask-vial"></i> Research Report</a>
         </div>
         <button class="submit-btn" style="margin-top:17px;" onclick="closeToolMenu();">Close</button>
     </nav>
   </div>
-
-  <div id="voiceStyleModal" class="modal">
-    <div class="modal-content">
-      <span class="close-btn" onclick="closeVoiceStyleModal()">&times;</span>
-      <h3>Choose Voice Style</h3>
-      <label for="voiceStyleSelect">Select a voice style for narration:</label>
-      <select id="voiceStyleSelect">
-        <option value="podcast">Podcast</option>
-        <option value="cinematic">Cinematic</option>
-        <option value="upbeat">Upbeat</option>
-        <option value="soft">Soft</option>
-        <option value="dramatic">Dramatic</option>
-      </select>
-      <button onclick="confirmVoiceStyle()">Continue</button>
-    </div>
-  </div>
-
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, doc, setDoc, addDoc, orderBy, onSnapshot, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
@@ -525,20 +548,33 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
 
 // Short helper
 const $ = id => document.getElementById(id);
 
 // ---------- Global chat storage ----------
-let chats = [];
-let currentChatId = null;
-let chatUnsubscribe = null;
-let currentChatName = 'Chat 1';
+let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
+let currentChatIdx = (typeof localStorage !== 'undefined' && localStorage.getItem('elvion_current_idx') !== null)
+  ? Number(localStorage.getItem('elvion_current_idx')) : (chats.length - 1 >= 0 ? chats.length - 1 : 0);
+
+function saveChats() {
+  try {
+    let sanitized = JSON.parse(JSON.stringify(chats));
+    sanitized.forEach(chat => {
+      (chat.history || []).forEach(msg => {
+        if (msg.text && typeof msg.text === 'string' && msg.text.includes("data:image")) {
+          msg.text = "[image omitted]";
+        }
+      });
+    });
+    localStorage.setItem("elvion_chats", JSON.stringify(sanitized));
+    localStorage.setItem('elvion_current_idx', String(currentChatIdx));
+  } catch (e) { console.warn('saveChats failed', e); }
+}
 
 // Keep file/upload state
 let uploadedFiles = [];
+let uploadData = null;
 
 // ---------- DOM & wiring ----------
 window.addEventListener('DOMContentLoaded', () => {
@@ -574,16 +610,17 @@ window.addEventListener('DOMContentLoaded', () => {
   const newChatBtn = $('newChatBtn');
   const chatsListEl = $('chatsList');
   const emojiPanel = $('emojiPanel');
-  const emojiBtn = $('emojiBtn');
-  
-  // Modals
-  const voiceStyleModal = $('voiceStyleModal');
-  const voiceStyleSelect = $('voiceStyleSelect');
-  let pendingToolAction = null;
+  const emojiBtn = $('emojiBtn'); // FIX: ensure emojiBtn is grabbed
+  const imageBtnHtml = $('imageBtn'); // may be present in HTML
+  const voiceBtnHtml = $('voiceBtn'); // may be present in HTML
 
   // Defensive: if essential elements missing, still continue but warn
   if (!chatForm) console.warn('chatForm not found in DOM. Chat submission disabled until element added.');
   if (!chatBox) console.warn('chatBox not found in DOM. Chat rendering disabled until element added.');
+  
+  // New state variables for conversational tools
+  let pendingToolAction = null;
+  let toolPromptState = {};
 
   /* ---------- Emoji ---------- */
   const emojis = ["😀","😃","😂","🤣","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🫶","😜","🤖","👀"];
@@ -678,27 +715,37 @@ window.addEventListener('DOMContentLoaded', () => {
   // Handle new tool button logic
   if (toolBtn) {
     toolBtn.addEventListener('click', () => {
-      openToolMenu();
+      const toolOptions = [
+        "**Image Generation**",
+        "**Create Comic**",
+        "**Create Website**",
+        "**Remove Background**",
+        "**Voice Generation**",
+        "**Audio Narration**",
+        "**Research Report**"
+      ].join('\n');
+      
+      const message = { role: 'ai', text: `Hello! I'm Philadelphia AI's tool suite. What would you like to do today?\n\n${toolOptions}\n\nJust type the name of the tool you want to use.` };
+      chats[currentChatIdx].history.push(message);
+      saveChats();
+      renderChatBox(chats[currentChatIdx].history);
+      
+      // Set the pending tool action to "select" to wait for user's choice
+      pendingToolAction = { type: 'select' };
     });
     if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => {
       if (e.target === toolsMenuBg) {
         closeToolMenu();
       }
     });
-    // Add new icon
-    toolBtn.querySelector('i').className = "fa-solid fa-wrench";
   }
 
-  if (logoutBtn) logoutBtn.addEventListener('click', () => {
-    auth.signOut().then(() => {
-      window.location.href = 'signup-login.html';
-    });
-  });
+  if (logoutBtn) logoutBtn.addEventListener('click', () => window.location.href = 'signup-login.html');
 
   /* ---------- Firebase auth (profile only) ---------- */
   let currentUser = null;
 
-  onAuthStateChanged(auth, async user => {
+  onAuthStateChanged(auth, user => {
     if (!user) {
       // if not logged in, redirect to login
       try { window.location.href = "signup-login.html"; } catch (e) {}
@@ -714,8 +761,15 @@ window.addEventListener('DOMContentLoaded', () => {
     if (editPhoto) editPhoto.value = user.photoURL || "";
     if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
 
-    await fetchChats();
-    setupChatListener();
+    // ensure at least one chat
+    if (!Array.isArray(chats) || chats.length === 0) {
+      chats = [{ name: 'Chat 1', history: [] }];
+      currentChatIdx = 0;
+      saveChats();
+    }
+    // initial render
+    try { renderChatsListSidebar(); } catch (e) { console.warn('renderChatSelector error', e); }
+    try { renderChatBox((chats[currentChatIdx] || {}).history || []); } catch (e) { console.warn('renderChatBox error', e); }
   });
 
   /* ---------- Profile form submit (update Firebase profile) ---------- */
@@ -739,99 +793,41 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---------- Firebase Chat Logic ---------- */
-  async function fetchChats() {
-    if (!currentUser) return;
-    try {
-      const q = query(collection(db, `users/${currentUser.uid}/chats`), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      chats = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      if (chats.length === 0) {
-        await createNewChat();
-      } else {
-        const lastChat = chats[0];
-        currentChatId = lastChat.id;
-        currentChatName = lastChat.name;
-      }
-      renderChatsListSidebar();
-    } catch (e) {
-      console.error("Error fetching chats: ", e);
-      if (chats.length === 0) await createNewChat();
-    }
-  }
-
-  async function createNewChat() {
-    if (!currentUser) return;
-    try {
-      const newChatRef = await addDoc(collection(db, `users/${currentUser.uid}/chats`), {
-        name: "New Chat",
-        createdAt: new Date(),
-        history: []
-      });
-      currentChatId = newChatRef.id;
-      currentChatName = "New Chat";
-      await fetchChats(); // Re-fetch to get the new chat in the list
-    } catch (e) {
-      console.error("Error creating new chat: ", e);
-    }
-  }
-
-  function setupChatListener() {
-    if (chatUnsubscribe) {
-      chatUnsubscribe();
-    }
-    if (!currentUser || !currentChatId) return;
-
-    chatUnsubscribe = onSnapshot(doc(db, `users/${currentUser.uid}/chats`, currentChatId), (docSnapshot) => {
-      if (docSnapshot.exists()) {
-        const chatData = docSnapshot.data();
-        currentChatName = chatData.name;
-        renderChatBox(chatData.history);
-      } else {
-        // Chat was deleted
-        fetchChats();
-      }
-    });
-  }
-
+  /* ---------- Sidebar / Chats list ---------- */
   function renderChatsListSidebar() {
     if (!chatsListEl) return;
     chatsListEl.innerHTML = '';
-    chats.forEach(chat => {
+    chats.forEach((chat, idx) => {
       const container = document.createElement('div');
       container.style.display = 'flex';
       container.style.alignItems = 'center';
       container.style.marginBottom = '6px';
-      container.style.fontWeight = chat.id === currentChatId ? 'bold' : 'normal';
 
       const titleSpan = document.createElement('span');
-      titleSpan.textContent = chat.name || `Chat`;
+      titleSpan.textContent = chat.name || `Chat ${idx + 1}`;
       titleSpan.style.flex = '1';
       titleSpan.style.cursor = 'pointer';
-      titleSpan.onclick = async () => {
-        currentChatId = chat.id;
-        currentChatName = chat.name;
-        setupChatListener();
-        renderChatsListSidebar();
+      titleSpan.onclick = () => {
+        currentChatIdx = idx;
+        saveChats();
+        renderChatBox(chat.history || []);
+        if (chatSelector) chatSelector.value = idx;
+        profileMenu?.classList.remove('active');
         profileMenuBg?.classList.remove('active');
-        // Fetch and render immediately
-        const docSnap = await getDoc(doc(db, `users/${currentUser.uid}/chats`, currentChatId));
-        if (docSnap.exists()) {
-          renderChatBox(docSnap.data().history);
-        }
       };
 
       const renameBtn = document.createElement('button');
       renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
       renameBtn.title = 'Rename';
       renameBtn.style.margin = '0 6px 0 8px';
-      renameBtn.onclick = async (e) => {
+      renameBtn.onclick = (e) => {
         e.stopPropagation();
-        const newName = prompt("Rename chat:", chat.name || `Chat`);
+        const newName = prompt("Rename chat:", chat.name || `Chat ${idx + 1}`);
         if (newName) {
-          await updateDoc(doc(db, `users/${currentUser.uid}/chats`, chat.id), { name: newName.trim() });
-          await fetchChats();
+          chat.name = newName.trim();
+          saveChats();
+          renderChatsListSidebar();
+          renderChatSelector();
         }
       };
 
@@ -839,22 +835,100 @@ window.addEventListener('DOMContentLoaded', () => {
       delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
       delBtn.title = 'Delete';
       delBtn.style.marginLeft = '6px';
-      delBtn.onclick = async (e) => {
+      delBtn.onclick = (e) => {
         e.stopPropagation();
         if (!confirm("Delete this chat?")) return;
-        await deleteDoc(doc(db, `users/${currentUser.uid}/chats`, chat.id));
-        await fetchChats();
+        chats.splice(idx, 1);
+        if (currentChatIdx >= chats.length) currentChatIdx = chats.length - 1;
+        if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
+        saveChats();
+        renderChatsListSidebar();
+        renderChatSelector();
+        renderChatBox(chats[currentChatIdx]?.history || []);
       };
-      
+
+      const openBtn = document.createElement('button');
+      openBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      openBtn.title = 'Open Chat';
+      openBtn.onclick = (e) => {
+        e.stopPropagation();
+        currentChatIdx = idx;
+        renderChatBox(chat.history || []);
+        if (chatSelector) chatSelector.value = idx;
+        profileMenu?.classList.remove('active');
+        profileMenuBg?.classList.remove('active');
+      };
+
       container.appendChild(titleSpan);
       container.appendChild(renameBtn);
       container.appendChild(delBtn);
+      container.appendChild(openBtn);
       chatsListEl.appendChild(container);
     });
   }
 
   if (newChatBtn) {
-    newChatBtn.addEventListener('click', () => createNewChat());
+    newChatBtn.addEventListener('click', () => {
+      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
+      currentChatIdx = chats.length - 1;
+      saveChats();
+      renderChatsListSidebar();
+      renderChatSelector();
+      renderChatBox(chats[currentChatIdx]?.history || []);
+    });
+  }
+
+  /* ---------- Chat selector (dropdown) ---------- */
+  function renderChatSelector() {
+    if (!chatSelector) return;
+    chatSelector.innerHTML = '';
+    chats.forEach((chat, idx) => {
+      const option = document.createElement('option');
+      option.value = idx;
+      option.textContent = chat.name || (chat.history?.[0]?.text?.slice(0, 24) || "Untitled");
+      chatSelector.appendChild(option);
+    });
+    if (!chats.length) {
+      chats = [{ name: 'Chat 1', history: [] }];
+      currentChatIdx = 0;
+      saveChats();
+      return renderChatSelector();
+    }
+    if (typeof currentChatIdx === 'number') {
+      currentChatIdx = Math.min(Math.max(0, currentChatIdx), Math.max(0, chats.length - 1));
+      chatSelector.value = currentChatIdx;
+    }
+  }
+
+  if (chatSelector) {
+    chatSelector.addEventListener('change', function () {
+      currentChatIdx = parseInt(this.value) || 0;
+      saveChats();
+      renderChatBox((chats[currentChatIdx] || {}).history || []);
+    });
+  }
+
+  if (addChatBtn) {
+    addChatBtn.addEventListener('click', () => {
+      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
+      currentChatIdx = chats.length - 1;
+      saveChats();
+      renderChatSelector();
+      renderChatBox((chats[currentChatIdx] || {}).history || []);
+    });
+  }
+
+  if (removeChatBtn) {
+    removeChatBtn.addEventListener('click', () => {
+      if (!chats.length) return;
+      if (!confirm("Delete this chat?")) return;
+      chats.splice(currentChatIdx, 1);
+      currentChatIdx = Math.max(0, currentChatIdx - 1);
+      if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
+      saveChats();
+      renderChatSelector();
+      renderChatBox((chats[currentChatIdx]?.history || []) || []);
+    });
   }
 
   /* ---------- Markdown/render helpers ---------- */
@@ -910,109 +984,174 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ---------- Chat rendering & controls ---------- */
 function renderChatBox(messages = []) {
-  if (!chatBox) return;
-  chatBox.innerHTML = '';
-  (messages || []).forEach((msg, idx) => {
-    const div = document.createElement('div');
-    div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
+    if (!chatBox) return;
+    chatBox.innerHTML = '';
+    let aiMsgIdx = 0;
 
-    if (msg.role === 'ai') {
-      let contentHtml = '';
-      if (msg.fileType) {
-        if (msg.fileType.startsWith('image/')) {
-          contentHtml = `<a href="${msg.fileUrl}" target="_blank"><img src="${msg.fileUrl}" style="max-width:100%; max-height: 250px; border-radius: 8px;"></a>`;
-        } else if (msg.fileType === 'application/pdf') {
-          contentHtml = `<a href="${msg.fileUrl}" target="_blank" style="color:white; text-decoration: none;"><i class="fa-solid fa-file-pdf" style="font-size:2em; vertical-align:middle;"></i> <span style="vertical-align:middle;">View PDF</span></a>`;
-        } else if (msg.fileType.startsWith('audio/')) {
-          contentHtml = `<audio controls src="${msg.fileUrl}" style="width:100%;"></audio>`;
-        }
+    (messages || []).forEach((msg, idx) => {
+      const div = document.createElement('div');
+      div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
+
+      let innerHtml = '';
+      if (msg.role === 'user') {
+        const fileHtml = (msg.files || [])
+          .map(file => {
+            if (file.type.startsWith('image/')) {
+              return `<img src="${file.url}" alt="${file.name}" class="chat-media-preview image-preview-thumb">`;
+            } else if (file.type.startsWith('video/')) {
+              return `<video src="${file.url}" controls class="chat-media-preview video-preview-thumb"></video>`;
+            } else if (file.type.startsWith('audio/')) {
+              return `<audio src="${file.url}" controls class="chat-media-preview audio-preview-thumb"></audio>`;
+            } else {
+              return `<a href="${file.url}" target="_blank" class="chat-media-preview file-link"><i class="fa-solid fa-file"></i> ${escapeHTML(file.name)}</a>`;
+            }
+          })
+          .join('');
+        
+        innerHtml = `<div class="msg">
+          ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
+          ${escapeHTML(msg.text || '')}
+          <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+            <button class="inline-edit-btn" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+          </div>
+        </div>`;
+        div.setAttribute('data-useridx', idx);
+      } else { // AI message
+        const { html } = renderMarkdown(msg.text || '');
+        innerHtml = `<div class="msg">${html}
+          <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+            <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+            <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+            <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+        </div>`;
+        div.setAttribute('data-aiidx', aiMsgIdx++);
       }
-      const { html } = renderMarkdown(msg.text || '');
-      div.innerHTML = `<div class="msg">
-        ${contentHtml}
-        ${html}
-        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-          <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-          <button class="regen-btn" title="Regenerate" data-idx="${idx}"><i class="fa-solid fa-rotate-right"></i></button>
-        </div>
-      </div>`;
-    } else { // User message with new controls
-      div.innerHTML = `<div class="msg">
-        ${msg.fileUrl ? (msg.fileType.startsWith('image/') ? `<img src="${msg.fileUrl}" style="max-width:100px; max-height:100px; border-radius:8px; display:block; margin-bottom: 10px;">` : `<i class="fa-solid fa-file" style="font-size:1.5em; display:block; margin-bottom:5px;"></i>`) : ''}
-        ${escapeHTML(msg.text || '')}
-        <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-          <button class="inline-edit-btn" title="Edit" data-idx="${idx}"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-        </div>
-      </div>`;
-    }
-    chatBox.appendChild(div);
-  });
-  enhanceCodeBlocks(chatBox);
-  hookMsgControls();
-  setTimeout(() => {
-    const last = chatBox.lastElementChild;
-    if (last) last.scrollIntoView({behavior: "smooth", block: "end"});
-  }, 50);
+      
+      div.innerHTML = innerHtml;
+      chatBox.appendChild(div);
+    });
+    enhanceCodeBlocks(chatBox);
+    hookAiMsgControls();
+    hookUserMsgControls();
+    setTimeout(() => {
+      const last = chatBox.lastElementChild;
+      if (last) last.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 20);
 }
 
-function hookMsgControls() {
+function hookAiMsgControls() {
   if (!chatBox) return;
-  chatBox.querySelectorAll('.chat-message').forEach(div => {
-    const copyBtn = div.querySelector('.inline-copy-btn');
-    const editBtn = div.querySelector('.inline-edit-btn');
-    const regenBtn = div.querySelector('.regen-btn');
+  chatBox.querySelectorAll('.chat-message.ai').forEach(div => {
+    const aiIdx = Number(div.getAttribute('data-aiidx'));
+    const controls = div.querySelector('.ai-msg-controls');
+    if (!controls) return;
+    const copyBtn = controls.querySelector('.inline-copy-btn');
+    const shareBtn = controls.querySelector('.inline-share-btn');
+    const regenBtn = controls.querySelector('.regen-btn');
 
     if (copyBtn) copyBtn.onclick = () => {
-      const text = div.querySelector('.msg').textContent.trim();
-      navigator.clipboard.writeText(text);
-      copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-      setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+      try {
+        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+        const text = aiOnly[aiIdx]?.text || "";
+        navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
+        copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+      } catch (e) { console.warn('copy failed', e); }
     };
 
-    if (editBtn) editBtn.onclick = async () => {
-      const idx = Number(editBtn.getAttribute('data-idx'));
-      const chatRef = doc(db, `users/${currentUser.uid}/chats`, currentChatId);
-      const docSnap = await getDoc(chatRef);
-      if (!docSnap.exists()) return;
-      const history = docSnap.data().history;
-      const text = history[idx].text;
-      chatInput.value = text;
-      chatInput.focus();
-      history.splice(idx);
-      await updateDoc(chatRef, { history });
+    if (shareBtn) shareBtn.onclick = () => {
+      try {
+        const aiOnly = (chats[currentChatIdx]?.history || []).filter(m => m.role === "ai") || [];
+        const text = aiOnly[aiIdx]?.text || "";
+        const url = window.location.origin;
+        const shareText = `${text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+        if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
+        else prompt("Copy and share manually:", shareText);
+      } catch (e) { console.warn('share failed', e); }
     };
 
     if (regenBtn) regenBtn.onclick = async () => {
-      const idx = Number(regenBtn.getAttribute('data-idx'));
-      const chatRef = doc(db, `users/${currentUser.uid}/chats`, currentChatId);
-      const docSnap = await getDoc(chatRef);
-      if (!docSnap.exists()) return;
-      const history = docSnap.data().history;
-      const userMsg = history[idx - 1]?.text;
-      if (!userMsg) return;
-      
-      const newHistory = history.slice(0, idx);
-      await updateDoc(chatRef, { history: newHistory });
-
-      showTypingAtNext();
       try {
-        const res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: userMsg, user_id: currentUser.uid, history: newHistory.map(m => ({ role: m.role, content: m.text })) })
-        });
-        const data = await res.json();
-        removeTyping();
-        const botResponse = data?.response || '❌ No response from server.';
-        const updatedHistory = [...newHistory, { role: 'ai', text: botResponse, timestamp: new Date() }];
-        await updateDoc(chatRef, { history: updatedHistory });
+        let aiMsgCount = 0, aiMsgIndexInHistory = -1;
+        const history = chats[currentChatIdx]?.history || [];
+        for (let i = 0; i < history.length; i++) {
+          if (history[i].role === "ai") {
+            if (aiMsgCount === aiIdx) { aiMsgIndexInHistory = i; break; }
+            aiMsgCount++;
+          }
+        }
+        const userMsgObj = history[aiMsgIndexInHistory - 1];
+        const userMsg = (userMsgObj?.role === "user" ? userMsgObj.text : "");
+        if (!userMsg) {
+          regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i> Err";
+          setTimeout(() => regenBtn.innerHTML = "<i class='fa-solid fa-rotate-right'></i>", 900);
+          return;
+        }
+        if (aiMsgIndexInHistory >= 0) history.splice(aiMsgIndexInHistory, 1);
+        saveChats();
+        renderChatBox(history);       // <-- will autoscroll below
+        showTypingAtNext();
+        try {
+          let res = await fetch('https://web-production-9a18.up.railway.app/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: userMsg, user_id: currentUser?.uid || "user", history: [] })
+          });
+          let data;
+          try { data = await res.json(); } catch (e) { data = {}; }
+          removeTyping();
+          if (data && data.response) {
+            history.push({ role: 'ai', text: data.response });
+            saveChats();
+            renderChatBox(history);
+          } else {
+            history.push({ role: 'ai', text: '❌ No response from server.' });
+            saveChats();
+            renderChatBox(history);
+          }
+        } catch (err) {
+          removeTyping();
+          history.push({ role: 'ai', text: "❌ Retry Error: " + (err.message || '') });
+          saveChats();
+          renderChatBox(history);
+        }
       } catch (err) {
-        removeTyping();
-        const updatedHistory = [...newHistory, { role: 'ai', text: `❌ Retry Error: ${err.message}` }];
-        await updateDoc(chatRef, { history: updatedHistory });
+        console.warn('regen error', err);
       }
+    };
+  });
+}
+
+function hookUserMsgControls() {
+  if (!chatBox) return;
+  chatBox.querySelectorAll('.chat-message.user').forEach(div => {
+    const userIdx = Number(div.getAttribute('data-useridx'));
+    const controls = div.querySelector('.user-msg-controls');
+    if (!controls) return;
+    const copyBtn = controls.querySelector('.inline-copy-btn');
+    const editBtn = controls.querySelector('.inline-edit-btn');
+
+    if (copyBtn) copyBtn.onclick = () => {
+      try {
+        const text = chats[currentChatIdx]?.history?.[userIdx]?.text || "";
+        navigator.clipboard.writeText(text.replace(/<\/?[^>]+(>|$)/g, ""));
+        copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+        setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
+      } catch (e) { console.warn('copy failed', e); }
+    };
+    if (editBtn) editBtn.onclick = () => {
+      try {
+        const text = chats[currentChatIdx]?.history?.[userIdx]?.text || "";
+        if (!text) return;
+        chatInput.value = text;
+        chatInput.focus();
+        // Remove the original user message and its corresponding AI response (if any)
+        chats[currentChatIdx].history = chats[currentChatIdx].history.slice(0, userIdx);
+        saveChats();
+        renderChatBox(chats[currentChatIdx].history);
+      } catch (e) { console.warn('edit failed', e); }
     };
   });
 }
@@ -1038,6 +1177,47 @@ function removeTyping() {
   }
 }
 
+async function typeBotMessage(text) {
+  removeTyping();
+  if (!chatBox) return;
+
+  const div = document.createElement('div');
+  div.className = "chat-message ai";
+  const msgdiv = document.createElement('div');
+  msgdiv.className = 'msg';
+  div.appendChild(msgdiv);
+  chatBox.appendChild(div);
+
+  let sofar = '';
+  const words = text.split(' ');
+
+  for (const word of words) {
+    sofar += word + ' ';
+    msgdiv.innerHTML = renderMarkdown(sofar).html;
+    chatBox.scrollTop = chatBox.scrollHeight;
+    await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
+  }
+  
+  // Final rendering of the full message and controls
+  msgdiv.innerHTML = renderMarkdown(text).html + `
+    <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+        <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+        <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+        <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+    </div>
+  `;
+  enhanceCodeBlocks(msgdiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  // Add the message to chat history only after typing is complete
+  chats[currentChatIdx].history.push({ role: 'ai', text: text });
+  saveChats();
+  renderChatSelector();
+
+  // Re-hook the event listeners for the new buttons
+  hookAiMsgControls();
+}
+
   /* ---------- File preview helpers ---------- */
 function renderFilePreview() {
   if (!filePreview) return;
@@ -1051,10 +1231,12 @@ function renderFilePreview() {
     let preview = '';
     if (file.type.startsWith('image/')) {
       preview = `<img src="${URL.createObjectURL(file)}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
+    } else if (file.type.startsWith('video/')) {
+      preview = `<video src="${URL.createObjectURL(file)}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
+    } else if (file.type.startsWith('audio/')) {
+      preview = `<audio controls src="${URL.createObjectURL(file)}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
     } else if (file.type === 'application/pdf') {
       preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
-    } else {
-      preview = `<span style="font-size:1.25em;margin-right:7px;">📎</span>`;
     }
     return `
     <div style="display:flex;align-items:center;gap:7px;margin-bottom:1px;">
@@ -1067,6 +1249,7 @@ function renderFilePreview() {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.getAttribute('data-idx'));
       uploadedFiles.splice(idx, 1);
+      uploadData = uploadedFiles[0] || null;
       if (!uploadedFiles.length && chatFile) chatFile.value = '';
       renderFilePreview();
     });
@@ -1076,9 +1259,33 @@ if (chatFile) {
   chatFile.addEventListener('change', function () {
     const files = Array.from(this.files || []);
     uploadedFiles = files;
+    uploadData = files[0] || null;
     renderFilePreview();
   });
 }
+
+  /* ---------- Voice input via Web Speech ---------- */
+  if (voiceInputBtn && chatInput) {
+    let recognition = null;
+    voiceInputBtn.addEventListener('click', function () {
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const R = window.webkitSpeechRecognition || window.SpeechRecognition;
+        recognition = new R();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+        voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
+        recognition.onresult = (e) => {
+          chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
+          chatInput.dispatchEvent(new Event('input'));
+          voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+        };
+        recognition.onend = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
+        recognition.onerror = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
+        recognition.start();
+      } else alert('Speech recognition not supported in your browser.');
+    });
+  }
 
   /* ---------- Textarea auto-resize ---------- */
   if (chatInput) {
@@ -1089,324 +1296,393 @@ if (chatFile) {
     chatInput.addEventListener('input', autoResizeTextarea);
     autoResizeTextarea();
     chatInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendBtn?.click();
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendBtn?.click(); }
     });
   }
 
   /* ---------- NEW: TOOL-BASED CHAT HANDLING ---------- */
   const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-  
-  document.querySelectorAll('.tool-link').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tool = link.getAttribute('data-tool');
-      closeToolMenu();
-      handleToolPrompt(tool);
-    });
-  });
 
-  async function handleToolPrompt(tool) {
-    let promptText = '';
-    let responseText = '';
-    
-    switch(tool) {
-      case 'image':
-        promptText = prompt("Enter your image prompt:");
-        if (!promptText) return;
-        
-        const style = prompt(`What style? Available: ${thenaModels.join(', ')}`);
-        if (!style || !thenaModels.includes(style.toLowerCase())) {
-          alert("Invalid style. Please try again with one of the available options.");
-          return;
-        }
+  async function callImageApi(prompt, model) {
+    try {
+      const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, model })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      showAIImagePreview(data.image_b64, `Generated with model: **${model}**`);
+      return '✅ Image generated! Check the floating image box to view or download.';
+    } catch (err) {
+      return `❌ Image generation failed: ${err.message}`;
+    }
+  }
 
-        await addMessageToChat({ role: 'user', text: `Generate image of **${promptText}** with style **${style}**` });
-        showTypingAtNext();
-        try {
-          const res = await fetch('https://web-production-9a18.up.railway.app/generate-image', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: promptText, model: style })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || res.statusText);
-          responseText = `✅ Image generated! `;
-          await addMessageToChat({ role: 'ai', text: responseText, fileType: 'image/jpeg', fileUrl: 'data:image/jpeg;base64,' + data.image_b64 });
-        } catch (err) {
-          responseText = `❌ Image generation failed: ${err.message}`;
-          await addMessageToChat({ role: 'ai', text: responseText });
-        }
-        break;
-      case 'research':
-        promptText = prompt("What topic would you like to research?");
-        if (!promptText) return;
-        
-        await addMessageToChat({ role: 'user', text: `Conduct a research report on **${promptText}**` });
-        showTypingAtNext();
-        try {
-            const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/research', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic: promptText })
-            });
-            if (!res.ok) throw new Error(res.statusText);
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const storageRef = ref(storage, `research_reports/${currentUser.uid}/${Date.now()}.pdf`);
-            const uploadTask = await uploadBytes(storageRef, blob);
-            const downloadUrl = await getDownloadURL(uploadTask.ref);
-
-            responseText = `✅ Research report for **${promptText}** generated.`;
-            await addMessageToChat({ role: 'ai', text: responseText, fileType: 'application/pdf', fileUrl: downloadUrl });
-        } catch (err) {
-            responseText = `❌ Research failed: ${err.message}`;
-            await addMessageToChat({ role: 'ai', text: responseText });
-        }
-        break;
-      case 'comic':
-        const comicStyles = ["manga", "anime", "american"];
-        const styleComic = prompt(`What style? Available: ${comicStyles.join(', ')}`);
-        if (!styleComic || !comicStyles.includes(styleComic.toLowerCase())) {
-          alert("Invalid style. Please try again with one of the available options.");
-          return;
-        }
-        const story = prompt("Enter your story, using [INSTRUCTION], [DIALOGUE], and [NARRATION] tags to define panels:");
-        if (!story) return;
-        const panelCount = parseInt(prompt("How many panels?", "3"));
-        if (isNaN(panelCount) || panelCount < 1) {
-          alert("Invalid panel count. Please enter a number greater than 0.");
-          return;
-        }
-        await addMessageToChat({ role: 'user', text: `Create a **${styleComic}** comic with **${panelCount}** panels based on this story: **${story}**`});
-        showTypingAtNext();
-        try {
+  async function callComicApi(story, style, panels) {
+      try {
           const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/generate-comic', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ story, style: styleComic, panels: panelCount, user: currentUser?.displayName || "User" })
+              body: JSON.stringify({ story, style, panels, user: currentUser?.displayName || "User" })
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || res.statusText);
           const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" style="max-width:100%;border-radius:12px;margin-bottom:15px;box-shadow:0 0 8px #00fff2c7;">`).join('');
-          responseText = `🖼️ Comic successfully created!`;
-          await addMessageToChat({ role: 'ai', text: responseText + imagesHtml });
-        } catch (err) {
-            responseText = `❌ Comic generation failed: ${err.message}`;
-            await addMessageToChat({ role: 'ai', text: responseText });
-        }
-        break;
-      case 'website':
-        promptText = prompt("Enter a prompt to describe the website you want to create:");
-        if (!promptText) return;
-        
-        await addMessageToChat({ role: 'user', text: `Create a website based on: **${promptText}**` });
-        showTypingAtNext();
-        try {
-            const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/create-website', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: promptText, user_id: currentUser?.uid || "user" })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || res.statusText);
-            responseText = `🌐 Website deployed successfully! [View here](${data.url})`;
-            await addMessageToChat({ role: 'ai', text: responseText });
-        } catch (err) {
-            responseText = `❌ Website creation failed: ${err.message}`;
-            await addMessageToChat({ role: 'ai', text: responseText });
-        }
-        break;
-      case 'remove-bg':
-        alert("Please use the paperclip icon to upload an image, then click send. The background will be removed automatically.");
-        chatInput.value = "Remove background from this image";
-        chatInput.dispatchEvent(new Event('input'));
-        break;
-      case 'voice-gen':
-        const voiceStyles = ["podcast", "cinematic", "upbeat", "soft", "dramatic"];
-        const styleVoice = prompt(`What style? Available: ${voiceStyles.join(', ')}`);
-        if (!styleVoice || !voiceStyles.includes(styleVoice.toLowerCase())) {
-            alert("Invalid voice style. Please try again with one of the available options.");
-            return;
-        }
-        promptText = prompt("Enter the text you want to be read aloud:");
-        if (!promptText) return;
-        
-        await addMessageToChat({ role: 'user', text: `Generate voice from text in **${styleVoice}** style: **${promptText}**` });
-        showTypingAtNext();
-        try {
-          const fd = new FormData(); fd.append('text', promptText); fd.append('style', styleVoice);
+          return `🖼️ Comic successfully created! ${imagesHtml}`;
+      } catch (err) {
+          return `❌ Comic generation failed: ${err.message}`;
+      }
+  }
+
+  async function callWebsiteApi(prompt) {
+      try {
+          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/create-website', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt, user_id: currentUser?.uid || "user" })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || res.statusText);
+          return `🌐 Website deployed successfully! [View here](${data.url})`;
+      } catch (err) {
+          return `❌ Website creation failed: ${err.message}`;
+      }
+  }
+
+  async function callVoiceGenApi(text, style) {
+      try {
+          const fd = new FormData(); fd.append('text', text); fd.append('style', style);
           const res = await fetch('https://web-production-9a18.up.railway.app/voicegen', { method: 'POST', body: fd });
           if (!res.ok) throw new Error(res.statusText);
           const blob = await res.blob();
-          const storageRef = ref(storage, `audio_files/${currentUser.uid}/${Date.now()}.wav`);
-          const uploadTask = await uploadBytes(storageRef, blob);
-          const downloadUrl = await getDownloadURL(uploadTask.ref);
-          responseText = `🗣️ Voice generated in *${styleVoice}* style:`;
-          await addMessageToChat({ role: 'ai', text: responseText, fileType: 'audio/wav', fileUrl: downloadUrl });
-        } catch (err) {
-            responseText = `❌ Voice generation failed: ${err.message}`;
-            await addMessageToChat({ role: 'ai', text: responseText });
-        }
-        break;
-      case 'audio-narration':
-        pendingToolAction = { tool: 'audio-narration' };
-        openVoiceStyleModal();
-        break;
-    }
-    removeTyping();
+          const url = URL.createObjectURL(blob);
+          const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
+          return `🗣️ Voice generated in *${style}* style:<br>${audioPlayer}`;
+      } catch (err) {
+          return `❌ Voice generation failed: ${err.message}`;
+      }
   }
-  
-  window.openVoiceStyleModal = () => {
-    if (voiceStyleModal) voiceStyleModal.style.display = 'block';
-  };
-  window.closeVoiceStyleModal = () => {
-    if (voiceStyleModal) voiceStyleModal.style.display = 'none';
-    pendingToolAction = null;
-  };
-  window.confirmVoiceStyle = () => {
-    const style = voiceStyleSelect.value;
-    if (pendingToolAction?.tool === 'audio-narration') {
-      pendingToolAction.style = style;
-      alert("Please use the paperclip icon to upload a file (audio, text, or PDF), then click send to start the narration process.");
-      chatInput.value = `Narrate this file in ${style} style`;
-      chatInput.dispatchEvent(new Event('input'));
+
+  async function callResearchApi(topic) {
+    try {
+      const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic })
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const downloadLink = `<a href="${url}" download="research.pdf" style="color:#00eaff;font-weight:bold;text-decoration:none;">Download PDF Report</a>`;
+      return `✅ Research report on **${topic}** is ready! ${downloadLink}`;
+    } catch (err) {
+      return `❌ Research report failed: ${err.message}`;
     }
-    closeVoiceStyleModal();
-  };
+  }
 
   /* ---------- Chat submit handler (main) ---------- */
    if (chatForm) {
-    chatForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      if (!currentChatId) await createNewChat();
+  chatForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (currentChatIdx < 0 || !chats.length) {
+      chats.push({ name: 'Chat 1', history: [] });
+      currentChatIdx = 0;
+      saveChats();
+    }
 
-      const msgText = chatInput.value.trim();
-      if (!msgText && uploadedFiles.length === 0) return;
-      
-      const chatRef = doc(db, `users/${currentUser.uid}/chats`, currentChatId);
-      const docSnap = await getDoc(chatRef);
-      const history = docSnap.exists() ? docSnap.data().history : [];
-      
-      const filesToUpload = uploadedFiles.slice(0); // Clone the array
-      uploadedFiles = [];
-      renderFilePreview();
-      
-      if (filesToUpload.length > 0) {
-        let fileUrl = null;
-        let fileType = filesToUpload[0].type;
-        try {
-          const storageRef = ref(storage, `chat_uploads/${currentUser.uid}/${Date.now()}_${filesToUpload[0].name}`);
-          const uploadTask = await uploadBytes(storageRef, filesToUpload[0]);
-          fileUrl = await getDownloadURL(uploadTask.ref);
-        } catch (e) {
-          console.error("File upload failed: ", e);
-        }
+    const msgText = chatInput ? chatInput.value.trim() : '';
+    if (!msgText && !uploadedFiles.length) { return; }
+    
+    // Check for pending tool action
+    if (pendingToolAction) {
+      let responseText = '';
+      switch (pendingToolAction.type) {
+        case 'select':
+          const toolName = msgText.toLowerCase().replace(/\s/g, '');
+          switch (toolName) {
+            case 'imagegeneration':
+              pendingToolAction = { type: 'image_prompt' };
+              responseText = "What's the image prompt and style? Please format your message like this: `[prompt] style: [style name]`";
+              break;
+            case 'createcomic':
+              pendingToolAction = { type: 'comic_story' };
+              responseText = "Tell me the story you want to create. Use `[INSTRUCTION]`, `[DIALOGUE]`, and `[NARRATION]` to define panels.";
+              break;
+            case 'createwebsite':
+              pendingToolAction = { type: 'website_prompt' };
+              responseText = "What kind of website do you want? Give me a detailed description.";
+              break;
+            case 'removebackground':
+              pendingToolAction = { type: 'remove_background_file' }; // We need a file next
+              responseText = "Okay, please upload the image you want to remove the background from using the paperclip icon.";
+              break;
+            case 'voicegeneration':
+              pendingToolAction = { type: 'voice_style' };
+              responseText = "What style? You can choose from: `podcast`, `cinematic`, `upbeat`, `soft`, `dramatic`.";
+              break;
+            case 'audionarration':
+              pendingToolAction = { type: 'audio_file' }; // We need a file next
+              responseText = "Please upload the document (PDF/text) or audio file you want to narrate.";
+              break;
+            case 'researchreport':
+              pendingToolAction = { type: 'research_topic' };
+              responseText = "What topic would you like me to research and create a PDF report on?";
+              break;
+            default:
+              responseText = "I didn't recognize that tool. Please try again.";
+              pendingToolAction = { type: 'select' }; // Reset to selection
+          }
+          chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+          removeTyping();
+          await typeBotMessage(responseText);
+          saveChats();
+          return;
 
-        const userMessage = { 
-            role: 'user', 
-            text: msgText,
-            timestamp: new Date(),
-            fileUrl,
-            fileType
-        };
-        const updatedHistory = [...history, userMessage];
-        await updateDoc(chatRef, { history: updatedHistory });
-        
-        let responseText = '';
-        showTypingAtNext();
-        try {
-          const fd = new FormData();
-          fd.append('prompt', msgText);
-          fd.append('file', filesToUpload[0]);
-
-          let endpoint = '';
-          if (msgText.includes("remove background")) {
-              endpoint = 'api/tools/remove-background';
-          } else if (pendingToolAction?.tool === 'audio-narration') {
-              endpoint = 'api/tools/audio-narration';
-              fd.append('style', pendingToolAction.style);
+        case 'image_prompt':
+          const promptRegex = /(.+)\s+style:\s+(.+)/i;
+          const match = msgText.match(promptRegex);
+          if (match) {
+            const prompt = match[1].trim();
+            const style = match[2].trim().toLowerCase();
+            if (thenaModels.includes(style)) {
+              chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+              renderChatBox(chats[currentChatIdx]?.history || []);
+              showTypingAtNext();
+              responseText = await callImageApi(prompt, style);
               pendingToolAction = null;
+            } else {
+              responseText = `Invalid style: **${style}**. Please choose from: ${thenaModels.join(', ')}.`;
+              pendingToolAction = { type: 'image_prompt' };
+            }
           } else {
-            if (filesToUpload[0].type.startsWith('image/')) endpoint = 'understand-image';
-            else if (filesToUpload[0].type.startsWith('audio/')) endpoint = 'understand-audio';
-            else if (filesToUpload[0].type.startsWith('video/')) endpoint = 'understand-video';
-            else if (filesToUpload[0].type.startsWith('application/pdf')) endpoint = 'understand-pdf';
-            else throw new Error('Unsupported file type');
+            responseText = "Invalid format. Please use: `[prompt] style: [style name]`";
+            pendingToolAction = { type: 'image_prompt' };
           }
-          
-          const res = await fetch(`https://web-production-9a18.up.railway.app/${endpoint}`, { method: 'POST', body: fd });
-          if (!res.ok) throw new Error(res.statusText);
-          
-          if (endpoint === 'api/tools/remove-background') {
-            const blob = await res.blob();
-            const storageRef = ref(storage, `chat_uploads/${currentUser.uid}/${Date.now()}_removed_bg.png`);
-            const uploadTask = await uploadBytes(storageRef, blob);
-            const downloadUrl = await getDownloadURL(uploadTask.ref);
-            responseText = `✅ Background removed!`;
-            await addMessageToChat({ role: 'ai', text: responseText, fileType: 'image/png', fileUrl: downloadUrl });
-          } else if (endpoint === 'api/tools/audio-narration') {
-            const blob = await res.blob();
-            const storageRef = ref(storage, `chat_uploads/${currentUser.uid}/${Date.now()}_narration.wav`);
-            const uploadTask = await uploadBytes(storageRef, blob);
-            const downloadUrl = await getDownloadURL(uploadTask.ref);
-            responseText = `🗣️ Narration generated!`;
-            await addMessageToChat({ role: 'ai', text: responseText, fileType: 'audio/wav', fileUrl: downloadUrl });
+          break;
+        case 'comic_story':
+          // ... handle comic story input
+          break;
+        case 'website_prompt':
+          // ... handle website prompt input
+          break;
+        case 'voice_style':
+          const validStyles = ["podcast", "cinematic", "upbeat", "soft", "dramatic"];
+          const style = msgText.toLowerCase().trim();
+          if (validStyles.includes(style)) {
+            pendingToolAction = { type: 'voice_text', style };
+            responseText = "Great! Now, please type the text you want me to read aloud.";
           } else {
-            const data = await res.json();
-            responseText = data?.response || '❌ Could not process the file(s).';
-            await addMessageToChat({ role: 'ai', text: responseText });
+            responseText = "Invalid style. Please choose from: " + validStyles.join(', ');
+            pendingToolAction = { type: 'voice_style' };
           }
-        } catch (err) {
-          responseText = `❌ File processing failed: ${err.message}`;
-          await addMessageToChat({ role: 'ai', text: responseText });
+          break;
+        case 'voice_text':
+          chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+          renderChatBox(chats[currentChatIdx]?.history || []);
+          showTypingAtNext();
+          responseText = await callVoiceGenApi(msgText, pendingToolAction.style);
+          pendingToolAction = null;
+          break;
+        case 'research_topic':
+          chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+          renderChatBox(chats[currentChatIdx]?.history || []);
+          showTypingAtNext();
+          responseText = await callResearchApi(msgText);
+          pendingToolAction = null;
+          break;
+        default:
+          // Handle other tool inputs in a similar way
+          break;
+      }
+      if (pendingToolAction?.type !== 'select') {
+        removeTyping();
+        await typeBotMessage(responseText);
+        saveChats();
+        return;
+      }
+    }
+
+    // Existing code for handling file uploads (modified to be conversational)
+    if (uploadedFiles.length) {
+      // Create a list of file objects to store in history
+      const filesForHistory = uploadedFiles.map(file => ({
+        name: file.name,
+        type: file.type,
+        url: URL.createObjectURL(file)
+      }));
+      chats[currentChatIdx].history.push({ role: 'user', text: msgText, files: filesForHistory });
+      renderChatBox(chats[currentChatIdx]?.history || []);
+      showTypingAtNext();
+
+      // Handle remove-background
+      if (pendingToolAction?.type === "remove_background_file") {
+        const file = uploadedFiles[0];
+        if (!file || !file.type.startsWith('image/')) {
+          const responseText = "Please upload an image for background removal.";
+          removeTyping();
+          await typeBotMessage(responseText);
+          uploadedFiles = [];
+          renderFilePreview();
+          return;
         }
-      } else {
-        // Regular text chat
-        const userMessage = { role: 'user', text: msgText, timestamp: new Date() };
-        const updatedHistory = [...history, userMessage];
-        await updateDoc(chatRef, { history: updatedHistory });
-        
-        showTypingAtNext();
+        let responseText;
         try {
-          const res = await fetch('https://web-production-9a18.up.railway.app/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: msgText, user_id: currentUser.uid, history: updatedHistory.map(m => ({ role: m.role, content: m.text })) })
-          });
-          const data = await res.json();
-          const botResponse = data?.response || '🤖 Error. Try sending the text again.';
-          await addMessageToChat({ role: 'ai', text: botResponse });
+          const fd = new FormData(); fd.append('file', file);
+          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/remove-background', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(res.statusText);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const imageHtml = `<img src="${url}" alt="Image with background removed" style="max-width:100%;border-radius:12px;box-shadow:0 0 8px #00fff2c7;">`;
+          responseText = `✅ Background removed! ${imageHtml}`;
         } catch (err) {
-          await addMessageToChat({ role: 'ai', text: `❌ An error occurred: ${err.message || 'Please check your connection.'}` });
+          responseText = `❌ Background removal failed: ${err.message}`;
         }
+        removeTyping();
+        await typeBotMessage(responseText);
+        pendingToolAction = null;
+        uploadedFiles = [];
+        renderFilePreview();
+        return;
+      }
+      // Handle audio-narration
+      if (pendingToolAction?.type === "audio_file") {
+        const file = uploadedFiles[0];
+        if (!file) {
+          const responseText = "Please upload a document or audio file for narration.";
+          removeTyping();
+          await typeBotMessage(responseText);
+          uploadedFiles = [];
+          renderFilePreview();
+          return;
+        }
+        let responseText;
+        try {
+          const fd = new FormData(); fd.append('file', file); fd.append('style', 'podcast');
+          const res = await fetch('https://web-production-9a18.up.railway.app/api/tools/audio-narration', { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(res.statusText);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const audioPlayer = `<audio controls src="${url}" style="width:99%;margin:8px 0 3px 0;border-radius:14px;"></audio>`;
+          responseText = `🗣️ Narration generated! ${audioPlayer}`;
+        } catch (err) {
+          responseText = `❌ Audio narration failed: ${err.message}`;
+        }
+        removeTyping();
+        await typeBotMessage(responseText);
+        pendingToolAction = null;
+        uploadedFiles = [];
+        renderFilePreview();
+        return;
       }
       
+      // Default file upload handling for understanding
+      let botResponse = 'Could not process the file(s).';
+
+      try {
+        if (filesForHistory.some(f => f.type === 'application/pdf')) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Summarize this document.');
+          uploadedFiles.filter(f => f.type === 'application/pdf').forEach(f => fd.append('file', f));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-pdf', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the PDF(s).';
+        } else if (filesForHistory.some(f => /^image\//.test(f.type))) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Describe this image in detail.');
+          fd.append('file', uploadedFiles.find(f => /^image\//.test(f.type)));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-image', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the image.';
+        } else if (filesForHistory.some(f => /^audio\//.test(f.type))) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Transcribe and summarize this audio file in simple English.');
+          fd.append('file', uploadedFiles.find(f => /^audio\//.test(f.type)));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-audio', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the audio.';
+        } else if (filesForHistory.some(f => /^video\//.test(f.type))) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || 'Explain what this video is about.');
+          fd.append('file', uploadedFiles.find(f => /^video\//.test(f.type)));
+          const res = await fetch('https://web-production-9a18.up.railway.app/understand-video', { method: 'POST', body: fd });
+          const data = await res.json();
+          botResponse = data?.response || '❌ Could not process the video.';
+        }
+      } catch (err) {
+        botResponse = `❌ File processing failed: ${err.message}`;
+      }
       removeTyping();
+      await typeBotMessage(botResponse);
+      uploadedFiles = [];
+      renderFilePreview();
+      return;
+    }
+
+    // Regular text chat
+    if (msgText) {
+      if (chats[currentChatIdx].history.length === 1) {
+        chats[currentChatIdx].name = msgText.slice(0, 25) + "...";
+      }
+      chats[currentChatIdx].history.push({ role: 'user', text: msgText });
+      renderChatBox(chats[currentChatIdx]?.history || []);
       chatInput.value = '';
       chatInput.dispatchEvent(new Event('input'));
       
-      const docSnapFinal = await getDoc(chatRef);
-      const finalHistory = docSnapFinal.data().history;
-      if (finalHistory.length === 1 && currentChatName === "New Chat") {
-        const newName = msgText.length > 25 ? msgText.substring(0, 25) + '...' : msgText;
-        await updateDoc(chatRef, { name: newName });
-        await fetchChats(); // Reload sidebar to show new name
+      showTypingAtNext();
+      try {
+        const history = (chats[currentChatIdx].history || []).map(m => ({ role: m.role, content: m.text }));
+        const res = await fetch('https://web-production-9a18.up.railway.app/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, user_id: currentUser?.uid || 'user', history }) });
+        const data = await res.json();
+        const botResponse = data?.response || '🤖 Error. Try sending the text again.';
+        await typeBotMessage(botResponse);
+      } catch (err) {
+        removeTyping();
+        const userMessage = { role: 'user', text: msgText };
+        chats[currentChatIdx].history.push(userMessage);
+        chats[currentChatIdx].history.push({ role: 'ai', text: '❌ An error occurred: ' + (err.message || 'Please check your connection.') });
+        saveChats();
+        renderChatSelector();
+        renderChatBox(chats[currentChatIdx]?.history || []);
       }
-    });
-  }
-
-  async function addMessageToChat(message) {
-    if (!currentChatId) await createNewChat();
-    const chatRef = doc(db, `users/${currentUser.uid}/chats`, currentChatId);
-    const docSnap = await getDoc(chatRef);
-    if (docSnap.exists()) {
-      const history = docSnap.data().history || [];
-      const updatedHistory = [...history, { ...message, timestamp: new Date() }];
-      await updateDoc(chatRef, { history: updatedHistory });
     }
-  }
+  });
+}
+
+  /* ---------- AI Image preview UI ---------- */
+  const aiPrevBox = $('ai-image-preview');
+  const aiPrevClose = $('ai-image-close');
+  const aiPrevDLBtn = $('ai-image-dl');
+  const aiPrevImgBox = $('ai-image-container');
+
+  if (aiPrevClose && aiPrevBox && aiPrevImgBox) aiPrevClose.addEventListener('click', () => { aiPrevBox.style.display = 'none'; aiPrevImgBox.innerHTML = ''; });
+  if (aiPrevDLBtn && aiPrevImgBox) aiPrevDLBtn.addEventListener('click', () => {
+    const img = aiPrevImgBox.querySelector('img'); if (img) { const url = img.src; const a = document.createElement('a'); a.href = url; a.download = 'generated_image.png'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+  });
+
+  function showAIImagePreview(srcUrlOrBase64, caption = '') {
+    if (!aiPrevBox || !aiPrevImgBox) return;
+    
+    // Check if the input is a URL (blob) or a Base64 string
+    let src;
+    if (typeof srcUrlOrBase64 === 'string' && (srcUrlOrBase64.startsWith('data:image/') || srcUrlOrBase64.startsWith('blob:'))) {
+        src = srcUrlOrBase64;
+    } else {
+        src = 'data:image/png;base64,' + srcUrlOrBase64;
+    }
+
+    aiPrevImgBox.innerHTML = `<img src="${src}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;box-shadow:0 0 8px #00fff2c7;margin:0 auto;display:block;">` + (caption ? ' <div style="color:#aee;font-size:.95em;margin-top:3px;text-align:center;">' + caption + '</div>' : '');
+    aiPrevBox.style.display = 'block';
+}
+
+
+  // initial UI small setup
+  // NOTE: removed auto-inserting of /image into input
+  if (chatInput) { chatInput.focus(); }
+
+  // final initial render
+  try { renderChatsListSidebar(); } catch (e) {}
+  try { renderChatSelector(); } catch (e) {}
+  try { renderChatBox(chats[currentChatIdx]?.history || []); } catch (e) {}
 
 }); // end DOMContentLoaded
 </script>
