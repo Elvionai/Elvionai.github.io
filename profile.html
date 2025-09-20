@@ -1392,15 +1392,27 @@ if (chatFile) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic })
       });
-      if (!res.ok) throw new Error(res.statusText);
+            if (!res.ok) {
+        // If the server returns a non-200 status, it might be a JSON error
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || res.statusText);
+        } else {
+          throw new Error(res.statusText);
+        }
+      }
+
+      // This section is for a successful response (the PDF)
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const downloadLink = `<a href="${url}" download="research.pdf" style="color:#00eaff;font-weight:bold;text-decoration:none;">Download PDF Report</a>`;
       return `✅ Research report on **${topic}** is ready! ${downloadLink}`;
+
     } catch (err) {
       return `❌ Research report failed: ${err.message}`;
     }
-  }
+
 
   // New logic for handling tool forms
   if (toolsMenu) {
