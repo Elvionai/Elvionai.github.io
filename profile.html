@@ -305,8 +305,8 @@ pre:before {
   backdrop-filter: blur(8px);
   border: 1.5px solid #1af8ff51;
   border-radius: 23px 23px 0 0;
-  width: 95vw; /* << NEW WIDTH */
-  max-width: 900px; /* << NEW MAX-WIDTH */
+  width: 95vw;
+  max-width: 900px;
   padding: 9px 12px 10px 13px;
   box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
   z-index: 1003;
@@ -528,7 +528,7 @@ pre:before {
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script type="module">
-// --- START OF FULLY REVAMPED JAVASCRIPT (WITH NO OMISSIONS) ---
+// --- START OF FULLY REVAMPED & FIXED JAVASCRIPT ---
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -556,7 +556,7 @@ let currentChatIdx = localStorage.getItem('elvion_current_idx') ? Number(localSt
 let uploadedFiles = [];
 let currentUser = null;
 let typingNode = null;
-let currentController = null; // New global AbortController
+let currentController = null;
 
 function saveChats() {
   try {
@@ -613,9 +613,7 @@ window.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // ---------- UI Initializers & Event Handlers (Unchanged from Original) ----------
-
-  /* Stars Animation */
+  // ---------- UI Initializers & Event Handlers ----------
   if (starsContainer) {
     starsContainer.innerHTML = '';
     for (let i = 0; i < 34; i++) {
@@ -628,17 +626,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* Fullscreen toggle */
-  if (fullscreenBtn && mainContainer) {
-    let isFull = false;
-    fullscreenBtn.addEventListener('click', () => {
-      isFull = !isFull;
-      mainContainer.classList.toggle('fullscreen', isFull);
-      try { fullscreenBtn.innerHTML = isFull ? '<i class="fa-solid fa-compress"></i>' : '<i class="fa-solid fa-expand"></i>'; } catch (e) {}
-    });
-  }
-
-  /* Emoji Panel Logic */
   const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
   if (emojiBtn && emojiPanel && chatInput) {
     emojiBtn.addEventListener('click', (e) => {
@@ -668,38 +655,13 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* Textarea Auto-Resize */
   if (chatInput) {
     const autoResize = () => { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px'; };
     chatInput.addEventListener('input', autoResize);
     chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); }});
     autoResize();
   }
-
-  /* Voice Input */
-  if (voiceInputBtn && chatInput) {
-    let recognition = null;
-    voiceInputBtn.addEventListener('click', function () {
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const R = window.webkitSpeechRecognition || window.SpeechRecognition;
-        recognition = new R();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
-        recognition.onresult = (e) => {
-          chatInput.value += (chatInput.value ? ' ' : '') + e.results[0][0].transcript;
-          chatInput.dispatchEvent(new Event('input'));
-          voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
-        };
-        recognition.onend = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
-        recognition.onerror = () => { voiceInputBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; };
-        recognition.start();
-      } else alert('Speech recognition not supported in your browser.');
-    });
-  }
   
-  /* File Preview Logic */
   if (chatFile) {
       chatFile.addEventListener('change', function() {
           uploadedFiles = Array.from(this.files || []);
@@ -707,18 +669,13 @@ window.addEventListener('DOMContentLoaded', () => {
       });
   }
   
-  /* AI Image Preview Logic */
   if (aiPrevClose) aiPrevClose.addEventListener('click', () => { aiPrevBox.style.display = 'none'; });
   if (aiPrevDLBtn) aiPrevDLBtn.addEventListener('click', () => {
     const img = aiPrevImgBox.querySelector('img');
     if (img) {
-      const a = document.createElement('a');
-      a.href = img.src;
-      a.download = 'philadelphia_ai_image.png';
-      a.click();
+      const a = document.createElement('a'); a.href = img.src; a.download = 'philadelphia_ai_image.png'; a.click();
     }
   });
-
 
   // ---------- Panel & Modal Management ----------
   window.closeToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
@@ -795,7 +752,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ---------- Chat History & Rendering Logic (Unchanged from Original) ----------
+  // ---------- Chat History & Rendering Logic ----------
   function renderChatsListSidebar() {
     if (!chatsListEl) return;
     chatsListEl.innerHTML = '';
@@ -909,29 +866,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (addChatBtn) {
-    addChatBtn.addEventListener('click', () => {
-      chats.push({ name: "Chat " + (chats.length + 1), history: [] });
-      currentChatIdx = chats.length - 1;
-      saveChats();
-      renderChatSelector();
-      renderChatBox(chats[currentChatIdx] || []);
-    });
-  }
-
-  if (removeChatBtn) {
-    removeChatBtn.addEventListener('click', () => {
-      if (!chats.length) return;
-      if (!confirm("Delete this chat?")) return;
-      chats.splice(currentChatIdx, 1);
-      currentChatIdx = Math.max(0, currentChatIdx - 1);
-      if (!chats.length) { chats.push({ name: 'Chat 1', history: [] }); currentChatIdx = 0; }
-      saveChats();
-      renderChatSelector();
-      renderChatBox((chats[currentChatIdx]?.history || []) || []);
-    });
-  }
-
   const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
   function inlineMarkdown(t = '') {
@@ -952,8 +886,7 @@ window.addEventListener('DOMContentLoaded', () => {
       html += inlineMarkdown(before);
       const language = (lang || '').toLowerCase().trim();
       const safe = escapeHTML(code);
-      const blockId = 'code_' + Math.random().toString(36).slice(2);
-      html += `<pre data-block-id="${blockId}">\n  <button class="copy-btn" data-copy="${blockId}">Copy</button>\n  <code class="language-${language || 'plaintext'}">${safe}</code>\n</pre>`;
+      html += `<pre><button class="copy-btn">Copy</button><code class="language-${language || 'plaintext'}">${safe}</code></pre>`;
       lastIndex = offset + match.length;
       return match;
     });
@@ -1173,7 +1106,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-    async function typeBotMessage(text) {
+  async function typeBotMessage(text) {
     removeTyping();
     if (!chatBox) return;
 
@@ -1188,7 +1121,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const words = text.split(' ');
 
     for (const word of words) {
-      if (currentController?.signal.aborted) { // This line is added to check for stop clicks
+      if (currentController?.signal.aborted) {
         break;
       }
       sofar += word + ' ';
@@ -1197,7 +1130,6 @@ window.addEventListener('DOMContentLoaded', () => {
       await new Promise(res => setTimeout(res, 35 + Math.random() * 20));
     }
     
-    // Final rendering of the full message and controls
     msgdiv.innerHTML = renderMarkdown(text).html + `
       <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
           <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
@@ -1207,13 +1139,10 @@ window.addEventListener('DOMContentLoaded', () => {
     `;
     enhanceCodeBlocks(msgdiv);
     chatBox.scrollTop = chatBox.scrollHeight;
-
-    // Add the message to chat history only after typing is complete
+    
     chats[currentChatIdx].history.push({ role: 'ai', text: text });
     saveChats();
     renderChatSelector();
-
-    // Re-hook the event listeners for the new buttons
     hookAiMsgControls();
   }
 
@@ -1253,7 +1182,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Function to show the AI Image preview popup
   function showAIImagePreview(base64, caption = '') {
     if (!aiPrevBox || !aiPrevImgBox) return;
     aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;display:block;">` +
@@ -1261,7 +1189,6 @@ window.addEventListener('DOMContentLoaded', () => {
     aiPrevBox.style.display = 'block';
   }
 
-  // Helper function to programmatically add messages
   function addMessageToChat(role, text, files = []) {
       if (!chats[currentChatIdx]) { chats.push({ name: 'New Chat', history: [] }); currentChatIdx = chats.length - 1; }
       chats[currentChatIdx].history.push({ role, text, files });
@@ -1269,7 +1196,6 @@ window.addEventListener('DOMContentLoaded', () => {
       renderChatBox(chats[currentChatIdx].history);
   }
 
-  // Helper for custom typing indicator messages
   function showTypingWithText(text) {
       removeTyping();
       if (!chatBox) return;
@@ -1280,7 +1206,6 @@ window.addEventListener('DOMContentLoaded', () => {
       typingNode.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
-  // Handler for asynchronous Video Generation with polling
   async function handleVideoGeneration(payload, isImageToVideo = false) {
     showTypingWithText('Submitting video generation job...');
     try {
@@ -1308,20 +1233,15 @@ window.addEventListener('DOMContentLoaded', () => {
                 clearInterval(pollInterval);
                 await typeBotMessage(`❌ Error checking video status.`);
             }
-        }, 20000); // Check every 20 seconds
+        }, 20000);
     } catch (err) {
         removeTyping();
         await typeBotMessage(`❌ Could not start video generation: ${err.message}`);
     }
   }
 
-  // #######################################################################
-  // ###             NEW REVAMPED TOOL IMPLEMENTATION START              ###
-  // #######################################################################
-
   const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
   const toolDefinitions = {
-    // --- Creative Suite ---
     "image": {
         title: "Generate Image",
         description: "Create stunning visuals from a text prompt. Choose a model for different results.",
@@ -1412,7 +1332,6 @@ window.addEventListener('DOMContentLoaded', () => {
             } catch (err) { return `❌ Comic generation failed: ${err.message}`; }
         }
     },
-    // --- Audio & Video ---
     "voice-gen": {
         title: "Voice Generation",
         description: "Transform text into realistic speech. Choose a provider and voice style.",
@@ -1530,7 +1449,6 @@ window.addEventListener('DOMContentLoaded', () => {
             } catch (err) { return `❌ Music generation failed: ${err.message}`; }
         }
     },
-    // --- Web & Research ---
     "website": {
         title: "Create Website",
         description: "Describe the website you want to build and get a live, working prototype.",
@@ -1604,7 +1522,6 @@ window.addEventListener('DOMContentLoaded', () => {
     },
   };
 
-  // Main listener for the tool menu
   if (toolsMenu) {
     toolsMenu.addEventListener('click', async (e) => {
         const toolLink = e.target.closest('.tool-link');
@@ -1624,7 +1541,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Function to display the correct form in the modal
   function displayToolForm(toolKey) {
     const tool = toolDefinitions[toolKey];
     if (!tool || !toolFormModalBg) return;
@@ -1650,7 +1566,7 @@ window.addEventListener('DOMContentLoaded', () => {
     toolFormModalBg.classList.add('active');
   }
 
-      /* ---------- MAIN CHAT SUBMIT HANDLER (for non-tool messages) ---------- */
+  /* ---------- MAIN CHAT SUBMIT HANDLER ---------- */
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     if (!chats[currentChatIdx]) {
@@ -1713,7 +1629,7 @@ window.addEventListener('DOMContentLoaded', () => {
       showTypingAtNext();
       try {
         const history = chats[currentChatIdx].history.slice(0, -1).map(m => ({ role: m.role, content: m.text || '' }));
-        const res = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, history }), signal });
+        const res = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, history, user_id: currentUser?.uid || "user" }), signal });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Server error.");
         finalResponse = data.response;
@@ -1729,60 +1645,6 @@ window.addEventListener('DOMContentLoaded', () => {
     stopButton.replaceWith(sendBtn);
     currentController = null;
   });
-    
-    // --- File Upload for Multimodal Understanding ---
-    if (uploadedFiles.length > 0) {
-      const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type, url: URL.createObjectURL(file) }));
-      addMessageToChat('user', msgText, filesForHistory);
-      chatInput.value = ''; uploadedFiles = []; renderFilePreview();
-      showTypingWithText('Analyzing your file(s)...');
-      
-      let endpoint = '';
-      const file = uploadedFiles[0];
-      if (file.type.startsWith('image/')) endpoint = '/understand-image';
-      else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
-      else if (file.type.startsWith('audio/')) endpoint = '/understand-audio';
-      else if (file.type.startsWith('video/')) endpoint = '/understand-video';
-      else { removeTyping(); finalResponse = "Sorry, I can't analyze that file type."; }
-      
-      try {
-        if(endpoint) {
-          const fd = new FormData();
-          fd.append('prompt', msgText || `Describe this ${file.type.split('/')[0]}`);
-          fd.append('file', uploadedFiles[0]);
-          const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Analysis failed.");
-          finalResponse = data.response;
-        }
-      } catch (err) {
-        if (err.name !== 'AbortError') { finalResponse = `❌ File analysis failed: ${err.message}`; }
-        else { finalResponse = `❌ File analysis stopped.`; }
-      }
-    } else if (msgText) { // --- Regular Text Chat ---
-      addMessageToChat('user', msgText);
-      chatInput.value = '';
-      showTypingAtNext();
-      try {
-        const history = chats[currentChatIdx].history.slice(0, -1).map(m => ({ role: m.role, content: m.text || '' }));
-        const res = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, history }), signal });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Server error.");
-        finalResponse = data.response;
-      } catch (err) {
-        if (err.name !== 'AbortError') { finalResponse = `❌ An error occurred: ${err.message}`; }
-        else { finalResponse = `❌ Response stopped.`; }
-      }
-    }
-
-    // Final UI update logic after response is received or aborted
-    stopButton.replaceWith(sendBtn);
-    currentController = null;
-    removeTyping();
-    if(finalResponse) {
-        await typeBotMessage(finalResponse);
-    }
-  });
 
   // Final initial render
   renderChatsListSidebar();
@@ -1791,13 +1653,11 @@ window.addEventListener('DOMContentLoaded', () => {
   if(chatInput) chatInput.focus();
   
 }); // end DOMContentLoaded
-
-// --- END OF FULLY REVAMPED JAVASCRIPT ---
 </script>
 </body>
 </html>
 
- <!-- Google tag (gtag.js) -->
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
