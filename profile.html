@@ -313,11 +313,11 @@ pre:before {
 }
 @media (max-width: 920px) {
   .chat-input-row {
-    width: 100vw;
-    max-width: 100vw;
-    left: 0;
-    transform: none;
-    border-radius: 18px 18px 0 0;
+    width: 95vw;
+    max-width: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 22px 22px 8px 8px;
   }
 }
 .chat-input-row textarea{
@@ -1173,7 +1173,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function typeBotMessage(text) {
+    async function typeBotMessage(text) {
     removeTyping();
     if (!chatBox) return;
 
@@ -1188,6 +1188,9 @@ window.addEventListener('DOMContentLoaded', () => {
     const words = text.split(' ');
 
     for (const word of words) {
+      if (currentController?.signal.aborted) { // This line is added to check for stop clicks
+        break;
+      }
       sofar += word + ' ';
       msgdiv.innerHTML = renderMarkdown(sofar).html;
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -1647,8 +1650,7 @@ window.addEventListener('DOMContentLoaded', () => {
     toolFormModalBg.classList.add('active');
   }
 
-
-  /* ---------- MAIN CHAT SUBMIT HANDLER (for non-tool messages) ---------- */
+      /* ---------- MAIN CHAT SUBMIT HANDLER (for non-tool messages) ---------- */
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     if (!chats[currentChatIdx]) {
@@ -1658,7 +1660,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const msgText = chatInput.value.trim();
     if (!msgText && uploadedFiles.length === 0) return;
 
-    // Change send button to stop button
     const stopButton = document.createElement('button');
     stopButton.type = 'button';
     stopButton.id = 'stopBtn';
@@ -1671,12 +1672,63 @@ window.addEventListener('DOMContentLoaded', () => {
     let finalResponse = '';
 
     stopButton.addEventListener('click', () => {
+      if (currentController) {
         currentController.abort();
-        removeTyping();
-        addMessageToChat('ai', '❌ Bot response was stopped.');
-        stopButton.replaceWith(sendBtn);
-        currentController = null;
+      }
     });
+    
+    if (uploadedFiles.length > 0) {
+      const filesToProcess = [...uploadedFiles];
+      const filesForHistory = filesToProcess.map(file => ({ name: file.name, type: file.type, url: URL.createObjectURL(file) }));
+      addMessageToChat('user', msgText, filesForHistory);
+      chatInput.value = ''; 
+      uploadedFiles = []; 
+      renderFilePreview();
+      showTypingWithText('Analyzing your file(s)...');
+      
+      let endpoint = '';
+      const file = filesToProcess[0];
+      if (file.type.startsWith('image/')) endpoint = '/understand-image';
+      else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
+      else if (file.type.startsWith('audio/')) endpoint = '/understand-audio';
+      else if (file.type.startsWith('video/')) endpoint = '/understand-video';
+      else { removeTyping(); finalResponse = "Sorry, I can't analyze that file type."; }
+      
+      try {
+        if(endpoint) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || `Describe this ${file.type.split('/')[0]}`);
+          fd.append('file', file);
+          const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Analysis failed.");
+          finalResponse = data.response;
+        }
+      } catch (err) {
+        finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
+      }
+    } else if (msgText) {
+      addMessageToChat('user', msgText);
+      chatInput.value = '';
+      showTypingAtNext();
+      try {
+        const history = chats[currentChatIdx].history.slice(0, -1).map(m => ({ role: m.role, content: m.text || '' }));
+        const res = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, history }), signal });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Server error.");
+        finalResponse = data.response;
+      } catch (err) {
+        finalResponse = err.name === 'AbortError' ? '❌ Response stopped.' : `❌ An error occurred: ${err.message}`;
+      }
+    }
+
+    removeTyping();
+    if (finalResponse) {
+      await typeBotMessage(finalResponse);
+    }
+    stopButton.replaceWith(sendBtn);
+    currentController = null;
+  });
     
     // --- File Upload for Multimodal Understanding ---
     if (uploadedFiles.length > 0) {
