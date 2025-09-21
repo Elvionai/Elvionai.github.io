@@ -525,7 +525,7 @@ pre:before {
       <div class="status-message" id="toolStatusMsg"></div>
     </nav>
   </div>
-  
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script type="module">
 // --- START OF FULLY REVAMPED JAVASCRIPT (WITH NO OMISSIONS) ---
@@ -550,12 +550,13 @@ const $ = id => document.getElementById(id);
 // API Base URL
 const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
 
-// ---------- Global State Management ----------
+// ---------- Global State Management & AbortController ----------
 let chats = JSON.parse(localStorage.getItem("elvion_chats") || "[]");
 let currentChatIdx = localStorage.getItem('elvion_current_idx') ? Number(localStorage.getItem('elvion_current_idx')) : (chats.length > 0 ? chats.length - 1 : 0);
 let uploadedFiles = [];
 let currentUser = null;
 let typingNode = null;
+let currentController = null; // New global AbortController
 
 function saveChats() {
   try {
@@ -1656,6 +1657,26 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     const msgText = chatInput.value.trim();
     if (!msgText && uploadedFiles.length === 0) return;
+
+    // Change send button to stop button
+    const stopButton = document.createElement('button');
+    stopButton.type = 'button';
+    stopButton.id = 'stopBtn';
+    stopButton.innerHTML = '<i class="fa-solid fa-stop"></i>';
+    stopButton.style.color = '#ff6b6b';
+    sendBtn.replaceWith(stopButton);
+
+    currentController = new AbortController();
+    const signal = currentController.signal;
+    let finalResponse = '';
+
+    stopButton.addEventListener('click', () => {
+        currentController.abort();
+        removeTyping();
+        addMessageToChat('ai', '❌ Bot response was stopped.');
+        stopButton.replaceWith(sendBtn);
+        currentController = null;
+    });
     
     // --- File Upload for Multimodal Understanding ---
     if (uploadedFiles.length > 0) {
@@ -1665,42 +1686,49 @@ window.addEventListener('DOMContentLoaded', () => {
       showTypingWithText('Analyzing your file(s)...');
       
       let endpoint = '';
-      const file = uploadedFiles[0]; // Simple handling for the first file
-      if (file.type.startsWith('image/')) endpoint = 'https://web-production-9a18.up.railway.app/understand-image';
-      else if (file.type === 'application/pdf') endpoint = 'https://web-production-9a18.up.railway.app/understand-pdf';
-      else if (file.type.startsWith('audio/')) endpoint = 'https://web-production-9a18.up.railway.app/understand-audio';
-      else if (file.type.startsWith('video/')) endpoint = 'https://web-production-9a18.up.railway.app/understand-video';
-      else { removeTyping(); await typeBotMessage("Sorry, I can't analyze that file type."); return; }
+      const file = uploadedFiles[0];
+      if (file.type.startsWith('image/')) endpoint = '/understand-image';
+      else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
+      else if (file.type.startsWith('audio/')) endpoint = '/understand-audio';
+      else if (file.type.startsWith('video/')) endpoint = '/understand-video';
+      else { removeTyping(); finalResponse = "Sorry, I can't analyze that file type."; }
       
       try {
-        const fd = new FormData();
-        fd.append('prompt', msgText || `Describe this ${file.type.split('/')[0]}`);
-        fd.append('file', uploadedFiles[0]);
-        const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Analysis failed.");
-        removeTyping();
-        await typeBotMessage(data.response);
-      } catch (err) { removeTyping(); await typeBotMessage(`❌ File analysis failed: ${err.message}`); }
-      return;
-    }
-
-    // --- Regular Text Chat ---
-    if (msgText) {
+        if(endpoint) {
+          const fd = new FormData();
+          fd.append('prompt', msgText || `Describe this ${file.type.split('/')[0]}`);
+          fd.append('file', uploadedFiles[0]);
+          const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Analysis failed.");
+          finalResponse = data.response;
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') { finalResponse = `❌ File analysis failed: ${err.message}`; }
+        else { finalResponse = `❌ File analysis stopped.`; }
+      }
+    } else if (msgText) { // --- Regular Text Chat ---
       addMessageToChat('user', msgText);
       chatInput.value = '';
       showTypingAtNext();
       try {
         const history = chats[currentChatIdx].history.slice(0, -1).map(m => ({ role: m.role, content: m.text || '' }));
-        const res = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, history }) });
+        const res = await fetch(`${API_BASE_URL}/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msgText, history }), signal });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Server error.");
-        removeTyping();
-        await typeBotMessage(data.response);
+        finalResponse = data.response;
       } catch (err) {
-        removeTyping();
-        await typeBotMessage('❌ An error occurred: ' + err.message);
+        if (err.name !== 'AbortError') { finalResponse = `❌ An error occurred: ${err.message}`; }
+        else { finalResponse = `❌ Response stopped.`; }
       }
+    }
+
+    // Final UI update logic after response is received or aborted
+    stopButton.replaceWith(sendBtn);
+    currentController = null;
+    removeTyping();
+    if(finalResponse) {
+        await typeBotMessage(finalResponse);
     }
   });
 
