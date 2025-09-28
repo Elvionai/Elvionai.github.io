@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard | Studying at Elvion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Your Elvion University dashboard. Select a course, update your profile, and begin learning instantly." />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --cyan: #00ffff;
+      --blue: #0090ff;
+      --card-bg: rgba(18,26,48,0.97);
+      --border-glow: 0 0 11px var(--cyan), 0 0 24px var(--blue);
+      --radius: 15px;
+      --bg: #0a1128;
+      --text: #e0e0e0;
+      --muted: #a7b2c3;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(120deg, #181d32 50%, #132142 100%);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 4vw 8px 4vw; background:rgba(18,26,48,0.97); box-shadow: var(--border-glow); border-radius:0 0 28px 28px;
+    }
+    .title { font-family:Orbitron,sans-serif; font-size:1.63em; color:var(--cyan); text-shadow:var(--border-glow);}
+    .profile {
+      display:flex; align-items:center; gap:13px; 
+      background: #181e36; border-radius:12px; padding:8px 17px;
+      box-shadow: 0 0 16px 2px #00ffff07;
+    }
+    .profile-img {
+      width:52px; height:52px; border-radius:50%; background:#232857;
+      object-fit:cover; border:2px solid var(--cyan);
+    }
+    .profile-info { }
+    .profile-info b { color:var(--cyan);}
+    .prof-actions { margin-left:14px; }
+    .prof-actions button {
+      background: none; border:none; color:var(--cyan); cursor:pointer;
+      margin-left:7px; font-size:1.25em; opacity:.80;
+      vertical-align: middle;
+    }
+    main { max-width:1060px; margin:28px auto 0 auto; padding:20px;}
+    h2 { font-family:Orbitron,sans-serif; color:var(--cyan); margin-bottom:20px; }
+    .courses-grid {
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(255px,1fr)); gap:2em;
+      margin-bottom:28px;
+    }
+    .course-card {
+      background: var(--card-bg); border-radius:var(--radius); padding:20px 16px;
+      box-shadow: var(--border-glow);
+      display: flex; flex-direction:column; gap:13px;
+      cursor: pointer; transition: box-shadow .17s, transform .19s;
+      border:2.1px solid #131b30;
+    }
+    .course-card:hover, .course-card.active {
+      box-shadow: 0 0 22px var(--cyan),0 0 44px #00c2ff49;
+      border:2.1px solid var(--cyan);
+      transform: scale(1.03);
+      z-index:4;
+    }
+    .course-title {font-size:1.19em; font-weight:700; color:#fff; font-family:Orbitron,sans-serif; }
+    .course-intro {font-size:.97em; color:var(--muted);}
+    .start-btn {
+      margin-top:9px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue));
+      color: #161d28; border: none; border-radius: 12px; padding: 8px 0;
+      font-size: 1em; font-family:'Orbitron',sans-serif; font-weight:700; cursor:pointer;
+      box-shadow: 0 0 13px #00c3ff99;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      transition: background .11s, transform .10s;
+    }
+    .start-btn:hover { background: var(--blue); color:#fff; transform:scale(1.04);}
+    .course-meta { font-size:.92em; color:var(--cyan);}
+    .course-audio { margin:10px 0 2px 0;}
+    .course-details {
+      padding:23px 19px 11px 19px; margin:20px auto; background:rgba(15,32,60,0.91);
+      border-radius:14px; box-shadow:0 0 19px #0090ff18;
+      max-width:450px; display:none; animation:fadeInDetail .85s;
+    }
+    @keyframes fadeInDetail {from{opacity:0;transform:translateY(15px);}to{opacity:1; transform:translateY(0);}}
+    .edit-modal-bg {
+      position: fixed; left:0; top:0; width:100vw; height:100vh;
+      background:rgba(5,19,38,.69); display:none; align-items:center; justify-content:center; z-index:5000;
+    }
+    .edit-modal {
+      background:rgba(18,27,38,0.99); color:#e0e0e0; border-radius:14px; padding:27px 21px; min-width:290px;
+      box-shadow:0 0 30px #00fff2,0 0 12px #0071cf55; position:relative;
+      max-width:98vw;
+    }
+    .edit-modal label {color:var(--cyan);font-family:Orbitron,sans-serif;font-size:.97em;margin-bottom:3px;display:block;}
+    .edit-modal input,.edit-modal textarea{
+      width:100%; max-width:400px; padding:7px 10px; border-radius:8px; border:1.5px solid #274355;
+      background:#131c2c; color:#f5f5f5; font-size:1em; font-family:Inter,sans-serif;margin-bottom:13px;
+    }   
+    .edit-modal .btns { text-align:right;margin-top:7px;}
+    .edit-modal .btns button {
+      background:var(--cyan); color:#222; border:none; border-radius:7px; font-family:Orbitron,sans-serif;
+      padding:7.2px 26px; margin-left:7px; font-weight:700; text-transform:uppercase; font-size: 1em; letter-spacing:.04em;
+      box-shadow:0 0 4px #0fffff60; cursor:pointer;
+      transition:background .11s;
+    }
+    .edit-modal .btns button.cancel {background:#19243c; color:#aee;}
+    .edit-close {position:absolute;right:14px;top:14px;font-size:1.7em;color:#00ffff;cursor:pointer;}
+    @media (max-width:650px){ header,main{padding:13px!important;} .course-details{padding:12px 7px;} }
+    @media (max-width:410px){ .profile-img{width:38px;height:38px;} .edit-modal{padding:4vw;}}
+  </style>
+</head>
+<body>
+<div id="stars-container"></div>
+<header>
+  <span class="title">Hi, <span id="user-name">User</span>!</span>
+  <div class="profile">
+    <img id="profile-img" src="https://i.pravatar.cc/150?img=12" class="profile-img" alt="profile image" />
+    <div class="profile-info">
+      <div><b id="displayName">User Name</b></div>
+      <small style="color:#aee;" id="user-email"></small>
+    </div>
+    <div class="prof-actions">
+      <button title="Edit profile" onclick="openEditModal()"><i class="fa fa-user-edit"></i></button>
+      <button title="Logout" onclick="logout()"><i class="fa fa-sign-out-alt"></i></button>
+    </div>
+  </div>
+</header>
+<main>
+  <h2>Start Studying at Elvion University</h2>
+  <div class="courses-grid" id="courses-grid"></div>
+  <div class="course-details" id="course-details"></div>
+</main>
+
+<!-- Profile Editor Modal -->
+<div class="edit-modal-bg" id="edit-modal-bg">
+  <form class="edit-modal" id="edit-modal" onsubmit="return false;">
+    <span class="edit-close" onclick="closeEditModal()">&times;</span>
+    <h3 style="color:var(--cyan);text-align:center;margin-top:0">Edit Profile</h3>
+    <label for="edit-name">Name</label>
+    <input type="text" id="edit-name" required>
+    <label for="edit-photo">Photo URL</label>
+    <input type="url" id="edit-photo" placeholder="https://link.to/photo.jpg">
+    <label for="edit-dob">Date of Birth</label>
+    <input type="date" id="edit-dob">
+    <label for="edit-bio">Bio/About Me</label>
+    <textarea id="edit-bio" rows="2" placeholder="A few words about you"></textarea>
+    <div class="btns">
+      <button type="button" onclick="saveProfile()">Save</button>
+      <button type="button" class="cancel" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script type="module">
+  // STAR BG
+  document.addEventListener('DOMContentLoaded',()=>{
+    const starsContainer = document.getElementById('stars-container');
+    const numStars = 38, minSize=1, maxSize=2.9;
+    for(let i=0; i<numStars; i++) {
+      const star=document.createElement('div');
+      star.className='star';
+      const size = Math.random()*(maxSize-minSize)+minSize;
+      star.style.width=size+'px';
+      star.style.height=size+'px';
+      star.style.left=Math.random()*100+'%';
+      star.style.top=Math.random()*100+'%';
+      star.style.animationDelay=(Math.random()*4)+'s';
+      star.style.animationDuration=(2.4+Math.random()*1.8)+'s';
+      starsContainer.appendChild(star);
+    }
+  });
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+    authDomain: "elvionai.firebaseapp.com",
+    projectId: "elvionai",
+    storageBucket: "elvionai.firebasestorage.app",
+    messagingSenderId: "161078300830",
+    appId: "1:161078300830:web:f460df8591704eb0e96b8f"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // -------- COURSE LIST (sample, adapt as needed)
+  const courses = [
+    {
+      key: "cs",
+      title: "Computer Science",
+      intro: "Foundations of software, programming, and digital algorithms.",
+      code: "CSC 101",
+      meta: "Faculty of Science & Technology",
+      mediaType: "video",
+      media: "https://www.youtube.com/embed/5Qwwjych21o"
+    },
+    {
+      key: "law",
+      title: "Law (ELV)",
+      intro: "Active learning on constitutional law, contracts, legal writing, and advocacy.",
+      code: "LAW 101",
+      meta: "Faculty of Law",
+      mediaType: "video",
+      media: "https://www.youtube.com/embed/_c6iHL2Zd5o"
+    },
+    {
+      key: "literature",
+      title: "English & Literary Studies",
+      intro: "Explore English structure, world literature, and creative writing.",
+      code: "ENG 101",
+      meta: "Faculty of Arts & Humanities",
+      mediaType: "audio",
+      media: "/assets/intro-arts.mp3"
+    },
+    {
+      key: "history",
+      title: "History & Strategic Studies",
+      intro: "Modern world history, strategy and global affairs.",
+      code: "HIS 101",
+      meta: "Faculty of Arts & Humanities",
+      mediaType: "audio",
+      media: "/assets/intro-history.mp3"
+    },
+    {
+      key: "masscomm",
+      title: "Mass Communication",
+      intro: "Broadcasting, journalism, PR & media production.",
+      code: "MASS 101",
+      meta: "Faculty of Management & Social Sciences",
+      mediaType: "audio",
+      media: "/assets/intro-masscomm.mp3"
+    },
+    {
+      key: "business",
+      title: "Business Administration",
+      intro: "Principles of management, entrepreneurship, and finance.",
+      code: "BUS 101",
+      meta: "Faculty of Management & Social Sciences",
+      mediaType: "audio",
+      media: "/assets/intro-business.mp3"
+    },
+    {
+      key: "mathed",
+      title: "Mathematics Education",
+      intro: "Effective teaching and learning methods for math.",
+      code: "MATED 101",
+      meta: "Faculty of Education",
+      mediaType: "audio",
+      media: "/assets/intro-mathed.mp3"
+    },
+    {
+      key: "adulted",
+      title: "Adult Education",
+      intro: "How adults learn: strategies for teaching and community engagement.",
+      code: "AED 101",
+      meta: "Faculty of Education",
+      mediaType: "audio",
+      media: "/assets/intro-adulted.mp3"
+    }
+  ];
+
+  // Populate course grid
+  function renderCourses() {
+    const cg=document.getElementById("courses-grid");
+    cg.innerHTML = courses.map(c =>
+      `<div class="course-card" onclick="selectCourse('${c.key}')">
+        <div class="course-title">${c.title}</div>
+        <div class="course-meta">${c.code} &middot; ${c.meta}</div>
+        <div class="course-intro">${c.intro}</div>
+        <button class="start-btn" onclick="event.stopPropagation(); startStudying('${c.key}')">Start Studying</button>
+      </div>`).join('');
+  }
+  renderCourses();
+
+  // Personalized greeting/profile
+  let currentUser = null;
+  let userDocRef = null;
+
+  onAuthStateChanged(auth, async user => {
+    if (!user) {
+      window.location.href = "enroll.html";
+      return;
+    }
+    currentUser = user;
+    document.getElementById("user-name").textContent =
+      user.displayName || user.email.split('@')[0];
+    document.getElementById("displayName").textContent =
+      user.displayName || user.email.split('@')[0];
+    document.getElementById("user-email").textContent = user.email || "";
+    document.getElementById("profile-img").src =
+      user.photoURL ? user.photoURL : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName||user.email||'EV')}&background=190021&color=fff&bold=true&rounded=true&size=128`;
+    userDocRef = doc(db, "users", user.uid);
+    // get additional profile info (DOB, bio...)
+    const snap = await getDoc(userDocRef);
+    if(snap.exists()){
+      const extra = snap.data();
+      if(extra.dob) document.getElementById('edit-dob').value = extra.dob;
+      if(extra.bio) document.getElementById('edit-bio').value = extra.bio;
+      if(extra.photoURL) document.getElementById('profile-img').src = extra.photoURL;
+    }
+  });
+
+  window.logout = function() {
+    signOut(auth);
+    window.location.href="enroll.html";
+  };
+
+  // PICK/DETAILS
+  window.selectCourse = function(key) {
+    const c = courses.find(x=>x.key===key);
+    if(!c) return;
+    const cont = document.getElementById('course-details');
+    let mediaHtml = "";
+    if(c.mediaType === "audio") {
+      mediaHtml = `
+      <audio controls class="course-audio" style="width:100%;margin-top:7px;">
+        <source src="${c.media}" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>`;
+    } else {
+      mediaHtml = `<iframe src="${c.media}" frameborder="0" allowfullscreen style="width:100%;height:185px;border-radius:13px;"></iframe>`;
+    }
+    cont.innerHTML=`
+      <h3 style="color:var(--cyan);margin-top:0">${c.title}</h3>
+      <div style="color:var(--cyan); font-size:1.1em; margin-bottom:6px;">${c.code} &middot; ${c.meta}</div>
+      <div style="margin-bottom:1em;">${mediaHtml}</div>
+      <div class="course-intro">${c.intro}</div>
+      <button class="start-btn" style="margin-top:2em;" onclick="alert('Course content and lessons coming up!')">Begin Study</button>
+      <span class="course-meta" style="margin-top:10px;display:block">Duration: 1 Semester &nbsp; | &nbsp; Outside Elvion: 4 years BSc/ELV, 2 years Masters</span>
+    `;
+    cont.style.display = "";
+    window.scrollTo({top: cont.offsetTop-100, behavior:"smooth"});
+  };
+
+  // Profile Modal logic
+  function openEditModal(){
+    document.getElementById('edit-modal-bg').style.display = "flex";
+    document.getElementById('edit-name').value = currentUser.displayName || "";
+    document.getElementById('edit-photo').value = currentUser.photoURL || "";
+    // add more if needed
+  }
+  function closeEditModal(){
+    document.getElementById('edit-modal-bg').style.display = "none";
+  }
+  window.openEditModal = openEditModal;
+  window.closeEditModal = closeEditModal;
+
+  // Save Profile
+  window.saveProfile = async function() {
+    const name = document.getElementById('edit-name').value.trim();
+    const photo = document.getElementById('edit-photo').value.trim();
+    const dob = document.getElementById('edit-dob').value;
+    const bio = document.getElementById('edit-bio').value.trim();
+    // Update Firebase Auth profile
+    await updateProfile(currentUser, {
+      displayName: name || currentUser.displayName,
+      photoURL: photo || currentUser.photoURL
+    });
+    // Update Firestore as well
+    await setDoc(userDocRef, { 
+      name, dob, bio, photoURL: photo, email: currentUser.email, updatedAt: new Date()
+    }, {merge:true});
+    document.getElementById('displayName').textContent = name;
+    document.getElementById('user-name').textContent = name;
+    document.getElementById('profile-img').src = photo || document.getElementById('profile-img').src;
+    closeEditModal();
+    // Optionally reload for full update: location.reload();
+  };
+
+</script>
+</body>
+  </html>
+
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
