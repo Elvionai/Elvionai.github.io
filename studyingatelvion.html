@@ -36,7 +36,6 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 24px 4vw 8px 4vw; background: var(--header-bg); 
       box-shadow: var(--border-glow); border-radius:0 0 28px 28px;
-      position: sticky; top: 0; z-index: 100; /* Sticky header for better UX */
     }
     .title { font-family:Orbitron,sans-serif; font-size:1.63em; color:var(--cyan); text-shadow:var(--border-glow);}
     .profile {
@@ -72,20 +71,7 @@
       border:2.1px solid #131b30;
       position: relative;
     }
-    /* LOCKED STATE STYLES */
-    .course-card.locked { 
-        cursor: not-allowed;
-        opacity: 0.55;
-        box-shadow: 0 0 5px #ff000030;
-        border-color: #ff000030;
-    }
-    .course-card.locked:hover {
-        box-shadow: 0 0 5px #ff000030;
-        border-color: #ff000030;
-        transform: none;
-    }
-    /* NORMAL HOVER STATE */
-    .course-card:not(.locked):hover {
+    .course-card:hover {
       box-shadow: 0 0 22px var(--cyan),0 0 44px #00c2ff49;
       border:2.1px solid var(--cyan);
       transform: scale(1.02);
@@ -136,28 +122,14 @@
     }
     .start-btn:hover { background: var(--blue); color:#fff; transform:scale(1.02);}
     .start-btn:active { transform:scale(0.99);}
-    .start-btn:disabled {
-        background: #333;
-        cursor: not-allowed;
-        box-shadow: none;
-        transform: none;
-        color: #999;
-    }
     
-    /* ---------------------- 4. COURSE DETAILS, MODAL, & STUDY SCREEN ---------------------- */
+    /* ---------------------- 4. COURSE DETAILS & MODAL ---------------------- */
     .course-details {
       padding:23px 19px 11px 19px; margin:20px auto; background:rgba(15,32,60,0.91);
       border-radius:14px; box-shadow:0 0 19px #0090ff18;
       max-width:600px; display:none; animation:fadeInDetail .85s;
     }
     @keyframes fadeInDetail {from{opacity:0;transform:translateY(15px);}to{opacity:1; transform:translateY(0);}}
-    
-    /* STUDY SCREEN STYLES */
-    #study-content h4 { color: var(--cyan); margin-top: 20px;}
-    #study-content code { background: #0c152a; color: #00ff88; padding: 2px 5px; border-radius: 4px; font-family: monospace;}
-    #study-content b { color: var(--blue); }
-
-    /* Modal styles remain the same */
     .edit-modal-bg {
       position: fixed; left:0; top:0; width:100vw; height:100vh;
       background:rgba(5,19,38,.69); display:none; align-items:center; justify-content:center; z-index:5000;
@@ -167,6 +139,7 @@
       box-shadow:0 0 30px #00fff2,0 0 12px #0071cf55; position:relative; max-width:98vw;
     }
     .edit-modal label {color:var(--cyan);font-family:Orbitron,sans-serif;font-size:.97em;margin-bottom:3px;display:block;}
+    /* Modal Inputs */
     .edit-modal input,.edit-modal textarea{
       width:100%; max-width:400px; padding:7px 10px; border-radius:8px; border:1.5px solid #274355;
       background:#131c2c; color:#f5f5f5; font-size:1em; font-family:Inter,sans-serif;margin-bottom:13px;
@@ -214,33 +187,14 @@
   </div>
 </header>
 <main>
-  <h2>My Computer Science Learning Path</h2>
-  <p style="color:var(--muted); margin-bottom: 25px;">Progress is sequential. Complete the current course to unlock the next one. Click 'Continue Studying' to resume your daily lesson.</p>
+  <h2>My Courses & Learning Path</h2>
+  <div style="margin-bottom: 20px;">
+    <input type="text" placeholder="Search courses by code or name..." 
+           style="width: 100%; max-width: 400px; padding: 10px; border-radius: 8px; border: 1px solid #00ffff55; background: #181d32; color: var(--text);">
+  </div>
 
   <div class="courses-grid" id="courses-grid"></div>
-  
   <div class="course-details" id="course-details"></div>
-
-  <section id="study-screen" style="display: none; padding: 25px 20px; background: var(--card-bg); border-radius: var(--radius); max-width: 800px; margin: 20px auto; box-shadow: var(--border-glow);">
-    <button id="back-to-dashboard" style="background: none; border: none; color: var(--cyan); font-size: 1em; cursor: pointer; margin-bottom: 20px;"><i class="fa fa-arrow-left"></i> Back to Dashboard</button>
-    <h2 id="study-course-title" style="margin-top: 0;"></h2>
-    <h3 id="study-module-title" style="color: var(--blue);"></h3>
-    
-    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-        <button id="audio-toggle-btn" class="start-btn" style="padding: 6px 15px; margin: 0; background: #19243c; color: var(--cyan); box-shadow: none; font-size: 0.9em; width: auto;">
-            <i class="fa fa-volume-up"></i> Audio Read
-        </button>
-        <span id="tts-status" style="color: var(--muted); font-size: 0.85em;">Ready.</span>
-    </div>
-
-    <div id="study-content" style="background: #181d32; padding: 20px; border-radius: 10px; border: 1px solid #00ffff33; margin-bottom: 20px; line-height: 1.6;">
-        <p style="color: var(--muted);">Content loading...</p>
-    </div>
-
-    <button id="mark-as-complete-btn" class="start-btn" style="width: 100%; margin: 0;">
-        <i class="fa fa-check"></i> Mark Day Complete
-    </button>
-  </section>
 </main>
 
 <div class="edit-modal-bg" id="edit-modal-bg">
@@ -298,340 +252,115 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-  
-  let userProgress = {}; // Stores user's course progress data (simulated from Firestore/localStorage)
-  let currentUser = null; // Global user object
-  window.markDayComplete = null; // Defined in onAuthStateChanged
 
-  // -------- NEW SEQUENTIAL COURSE LIST (Computer Science Path)
-  const csPath = [
-    { key: "csc101", title: "Introduction to Programming", code: "CSC 101", intro: "Foundations of software, programming, and digital algorithms.", icon: "fa-laptop-code", days: [
-      { title: "Day 1: What is Code? & Setup", content: "<h4>What is Programming?</h4><p>Welcome! **Code** is a set of instructions a computer follows—think of it as a recipe. It tells the computer exactly what to do. Today, we focus on understanding the concept and setting up our environment.</p><p><b>Task:</b> Install Python (for this course) and a code editor like VS Code.</p>" },
-      { title: "Day 2: Variables & Data Types", content: "<h4>Storing Information</h4><p>A **variable** is a reserved memory location to store values. In Python, you don't declare the type, but the data has a type.</p><p><b>Examples:</b> <ul><li><code>age = 25</code> (Integer)</li><li><code>name = 'Elvion'</code> (String/Text)</li><li><code>is_student = True</code> (Boolean)</li></ul></p>" },
-      { title: "Day 3: Basic Input and Output", content: "<h4>Talking to the User</h4><p>The **Output** function, <code>print()</code>, displays information on the screen. The **Input** function, <code>input()</code>, gets data from the user and stores it in a variable.</p><p><b>Code Snippet:</b> <code>user_name = input('What is your name? ')</code></p>" },
-      { title: "Day 4: Assignment Review", content: "<h4>Week 1 Checkpoint</h4><p>You have completed the first module! Review the concepts of variables, data types, and I/O. **Next week** you will start Control Flow.</p><p><b>Goal:</b> Ensure you can write a simple program that takes a user's name and prints a greeting.</p>" }
-    ]},
-    { key: "csc102", title: "Data Structures", code: "CSC 102", intro: "Organizing and managing data efficiently for algorithms.", icon: "fa-sitemap", days: [
-      { title: "Day 1: Arrays & Lists Introduction", content: "<h4>Ordered Collections</h4><p>**Arrays** (or **Lists** in Python) are data structures that store a collection of items, accessed by an index (starting from 0). They are fundamental for storing sequential data.</p>" },
-      { title: "Day 2: Stacks (LIFO)", content: "<h4>Last-In, First-Out</h4><p>A **Stack** is an abstract data type where the last element added is the first element taken out (LIFO). Think of a stack of plates.</p>" }
-    ]},
-    { key: "csc201", title: "Object-Oriented Programming", code: "CSC 201", intro: "Designing software using 'objects' that bundle data and methods.", icon: "fa-cubes" , days: [
-        { title: "Day 1: Classes & Objects", content: "<h4>Blueprints and Instances</h4><p>An **Object** is an instance of a **Class**. A Class is a blueprint for creating objects, providing initial values for state (member variables) and implementations of behavior (member functions/methods).</p>" }
-    ]},
-    { key: "csc202", title: "Database Systems", code: "CSC 202", intro: "Relational theory, SQL, and database management.", icon: "fa-database" , days: [
-        { title: "Day 1: SQL Basics (SELECT)", content: "<h4>Querying Data</h4><p>**SQL (Structured Query Language)** is the standard language for relational database management. The primary command for retrieval is the <code>SELECT</code> statement.</p>" }
-    ]},
-    { key: "csc301", title: "Software Engineering", code: "CSC 301", intro: "Systematic approach to software design, development, and maintenance.", icon: "fa-rocket" , days: [{ title: "Day 1: Agile & Scrum", content: "<h4>Iterative Development</h4><p>**Agile** is an iterative approach to project management. **Scrum** is a lightweight framework within Agile that helps teams work together on complex products.</p>" }]},
-    { key: "csc302", title: "Computer Networks", code: "CSC 302", intro: "Concepts of networking, protocols, and the internet architecture.", icon: "fa-network-wired" , days: [{ title: "Day 1: OSI Model Overview", content: "<h4>7 Layers of Communication</h4><p>The **OSI (Open Systems Interconnection)** Model describes the functions of a telecommunication system by dividing it into 7 layers, from Physical to Application.</p>" }]},
-    { key: "csc401", title: "Artificial Intelligence", code: "CSC 401", intro: "Machine learning, neural networks, and intelligent systems.", icon: "fa-brain" , days: [{ title: "Day 1: Introduction to AI", content: "<h4>What is Intelligence?</h4><p>**Artificial Intelligence** is a wide-ranging branch of computer science concerned with building smart machines capable of performing tasks that typically require human intelligence.</p>" }]},
-    { key: "csc402", title: "Final Year Project", code: "CSC 402", intro: "Capstone project to apply all learned concepts.", icon: "fa-trophy" , days: [{ title: "Day 1: Proposal Phase", content: "<h4>Defining the Project</h4><p>Today's focus is on defining your problem, scope, objectives, and proposed solution. This proposal will guide your development over the semester.</p>" }]}
+  // -------- COURSE LIST (with new icons and randomized progress)
+  const courses = [
+    { key: "cs", title: "Computer Science", intro: "Foundations of software, programming, and digital algorithms.", code: "CSC 101", meta: "Science & Tech", mediaType: "video", media: "https://www.youtube.com/embed/5Qwwjych21o", icon: "fa-laptop-code", progress: Math.floor(Math.random() * 99) },
+    { key: "law", title: "Law (ELV)", intro: "Active learning on constitutional law, contracts, legal writing, and advocacy.", code: "LAW 101", meta: "Faculty of Law", mediaType: "video", media: "https://www.youtube.com/embed/_c6iHL2Zd5o", icon: "fa-scale-balanced", progress: Math.floor(Math.random() * 99) },
+    { key: "literature", title: "English & Literary Studies", intro: "Explore English structure, world literature, and creative writing.", code: "ENG 101", meta: "Arts & Humanities", mediaType: "audio", media: "/assets/intro-arts.mp3", icon: "fa-book-open-reader", progress: Math.floor(Math.random() * 20) },
+    { key: "history", title: "History & Strategic Studies", intro: "Modern world history, strategy and global affairs.", code: "HIS 101", meta: "Arts & Humanities", mediaType: "audio", media: "/assets/intro-history.mp3", icon: "fa-landmark", progress: 100 }, // Completed
+    { key: "masscomm", title: "Mass Communication", intro: "Broadcasting, journalism, PR & media production.", code: "MASS 101", meta: "Social Sciences", mediaType: "audio", media: "/assets/intro-masscomm.mp3", icon: "fa-satellite-dish", progress: Math.floor(Math.random() * 99) },
+    { key: "business", title: "Business Administration", intro: "Principles of management, entrepreneurship, and finance.", code: "BUS 101", meta: "Social Sciences", mediaType: "audio", media: "/assets/intro-business.mp3", icon: "fa-chart-line", progress: 0 }, // Not Started
+    { key: "mathed", title: "Mathematics Education", intro: "Effective teaching and learning methods for math.", code: "MATED 101", meta: "Faculty of Education", mediaType: "audio", media: "/assets/intro-mathed.mp3", icon: "fa-calculator", progress: Math.floor(Math.random() * 99) },
+    { key: "adulted", title: "Adult Education", intro: "How adults learn: strategies for teaching and community engagement.", code: "AED 101", meta: "Faculty of Education", mediaType: "audio", media: "/assets/intro-adulted.mp3", icon: "fa-user-graduate", progress: 100 } // Completed
   ];
-
 
   // ----------------- CORE LMS FUNCTIONS -----------------
   
-  // Calculates overall progress for a course based on completed days
-  function calculateCourseProgress(courseKey) {
-    const course = csPath.find(c => c.key === courseKey);
-    if (!course) return 0;
-    const totalDays = course.days.length;
-    const completedDays = userProgress[courseKey]?.completedDays || 0;
-    return totalDays > 0 ? Math.floor((completedDays / totalDays) * 100) : 100; // Return 100 if days is 0 (shouldn't happen here)
-  }
-
-  // Find the key for the next module/day to study in a course
-  function findNextModule(courseKey) {
-      const course = csPath.find(c => c.key === courseKey);
-      if (!course) return null;
-      const completedDays = userProgress[courseKey]?.completedDays || 0;
-      
-      // If completedDays is less than total days, return the next one
-      if (completedDays < course.days.length) {
-          return {
-              moduleIndex: completedDays,
-              moduleData: course.days[completedDays]
-          };
-      }
-      return null; // Course is fully completed
-  }
-
-
   // Populate course grid with progress bars and dynamic buttons
   function renderCourses() {
     const cg = document.getElementById("courses-grid");
-    cg.innerHTML = ""; // Clear existing content
-    let isPreviousCompleted = true; // Sequential check flag
+    cg.innerHTML = courses.map(c => {
+      const isCompleted = c.progress >= 100;
+      const statusClass = isCompleted ? 'completed' : (c.progress > 0 ? 'in-progress' : 'new');
+      const buttonText = isCompleted ? 'Review Course' : (c.progress > 0 ? 'Continue Learning' : 'Start Studying');
+
+      return `
+        <div class="course-card ${statusClass}" data-key="${c.key}">
+          <div class="course-header">
+            <div class="course-title">${c.title}</div>
+            <i class="fa ${c.icon} course-icon" title="${c.meta}"></i>
+          </div>
+          <div class="course-meta">${c.code} &middot; ${c.meta}</div>
+          <div class="progress-text">${isCompleted ? 'Completed' : c.progress + '% Progress'}</div>
+          <div class="progress-container">
+            <div class="progress-bar" style="width: ${c.progress}%;"></div>
+          </div>
+          <div class="course-intro">${c.intro}</div>
+          <button class="start-btn" data-key="${c.key}">${buttonText}</button>
+        </div>
+      `;
+    }).join('');
     
-    csPath.forEach((c, index) => {
-        const overallProgress = calculateCourseProgress(c.key);
-        const isCompleted = overallProgress >= 100;
-        const isLocked = !isPreviousCompleted;
-        const nextModule = findNextModule(c.key);
-
-        // Determine status and button text
-        let statusClass = isCompleted ? 'completed' : (isLocked ? 'locked' : (overallProgress > 0 ? 'in-progress' : 'new'));
-        let buttonText = isCompleted ? 'Review Course' : (overallProgress > 0 ? 'Continue Studying' : 'Start Studying');
-        
-        const buttonDisabled = isLocked ? 'disabled' : '';
-
-        const card = document.createElement('div');
-        card.className = `course-card ${statusClass}`;
-        card.dataset.key = c.key;
-            
-        card.onclick = isLocked ? (e) => {
-            alert(`⛔ Course Locked: You must complete ${csPath[index-1]?.code} first.`);
-        } : (e) => {
+    // Attach event listeners after rendering (cleaner than inline onclick)
+    document.querySelectorAll('.course-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            // Prevent card click when clicking the button
             if (e.target.closest('.start-btn')) return;
-            selectCourse(c.key);
-        };
-
-        // Determine intro/module status
-        let currentStatusText = "";
-        if (isCompleted) {
-            currentStatusText = "COMPLETED! ✅";
-        } else if (overallProgress > 0) {
-            currentStatusText = `Next: ${nextModule.moduleData.title}`;
-        } else if (!isLocked) {
-             currentStatusText = "Start your 4-day module.";
-        } else {
-             currentStatusText = "LOCKED: Complete prerequisite first.";
-        }
-
-
-        card.innerHTML = `
-            <div class="course-header">
-                <div class="course-title">${c.title}</div>
-                <i class="fa ${c.icon || 'fa-graduation-cap'} course-icon" title="${c.code}"></i>
-            </div>
-            <div class="course-meta">${c.code}</div>
-            <div class="progress-text">${isCompleted ? '100% Completed' : overallProgress + '% Progress'}</div>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${overallProgress}%;"></div>
-            </div>
-            <div class="course-intro" style="font-style: italic;">${currentStatusText}</div>
-            <button class="start-btn" data-key="${c.key}" ${buttonDisabled} onclick="event.stopPropagation(); startStudying('${c.key}');">${buttonText}</button>
-        `;
-        
-        cg.appendChild(card);
-        
-        // Update sequential flag for the next iteration
-        isPreviousCompleted = isCompleted;
+            selectCourse(card.dataset.key);
+        });
+    });
+    document.querySelectorAll('.start-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevents card click event
+            startStudying(btn.dataset.key);
+        });
     });
   }
 
-  // Course Details Display (now shows module breakdown)
+  // Course Details Display
   function selectCourse(key) {
-    const c = csPath.find(x => x.key === key);
+    const c = courses.find(x => x.key === key);
     if (!c) return;
     const cont = document.getElementById('course-details');
-    const overallProgress = calculateCourseProgress(c.key);
-    const completedDays = userProgress[key]?.completedDays || 0;
     
-    let modulesHtml = `<ul style="list-style: none; padding: 0; font-size: 0.95em;">`;
-    c.days.forEach((module, index) => {
-        const isCompleted = index < completedDays;
-        const isCurrent = index === completedDays;
-        const icon = isCompleted ? 'fa-check-circle' : (isCurrent ? 'fa-arrow-circle-right' : 'fa-circle');
-        const color = isCompleted ? '#00ff88' : (isCurrent ? 'var(--cyan)' : 'var(--muted)');
-        
-        modulesHtml += `
-            <li style="margin-bottom: 8px;">
-                <i class="fa ${icon}" style="color:${color}; margin-right: 5px;"></i> ${module.title}
-                <span style="float:right; color:${isCompleted ? '#00ff88' : 'var(--muted)'};">${isCompleted ? 'Completed' : (isCurrent ? 'NEXT' : 'Pending')}</span>
-            </li>`;
-    });
-    modulesHtml += `</ul>`;
+    let mediaHtml = c.mediaType === "audio" 
+      ? `<audio controls class="course-audio" style="width:100%;margin-top:7px;"><source src="${c.media}" type="audio/mpeg"></audio>`
+      : `<iframe src="${c.media}" frameborder="0" allowfullscreen style="width:100%;height:220px;border-radius:13px;"></iframe>`;
+
+    // Example of a more detailed progress breakdown
+    const progressBreakdown = `
+        <div style="margin-top: 15px; border-top: 1px solid #00ffff10; padding-top: 15px;">
+            <h4 style="color:var(--cyan); margin: 0 0 10px 0;">Module Progress (${c.progress}%)</h4>
+            <ul style="list-style: none; padding: 0; font-size: 0.95em;">
+                <li style="margin-bottom: 5px;"><i class="fa fa-check-circle" style="color:#00ff88;"></i> Module 1: Foundations (100%)</li>
+                <li style="margin-bottom: 5px;"><i class="fa fa-dot-circle" style="color:var(--cyan);"></i> Module 2: Core Concepts (${Math.min(c.progress, 50)}%)</li>
+                <li style="margin-bottom: 5px;"><i class="fa fa-circle" style="color:var(--muted);"></i> Module 3: Application (0%)</li>
+            </ul>
+        </div>
+    `;
 
     cont.innerHTML = `
-      <h3 style="color:var(--cyan);margin-top:0">${c.title} Module Breakdown</h3>
-      <div style="color:var(--cyan); font-size:1.1em; margin-bottom:10px;">${c.code} &middot; ${c.intro}</div>
-      <div class="progress-container" style="height: 10px;">
-        <div class="progress-bar" style="width: ${overallProgress}%;"></div>
-      </div>
-      <div class="progress-text" style="text-align: left; margin-bottom: 20px;">${overallProgress}% Overall Progress (${completedDays}/${c.days.length} Days)</div>
-      
-      ${modulesHtml}
-      
-      <button class="start-btn" style="margin-top:2em;" onclick="startStudying('${c.key}');">
-        ${overallProgress >= 100 ? 'Review Course Content' : (overallProgress > 0 ? 'Continue Studying' : 'Begin Study')}
-      </button>
+      <h3 style="color:var(--cyan);margin-top:0">${c.title}</h3>
+      <div style="color:var(--cyan); font-size:1.1em; margin-bottom:6px;">${c.code} &middot; ${c.meta}</div>
+      <div style="margin-bottom:1em;">${mediaHtml}</div>
+      <div class="course-intro">${c.intro}</div>
+      ${progressBreakdown}
+      <button class="start-btn" style="margin-top:2em;" data-key="${c.key}">${c.progress >= 100 ? 'Review Course' : 'Begin Study'}</button>
+      <span class="course-meta" style="margin-top:10px;display:block">Duration: 1 Semester &nbsp; | &nbsp; Credits: 3.0 Cr</span>
     `;
     cont.style.display = "block";
+    
+    // Add event listener to the details button
+    cont.querySelector('.start-btn').addEventListener('click', () => startStudying(c.key));
+
     window.scrollTo({ top: cont.offsetTop - 100, behavior: "smooth" });
   }
 
-  // The new 'Learning Screen' logic
   function startStudying(key) {
-    const course = csPath.find(x => x.key === key);
-    if (!course) return;
-
-    const nextModule = findNextModule(key);
-    
-    // Check if fully completed and button is pressed for review
-    if (!nextModule) {
-        // For review, we show the last module's content or a completion message
-        const lastModule = course.days[course.days.length - 1];
-        
-        // Hide dashboard and show study screen
-        hideDashboard();
-        const studyScreen = document.getElementById('study-screen');
-        studyScreen.style.display = 'block';
-
-        document.getElementById('study-course-title').textContent = `${course.code}: ${course.title}`;
-        document.getElementById('study-module-title').textContent = "Review: Course Completed";
-        document.getElementById('study-content').innerHTML = "<h4>Course Complete</h4><p>You have successfully finished all modules for this course. Use this space for optional review materials.</p>" + lastModule.content;
-        
-        const completeBtn = document.getElementById('mark-as-complete-btn');
-        completeBtn.textContent = 'Course Completed';
-        completeBtn.disabled = true;
-        
-        initTTS("Course completed. Reviewing final content.");
-        return;
-    }
-    
-    // Normal study flow
-    
-    // Hide dashboard and show study screen
-    hideDashboard();
-    const studyScreen = document.getElementById('study-screen');
-    studyScreen.style.display = 'block';
-
-    document.getElementById('study-course-title').textContent = `${course.code}: ${course.title}`;
-    document.getElementById('study-module-title').textContent = nextModule.moduleData.title;
-    document.getElementById('study-content').innerHTML = nextModule.moduleData.content;
-    
-    // Setup completion button
-    const completeBtn = document.getElementById('mark-as-complete-btn');
-    completeBtn.textContent = `Mark Day ${nextModule.moduleIndex + 1} Complete`;
-    completeBtn.disabled = false;
-    completeBtn.onclick = () => window.markDayComplete(key, nextModule.moduleIndex);
-    
-    // Scroll to the top of the study screen
-    window.scrollTo({ top: studyScreen.offsetTop - 100, behavior: "smooth" });
-    
-    // Initialize Text-to-Speech
-    initTTS(nextModule.moduleData.content);
+    // In a real LMS, this would redirect to the course content page: 
+    // window.location.href = `/course-content.html?key=${key}`;
+    alert(`Redirecting to ${key.toUpperCase()} course content! This is where the learning happens.`);
   }
-
-  function hideDashboard() {
-    document.querySelector('main h2').style.display = 'none';
-    document.querySelector('main > p').style.display = 'none';
-    document.getElementById('courses-grid').style.display = 'none';
-    document.getElementById('course-details').style.display = 'none';
-    // Hide search bar, if it wasn't removed earlier
-    const searchInput = document.querySelector('main > div > input[type="text"]');
-    if (searchInput) searchInput.style.display = 'none';
-  }
-
-  // TTS Logic
-  let isAudioOn = false;
-  let synth = window.speechSynthesis;
-  let utterance = null;
-  const audioBtn = document.getElementById('audio-toggle-btn');
-  const ttsStatus = document.getElementById('tts-status');
-
-  function initTTS(text) {
-    if (!synth || !('SpeechSynthesisUtterance' in window)) {
-        audioBtn.textContent = "Audio Not Supported";
-        audioBtn.disabled = true;
-        ttsStatus.textContent = "Browser audio features are unavailable.";
-        return;
-    }
-    
-    // Stop any previous speech
-    if (synth.speaking) synth.cancel();
-    isAudioOn = false;
-    audioBtn.textContent = '<i class="fa fa-volume-up"></i> Audio Read';
-    ttsStatus.textContent = "Ready.";
-
-    // Clean content for speaking (remove HTML tags and newlines)
-    const cleanedText = text.replace(/<[^>]*>/g, '').replace(/&middot;/g, '').replace(/&nbsp;/g, ' ').replace(/\n/g, ' ').trim();
-
-    utterance = new SpeechSynthesisUtterance(cleanedText);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-    
-    // Try to find a good voice (adjust the filter criteria for better results)
-    const voices = synth.getVoices();
-    utterance.voice = voices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en-US')) || voices[0];
-    
-    // Event listeners for feedback
-    utterance.onstart = () => { ttsStatus.textContent = "Speaking..."; audioBtn.innerHTML = '<i class="fa fa-volume-down"></i> Stop Audio'; isAudioOn = true; };
-    utterance.onend = () => { ttsStatus.textContent = "Playback Finished."; audioBtn.innerHTML = '<i class="fa fa-volume-up"></i> Audio Read'; isAudioOn = false; };
-    utterance.onerror = (event) => { ttsStatus.textContent = `Error: ${event.error}`; isAudioOn = false; };
-  }
-
-  audioBtn.onclick = () => {
-    if (!utterance || audioBtn.disabled) return;
-    
-    if (synth.speaking && isAudioOn) {
-        synth.cancel(); // Stop completely
-    } else if (synth.paused) {
-        synth.resume();
-    } else {
-        synth.speak(utterance);
-    }
-  };
-
-  // Back button logic
-  document.getElementById('back-to-dashboard').addEventListener('click', () => {
-    if (synth.speaking) synth.cancel();
-    isAudioOn = false;
-    document.getElementById('study-screen').style.display = 'none';
-    document.querySelector('main h2').style.display = 'block';
-    document.querySelector('main > p').style.display = 'block';
-    document.getElementById('courses-grid').style.display = 'grid';
-    document.getElementById('course-details').style.display = 'none'; // Hide details again
-    const searchInput = document.querySelector('main > div > input[type="text"]');
-    if (searchInput) searchInput.style.display = 'block';
-    renderCourses(); // Re-render to update status
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-
-  // Function to save and advance progress (Real/Demo implementation below)
-  async function markDayComplete(courseKey, completedIndex) {
-    const course = csPath.find(x => x.key === courseKey);
-    const totalDays = course.days.length;
-
-    const nextCompletedDays = completedIndex + 1;
-    const isCourseCompleted = nextCompletedDays >= totalDays;
-
-    // 1. Update local state
-    userProgress[courseKey] = { completedDays: nextCompletedDays, completed: isCourseCompleted };
-    
-    // 2. Persist state (Firestore/LocalStorage handled in onAuthStateChanged)
-    if (currentUser.uid !== "demo-user") {
-        try {
-            await setDoc(doc(db, "user-progress", currentUser.uid), {
-                [courseKey]: { completedDays: nextCompletedDays, completed: isCourseCompleted, lastUpdated: new Date() }
-            }, { merge: true });
-        } catch(e) {
-            console.error("Error updating progress in Firestore: ", e);
-            alert("Warning: Could not save progress to the server.");
-        }
-    } else {
-        localStorage.setItem('elvion-progress', JSON.stringify(userProgress));
-    }
-    
-    // 3. User Feedback and Redirection
-    if (isCourseCompleted) {
-        alert(`🎉 Congratulations! You have completed ${course.code}. The next course is now unlocked.`);
-    } else {
-        alert(`Day ${nextCompletedDays} marked complete! Ready for ${course.days[nextCompletedDays]?.title || 'review'}.`);
-    }
-    
-    // Stop audio and return to dashboard
-    if (synth.speaking) synth.cancel();
-    document.getElementById('back-to-dashboard').click();
-  }
-
 
   // ----------------- PROFILE & AUTH FUNCTIONS -----------------
+  let currentUser = null;
   let userDocRef = null;
 
   onAuthStateChanged(auth, async user => {
     if (!user) {
-      // Failsafe for demo
+      // window.location.href = "enroll.html"; // Redirect to login
+      // Failsafe for demo: use placeholder data if user is null
       currentUser = { uid: "demo-user", displayName: "A. Student", email: "demo@elvion.edu", photoURL: 'https://i.pravatar.cc/150?img=12' };
     } else {
       currentUser = user;
@@ -644,31 +373,6 @@
       }
     }
     
-    // === LOAD PROGRESS DATA ===
-    if (currentUser.uid === "demo-user") {
-        // DEMO PERSISTENCE: Use Local Storage
-        const localProgress = localStorage.getItem('elvion-progress');
-        userProgress = localProgress ? JSON.parse(localProgress) : {};
-    } else {
-        // REAL USER: Load from Firestore (Placeholder code)
-        const progressDocRef = doc(db, "user-progress", currentUser.uid);
-        const progressSnap = await getDoc(progressDocRef);
-        userProgress = progressSnap.exists() ? progressSnap.data() : {};
-    }
-    
-    // Initialize or clean up progress data structure
-    csPath.forEach(c => {
-         if (!userProgress[c.key]) {
-            userProgress[c.key] = { completedDays: 0, completed: false };
-         }
-    });
-    
-    // Expose core functions globally
-    window.selectCourse = selectCourse;
-    window.startStudying = startStudying;
-    window.markDayComplete = markDayComplete; // Use the function defined above
-
-    // === UPDATE UI ===
     document.getElementById("displayName").textContent = currentUser.displayName || currentUser.email.split('@')[0];
     document.getElementById("user-email").textContent = currentUser.email || "";
     document.getElementById("profile-img").src = currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName||currentUser.email||'EV')}&background=190021&color=fff&bold=true&rounded=true&size=128`;
@@ -678,12 +382,12 @@
 
   document.getElementById('logout-btn').addEventListener('click', () => {
     signOut(auth);
-    localStorage.removeItem('elvion-progress'); // Clear demo progress
-    alert("Logged out! (Demo mode - Progress cleared)");
+    // window.location.href="enroll.html";
+    alert("Logged out! (Demo mode)");
     location.reload(); 
   });
 
-  // Modal logic (kept simple, copied from original)
+  // Modal logic using event listeners
   const modalBg = document.getElementById('edit-modal-bg');
   const editName = document.getElementById('edit-name');
   const editPhoto = document.getElementById('edit-photo');
@@ -692,7 +396,7 @@
     modalBg.style.display = "flex";
     editName.value = currentUser.displayName || "";
     editPhoto.value = currentUser.photoURL || "";
-    editName.focus(); 
+    editName.focus(); // Accessibility: set focus to the first input
   }
   function closeEditModal() {
     modalBg.style.display = "none";
@@ -703,27 +407,42 @@
   document.getElementById('cancel-profile-btn').addEventListener('click', closeEditModal);
 
   document.getElementById('save-profile-btn').addEventListener('click', async () => {
-    // Save logic simplified for demo, focusing on UI update
     const name = editName.value.trim();
     const photo = editPhoto.value.trim();
+    const dob = document.getElementById('edit-dob').value;
+    const bio = document.getElementById('edit-bio').value.trim();
     
     const saveButton = document.getElementById('save-profile-btn');
     saveButton.textContent = 'Saving...';
     saveButton.disabled = true;
 
-    // Simulate saving and UI update
-    currentUser.displayName = name; 
-    currentUser.photoURL = photo;
-    document.getElementById('displayName').textContent = name;
-    document.getElementById('profile-img').src = photo || document.getElementById('profile-img').src;
+    try {
+      // 1. Update Firebase Auth (if real user)
+      if (currentUser.uid !== "demo-user") {
+          await updateProfile(currentUser, {
+              displayName: name || currentUser.displayName,
+              photoURL: photo || currentUser.photoURL
+          });
+          // 2. Update Firestore (if real user)
+          await setDoc(userDocRef, { 
+              name, dob, bio, photoURL: photo, email: currentUser.email, updatedAt: new Date()
+          }, { merge: true });
+      }
 
-    // In a real app, Firebase Auth/Firestore update would go here.
+      // Update UI
+      document.getElementById('displayName').textContent = name;
+      document.getElementById('user-email').textContent = currentUser.email;
+      document.getElementById('profile-img').src = photo || document.getElementById('profile-img').src;
 
-    closeEditModal();
-    alert('Profile saved successfully!');
-
-    saveButton.textContent = 'Save';
-    saveButton.disabled = false;
+      closeEditModal();
+      alert('Profile saved successfully!');
+    } catch(error) {
+        console.error("Error saving profile:", error);
+        alert("Failed to save profile. Check console for details.");
+    } finally {
+        saveButton.textContent = 'Save';
+        saveButton.disabled = false;
+    }
   });
 
 </script>
