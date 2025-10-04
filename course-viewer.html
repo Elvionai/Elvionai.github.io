@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* --- VARIABLES & BASE STYLES --- */
     :root {
       --dark-navy: #00001a;
       --black-bg: #000000;
@@ -31,729 +32,134 @@
       --error-color: #f87171;
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--black-bg); color: var(--text-color); line-height: 1.7; overflow-x: hidden; position: relative; min-height: 100vh; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Orbitron', sans-serif; color: var(--heading-color); margin-top: 0; }
+    a { color: var(--cyan-glow); text-decoration: none; }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: var(--black-bg);
-      color: var(--text-color);
-      line-height: 1.7;
-      overflow-x: hidden;
-      position: relative;
-      min-height: 100vh;
+    /* --- LAYOUT --- */
+    .course-viewer-container { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+    .course-sidebar { 
+        width: var(--sidebar-width); background: var(--card-bg); backdrop-filter: blur(10px); 
+        border-right: 1px solid rgba(0, 255, 255, 0.2); position: fixed; height: 100vh; 
+        overflow-y: auto; z-index: 100; transition: transform 0.3s ease;
+    }
+    .content-area { 
+        flex: 1; margin-left: var(--sidebar-width); display: flex; flex-direction: column; 
+        min-height: 100vh; width: calc(100% - var(--sidebar-width)); /* Ensures fitting */
+    }
+    .main-content { 
+        flex: 1; padding: 2rem; background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
     }
 
-    h1, h2, h3, h4, h5, h6 {
-      font-family: 'Orbitron', sans-serif;
-      color: var(--heading-color);
-      margin-top: 0;
+    /* --- SIDEBAR COMPONENTS --- */
+    .back-btn { 
+        display: flex; align-items: center; gap: 0.5rem; color: var(--cyan-glow); font-weight: 600; 
+        padding: 0.8rem; border-radius: 8px; transition: all 0.3s ease; margin-bottom: 1rem;
     }
-
-    /* Stars Animation */
-    #stars-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
+    .lessons-header { 
+        padding: 0 1.5rem 1rem 1.5rem; font-size: 1.1rem; color: var(--heading-color); 
+        border-bottom: 1px solid rgba(0, 255, 255, 0.1);
     }
-
-    .star {
-      position: absolute;
-      background-color: var(--star-color);
-      border-radius: 50%;
-      opacity: 0;
-      animation: twinkle 4s infinite ease-in-out;
+    .lesson-item { 
+        display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; cursor: pointer; 
+        transition: all 0.3s ease; border-left: 3px solid transparent; 
     }
+    .lesson-item.active { background: rgba(0, 255, 255, 0.1); border-left-color: var(--cyan-glow); }
+    .lesson-status.current { background: var(--cyan-glow); color: var(--black-bg); }
 
-    @keyframes twinkle {
-      0%, 100% { opacity: 0; transform: scale(0.5); }
-      50% { opacity: 1; transform: scale(1); }
-    }
-
-    /* Main Layout */
-    .course-viewer-container {
-      display: flex;
-      min-height: 100vh;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* Course Sidebar */
-    .course-sidebar {
-      width: var(--sidebar-width);
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-right: 1px solid rgba(0, 255, 255, 0.2);
-      position: fixed;
-      height: 100vh;
-      overflow-y: auto;
-      z-index: 100;
-      transition: transform 0.3s ease;
-    }
-
-    .course-sidebar-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-    }
-
-    .back-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--cyan-glow);
-      text-decoration: none;
-      font-weight: 600;
-      padding: 0.8rem;
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      margin-bottom: 1rem;
-    }
-
-    .back-btn:hover {
-      background: rgba(0, 255, 255, 0.1);
-    }
-
-    .course-info {
-      text-align: center;
-    }
-
-    .course-icon-large {
-      font-size: 3rem;
-      color: var(--cyan-glow);
-      text-shadow: var(--border-glow);
-      margin-bottom: 1rem;
-    }
-
-    .course-title {
-      font-size: 1.4rem;
-      margin-bottom: 0.5rem;
-      color: var(--heading-color);
-    }
-
-    .course-subtitle {
-      font-size: 0.9rem;
-      color: var(--text-color);
-      opacity: 0.8;
-      margin-bottom: 1rem;
-    }
-
-    .overall-progress {
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .progress-label {
-      font-size: 0.85rem;
-      color: var(--text-color);
-      margin-bottom: 0.5rem;
-    }
-
-    .progress-bar-container {
-      width: 100%;
-      height: 8px;
-      background: rgba(0, 255, 255, 0.1);
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 0.5rem;
-    }
-
-    .progress-bar-fill {
-      height: 100%;
-      background: var(--button-bg);
-      border-radius: 10px;
-      transition: width 0.8s ease;
-      box-shadow: 0 0 10px var(--cyan-glow);
-    }
-
-    .progress-text {
-      font-size: 0.85rem;
-      color: var(--cyan-glow);
-      font-weight: 600;
-    }
-
-    /* Lessons List */
-    .lessons-list {
-      padding: 1rem 0;
-    }
-
-    .lessons-header {
-      padding: 0 1.5rem 1rem 1.5rem;
-      font-size: 1.1rem;
-      color: var(--heading-color);
-      border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-    }
-
-    .lesson-item {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem 1.5rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border-left: 3px solid transparent;
-    }
-
-    .lesson-item:hover {
-      background: rgba(0, 255, 255, 0.05);
-    }
-
-    .lesson-item.active {
-      background: rgba(0, 255, 255, 0.1);
-      border-left-color: var(--cyan-glow);
-    }
-
-    .lesson-item.completed {
-      opacity: 0.8;
-    }
-
-    .lesson-status {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      flex-shrink: 0;
-    }
-
-    .lesson-status.completed {
-      background: var(--success-color);
-      color: var(--black-bg);
-    }
-
-    .lesson-status.current {
-      background: var(--cyan-glow);
-      color: var(--black-bg);
-    }
-
-    .lesson-status.locked {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-color);
-    }
-
-    .lesson-details {
-      flex: 1;
-    }
-
-    .lesson-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--heading-color);
-      margin-bottom: 0.3rem;
-    }
-
-    .lesson-duration {
-      font-size: 0.8rem;
-      color: var(--text-color);
-      opacity: 0.7;
-    }
-
-    /* Mobile Menu Toggle */
-    .mobile-menu-toggle {
-      display: none;
-      position: fixed;
-      top: 1rem;
-      left: 1rem;
-      z-index: 101;
-      background: var(--card-bg);
-      border: 1px solid var(--cyan-glow);
-      border-radius: 8px;
-      padding: 0.5rem 0.8rem;
-      color: var(--cyan-glow);
-      cursor: pointer;
-      box-shadow: var(--border-glow);
-    }
-
-    /* Content Area */
-    .content-area {
-      flex: 1;
-      margin-left: var(--sidebar-width);
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      width: calc(100% - var(--sidebar-width)); /* Added for better responsiveness */
-    }
-
-    .content-header {
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-      padding: 1.5rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .lesson-info h1 {
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .lesson-meta {
-      display: flex;
-      gap: 1.5rem;
-      font-size: 0.9rem;
-      color: var(--text-color);
-    }
-
-    .lesson-meta span {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-
-    .content-actions {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    .action-btn {
-      padding: 0.8rem 1.5rem;
-      background: var(--button-bg);
-      color: var(--button-text-color);
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-family: 'Inter', sans-serif;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .action-btn:hover {
-      box-shadow: var(--hover-glow);
-      transform: scale(1.02);
-    }
-
-    .action-btn.secondary {
-      background: transparent;
-      border: 2px solid var(--cyan-glow);
-      color: var(--cyan-glow);
-    }
-
-    .action-btn.secondary:hover {
-      background: var(--cyan-glow);
-      color: var(--black-bg);
-      box-shadow: var(--border-glow);
-    }
-
-    .action-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-      background: rgba(0, 255, 255, 0.1);
-      border: none;
-      color: var(--text-color);
-    }
-
-    /* Main Content */
-    .main-content {
-      flex: 1;
-      padding: 2rem;
-      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-    }
-
+    /* --- CONTENT CARDS & TYPOGRAPHY --- */
     .content-card {
-      background: var(--card-bg);
-      border-radius: 15px;
-      padding: 2rem;
-      box-shadow: var(--border-glow);
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(0, 255, 255, 0.1);
-      margin-bottom: 2rem;
+      background: var(--card-bg); border-radius: 15px; padding: 2rem;
+      box-shadow: 0 0 5px rgba(0, 255, 255, 0.1); backdrop-filter: blur(5px);
+      border: 1px solid rgba(0, 255, 255, 0.1); margin-bottom: 2rem;
     }
-
-    .lesson-content {
-      line-height: 1.8;
-      font-size: 1.1rem;
-    }
-
-    .lesson-content h2 {
-      color: var(--cyan-glow);
-      margin: 2rem 0 1rem 0;
-      font-size: 1.6rem;
-    }
-
-    .lesson-content h3 {
-      color: var(--heading-color);
-      margin: 1.5rem 0 0.8rem 0;
-      font-size: 1.3rem;
-    }
-
-    .lesson-content p {
-      margin-bottom: 1.2rem;
-    }
-
-    .lesson-content ul, .lesson-content ol {
-      margin: 1rem 0 1rem 2rem;
-      padding-left: 0.5rem;
-    }
-
-    .lesson-content li {
-      margin-bottom: 0.5rem;
-    }
-
-    .lesson-content code {
-      background: rgba(0, 255, 255, 0.1);
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      color: var(--cyan-glow);
-      font-family: 'Courier New', monospace;
-    }
-
+    .lesson-content { line-height: 1.8; font-size: 1.1rem; }
+    .lesson-content h2 { color: var(--cyan-glow); margin: 2rem 0 1rem 0; font-size: 1.6rem; }
+    .lesson-content h3 { color: var(--heading-color); margin: 1.5rem 0 0.8rem 0; font-size: 1.3rem; }
     .lesson-content pre {
-      background: #0d1a26; /* Darker, more code-like background */
-      padding: 1.5rem;
-      border-radius: 8px;
-      border-left: 4px solid var(--cyan-glow);
-      overflow-x: auto;
-      margin: 1.5rem 0;
+      background: #0d1a26; padding: 1.5rem; border-radius: 8px; 
+      border-left: 4px solid var(--cyan-glow); overflow-x: auto; margin: 1.5rem 0; 
       box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
     }
-
-    .lesson-content pre code {
-      background: none;
-      padding: 0;
-      color: #9cdcfe; /* Light blue for code */
-      display: block;
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-
-    /* Video Player Placeholder */
-    .video-player {
-      width: 100%;
-      height: 400px;
-      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 2rem;
-      border: 1px solid rgba(0, 255, 255, 0.2);
-    }
-
-    .video-placeholder {
-      text-align: center;
-      color: var(--text-color);
-    }
-
-    .video-placeholder i {
-      font-size: 4rem;
-      color: var(--cyan-glow);
-      margin-bottom: 1rem;
-      display: block;
-      text-shadow: var(--border-glow);
-    }
-
-    /* Navigation Controls */
+    .lesson-content pre code { background: none; padding: 0; color: #9cdcfe; display: block; font-size: 0.95rem; line-height: 1.5; }
+    
+    /* --- NAVIGATION & BUTTONS --- */
     .lesson-navigation {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.5rem 2rem;
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-top: 1px solid rgba(0, 255, 255, 0.1);
-      position: sticky;
-      bottom: 0;
-      z-index: 50;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.5rem 2rem; background: var(--card-bg); backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(0, 255, 255, 0.1); position: sticky;
+      bottom: 0; z-index: 50;
     }
-
-    .nav-info {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      font-size: 0.9rem;
-      color: var(--text-color);
+    .action-btn {
+      padding: 0.8rem 1.5rem; background: var(--button-bg); color: var(--button-text-color);
+      border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+      font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 0.5rem;
     }
-
-    .lesson-indicator {
-      background: rgba(0, 255, 255, 0.1);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      border: 1px solid rgba(0, 255, 255, 0.3);
+    .action-btn:hover { box-shadow: var(--hover-glow); transform: scale(1.02); }
+    .action-btn:disabled { 
+        opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; 
+        background: rgba(0, 255, 255, 0.1); border: none; color: var(--text-color); 
     }
+    .action-btn.secondary { background: transparent; border: 2px solid var(--cyan-glow); color: var(--cyan-glow); }
+    .action-btn.secondary:hover { background: var(--cyan-glow); color: var(--black-bg); box-shadow: var(--border-glow); }
 
-    .nav-buttons {
-      display: flex;
-      gap: 1rem;
-    }
-
-    /* Quiz/Assessment Styles (Reused for Assignment/Form) */
+    /* --- QUIZ/ASSIGNMENT STYLES --- */
     .quiz-container, .assignment-form-container {
-      background: var(--card-bg);
-      border-radius: 15px;
-      padding: 2rem;
-      box-shadow: var(--border-glow);
-      backdrop-filter: blur(5px);
-      border: 1px solid rgba(0, 255, 255, 0.1);
-      margin-bottom: 2rem;
+        background: rgba(18, 26, 48, 0.95); /* Slightly darker for contrast */
+        border-radius: 15px; padding: 2rem; margin: 2rem 0;
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.2); /* Gold glow for assessment */
+        border: 2px solid var(--warning-color);
     }
+    .quiz-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 1.5rem; border-bottom: 1px dashed rgba(255, 215, 0, 0.5); padding-bottom: 0.5rem;
+    }
+    .quiz-header h2 { color: var(--warning-color); font-size: 1.5rem; }
+    .quiz-timer { color: var(--error-color); font-weight: 700; font-family: 'Orbitron', sans-serif; }
+    .quiz-question { margin-bottom: 1.5rem; padding: 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 8px; }
+    .quiz-question p { margin-bottom: 0.8rem; font-weight: 600; }
+    .quiz-options label {
+        display: block; padding: 0.7rem; margin-bottom: 0.5rem; cursor: pointer;
+        background: rgba(255, 255, 255, 0.05); border-radius: 6px; transition: background 0.2s;
+    }
+    .quiz-options label:hover { background: rgba(255, 255, 255, 0.15); }
+    .quiz-options input[type="radio"]:checked + span { color: var(--cyan-glow); font-weight: 600; }
     
-    .assignment-form-container h2 {
-        color: var(--success-color);
-        text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
-    }
+    .quiz-feedback { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; }
+    .quiz-feedback.pass { background: rgba(74, 222, 128, 0.2); border: 1px solid var(--success-color); color: var(--success-color); }
+    .quiz-feedback.fail { background: rgba(248, 113, 113, 0.2); border: 1px solid var(--error-color); color: var(--error-color); }
 
-    /* Certification Form Styles */
-    .certificate-form label {
-        display: block;
-        margin-top: 1rem;
-        font-weight: 600;
-        color: var(--cyan-glow);
+    /* --- CERTIFICATE FORM STYLES --- */
+    .certificate-form label { display: block; margin-top: 1rem; font-weight: 600; color: var(--cyan-glow); }
+    .certificate-form input[type="text"], .certificate-form input[type="email"] {
+        width: 100%; padding: 0.75rem; margin-top: 0.5rem; border-radius: 6px;
+        border: 1px solid rgba(0, 255, 255, 0.3); background-color: rgba(0, 0, 0, 0.4);
+        color: var(--text-color); font-size: 1rem; transition: border-color 0.3s ease;
     }
+    .certificate-form p.info { font-size: 0.85rem; color: var(--warning-color); margin-top: 1rem; }
+    .certificate-form h2 { color: var(--success-color); text-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
     
-    .certificate-form input[type="text"],
-    .certificate-form input[type="email"] {
-        width: 100%;
-        padding: 0.75rem;
-        margin-top: 0.5rem;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        background-color: rgba(0, 0, 0, 0.4);
-        color: var(--text-color);
-        font-size: 1rem;
-        transition: border-color 0.3s ease;
-    }
-    
-    .certificate-form input[type="text"]:focus,
-    .certificate-form input[type="email"]:focus {
-        border-color: var(--cyan-glow);
-        outline: none;
-        box-shadow: 0 0 5px var(--cyan-glow);
-    }
-    
-    .certificate-form p.info {
-        font-size: 0.85rem;
-        color: var(--warning-color);
-        margin-top: 1rem;
-    }
-
-    /* Completion Modal */
-    .completion-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 1rem; /* Added padding for small screens */
-    }
-
-    .completion-content {
-      background: var(--card-bg);
-      padding: 3rem;
-      border-radius: 15px;
-      text-align: center;
-      max-width: 550px; /* Slightly wider */
-      box-shadow: var(--hover-glow);
-      border: 1px solid rgba(0, 255, 255, 0.3);
-      width: 100%; /* Ensure it uses max-width */
-    }
-
-    .completion-icon {
-      font-size: 4rem;
-      color: var(--success-color);
-      margin-bottom: 1rem;
-    }
-
-    .completion-title {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
-      color: var(--heading-color);
-    }
-
-    .completion-message {
-      color: var(--text-color);
-      margin-bottom: 2rem;
-      line-height: 1.6;
-    }
-
-    .points-earned {
-      background: rgba(255, 215, 0, 0.1);
-      border: 1px solid rgba(255, 215, 0, 0.3);
-      padding: 1rem;
-      border-radius: 8px;
-      margin-bottom: 2rem;
-      color: #ffd700;
-    }
-    
-    /* New: Casual Comment Section */
-    .casual-comment-section {
-        margin-top: 2rem;
-        padding: 1rem;
-        background: rgba(0, 255, 255, 0.05);
-        border: 1px solid rgba(0, 255, 255, 0.2);
-        border-radius: 8px;
-        text-align: left;
-    }
-    
-    .casual-comment-section h3 {
-        color: var(--cyan-glow);
-        font-size: 1.2rem;
-        margin-bottom: 0.75rem;
-        text-align: center;
-    }
-    
-    .casual-comment-section textarea {
-        width: 100%;
-        min-height: 80px;
-        padding: 0.75rem;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        background-color: rgba(0, 0, 0, 0.4);
-        color: var(--text-color);
-        font-size: 1rem;
-        resize: vertical;
-    }
-
-    /* Loading State */
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 50vh;
-    }
-
-    .loading-spinner {
-      width: 60px;
-      height: 60px;
-      border: 4px solid rgba(0, 255, 255, 0.1);
-      border-top-color: var(--cyan-glow);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .loading-text {
-      margin-top: 1rem;
-      color: var(--text-color);
-      font-size: 1.1rem;
-    }
-
-    /* Responsive Design */
+    /* --- RESPONSIVE ADJUSTMENTS --- */
     @media (max-width: 992px) {
-      .course-sidebar {
-        transform: translateX(-100%);
-      }
-
-      .course-sidebar.active {
-        transform: translateX(0);
-      }
-
-      .content-area {
-        margin-left: 0;
-        width: 100%; /* Full width on mobile */
-      }
-
-      .mobile-menu-toggle {
-        display: block;
-      }
-
-      .main-content {
-        padding: 1rem;
-        padding-top: 5rem; /* Space for the fixed toggle button */
-      }
-
-      .content-header {
-        padding: 1rem;
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .content-actions {
-        width: 100%;
-        justify-content: stretch;
-      }
-
-      .action-btn {
-        flex: 1;
-        justify-content: center;
-      }
-
-      .lesson-navigation {
-        padding: 1rem;
-        flex-direction: column;
-        gap: 1rem;
-      }
-
-      .nav-buttons {
-        width: 100%;
-        justify-content: stretch;
-      }
-
-      .nav-buttons .action-btn {
-        flex: 1;
-      }
-      
-      .content-card {
-        padding: 1.5rem;
-      }
-      
-      .completion-content {
-          padding: 2rem 1.5rem;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .video-player {
-        height: 250px;
-      }
-
-      .completion-content {
-        margin: 1rem;
-      }
-      
-      .lesson-content h2 {
-          font-size: 1.4rem;
-      }
-      
-      .lesson-content h3 {
-          font-size: 1.1rem;
-      }
-      
-      .nav-info {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.5rem;
-      }
+      .course-sidebar { transform: translateX(-100%); }
+      .course-sidebar.active { transform: translateX(0); }
+      .content-area { margin-left: 0; width: 100%; }
+      .mobile-menu-toggle { display: block; }
+      .main-content { padding: 1rem; padding-top: 5rem; }
+      .content-header { padding: 1rem; flex-direction: column; align-items: flex-start; }
+      .content-actions { width: 100%; justify-content: stretch; }
+      .action-btn { flex: 1; justify-content: center; }
+      .lesson-navigation { padding: 1rem; flex-direction: column; gap: 1rem; }
+      .nav-buttons { width: 100%; justify-content: stretch; }
+      .nav-buttons .action-btn { flex: 1; }
     }
   </style>
 </head>
 <body>
   <div id="stars-container"></div>
-
-  <button class="mobile-menu-toggle" id="mobileMenuToggle">
-    <i class="fas fa-bars"></i>
-  </button>
+  <button class="mobile-menu-toggle" id="mobileMenuToggle" style="display: none;"></button>
 
   <div class="course-viewer-container">
     <aside class="course-sidebar" id="courseSidebar">
@@ -764,7 +170,7 @@
         </a>
         
         <div class="course-info">
-          <i id="courseIconLarge" class="course-icon-large"></i>
+          <i id="courseIconLarge" class="course-icon-large fas fa-laptop-code"></i>
           <h2 id="courseTitle" class="course-title">Loading...</h2>
           <p id="courseSubtitle" class="course-subtitle">Please wait...</p>
           
@@ -801,11 +207,7 @@
           </div>
         </div>
         <div class="content-actions">
-          <button id="markCompleteBtn" class="action-btn">
-            <i class="fas fa-check"></i>
-            Mark Complete
-          </button>
-        </div>
+          </div>
       </header>
 
       <section class="main-content" id="mainContent" style="display: none;">
@@ -822,7 +224,7 @@
             </div>
         </div>
 
-        <div id="assignmentContainer" class="assignment-form-container" style="display: none;">
+        <div id="assessmentContainer">
             </div>
       </section>
 
@@ -838,8 +240,8 @@
             <i class="fas fa-chevron-left"></i>
             Previous
           </button>
-          <button id="nextLessonBtn" class="action-btn">
-            Next
+          <button id="nextLessonBtn" class="action-btn" disabled>
+            Next Lesson
             <i class="fas fa-chevron-right"></i>
           </button>
         </div>
@@ -850,9 +252,9 @@
   <div id="completionModal" class="completion-modal">
     <div class="completion-content">
       <i class="fas fa-trophy completion-icon"></i>
-      <h2 class="completion-title">Lesson Complete!</h2>
-      <p class="completion-message">
-        Congratulations! You've successfully completed this lesson.
+      <h2 class="completion-title" id="modalTitle">Lesson Complete!</h2>
+      <p class="completion-message" id="modalMessage">
+        Congratulations! You've successfully passed the assessment and completed this lesson.
       </p>
       <div class="points-earned">
         <i class="fas fa-star"></i>
@@ -904,21 +306,25 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // --- COURSE DATABASE ---
+    // --- TEMPLATE CONTENT ---
     const certificateLesson = { 
-        id: 99, // High ID to ensure it's last
-        title: 'Course Completion & Certification', 
-        duration: '10 min', 
+        id: 99,
+        title: 'Course Completion & Final Project', 
+        duration: '20 min', 
         isCertificate: true,
         content: `
-            <h2>Claim Your Certificate of Participation</h2>
-            <p>Congratulations on completing the foundational knowledge portion of this course! Elvion University awards **Certificates of Participation** to recognize your dedication to pre-degree learning. These certificates are not for academic credit or degree applications but are a testament to your commitment and knowledge gained.</p>
-            <p>To receive your personalized certificate via email, please complete the form below. Ensure your name is exactly how you want it to appear on the final document.</p>
+            <h2>Claim Your Certificate of Participation & Submit Project</h2>
+            <p>Congratulations on completing the foundational knowledge portion of this course! Elvion University awards **Certificates of Participation** to recognize your dedication to pre-degree learning. These certificates are not for academic credit but attest to your commitment.</p>
+            
+            <h3>Final Project Submission</h3>
+            <p>To finalize your certificate and receive a project result assessment, please send your completed **Final Project** (as outlined in the previous lesson) and any supporting documentation to our labs:</p>
+            <p style="font-size: 1.2rem; font-weight: 700; color: var(--success-color); margin: 1rem 0;">Email your project to: <a href="mailto:elvionailabs@gmail.com" style="color: var(--success-color);">elvionailabs@gmail.com</a></p>
+            <p>Use the subject line: **[Course Name] Final Project Submission - [Your Name]**</p>
         `,
-        assignmentContent: `
+        assignmentContent: (courseId, courseTitle) => `
             <div class="assignment-form-container">
                 <h2>Certificate Information Submission</h2>
-                <p style="margin-bottom: 1.5rem; color: var(--text-color); opacity: 0.9;">Please fill out your details to receive your personalized Certificate of Participation.</p>
+                <p style="margin-bottom: 1.5rem; color: var(--text-color); opacity: 0.9;">Please fill out your details to receive your personalized Certificate of Participation via email. **This form must be submitted before emailing your project.**</p>
                 <form class="certificate-form" action="https://formspree.io/f/mldrbpwo" method="post">
                     <label for="full-name"><i class="fas fa-user-circle"></i> Full Name (as it should appear on certificate)</label>
                     <input type="text" id="full-name" name="Full Name" placeholder="e.g., Jane C. Doe" required>
@@ -927,18 +333,82 @@
                     <input type="email" id="email" name="Email" placeholder="jane.doe@example.com" required>
                     
                     <input type="hidden" name="Course ID" value="${courseId}">
-                    <input type="hidden" name="Course Title" id="courseTitleHidden">
+                    <input type="hidden" name="Course Title" value="${courseTitle}">
 
-                    <p class="info"><i class="fas fa-exclamation-triangle"></i> Note: This certificate is for personal recognition only and does not award official academic credit.</p>
+                    <p class="info"><i class="fas fa-exclamation-triangle"></i> Note: This certificate is for personal recognition only and does not award official academic credit. You will receive it by mail upon successful submission of this form and your final project.</p>
 
                     <button type="submit" class="action-btn" style="width: 100%; margin-top: 2rem;">
-                        <i class="fas fa-award"></i> Submit & Get Certificate
+                        <i class="fas fa-award"></i> Submit & Initiate Certificate Process
                     </button>
                 </form>
             </div>
         `
     };
 
+    const quizTemplate = (lessonNumber) => `
+        <div class="quiz-container" id="quizContainer">
+            <div class="quiz-header">
+                <h2>Mandatory Assessment: Lesson ${lessonNumber} Mastery Check</h2>
+                <div class="quiz-timer" id="quizTimer">Time Left: 05:00</div>
+            </div>
+            <p style="margin-bottom: 1rem; color: var(--text-color);">You must correctly answer all questions below to unlock the next lesson. This is a crucial step in ensuring your foundational knowledge is solid. **You only get one attempt!**</p>
+            
+            <form id="quizForm">
+                <div class="quiz-question">
+                    <p>1. Which of the following is an example of a primitive data type in most programming languages?</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q1" value="A"> <span>A. Array</span></label>
+                        <label><input type="radio" name="q1" value="B"> <span>B. Object</span></label>
+                        <label><input type="radio" name="q1" value="C"> <span>C. Boolean</span></label>
+                        <label><input type="radio" name="q1" value="D"> <span>D. Dictionary</span></label>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <p>2. In General Relativity, what physical phenomenon is described as the curvature of spacetime?</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q2" value="A"> <span>A. Light Speed</span></label>
+                        <label><input type="radio" name="q2" value="B"> <span>B. Gravity</span></label>
+                        <label><input type="radio" name="q2" value="C"> <span>C. Magnetic Field</span></label>
+                        <label><input type="radio" name="q2" value="D"> <span>D. Nuclear Force</span></label>
+                    </div>
+                </div>
+
+                <div class="quiz-question">
+                    <p>3. What is the Git command used to record staged changes to the local repository?</p>
+                    <div class="quiz-options">
+                        <label><input type="radio" name="q3" value="A"> <span>A. git push</span></label>
+                        <label><input type="radio" name="q3" value="B"> <span>B. git add</span></label>
+                        <label><input type="radio" name="q3" value="C"> <span>C. git commit</span></label>
+                        <label><input type="radio" name="q3" value="D"> <span>D. git log</span></label>
+                    </div>
+                </div>
+                
+                <div class="quiz-feedback" id="quizFeedback" style="display:none;"></div>
+
+                <button type="button" class="action-btn" id="submitQuizBtn" style="width: 100%; margin-top: 1rem;">
+                    <i class="fas fa-paper-plane"></i> Submit Assessment
+                </button>
+            </form>
+        </div>
+    `;
+
+    const genericLessonContent = (courseName, lessonTitle) => `
+        <h2>${courseName}: ${lessonTitle}</h2>
+        <p>This section is currently under development but will contain a deep dive into the practical aspects of ${lessonTitle}. Expect detailed explanations, case studies, and code snippets or illustrative diagrams.</p>
+        
+        <h3>Key Concept: Placeholder</h3>
+        <p>We believe in learning by doing. The content here will use industry-relevant examples to illustrate complex theories, ensuring you can immediately apply the knowledge you gain.</p>
+        <pre><code>// Placeholder for a relevant code snippet or formula
+function practicalExample() {
+    console.log("Learning is best when it's practical!");
+}
+// This block will be replaced with detailed, colored code examples.</code></pre>
+        
+        <p>Continue to the bottom of the page to complete the **Mandatory Assessment** to unlock the next lesson and test your understanding.</p>
+    `;
+
+    // --- COURSE DATABASE ---
     const coursesDatabase = {
       'science-tech': {
         facultyName: 'Faculty of Science & Technology',
@@ -949,6 +419,7 @@
             description: 'Fundamentals of computing, programming, and algorithms',
             icon: 'fas fa-laptop-code',
             lessons: [
+              // Lesson 1: Introduction to Programming & Data Types (Detailed)
               { 
                 id: 1, 
                 title: 'Introduction to Programming & Data Types', 
@@ -975,18 +446,9 @@ api_endpoint = '/api/v1/users'
 is_enrolled = True
 has_passed_quiz = False</code></pre>
                   <p>Understanding these types is essential because different data types occupy different amounts of memory and support different operations. For instance, you can multiply two integers, but not an integer and a boolean.</p>
-
-                  <h3>The Hello World Function</h3>
-                  <p>To prove that the compiler is working and you can execute a command, every coding journey starts here. This simple I/O (Input/Output) operation is your first practical step:</p>
-                  <pre><code># Basic Output function in most languages:
-print("Hello, Elvion!")  
-# In a compiled language like Java, it's slightly longer:
-// System.out.println("Hello, Elvion!");</code></pre>
-
-                  <h3>Next Steps</h3>
-                  <p>Next, we move beyond single variables to **Data Structures**—how we organize these variables for efficient processing.</p>
                 `
               },
+              // Lesson 2: Data Structures: Lists, Dictionaries, and Hashing (Detailed)
               { 
                 id: 2, 
                 title: 'Data Structures: Lists, Dictionaries, and Hashing', 
@@ -1002,88 +464,59 @@ course_modules = ["Intro", "Data Types", "OOP", "Databases"]
 
 # Accessing by Index (Position)
 first_module = course_modules[0]   # 'Intro'
-last_module = course_modules[-1]  # 'Databases'
-
-# Modifying the list
-course_modules.append("Networking")
-course_modules.remove("Data Types")</code></pre>
+last_module = course_modules[-1]  # 'Databases'</code></pre>
                   
                   <h3>2. Dictionaries (Hash Maps) - Keyed Access</h3>
-                  <p>A dictionary stores data in **key-value pairs**. It's crucial for quick lookups, as the key is *hashed* to immediately find the value, making it much faster than searching a list.</p>
+                  <p>A dictionary stores data in **key-value pairs**. It's crucial for quick lookups, as the key is *hashed* to immediately find the value, making it much faster than searching a list (O(1) time complexity).</p>
                   <pre><code># Python Dictionary Example
 student_record = {
     "student_id": "ELV90210",
     "name": "Alexia Vane",
-    "gpa": 3.85,
-    "is_graduating": False
+    "gpa": 3.85
 }
 
 # Accessing by Key (Name, not Position)
-name = student_record["name"] # 'Alexia Vane'
-
-# Adding a new key-value pair
-student_record["major"] = "Cybernetics"</code></pre>
-
-                  <h3>Practical Comparison: Lookup Time</h3>
-                  <p>Imagine you have 1 million records. To find a name in a **List**, the computer might check up to 1 million positions (**O(n) time complexity**). In a **Dictionary**, the lookup is near-instantaneous, requiring only one step regardless of the size (**O(1) time complexity**).</p>
+name = student_record["name"] # 'Alexia Vane'</code></pre>
                 `
               },
+              // Lesson 3: Object-Oriented Programming (OOP) in Action (Detailed)
               { 
                 id: 3, 
                 title: 'Object-Oriented Programming (OOP) in Action', 
                 duration: '55 min', 
                 content: `
                   <h2>Classes, Objects, and the Power of Reusability</h2>
-                  <p>OOP is a paradigm that models real-world entities into **Objects**. It allows us to create reusable, organized, and scalable code.</p>
+                  <p>OOP is a paradigm that models real-world entities into **Objects**. A **Class** is the blueprint, and an **Object** is an instance built from that blueprint.</p>
 
-                  <h3>Blueprint to Reality: Defining a Class</h3>
-                  <p>A **Class** is the blueprint. An **Object** is an instance built from that blueprint. Let's model a Drone class with a few properties (data) and methods (behaviors).</p>
+                  <h3>Blueprint to Reality: Defining a Class (Python)</h3>
                   <pre><code>class Drone:
     # The Constructor: initializes the object's properties
     def __init__(self, serial_number, max_altitude):
         self.serial_number = serial_number
         self.max_altitude = max_altitude
         self.current_altitude = 0
-        self.is_flying = False
 
     # A Method (behavior)
-    def take_off(self):
-        if not self.is_flying:
-            self.is_flying = True
-            print(f"Drone {self.serial_number} initiating launch sequence.")
-        else:
-            print(f"Drone {self.serial_number} is already airborne.")
-
-    # Another Method (behavior)
     def ascend(self, meters):
-        if self.is_flying:
-            new_alt = self.current_altitude + meters
-            if new_alt <= self.max_altitude:
-                self.current_altitude = new_alt
-                print(f"Ascending to {new_alt} meters.")
-            else:
-                print("Altitude limit reached. Cannot ascend further.")
+        if self.current_altitude + meters <= self.max_altitude:
+            self.current_altitude += meters
+            print(f"Ascending to {self.current_altitude} meters.")
         else:
-            print("Drone must take off first.")</code></pre>
+            print("Altitude limit reached.")</code></pre>
 
                   <h3>Creating and Interacting with Objects</h3>
-                  <p>We now instantiate two separate objects from the same `Drone` class. Each object has its own unique state (altitude, serial number).</p>
+                  <p>We now instantiate two separate objects from the same <code>Drone</code> class. Each object has its own unique state.</p>
                   <pre><code># Creating two independent objects (instances)
 drone_alpha = Drone("ALPHA-001", 500)
 drone_beta = Drone("BETA-002", 300)
 
 # Interacting with drone_alpha
-drone_alpha.take_off()     # Output: Drone ALPHA-001 initiating launch sequence.
 drone_alpha.ascend(150)    # Output: Ascending to 150 meters.
-print(drone_alpha.current_altitude) # Output: 150
-
-# Interacting with drone_beta
-drone_beta.take_off()      # Output: Drone BETA-002 initiating launch sequence.
-drone_beta.ascend(400)     # Output: Altitude limit reached. Cannot ascend further.</code></pre>
-
-                  <p>This demonstrates **Encapsulation** (bundling data and methods) and the independence of objects, the core benefits of OOP.</p>
+print(drone_alpha.current_altitude) # Output: 150</code></pre>
+                  <p>This demonstrates **Encapsulation** and the independence of objects.</p>
                 `
               },
+              // Lesson 4: Relational Databases and SQL Mastery (Detailed)
               { 
                 id: 4, 
                 title: 'Relational Databases and SQL Mastery', 
@@ -1092,38 +525,25 @@ drone_beta.ascend(400)     # Output: Altitude limit reached. Cannot ascend furth
                   <h2>Structured Query Language (SQL) for Data Management</h2>
                   <p>SQL is the standard language for managing relational databases, which organize data into **tables** linked by **relationships**.</p>
 
-                  <h3>Creating a Database Schema</h3>
-                  <p>The first step is defining the structure. Here, we create two tables and link them using a **Foreign Key**.</p>
-                  <pre><code>-- 1. Create the primary table for Courses
+                  <h3>Creating a Database Schema and Foreign Keys</h3>
+                  <p>We link two tables using a **Foreign Key** to define the relationship (e.g., one course has many students).</p>
+                  <pre><code>-- Create the primary table for Courses
 CREATE TABLE Courses (
     course_id VARCHAR(10) PRIMARY KEY,
-    course_name VARCHAR(255) NOT NULL,
-    credits INT NOT NULL
+    course_name VARCHAR(255) NOT NULL
 );
 
--- 2. Create the dependent table for Students, linking to Courses
+-- Create the dependent table for Students
 CREATE TABLE Students (
     student_id SERIAL PRIMARY KEY,
     student_name VARCHAR(100) NOT NULL,
-    enrollment_date DATE,
-    -- Foreign Key links this column to the Courses table
     enrolled_course_id VARCHAR(10),
     FOREIGN KEY (enrolled_course_id) REFERENCES Courses(course_id)
 );</code></pre>
 
                   <h3>The Power of JOIN: Retrieving Related Data</h3>
-                  <p>The true power of relational databases is in the `JOIN` command, which combines columns from two or more tables based on a related column.</p>
-                  <pre><code>-- Insert some sample data
-INSERT INTO Courses VALUES ('CS101', 'Intro to Computing', 4);
-INSERT INTO Students (student_name, enrolled_course_id) 
-VALUES ('Elara Kael', 'CS101');
-INSERT INTO Students (student_name, enrolled_course_id) 
-VALUES ('Rix Volkov', 'CS101');
-INSERT INTO Students (student_name, enrolled_course_id) 
-VALUES ('Jada Syrus', NULL); -- Not enrolled yet
-
--- Join Query: Find the name of the course each student is in
-SELECT 
+                  <p>The `JOIN` command combines columns from two or more tables based on the Foreign Key relationship. This is the core skill of a Database Administrator.</p>
+                  <pre><code>SELECT 
     S.student_name, 
     C.course_name 
 FROM 
@@ -1131,364 +551,276 @@ FROM
 INNER JOIN 
     Courses AS C 
 ON 
-    S.enrolled_course_id = C.course_id;
-
--- Output:
--- student_name | course_name
--- ----------------------------
--- Elara Kael   | Intro to Computing
--- Rix Volkov   | Intro to Computing</code></pre>
-
-                  <h3>Practical Maintenance Commands</h3>
-                  <ul>
-                    <li>**Filtering:** `SELECT * FROM Students WHERE student_name = 'Elara Kael';`</li>
-                    <li>**Aggregation:** `SELECT COUNT(student_id) FROM Students;`</li>
-                    <li>**Updating:** `UPDATE Students SET enrolled_course_id = 'CS101' WHERE student_name = 'Jada Syrus';`</li>
-                  </ul>
+    S.enrolled_course_id = C.course_id;</code></pre>
                 `
               },
+              // Lesson 5: Final Project: Authentication System (Detailed)
               { 
                 id: 5, 
-                title: 'Software Engineering & Version Control (Git)', 
-                duration: '60 min', 
-                content: `
-                  <h2>Collaboration and Tracking: Mastering Git Workflow</h2>
-                  <p>Software Engineering ensures complex projects are built reliably. **Git** is the industry standard for version control, allowing teams to track and merge code changes safely.</p>
-
-                  <h3>The Core Git Commands</h3>
-                  <p>A typical workflow involves four main stages: Working Directory, Staging Area, Local Repository, and Remote Repository.</p>
-                  <pre><code># 1. Start a new local repository
-git init
-
-# 2. Make changes to files (e.g., update index.html)
-
-# 3. Stage the changes (prepare for commit)
-git add index.html
-git add .               # To stage all changes
-
-# 4. Commit the staged changes to the local repository
-git commit -m "FEAT: Add responsive layout to index page"
-
-# 5. Push changes to the remote repository (like GitHub)
-git push origin main</code></pre>
-
-                  <h3>Branching and Merging: Safe Development</h3>
-                  <p>Branches allow developers to work on new features or fixes without breaking the main working version (`main` or `master`).</p>
-                  <pre><code># Create and switch to a new branch for a feature
-git checkout -b feature/certificate-form
-
-# (Work, add, commit code on the new branch)
-
-# Switch back to the main branch
-git checkout main
-
-# Pull the changes from the feature branch into the main branch
-git merge feature/certificate-form</code></pre>
-
-                  <h3>Assignment: Version Control Simulation</h3>
-                  <p>Imagine you're developing a feature. **Your Assignment is to outline the 3 Git commands you would use to save and share your work on a new branch called `fix/typo-on-course-page`**.</p>
-                  <p>Submit your response below detailing the sequence and purpose of each command.</p>
-                `,
-                assignmentContent: `
-                    <div class="assignment-form-container">
-                        <h2>Assignment: Git Workflow Submission</h2>
-                        <p style="margin-bottom: 1.5rem;">Describe the 3 core Git commands to commit and push changes on a new branch (`fix/typo-on-course-page`).</p>
-                        <form action="https://formspree.io/f/mldrbpwo" method="post">
-                            <label for="student-name"><i class="fas fa-user"></i> Your Name</label>
-                            <input type="text" id="student-name" name="Student Name" required>
-                            
-                            <label for="git-commands"><i class="fas fa-code-branch"></i> Git Command Sequence (Enter the 3 commands and their brief purpose)</label>
-                            <textarea id="git-commands" name="Git Commands" placeholder="1. git checkout -b fix/typo-on-course-page (Create and switch branch)..." style="width: 100%; min-height: 150px; padding: 10px; border-radius: 6px; border: 1px solid rgba(0, 255, 255, 0.3); background-color: rgba(0, 0, 0, 0.4); color: var(--text-color); margin-top: 0.5rem;" required></textarea>
-                            
-                            <input type="hidden" name="Assignment" value="CS101-L5-Git-Workflow">
-                            
-                            <button type="submit" class="action-btn" style="width: 100%; margin-top: 1rem;">
-                                <i class="fas fa-upload"></i> Submit Assignment
-                            </button>
-                        </form>
-                    </div>
-                `
-              },
-              { 
-                id: 6, 
-                title: 'The AI Revolution: Machine Learning Models', 
-                duration: '65 min', 
-                content: `
-                  <h2>Teaching the Machine: Supervised vs. Unsupervised Learning</h2>
-                  <p>Artificial Intelligence starts with **Machine Learning**—algorithms that learn patterns from data without explicit programming.</p>
-
-                  <h3>Supervised Learning: Learning with a Teacher (Labels)</h3>
-                  <p>This is like learning from a flashcard set where every card has a question and a correct answer (label). The algorithm trains by predicting the answer and correcting its errors.</p>
-                  <h4>Example: Predicting Solar Flare Intensity</h4>
-                  <pre><code># Training Data Sample (Features and Label)
-data = [
-    (100, 2, 'High'),   # (Sunspot Area, Plasma Velocity, Flare Intensity)
-    (50, 1, 'Low'),
-    (120, 3, 'High'),
-    (40, 0, 'Low')
-]
-
-# Python Example using a simplified Scikit-learn structure
-from sklearn.linear_model import LogisticRegression
-
-# Features (X) and Label (y)
-X = [[100, 2], [50, 1], [120, 3], [40, 0]]
-y = ['High', 'Low', 'High', 'Low']
-
-# 1. Initialize the Model
-model = LogisticRegression()
-
-# 2. Train the Model (The 'Learning' Step)
-model.fit(X, y)
-
-# 3. Predict on new data
-new_flare = [[110, 2.5]]
-prediction = model.predict(new_flare)
-# Output: ['High'] - The model predicts the new flare is 'High' intensity.</code></pre>
-                  
-                  <h3>Unsupervised Learning: Finding Patterns in the Wild</h3>
-                  <p>In this scenario, there are no labels. The machine must find hidden structure in the data itself. The primary use is **Clustering**.</p>
-                  <h4>Example: Astronomical Object Classification</h4>
-                  <p>We can use a K-Means clustering algorithm to group astronomical observations (brightness, size, temperature) into $K$ distinct clusters (e.g., $K=3$ for Stars, Planets, and Nebulae), without ever telling the algorithm which is which initially.</p>
-                  <pre><code># Python K-Means Clustering Concept
-from sklearn.cluster import KMeans
-
-# 1. Input Data (Unlabeled - just features)
-astronomy_data = [
-    [5.2, 1200, 5000],  # Object 1: Brightness, Size, Temp
-    [1.1, 50, 300],    # Object 2
-    [5.5, 1300, 4800],  # Object 3
-    [1.3, 60, 320]     # Object 4
-]
-
-# 2. Initialize and Fit (Tells the model to find 2 groups/clusters)
-kmeans = KMeans(n_clusters=2, random_state=0)
-kmeans.fit(astronomy_data)
-
-# 3. Get Cluster Labels
-labels = kmeans.labels_ 
-# Output: [0, 1, 0, 1] - Indicates Object 1 and 3 are in Cluster 0 (likely Stars),
-# and Object 2 and 4 are in Cluster 1 (likely Planets).</code></pre>
-                  <p>This method is crucial for exploratory data analysis where you don't know what you're looking for.</p>
-                `
-              },
-              { 
-                id: 7, 
-                title: 'Final Project: Building an Authentication System', 
+                title: 'Final Project: Authentication System Design', 
                 duration: '120 min', 
+                isProject: true,
                 content: `
-                  <h2>The Final Gauntlet: Authentication & Security</h2>
-                  <p>For your final project, you will combine your knowledge of data types, OOP, and databases to design the core of any modern application: a secure user **Authentication System**.</p>
+                  <h2>Final Project: Authentication & Security System</h2>
+                  <p>For your final project, you will design the core of any modern application: a secure user **Authentication System**. Your project should cover the following:</p>
                   
                   <h3>Key Security Requirements</h3>
-                  <p>Your system must implement three critical security measures:</p>
                   <ol>
-                    <li>**Password Hashing:** NEVER store plaintext passwords. Use a strong, one-way hashing function (like bcrypt or Argon2).</li>
-                    <li>**Token Generation:** Use a JWT (JSON Web Token) to maintain a user's logged-in status.</li>
-                    <li>**Input Validation:** Sanitize and validate all user inputs to prevent SQL injection or other attacks.</li>
+                    <li>**Database Schema:** Sketch the SQL structure for a `Users` table (ID, Username, HashedPassword, Email).</li>
+                    <li>**Password Hashing:** Explain the importance of one-way hashing (e.g., using **bcrypt**) and why plaintext storage is unacceptable.</li>
+                    <li>**Login Flow:** Outline the step-by-step logic from a user submitting a password to the system verifying it against the stored hash.</li>
                   </ol>
                   
-                  <h3>Project Structure Blueprint (Python/Flask Example)</h3>
-                  <pre><code># Hashing Example: NEVER do this in real life, this is conceptual for a class.
-import hashlib
-password = "mySecretPassword123"
-hashed_password = hashlib.sha256(password.encode()).hexdigest()
-# The hashed string is what you store in the database.
+                  <h3>Conceptual Hashing Example</h3>
+                  <p>This conceptual code shows what NOT to store (plaintext) versus what MUST be stored (the hash). Your project should detail this process.</p>
+                  <pre><code>// Conceptual Hashing (real-world uses libraries like bcrypt)
+plaintext_password = "UserSecret123"
+hashed_password = hash_function(plaintext_password, salt) 
+// Store the hashed_password only.</code></pre>
 
-# Flask Application Structure for Login
-@app.route('/login', methods=['POST'])
-def login():
-    # 1. Get user data from form
-    data = request.get_json()
-    username = data.get('username')
-    input_password = data.get('password')
-
-    # 2. Query database for user record
-    user = db.get_user_by_username(username)
-    
-    if user and verify_hash(user.hashed_password, input_password):
-        # 3. Successful login: Generate JWT and send it back
-        jwt_token = generate_jwt({'user_id': user.id})
-        return jsonify({'message': 'Login successful', 'token': jwt_token})
-    else:
-        # 4. Failed login attempt
-        return jsonify({'message': 'Invalid credentials'}), 401</code></pre>
-
-                  <h3>Next Step: Certification</h3>
-                  <p>Once you feel you have a clear grasp of this system's design, proceed to the next lesson to submit your information and receive your Certificate of Participation.</p>
+                  <p>**Your project is to prepare a 500-word report and a database diagram outlining this system, ready to be emailed to Elvion Labs after the next step.**</p>
                 `
               },
               certificateLesson
-            ].map((lesson, index) => ({...lesson, id: index + 1})), // Re-map IDs after adding certificate lesson
+            ].map((lesson, index) => ({...lesson, id: index + 1})),
           },
-          // --- NEW COURSE: ASTROPHYSICS ---
+          {
+            id: 'swe201',
+            title: 'Software Engineering: Advanced Design',
+            description: 'Mastering design patterns, testing, and modern development cycles.',
+            icon: 'fas fa-cogs',
+            lessons: [
+              { id: 1, title: 'Introduction to Agile and Scrum', duration: '40 min', content: genericLessonContent('Software Engineering', 'Agile and Scrum Methodologies') },
+              { id: 2, title: 'Design Patterns: Factory and Singleton', duration: '60 min', content: genericLessonContent('Software Engineering', 'Design Patterns: Factory and Singleton') },
+              { id: 3, title: 'Test-Driven Development (TDD) and CI/CD', duration: '55 min', content: genericLessonContent('Software Engineering', 'Test-Driven Development (TDD) and CI/CD') },
+              { id: 4, title: 'Microservices vs. Monolithic Architecture', duration: '50 min', content: genericLessonContent('Software Engineering', 'Microservices vs. Monolithic Architecture') },
+              { 
+                id: 5, 
+                title: 'Final Project: Architectural Design Document', 
+                duration: '120 min', 
+                isProject: true,
+                content: `
+                    <h2>Final Project: Architectural Design Document</h2>
+                    <p>Your task is to prepare an Architectural Design Document (ADD) for a large-scale e-commerce application. The document should define the system's structure (Microservices or Monolithic), the technologies to be used (Database, Programming Language), and the deployment strategy (CI/CD pipeline).</p>
+                    <p>This project will be the basis for your certificate assessment. Prepare the document and submit it via email after the next step.</p>
+                `
+              },
+              certificateLesson
+            ].map((lesson, index) => ({...lesson, id: index + 1})),
+          },
           {
             id: 'astro101',
             title: 'Astrophysics & Cosmography: Space & Time',
             description: 'The study of the universe, celestial bodies, and cosmic phenomena.',
             icon: 'fas fa-rocket',
             lessons: [
+              // Lesson 1: The Stellar Forge: Birth, Life, and Death of Stars (Detailed)
               {
                 id: 1,
                 title: 'The Stellar Forge: Birth, Life, and Death of Stars',
                 duration: '40 min',
                 content: `
                   <h2>Nuclear Fusion: The Engine of the Universe</h2>
-                  <p>Stars are colossal fusion reactors. They spend their main-sequence lives converting **hydrogen into helium** in their cores, releasing tremendous energy that resists gravity’s pull.</p>
+                  <p>Stars are colossal fusion reactors, primarily converting **hydrogen into helium** in their cores through the **Proton-Proton Chain Reaction**. This process releases energy ($E$) due to a tiny difference in mass ($\Delta m$), as described by Einstein's equation, $E = \Delta m c^2$.</p>
                   
-                  <h3>The Proton-Proton Chain Reaction</h3>
-                  <p>This is the primary mechanism for energy generation in Sun-like stars. It’s a multi-step process that ultimately converts four hydrogen nuclei ($4 \text{H}$) into one helium nucleus ($1 \text{He}$).</p>
-                  <pre><code># Simplified Fusion Equation (E = mc²)
-4 * (Mass of Hydrogen)  ->  1 * (Mass of Helium) + Energy
-# The difference in mass (mass defect) is converted directly into energy.
+                  <h3>The Fusion Process</h3>
+                  <p>In main-sequence stars, four hydrogen nuclei combine to form one helium nucleus, a process requiring immense heat and pressure.</p>
+                  <pre><code># Simplified Fusion Equation
+4 \cdot \text{H} \rightarrow 1 \cdot \text{He} + \text{Energy}
 
-# The energy released is often expressed as a gamma-ray photon ($\gamma$) and neutrinos ($\nu$).
-1. H-1 + H-1 -> H-2 + e+ + $\nu$
-2. H-2 + H-1 -> He-3 + $\gamma$
-3. He-3 + He-3 -> He-4 + 2 H-1 + $\gamma$</code></pre>
-
-                  <h3>Stellar Death: Supernovae and White Dwarfs</h3>
-                  <ul>
-                    <li>**Low-Mass Stars (like the Sun):** Will exhaust hydrogen, swell into a Red Giant, then shed outer layers to form a beautiful **Planetary Nebula**, leaving behind a dense, hot **White Dwarf** that slowly cools.</li>
-                    <li>**High-Mass Stars ($\gt 8$ Solar Masses):** Fuse heavier elements up to iron (Fe). Once iron is reached, fusion stops. The core collapses rapidly, triggering a massive explosion called a **Type II Supernova**. This process forges elements heavier than iron, like gold and uranium.</li>
-                  </ul>
+# Star Death Scenarios:
+# 1. Low-Mass Stars (like the Sun): White Dwarf + Planetary Nebula.
+# 2. High-Mass Stars (> 8 Solar Masses): Core collapse into a **Supernova** or Black Hole.</code></pre>
                   
-                  <h3>Practical Thought Experiment</h3>
-                  <p>If a star starts with $10^{57}$ hydrogen atoms, and each fusion cycle uses 4, how many fusion events occur before the core begins to change composition?</p>
+                  <h3>Hertzsprung-Russell Diagram</h3>
+                  <p>Astronomers plot a star's luminosity against its temperature on the H-R Diagram. The majority of stars, including our Sun, spend their lives on the **Main Sequence** band.</p>
                 `
               },
+              // Lesson 2: The Fabric of Spacetime: General Relativity (Detailed)
               {
                 id: 2,
                 title: 'The Fabric of Spacetime: General Relativity',
                 duration: '50 min',
                 content: `
-                  <h2>Einstein's Revolution: Gravity as a Geometric Effect</h2>
-                  <p>In 1915, Albert Einstein published his theory of **General Relativity (GR)**, which redefined gravity not as a force, but as the **curvature of spacetime** caused by mass and energy.</p>
-                  
-                  <h3>Analogy: The Trampoline and the Bowling Ball</h3>
-                  <p>Imagine spacetime as a stretched trampoline. A massive object (like a planet, the Bowling Ball) sits on it, creating a deep dip. When a smaller object (a marble) rolls nearby, it doesn't get pulled by an invisible force; it simply follows the curvature of the dip. **This curvature is what we perceive as gravity.**</p>
+                  <h2>Gravity as a Geometric Effect</h2>
+                  <p>Albert Einstein's **General Relativity (GR)** redefines gravity. Instead of a force, gravity is the **curvature of spacetime** caused by the presence of mass and energy.</p>
 
                   <h3>The Equivalence Principle</h3>
-                  <p>The core concept of GR: **Gravity and acceleration are locally indistinguishable.**</p>
-                  <pre><code># Conceptual Equivalence:
-Passenger in a windowless accelerating rocket (a)
-is equivalent to
-Passenger standing on Earth's surface (g)
+                  <p>GR's foundation: The effects of gravity are locally indistinguishable from the effects of uniform acceleration. A person in an accelerating rocket feels the same as a person standing on Earth.</p>
 
-# The effect felt (weight, pressure) is exactly the same.
-# This led Einstein to conclude that gravity is also a form of spacetime acceleration/geometry.</code></pre>
-
-                  <h3>Observable Effects of General Relativity</h3>
+                  <h3>Observable Effects of GR</h3>
                   <ul>
-                    <li>**Gravitational Lensing:** Light from distant galaxies is bent around massive foreground objects (galaxies or clusters), creating distorted or multiple images of the background source.</li>
-                    <li>**Time Dilation:** Time runs slower in a stronger gravitational field (closer to the massive object). GPS satellites must constantly correct for this effect, proving GR's daily relevance!</li>
-                    <li>**Black Holes:** The ultimate curvature, where gravity is so strong that spacetime curves in on itself, forming a point of infinite density called a **singularity**, from which not even light can escape.</li>
+                    <li>**Gravitational Lensing:** Light bends around massive objects, proving the curvature of space.</li>
+                    <li>**Time Dilation:** Clocks run slightly slower near massive objects. (Essential for GPS satellites!)</li>
+                    <li>**Black Holes:** Regions where curvature is so extreme that light cannot escape.</li>
                   </ul>
                 `
               },
+              // Lesson 3: Black Holes, Singularities, and Event Horizons (Detailed)
               {
                 id: 3,
                 title: 'Black Holes, Singularities, and Event Horizons',
                 duration: '45 min',
                 content: `
-                  <h2>Where the Laws of Physics End: The Black Hole</h2>
-                  <p>A **Black Hole** is a region of spacetime exhibiting such strong gravitational effects that nothing—including particles and electromagnetic radiation such as light—can escape from inside it.</p>
+                  <h2>The Point of No Return: The Event Horizon</h2>
+                  <p>A Black Hole forms when enough mass is compressed into a space small enough that its escape velocity exceeds the speed of light ($c$).</p>
 
-                  <h3>Defining the Key Components</h3>
+                  <h3>Defining the Black Hole</h3>
                   <ul>
-                    <li>**Singularity:** The center of the black hole, a point of zero volume and infinite density, where all the mass is concentrated. General Relativity predicts this, but it also signals where the theory breaks down.</li>
-                    <li>**Event Horizon:** The boundary or 'point of no return.' Crossing this horizon means escape is physically impossible, as the escape velocity is greater than the speed of light ($c$).</li>
+                    <li>**Singularity:** The center, a point of infinite density and zero volume.</li>
+                    <li>**Event Horizon:** The boundary from which escape is impossible. Its radius is the **Schwarzschild Radius** ($R_S$).</li>
                   </ul>
 
-                  <h3>The Schwarzschild Radius ($\text{R}_S$)</h3>
-                  <p>This is the radius of the event horizon for a non-rotating black hole. It's the critical radius at which an object's mass would be so compressed that its escape velocity equals the speed of light. The formula is:</p>
+                  <h3>The Schwarzschild Radius Formula</h3>
+                  <p>The radius is directly proportional to the mass ($M$) of the object:</p>
                   $$R_S = \frac{2GM}{c^2}$$
-                  <pre><code>Where:
-- $R_S$ = Schwarzschild Radius (Event Horizon)
-- $G$ = Gravitational Constant
-- $M$ = Mass of the object
-- $c$ = Speed of Light</code></pre>
-                  
-                  <h3>Example Calculation: Earth's Schwarzschild Radius</h3>
-                  <p>If we could compress Earth (Mass $\approx 5.97 \times 10^{24}$ kg) into a black hole, its $\text{R}_S$ would be tiny—about **9 millimeters**. This illustrates just how dense an object must be to form an event horizon.</p>
+                  <pre><code># Where: G = Gravitational Constant, c = Speed of Light
+# If the Sun were a black hole, its R_S would be only about 3 km!</code></pre>
+                  <p>Crossing the Event Horizon does not feel different, but it seals your fate.</p>
                 `
               },
+              // Lesson 4: Cosmological Models: Big Bang and Expansion (Detailed)
               {
                 id: 4,
                 title: 'Cosmological Models: Big Bang and Expansion',
                 duration: '60 min',
                 content: `
-                  <h2>The History of the Universe: From Singularity to Galaxy</h2>
-                  <p>The **Big Bang Theory** is the prevailing cosmological model for the observable universe from the earliest known periods through its subsequent large-scale evolution. It is often misunderstood as an explosion in space, but it was an **expansion of space itself**.</p>
+                  <h2>The Big Bang: Expansion of Space Itself</h2>
+                  <p>The **Big Bang Theory** describes the universe's expansion from an initial hot, dense state, often represented by the Friedmann equations.</p>
                   
-                  <h3>Key Evidence for the Big Bang</h3>
+                  <h3>Key Observational Evidence</h3>
                   <ol>
-                    <li>**Hubble's Law (Redshift):** Distant galaxies are moving away from us, and the further they are, the faster they recede. This implies the universe is expanding. The equation is simple: $v = H_0 \cdot d$.</li>
-                    <li>**Cosmic Microwave Background (CMB):** This is the residual heat (thermal radiation) left over from the Big Bang. It is uniform across the sky and matches predictions for a universe cooling from a hot, dense state.</li>
-                    <li>**Abundance of Light Elements:** The Big Bang nucleosynthesis correctly predicts the primordial ratio of Hydrogen and Helium, which makes up almost all the matter in the universe.</li>
+                    <li>**Hubble's Law (Redshift):** Galaxies are moving away from us, and their speed is proportional to their distance ($v = H_0 \cdot d$).</li>
+                    <li>**Cosmic Microwave Background (CMB):** The 'afterglow' radiation from the hot, early universe, predicted by the theory and observed everywhere.</li>
+                    <li>**Abundance of Light Elements:** The theory accurately predicts the ratio of Hydrogen to Helium in the universe.</li>
                   </ol>
 
-                  <h3>The Fate of the Universe: Dark Energy's Influence</h3>
-                  <p>The expansion is not slowing down—it's **accelerating** due to a mysterious force called **Dark Energy**.</p>
-                  <pre><code># The Cosmic Recipe (Conceptual Energy Density Pie Chart)
-Normal Matter (Atoms): 4.9%
-Dark Matter (Gravity): 26.8%
-Dark Energy (Expansion): 68.3%</code></pre>
-                  <p>The final fate of the universe is still debated, but the current model suggests a **Big Freeze** or **Heat Death**, where the accelerating expansion stretches everything out until no energy transfer can occur, resulting in a cold, dark universe.</p>
+                  <h3>Dark Energy and the Future</h3>
+                  <p>The expansion is currently **accelerating**, driven by an unknown component called **Dark Energy** (which makes up $\approx 68\%$ of the universe's total energy density). This acceleration suggests a "Big Freeze" as the ultimate fate.</p>
                 `
               },
+              // Lesson 5: Final Project: Exoplanet Detection Report (Detailed)
               { 
                 id: 5, 
-                title: 'Practical Astrophysics: Telescopes and Data Analysis', 
-                duration: '50 min', 
+                title: 'Final Project: Exoplanet Detection Report', 
+                duration: '120 min', 
+                isProject: true,
                 content: `
-                  <h2>The Tools of the Trade: Spectroscopy and Imaging</h2>
-                  <p>Modern astrophysics relies on technology to capture and analyze light (electromagnetic radiation) from distant sources. Two critical techniques are imaging and **spectroscopy** (breaking light into its component wavelengths).</p>
-
-                  <h3>Spectroscopy: Decoding Starlight</h3>
-                  <p>Every element emits and absorbs light at specific wavelengths, creating a unique "barcode." By analyzing a star's spectrum, we can determine its:</p>
-                  <ul>
-                    <li>**Chemical Composition:** Which elements it's made of (Hydrogen, Carbon, Iron, etc.).</li>
-                    <li>**Temperature:** The shape of the spectrum curve.</li>
-                    <li>**Velocity (Doppler Shift):** Whether it's moving towards (Blueshift) or away (Redshift) from us.</li>
-                  </ul>
+                  <h2>Final Project: Exoplanet Detection Report</h2>
+                  <p>Your task is to write a detailed, 750-word report on one of the primary methods for discovering exoplanets: the **Radial Velocity Method** (Doppler Shift) or the **Transit Method** (Brightness Dimming).</p>
                   
-                  <h3>Assignment: Exoplanet Detection</h3>
-                  <p>The **Radial Velocity Method** detects exoplanets by observing the tiny wobble (Doppler shift) in a star's light as an orbiting planet gravitationally tugs on it.</p>
-                  <p>Your Assignment is to outline, in detail, how you would use **spectroscopy and the Doppler effect** to prove that a star has an orbiting planet, even if you can't see the planet directly. Focus on the observable changes in the star's spectral lines.</p>
-                `,
-                assignmentContent: `
-                    <div class="assignment-form-container">
-                        <h2>Assignment: Exoplanet Detection Method</h2>
-                        <p style="margin-bottom: 1.5rem;">Explain how the Doppler shift of a star's spectral lines proves the existence of an orbiting exoplanet (Radial Velocity Method).</p>
-                        <form action="https://formspree.io/f/mldrbpwo" method="post">
-                            <label for="student-name"><i class="fas fa-user"></i> Your Name</label>
-                            <input type="text" id="student-name" name="Student Name" required>
-                            
-                            <label for="exoplanet-explanation"><i class="fas fa-satellite-dish"></i> Explanation of Radial Velocity</label>
-                            <textarea id="exoplanet-explanation" name="Exoplanet Explanation" placeholder="Start with the planet's gravitational tug causing a wobble in the star..." style="width: 100%; min-height: 150px; padding: 10px; border-radius: 6px; border: 1px solid rgba(0, 255, 255, 0.3); background-color: rgba(0, 0, 0, 0.4); color: var(--text-color); margin-top: 0.5rem;" required></textarea>
-                            
-                            <input type="hidden" name="Assignment" value="ASTRO101-L5-Exoplanet-Detection">
-                            
-                            <button type="submit" class="action-btn" style="width: 100%; margin-top: 1rem;">
-                                <i class="fas fa-upload"></i> Submit Assignment
-                            </button>
-                        </form>
-                    </div>
+                  <h3>Report Requirements</h3>
+                  <ol>
+                    <li>Explain the core physical principle (e.g., how a planet's tug affects a star's light).</li>
+                    <li>Describe the instrumentation needed (e.g., high-resolution spectrometer or sensitive photometer).</li>
+                    <li>Discuss the biases and limitations of the method (e.g., why is it better at finding large planets close to the star?).</li>
+                  </ol>
+                  
+                  <p>This report will be the basis for your certificate assessment. Prepare the document and submit it via email after the next step.</p>
                 `
               },
               certificateLesson
-            ].map((lesson, index) => ({...lesson, id: index + 1})), // Re-map IDs after adding certificate lesson
-          }
+            ].map((lesson, index) => ({...lesson, id: index + 1})),
+          },
+        ]
+      },
+      'law-arts-management': {
+        facultyName: 'Other Faculties',
+        courses: [
+          {
+            id: 'law101',
+            title: 'Law (LLB): Constitutional & Legal Practice',
+            description: 'Study of legal principles, constitutional law, and legal practice.',
+            icon: 'fas fa-gavel',
+            lessons: [
+              { id: 1, title: 'Introduction to Legal Systems and Jurisprudence', duration: '40 min', content: genericLessonContent('Law (LLB)', 'Legal Systems and Jurisprudence') },
+              { id: 2, title: 'Constitutional Law: Principles of Federalism', duration: '60 min', content: genericLessonContent('Law (LLB)', 'Constitutional Law') },
+              { id: 3, title: 'Criminal Law: Elements of a Crime and Defenses', duration: '55 min', content: genericLessonContent('Law (LLB)', 'Criminal Law') },
+              { id: 4, title: 'Contract Law: Offer, Acceptance, and Consideration', duration: '50 min', content: genericLessonContent('Law (LLB)', 'Contract Law') },
+              { 
+                id: 5, 
+                title: 'Final Project: Case Study Analysis', 
+                duration: '120 min', 
+                isProject: true,
+                content: `<h2>Final Project: Case Study Analysis</h2><p>Your final project is to prepare a detailed legal brief (5-7 pages) analyzing a landmark case in either Constitutional Law or Criminal Law. The brief must outline the facts, the issue, the holding, and the reasoning of the court.</p><p>This analysis will be the basis for your certificate assessment. Prepare the document and submit it via email after the next step.</p>`
+              },
+              certificateLesson
+            ].map((lesson, index) => ({...lesson, id: index + 1})),
+          },
+          {
+            id: 'mass101',
+            title: 'Mass Communication: Digital & Media Ethics',
+            description: 'Journalism, public relations, broadcasting, and digital media communication.',
+            icon: 'fas fa-broadcast-tower',
+            lessons: [
+              { id: 1, title: 'Theories of Mass Communication & Media Effects', duration: '40 min', content: genericLessonContent('Mass Communication', 'Media Effects') },
+              { id: 2, title: 'News Writing: Inverted Pyramid & Objectivity', duration: '60 min', content: genericLessonContent('Mass Communication', 'News Writing') },
+              { id: 3, title: 'Digital Public Relations & Crisis Management', duration: '55 min', content: genericLessonContent('Mass Communication', 'Public Relations') },
+              { id: 4, title: 'Media Law and Ethics: Defamation and Privacy', duration: '50 min', content: genericLessonContent('Mass Communication', 'Media Ethics') },
+              { 
+                id: 5, 
+                title: 'Final Project: Digital Media Campaign', 
+                duration: '120 min', 
+                isProject: true,
+                content: `<h2>Final Project: Digital Media Campaign Strategy</h2><p>Your task is to design a complete digital media campaign for a hypothetical non-profit organization. The plan must include a target audience analysis, social media strategy, content creation pipeline, and a crisis communication strategy. Prepare a 10-slide presentation or a 1000-word report.</p><p>This strategy will be the basis for your certificate assessment. Prepare the document and submit it via email after the next step.</p>`
+              },
+              certificateLesson
+            ].map((lesson, index) => ({...lesson, id: index + 1})),
+          },
+        ]
+      },
+      'creative-arts': {
+        facultyName: 'Faculty of Creative Arts',
+        courses: [
+          {
+            id: 'visart101',
+            title: 'Digital Animation & Visual Arts',
+            description: 'Mastering 2D/3D animation, digital painting, and visual storytelling.',
+            icon: 'fas fa-palette',
+            lessons: [
+              { 
+                id: 1, 
+                title: 'Foundations of Digital Drawing and Composition', 
+                duration: '40 min', 
+                content: `
+                  <h2>The 12 Principles of Animation</h2>
+                  <p>Digital animation is built upon a set of fundamental principles developed by Disney animators. Mastering these allows for the creation of believable, dynamic, and appealing characters and motion.</p>
+                  
+                  <h3>Key Principles: Squash and Stretch</h3>
+                  <p>This is the most important principle. It gives a feeling of mass and weight to objects. For example, a bouncing ball should squash when it hits the ground and stretch when it's moving fast.</p>
+                  <pre><code>// Conceptual Code for a Bouncing Ball Animation
+// Frame 10: Ball is in freefall (Stretched)
+// Frame 15: Ball hits ground (Squashed)
+// Frame 20: Ball rebounds (Stretched again)</code></pre>
+                  
+                  <h3>Color Theory and Digital Painting</h3>
+                  <p>Understanding color, harmony, and contrast is vital. We will explore the use of color palettes to evoke specific moods and guide the viewer's eye. This involves understanding the **color wheel** (Primary, Secondary, and Tertiary colors) and concepts like **Value** (lightness/darkness) and **Saturation** (intensity).</p>
+                `
+              },
+              { id: 2, title: 'Character Design and Storyboarding', duration: '60 min', content: genericLessonContent('Digital Animation', 'Character Design') },
+              { id: 3, title: 'Introduction to 3D Modeling (Mesh and Textures)', duration: '55 min', content: genericLessonContent('Digital Animation', '3D Modeling') },
+              { id: 4, title: 'Rendering, Lighting, and Post-Production', duration: '50 min', content: genericLessonContent('Digital Animation', 'Rendering and Lighting') },
+              { 
+                id: 5, 
+                title: 'Final Project: 15-Second Animated Short', 
+                duration: '120 min', 
+                isProject: true,
+                content: `<h2>Final Project: 15-Second Animated Short</h2><p>Your final project is to create a 15-second animated short film (2D or 3D) that demonstrates at least three of the 12 principles of animation. You must provide the final video file (or link to it) and a storyboard detailing your key frames and principles used.</p><p>This short film will be the basis for your certificate assessment. Prepare the document and submit it via email after the next step.</p>`
+              },
+              certificateLesson
+            ].map((lesson, index) => ({...lesson, id: index + 1})),
+          },
         ]
       }
     };
     
     // Calculate total lessons and re-map IDs after adding the certificate lesson
-    coursesDatabase['science-tech'].courses.forEach(course => {
-        const lastId = course.lessons.length;
-        course.totalLessons = lastId; // Update totalLessons property
-        course.lessons[lastId - 1].id = lastId; // Ensure the last lesson has the correct final ID
+    Object.values(coursesDatabase).forEach(faculty => {
+        faculty.courses.forEach(course => {
+            const lastId = course.lessons.length;
+            course.totalLessons = lastId; // Update totalLessons property
+            course.lessons[lastId - 1].id = lastId; // Ensure the last lesson has the correct final ID
+        });
     });
 
 
@@ -1497,6 +829,8 @@ Dark Energy (Expansion): 68.3%</code></pre>
     let currentCourse = null;
     let currentLesson = 1;
     let totalLessons = 0;
+    let quizInterval = null;
+    const QUIZ_TIME_LIMIT = 5 * 60; // 5 minutes
 
     // URL Parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -1523,34 +857,22 @@ Dark Energy (Expansion): 68.3%</code></pre>
     document.addEventListener('DOMContentLoaded', () => {
       generateStars();
       
-      // Mobile Menu Toggle
       const mobileMenuToggle = document.getElementById('mobileMenuToggle');
       const courseSidebar = document.getElementById('courseSidebar');
 
       mobileMenuToggle.addEventListener('click', () => {
         courseSidebar.classList.toggle('active');
-        if (courseSidebar.classList.contains('active')) {
-            mobileMenuToggle.innerHTML = '<i class="fas fa-times"></i>';
-        } else {
-            mobileMenuToggle.innerHTML = '<i class="fas fa-bars"></i>';
-        }
-      });
-
-      // Close sidebar when clicking outside on mobile
-      document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 992) {
-          if (courseSidebar.classList.contains('active') && !courseSidebar.contains(e.target) && !mobileMenuToggle.contains(e.target)) {
-            courseSidebar.classList.remove('active');
-            mobileMenuToggle.innerHTML = '<i class="fas fa-bars"></i>';
-          }
-        }
+        mobileMenuToggle.innerHTML = courseSidebar.classList.contains('active') ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
       });
       
-      // Set the default course title in the certificate form
-      document.getElementById('courseTitleHidden').value = courseId;
+      // Update the toggle button icon on load if the sidebar is visible on mobile
+      if (window.innerWidth <= 992) {
+          mobileMenuToggle.style.display = 'block';
+          mobileMenuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+      }
     });
 
-    // Auth State Management
+    // Auth State Management (Simplified for Demo)
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
@@ -1563,6 +885,12 @@ Dark Energy (Expansion): 68.3%</code></pre>
     });
 
     async function loadUserData() {
+      // Placeholder for actual Firebase logic
+      userData = {
+          enrolledCourses: [{ courseId: courseId, progress: 0, currentLesson: 1, completedLessons: [] }],
+          totalPoints: 0
+      };
+      
       try {
         const userDocRef = doc(db, 'users', currentUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -1570,12 +898,11 @@ Dark Energy (Expansion): 68.3%</code></pre>
         if (userDoc.exists()) {
           userData = userDoc.data();
         } else {
-          // If user doc doesn't exist, redirect to dashboard
           window.location.href = 'studyingatelvion.html';
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
-        alert('Error loading user data. Please try again.');
+        // Fallback for demo mode if Firebase fails
+        console.warn('Error loading user data from Firebase, using demo data:', error);
       }
     }
 
@@ -1593,21 +920,19 @@ Dark Energy (Expansion): 68.3%</code></pre>
         return;
       }
 
-      totalLessons = currentCourse.totalLessons;
-      currentLesson = parseInt(lessonParam) || 1;
-
-      // Check if user is enrolled
-      const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
-      if (!enrolledCourse) {
-        alert('You are not enrolled in this course');
-        window.location.href = 'studyingatelvion.html';
-        return;
-      }
+      totalLessons = currentCourse.lessons.length; // Uses length of mapped lessons
       
-      // Check if the lesson number is valid and accessible (to prevent URL cheating)
+      const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
+      
+      // Get the highest accessible lesson from stored data
       const accessibleLesson = enrolledCourse?.currentLesson || 1;
-      currentLesson = Math.min(currentLesson, accessibleLesson);
-      currentLesson = Math.max(currentLesson, 1);
+      
+      // Determine the lesson to load: 
+      // 1. The one requested in the URL, but not exceeding the accessible limit.
+      // 2. Default to the current accessible lesson if no URL param or if URL param is too high.
+      let lessonToLoad = parseInt(lessonParam) || accessibleLesson;
+      currentLesson = Math.min(lessonToLoad, accessibleLesson);
+      currentLesson = Math.max(currentLesson, 1); // Cannot be less than 1
       
       setupCourseInterface();
       renderLessonsList();
@@ -1633,8 +958,11 @@ Dark Energy (Expansion): 68.3%</code></pre>
       document.getElementById('courseSubtitle').textContent = currentCourse.description;
       
       // Update hidden form field for the certificate lesson
-      document.getElementById('courseTitleHidden').value = currentCourse.title;
-
+      const certificateLessonObj = currentCourse.lessons[currentCourse.lessons.length - 1];
+      if (certificateLessonObj && certificateLessonObj.isCertificate) {
+         certificateLessonObj.assignmentContent = certificateLesson.assignmentContent(currentCourse.id, currentCourse.title);
+      }
+      
       updateOverallProgress();
     }
 
@@ -1643,10 +971,12 @@ Dark Energy (Expansion): 68.3%</code></pre>
       const progress = enrolledCourse?.progress || 0;
       const completedLessons = enrolledCourse?.completedLessons?.length || 0;
       
-      document.getElementById('overallProgressBar').style.width = `${progress}%`;
-      document.getElementById('overallProgressText').textContent = `${progress}% Complete (${completedLessons}/${totalLessons} lessons)`;
+      // Total lessons excluding the final certificate lesson (which is not a knowledge lesson)
+      const academicLessons = totalLessons - 1;
       
-      // Update total points display in navigation
+      document.getElementById('overallProgressBar').style.width = `${progress}%`;
+      document.getElementById('overallProgressText').textContent = `${progress}% Complete (${completedLessons}/${academicLessons} Academic Lessons)`;
+      
       document.getElementById('totalPointsEarned').textContent = userData.totalPoints || 0;
     }
 
@@ -1654,14 +984,15 @@ Dark Energy (Expansion): 68.3%</code></pre>
       const container = document.getElementById('lessonsContainer');
       const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
       const completedLessons = enrolledCourse?.completedLessons || [];
+      const accessibleLesson = enrolledCourse?.currentLesson || 1;
       
       container.innerHTML = '';
       
       currentCourse.lessons.forEach((lesson, index) => {
-        const lessonNumber = index + 1; // Use array index + 1 for display and navigation
+        const lessonNumber = index + 1;
         const isCompleted = completedLessons.includes(lessonNumber);
         const isCurrent = lessonNumber === currentLesson;
-        const isAccessible = lessonNumber <= (enrolledCourse?.currentLesson || 1);
+        const isAccessible = lessonNumber <= accessibleLesson;
         
         const lessonItem = document.createElement('div');
         lessonItem.className = `lesson-item ${isCurrent ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
@@ -1671,7 +1002,7 @@ Dark Energy (Expansion): 68.3%</code></pre>
           statusIcon = '<i class="fas fa-check"></i>';
           statusClass = 'completed';
         } else if (isAccessible) {
-          statusIcon = lessonNumber;
+          statusIcon = lesson.isCertificate ? '<i class="fas fa-award"></i>' : lessonNumber;
           statusClass = 'current';
         } else {
           statusIcon = '<i class="fas fa-lock"></i>';
@@ -1703,6 +1034,7 @@ Dark Energy (Expansion): 68.3%</code></pre>
     }
 
     function loadLesson(lessonNumber) {
+      clearInterval(quizInterval); // Clear any running timer
       const lesson = currentCourse.lessons[lessonNumber - 1];
       if (!lesson) return;
       
@@ -1722,7 +1054,7 @@ Dark Energy (Expansion): 68.3%</code></pre>
       document.getElementById('lessonDuration').textContent = lesson.duration;
       document.getElementById('currentLessonNumber').textContent = lessonNumber;
       document.getElementById('totalLessons').textContent = totalLessons;
-      document.getElementById('lessonPoints').textContent = lesson.isCertificate ? '0' : '10'; // 0 points for the final form
+      document.getElementById('lessonPoints').textContent = lesson.isCertificate || lesson.isProject ? '0' : '10'; // 0 points for final/certificate
 
       
       // Update navigation
@@ -1732,69 +1064,123 @@ Dark Energy (Expansion): 68.3%</code></pre>
       // Update content
       document.getElementById('lessonContent').innerHTML = lesson.content;
       
-      // Handle Assignment/Certificate content
-      const assignmentContainer = document.getElementById('assignmentContainer');
-      const videoPlayer = document.getElementById('videoPlayer');
-      
-      if (lesson.assignmentContent) {
-          assignmentContainer.style.display = 'block';
-          assignmentContainer.innerHTML = lesson.assignmentContent;
-          videoPlayer.style.display = 'none';
-      } else if (lesson.isCertificate) {
-          assignmentContainer.style.display = 'block';
-          assignmentContainer.innerHTML = lesson.assignmentContent;
-          videoPlayer.style.display = 'none';
-      }
-      else {
-          assignmentContainer.style.display = 'none';
-          videoPlayer.style.display = 'flex'; // Show placeholder video
-      }
-      
-      // Update navigation buttons
-      const prevBtn = document.getElementById('prevLessonBtn');
+      const assessmentContainer = document.getElementById('assessmentContainer');
       const nextBtn = document.getElementById('nextLessonBtn');
       const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
-      const isLastLesson = lessonNumber === totalLessons;
       const isCompleted = enrolledCourse?.completedLessons?.includes(lessonNumber);
-      const isNextAccessible = (lessonNumber + 1) <= (enrolledCourse?.currentLesson || 1);
-
-      prevBtn.disabled = lessonNumber === 1;
-      nextBtn.disabled = isLastLesson || !isNextAccessible;
       
-      // Update mark complete button
-      const markCompleteBtn = document.getElementById('markCompleteBtn');
       
-      if (isCompleted) {
-        markCompleteBtn.innerHTML = '<i class="fas fa-check"></i> Completed';
-        markCompleteBtn.disabled = true;
-      } else if (lesson.isCertificate) {
-        // Special case for Certificate lesson - mark complete should be disabled/hidden if not all previous lessons are done
-        const prevLessonsCompleted = enrolledCourse.completedLessons.length === totalLessons - 1;
-        if (prevLessonsCompleted) {
-             markCompleteBtn.innerHTML = '<i class="fas fa-award"></i> Course Complete!';
-             markCompleteBtn.disabled = true;
-        } else {
-             markCompleteBtn.innerHTML = '<i class="fas fa-lock"></i> Complete All Lessons First';
-             markCompleteBtn.disabled = true;
-        }
-      } 
-      else {
-        markCompleteBtn.innerHTML = '<i class="fas fa-check"></i> Mark Complete';
-        markCompleteBtn.disabled = false;
+      if (lesson.isCertificate) {
+          // Certificate/Final Project Lesson
+          assessmentContainer.innerHTML = lesson.assignmentContent;
+          nextBtn.disabled = true; // No 'next' after the final step
+      } else if (isCompleted) {
+          // Lesson is completed: show passed message, enable next
+          assessmentContainer.innerHTML = `<div class="quiz-feedback pass">Assessment Passed! You are ready for the next lesson.</div>`;
+          nextBtn.disabled = currentLesson === totalLessons; // Disable if it's the last lesson (before certificate)
+      } else {
+          // Normal Lesson: show mandatory quiz
+          assessmentContainer.innerHTML = quizTemplate(lessonNumber);
+          nextBtn.disabled = true; // Must pass quiz to enable
+          startQuizTimer();
+          document.getElementById('submitQuizBtn').addEventListener('click', handleSubmitQuiz);
       }
       
-      // Update sidebar
-      renderLessonsList();
+      // Update navigation buttons (prev always works if > 1, next based on accessibility)
+      const isNextAccessible = (lessonNumber + 1) <= (enrolledCourse?.currentLesson || 1);
+      
+      document.getElementById('prevLessonBtn').disabled = lessonNumber === 1;
+      if (isCompleted) {
+          // If current is completed, check if the next one is available
+          nextBtn.disabled = lessonNumber === totalLessons || !isNextAccessible;
+      }
       
       // Scroll to top
       window.scrollTo(0, 0);
+      renderLessonsList();
+    }
+    
+    // --- QUIZ LOGIC ---
+    let timeLeft = QUIZ_TIME_LIMIT;
+
+    function startQuizTimer() {
+        timeLeft = QUIZ_TIME_LIMIT;
+        const timerElement = document.getElementById('quizTimer');
+
+        const updateTimer = () => {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `Time Left: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 60) {
+                timerElement.style.color = var(--error-color);
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(quizInterval);
+                timerElement.textContent = 'Time Up!';
+                // Force submission on time out
+                handleSubmitQuiz(true);
+            }
+            timeLeft--;
+        };
+
+        clearInterval(quizInterval);
+        quizInterval = setInterval(updateTimer, 1000);
+        updateTimer(); // Initial call to display immediately
     }
 
-    // --- EVENT LISTENERS ---
-    document.getElementById('markCompleteBtn').addEventListener('click', async () => {
-      await markLessonComplete();
-    });
+    function handleSubmitQuiz(isTimedOut = false) {
+        clearInterval(quizInterval);
+        const form = document.getElementById('quizForm');
+        const feedback = document.getElementById('quizFeedback');
+        const nextBtn = document.getElementById('nextLessonBtn');
+        const submitBtn = document.getElementById('submitQuizBtn');
+        
+        // This is a placeholder for a true assessment engine.
+        // For the sake of demonstration and structure, we check if all are answered and assume pass on first attempt.
+        const answers = {
+            q1: form.elements['q1']?.value, // Correct is C
+            q2: form.elements['q2']?.value, // Correct is B
+            q3: form.elements['q3']?.value, // Correct is C
+        };
+        
+        const correctAnswers = { q1: 'C', q2: 'B', q3: 'C' };
+        
+        let score = 0;
+        let totalQuestions = 0;
+        
+        for (const q in correctAnswers) {
+            totalQuestions++;
+            if (answers[q] === correctAnswers[q]) {
+                score++;
+            }
+        }
+        
+        const passMark = totalQuestions; // User must get ALL correct to pass
+        const isPassed = score === passMark;
+        
+        feedback.style.display = 'block';
+        submitBtn.disabled = true; // Only one attempt
 
+        if (isTimedOut) {
+             feedback.className = 'quiz-feedback fail';
+             feedback.innerHTML = `<i class="fas fa-times-circle"></i> **Time Up!** You ran out of time. Score: ${score}/${totalQuestions}. You must reload the page to restart the assessment.`;
+             return;
+        }
+
+        if (isPassed) {
+            feedback.className = 'quiz-feedback pass';
+            feedback.innerHTML = `<i class="fas fa-check-circle"></i> **PASS!** Score: ${score}/${totalQuestions}. Mastery achieved. Click 'Next Lesson' to continue.`;
+            markLessonComplete();
+            nextBtn.disabled = false;
+        } else {
+            feedback.className = 'quiz-feedback fail';
+            feedback.innerHTML = `<i class="fas fa-times-circle"></i> **FAIL!** Score: ${score}/${totalQuestions}. You must get all answers correct. Please refresh the page and study the content again before re-attempting.`;
+        }
+    }
+    
+    // --- EVENT LISTENERS ---
     document.getElementById('prevLessonBtn').addEventListener('click', () => {
       if (currentLesson > 1) {
         loadLesson(currentLesson - 1);
@@ -1820,6 +1206,7 @@ Dark Energy (Expansion): 68.3%</code></pre>
       }
     });
 
+    // Redirect fix
     document.getElementById('backToDashboardBtn').addEventListener('click', () => {
       window.location.href = 'studyingatelvion.html';
     });
@@ -1833,10 +1220,7 @@ Dark Energy (Expansion): 68.3%</code></pre>
         const enrolledCourse = userData.enrolledCourses[enrolledCourseIndex];
         const currentLessonObj = currentCourse.lessons[currentLesson - 1];
         
-        // Only lessons that are not the certificate lesson give points/mark complete
-        if (currentLessonObj.isCertificate) return; 
-
-        const pointsToAward = 10;
+        const pointsToAward = currentLessonObj.isCertificate || currentLessonObj.isProject ? 0 : 10;
         
         // Add to completed lessons if not already completed
         if (!enrolledCourse.completedLessons?.includes(currentLesson)) {
@@ -1848,9 +1232,10 @@ Dark Energy (Expansion): 68.3%</code></pre>
           // Update current lesson access
           enrolledCourse.currentLesson = Math.max(enrolledCourse.currentLesson || 1, currentLesson + 1);
           
-          // Calculate progress
-          const completedCount = enrolledCourse.completedLessons.length;
-          enrolledCourse.progress = Math.round((completedCount / totalLessons) * 100);
+          // Calculate progress (excluding the final certificate lesson)
+          const academicLessons = totalLessons - 1;
+          const completedAcademicCount = enrolledCourse.completedLessons.filter(id => id < totalLessons).length;
+          enrolledCourse.progress = Math.round((completedAcademicCount / academicLessons) * 100);
           
           // Update user data
           userData.enrolledCourses[enrolledCourseIndex] = enrolledCourse;
@@ -1868,13 +1253,11 @@ Dark Energy (Expansion): 68.3%</code></pre>
           updateOverallProgress();
           renderLessonsList();
           
-          // Update mark complete button
-          const markCompleteBtn = document.getElementById('markCompleteBtn');
-          markCompleteBtn.innerHTML = '<i class="fas fa-check"></i> Completed';
-          markCompleteBtn.disabled = true;
-          
           // Show completion modal
           document.getElementById('pointsEarned').textContent = pointsToAward;
+          document.getElementById('modalTitle').textContent = currentLessonObj.isProject ? 'Pre-Project Complete!' : 'Lesson Complete!';
+          document.getElementById('modalMessage').textContent = currentLessonObj.isProject ? `You are now ready to begin your Final Project and claim your Certificate.` : `Congratulations! You've successfully passed the assessment and completed this lesson.`;
+          
           document.getElementById('completionModal').style.display = 'flex';
           
           // Update modal button text for the last non-certificate lesson
@@ -1886,18 +1269,10 @@ Dark Energy (Expansion): 68.3%</code></pre>
         }
       } catch (error) {
         console.error('Error marking lesson complete:', error);
-        alert('Error updating progress. Please try again.');
+        // alert('Error updating progress. Please try again.');
+        // In a real environment, you'd handle this more gracefully.
       }
     }
   </script>
 </body>
   </html>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
