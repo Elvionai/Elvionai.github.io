@@ -107,6 +107,7 @@
       border-bottom: 1px solid rgba(0, 255, 255, 0.1);
     }
 
+    /* FIX: Corrected link to dashboard.html */
     .back-btn {
       display: flex;
       align-items: center;
@@ -893,7 +894,7 @@
   <div class="course-viewer-container">
     <aside class="course-sidebar" id="courseSidebar">
       <div class="course-sidebar-header">
-        <a href="studyingatelvion.html" class="back-btn">
+        <a href="dashboard.html" class="back-btn">
           <i class="fas fa-arrow-left"></i>
           Back to Dashboard
         </a>
@@ -960,7 +961,7 @@
 
             <div class="certificate-form-card">
                 <h2>Certificate & Project Submission</h2>
-                <p style="margin-bottom: 1.5rem; color: var(--warning-color);">
+                <p id="projectSubmissionText" style="margin-bottom: 1.5rem; color: var(--warning-color);">
                     To receive your certificate, please fill in your details below. For courses with a project (**e.g., Computer Science**), please **email your Final Project** (as outlined in the last lesson) to: <strong style="color: var(--cyan-glow);">elvionailabs@gmail.com</strong>.
                 </p>
                 <form id="certificateForm" action="https://formspree.io/f/mldrbpwo" method="post">
@@ -1092,7 +1093,6 @@
     const defaultLessonContent = `
         <h2>Welcome to Your Course!</h2>
         <p>This is the first lesson of your course. Here you will learn the foundational concepts.</p>
-        <p>This course is designed to provide you with a comprehensive, pre-university foundation in your chosen field. Our learning methodology focuses on practical knowledge and critical thinking.</p>
         
         <h3>Elvion University Philosophy</h3>
         <p>Elvion University is dedicated to **providing free, quality pre-degree knowledge and certificates** to empower future students globally. Your commitment to completing this course is your most valuable credential.</p>
@@ -1103,7 +1103,7 @@
         </div>
     `;
 
-    const defaultLesson = { 
+    const defaultFirstLesson = { 
       id: 1, 
       title: 'Course Introduction', 
       duration: '40 min', 
@@ -1117,15 +1117,15 @@
     // Helper to generate default lessons for other courses
     const generateDefaultLessons = (count, coursePrefix, isProject) => {
         return Array(count).fill(0).map((_, i) => {
-            let lessonTitle = `Lesson ${i+1}: Introduction to ${coursePrefix} Concepts`;
-            let content = defaultLessonContent.replace(/Welcome!|This is the first lesson/g, `Welcome to ${coursePrefix}!`).replace(/Introduction/g, lessonTitle);
+            let lessonTitle = `Lesson ${i+1}: Foundational ${coursePrefix} Concepts`;
+            let content = defaultLessonContent.replace(/Welcome!|This is the first lesson/g, `Welcome to the ${coursePrefix} Fundamentals!`).replace(/Introduction/g, lessonTitle);
             
             if (i === 0) {
                 // Keep the original quiz for the first lesson of a new course
                 return {
-                    ...defaultLesson,
+                    ...defaultFirstLesson,
                     id: i + 1,
-                    title: `${coursePrefix} ${lessonTitle}`,
+                    title: `Introduction to ${coursePrefix} Field`,
                     content: content,
                 };
             }
@@ -1134,15 +1134,28 @@
                 lessonTitle = isProject ? `Lesson ${i+1}: Final Project / Capstone` : `Lesson ${i+1}: Conclusion & Next Steps`;
                 content = `<h2>${lessonTitle}</h2>
                     <p>Congratulations on reaching the final lesson of the ${coursePrefix} course!</p>
-                    <p>This course's final requirement is a **Project Submission** (if \`isProject\` is true) or a final reflection. Follow the certificate steps on the next page.</p>
+                    <p>The final requirement is ${isProject ? 'a **Project Submission** (details on the next page)' : 'a final reflection test'}. Proceed to the next page to claim your certificate.</p>
+                    <div class="interactive-code-area" style="background: rgba(18, 26, 48, 0.85); border-color: var(--success-color);">
+                        <div class="area-header" style="color: var(--success-color);"><span>Next Step</span></div>
+                        <p>When ready, pass the quiz below to unlock the Final Certificate Page and access your **Grade Point (GP)**.</p>
+                    </div>
                 `;
             }
             
             // Simplified, universal quiz for placeholder lessons after the first one
             const simpleQuiz = [
-                { type: 'mcq', question: 'How many lessons are in the ${coursePrefix} course?', options: ['1', '5', '8', count.toString()], answer: count.toString() },
-                { type: 'mcq', question: 'What is the most important skill for a ${coursePrefix} professional?', options: ['Memorization', 'Critical Thinking & Problem Solving', 'Speed Reading', 'Ignoring details'], answer: 'Critical Thinking & Problem Solving' },
+                { type: 'mcq', question: `How many lessons are in the ${coursePrefix} course?`, options: ['1', '5', '8', count.toString()], answer: count.toString() },
+                { type: 'mcq', question: `Which is a foundational concept in ${coursePrefix}?`, options: ['Zebra Migration', 'Core Principles', 'Advanced Rocket Science', 'Ancient History'], answer: 'Core Principles' },
             ];
+            
+            // Text quiz for the last non-project lesson
+            if (i === count - 1) {
+                simpleQuiz[1] = { 
+                    type: 'text', 
+                    question: 'What is the email address where project submissions must be sent? (Enter exactly) (For verification)', 
+                    answer: 'elvionailabs@gmail.com' 
+                };
+            }
 
             return {
                 id: i + 1,
@@ -1154,8 +1167,9 @@
         });
     };
     
-    // --- UPDATED AND EXPANDED COURSE DATABASE (Incorporating all your courses) ---
+    // --- CS101 LESSONS (Unchanged) ---
     const cs101Lessons = [
+        // ... (CS101 Lessons 1-7 Content remains as provided in prompt)
         { 
             id: 1, 
             title: 'Introduction to Programming', 
@@ -1384,7 +1398,7 @@ TCP: Connection-oriented, reliable data transfer</code></pre>
         }
     ];
     
-    // --- NEW SOFTWARE ENGINEERING COURSE CONTENT ---
+    // --- NEW SOFTWARE ENGINEERING COURSE CONTENT (SE101) ---
     const se101Lessons = [
         {
             id: 1, 
@@ -1530,17 +1544,17 @@ function test_add_numbers() {
     
     // Assembling all courses
     const allCourses = [
-      { id: 'cs101', title: 'Computer Science', description: 'Fundamentals of computing, programming, and algorithms', icon: 'fas fa-laptop-code', totalLessons: 8, estimatedHours: 120, mediaType: 'video', lessons: cs101Lessons },
+      { id: 'cs101', title: 'Computer Science', description: 'Fundamentals of computing, programming, and algorithms', icon: 'fas fa-laptop-code', totalLessons: 8, estimatedHours: 120, mediaType: 'video', hasProject: true, lessons: cs101Lessons },
       // NEW SOFTWARE ENGINEERING COURSE
-      { id: 'se101', title: 'Software Engineering', description: 'Design, develop, and maintain large-scale software systems.', icon: 'fas fa-cogs', totalLessons: 5, estimatedHours: 80, mediaType: 'video', lessons: se101Lessons },
+      { id: 'se101', title: 'Software Engineering', description: 'Design, develop, and maintain large-scale software systems.', icon: 'fas fa-cogs', totalLessons: 5, estimatedHours: 80, mediaType: 'video', hasProject: true, lessons: se101Lessons },
       // OTHER COURSES WITH GENERATED PLACEHOLDERS
-      { id: 'law101', title: 'Law (LLB)', description: 'Comprehensive study of legal principles and practice.', icon: 'fas fa-balance-scale', totalLessons: 6, estimatedHours: 90, mediaType: 'video', lessons: generateDefaultLessons(6, 'LAW', false) },
-      { id: 'eng101', title: 'English & Literary Studies', description: 'Study of English language, literature, and critical analysis.', icon: 'fas fa-pen-nib', totalLessons: 4, estimatedHours: 60, mediaType: 'audio', lessons: generateDefaultLessons(4, 'ENG', false) },
-      { id: 'his101', title: 'History & Strategic Studies', description: 'World history, Nigerian history, and strategic studies.', icon: 'fas fa-globe-africa', totalLessons: 5, estimatedHours: 75, mediaType: 'audio', lessons: generateDefaultLessons(5, 'HIS', false) },
-      { id: 'bus101', title: 'Business Administration', description: 'Principles of management, marketing, finance, and entrepreneurship.', icon: 'fas fa-chart-line', totalLessons: 7, estimatedHours: 100, mediaType: 'audio', lessons: generateDefaultLessons(7, 'BUS', true) },
-      { id: 'mass101', title: 'Mass Communication', description: 'Journalism, public relations, broadcasting, and digital media communication.', icon: 'fas fa-bullhorn', totalLessons: 6, estimatedHours: 90, mediaType: 'audio', lessons: generateDefaultLessons(6, 'MASS', false) },
-      { id: 'mated101', title: 'Mathematics Education', description: 'Methods and strategies for teaching mathematics.', icon: 'fas fa-calculator', totalLessons: 5, estimatedHours: 70, mediaType: 'audio', lessons: generateDefaultLessons(5, 'MATED', false) },
-      { id: 'adulte101', title: 'Adult Education', description: 'Teaching and learning strategies for adult learners.', icon: 'fas fa-chalkboard-teacher', totalLessons: 4, estimatedHours: 60, mediaType: 'audio', lessons: generateDefaultLessons(4, 'ADULT', false) },
+      { id: 'law101', title: 'Law (LLB)', description: 'Comprehensive study of legal principles and practice.', icon: 'fas fa-balance-scale', totalLessons: 6, estimatedHours: 90, mediaType: 'audio', hasProject: false, lessons: generateDefaultLessons(6, 'LAW', false) },
+      { id: 'eng101', title: 'English & Literary Studies', description: 'Study of English language, literature, and critical analysis.', icon: 'fas fa-pen-nib', totalLessons: 4, estimatedHours: 60, mediaType: 'audio', hasProject: false, lessons: generateDefaultLessons(4, 'ENG', false) },
+      { id: 'his101', title: 'History & Strategic Studies', description: 'World history, Nigerian history, and strategic studies.', icon: 'fas fa-globe-africa', totalLessons: 5, estimatedHours: 75, mediaType: 'audio', hasProject: false, lessons: generateDefaultLessons(5, 'HIS', false) },
+      { id: 'bus101', title: 'Business Administration', description: 'Principles of management, marketing, finance, and entrepreneurship.', icon: 'fas fa-chart-line', totalLessons: 7, estimatedHours: 100, mediaType: 'audio', hasProject: true, lessons: generateDefaultLessons(7, 'BUS', true) },
+      { id: 'mass101', title: 'Mass Communication', description: 'Journalism, public relations, broadcasting, and digital media communication.', icon: 'fas fa-bullhorn', totalLessons: 6, estimatedHours: 90, mediaType: 'audio', hasProject: false, lessons: generateDefaultLessons(6, 'MASS', false) },
+      { id: 'mated101', title: 'Mathematics Education', description: 'Methods and strategies for teaching mathematics.', icon: 'fas fa-calculator', totalLessons: 5, estimatedHours: 70, mediaType: 'audio', hasProject: false, lessons: generateDefaultLessons(5, 'MATED', false) },
+      { id: 'adulte101', title: 'Adult Education', description: 'Teaching and learning strategies for adult learners.', icon: 'fas fa-chalkboard-teacher', totalLessons: 4, estimatedHours: 60, mediaType: 'audio', hasProject: false, lessons: generateDefaultLessons(4, 'ADULT', false) },
       { 
           id: 'visuarts101', 
           title: 'Visual Arts & Digital Media', 
@@ -1549,6 +1563,7 @@ function test_add_numbers() {
           totalLessons: 6, 
           estimatedHours: 95, 
           mediaType: 'video', 
+          hasProject: true, 
           lessons: generateDefaultLessons(6, 'VA', true) 
       },
     ];
@@ -1564,8 +1579,6 @@ function test_add_numbers() {
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('courseId');
     const lessonParam = urlParams.get('lesson');
-
-    // ... (DOM Content Loaded and Star Animation code remains the same)
 
     // Mobile Menu Toggle
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
@@ -1591,8 +1604,8 @@ function test_add_numbers() {
         await loadUserData();
         await initializeCourseViewer();
       } else {
-        // Redirect to enrollment page if not logged in
-        window.location.href = 'enroll.html'; 
+        // FIX: Redirect to dashboard if not logged in (assuming 'enroll' is where they start)
+        window.location.href = 'dashboard.html'; 
       }
     });
 
@@ -1610,7 +1623,7 @@ function test_add_numbers() {
           }
         } else {
           // Redirect to dashboard (or enrollment flow) if user data is missing
-          window.location.href = 'studyingatelvion.html'; 
+          window.location.href = 'dashboard.html'; 
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -1621,14 +1634,14 @@ function test_add_numbers() {
     async function initializeCourseViewer() {
       if (!courseId) {
         alert('No course specified');
-        window.location.href = 'studyingatelvion.html';
+        window.location.href = 'dashboard.html';
         return;
       }
 
       currentCourse = findCourseById(courseId);
       if (!currentCourse) {
         alert('Course not found');
-        window.location.href = 'studyingatelvion.html';
+        window.location.href = 'dashboard.html';
         return;
       }
 
@@ -1639,10 +1652,13 @@ function test_add_numbers() {
       const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
       if (!enrolledCourse) {
         alert('You are not enrolled in this course');
-        window.location.href = 'studyingatelvion.html';
+        window.location.href = 'dashboard.html';
         return;
       }
-
+      
+      // Ensure the starting lesson is not higher than the access level
+      currentLesson = Math.min(currentLesson, enrolledCourse?.currentLesson || 1);
+      
       setupCourseInterface();
       renderLessonsList();
       loadLesson(currentLesson);
@@ -1762,17 +1778,18 @@ function test_add_numbers() {
 
     function loadLesson(lessonNumber) {
       currentLesson = lessonNumber;
-      quizPassed = false; // Reset quiz state for the new lesson
       
       // Update URL without reloading
       const newUrl = new URL(window.location);
       newUrl.searchParams.set('lesson', lessonNumber);
       window.history.pushState({}, '', newUrl);
       
+      // Check if current lesson is completed to enable 'Next' in this session
+      const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
+      quizPassed = enrolledCourse?.completedLessons?.includes(currentLesson) || false;
+
       // Hide all main content elements first
       document.getElementById('finalCoursePage').style.display = 'none';
-      document.getElementById('contentHeader').style.display = 'flex';
-      document.getElementById('lessonNavigation').style.display = 'flex';
       const contentCard = document.querySelector('.content-card');
       const quizContainer = document.getElementById('quizContainer');
       const mediaPlayer = document.getElementById('mediaPlayer');
@@ -1789,9 +1806,20 @@ function test_add_numbers() {
           quizContainer.style.display = 'none';
           mediaPlayer.style.display = 'none';
           
+          // Update Final Page Project Text
+          const projectText = document.getElementById('projectSubmissionText');
+          if (currentCourse.hasProject) {
+              projectText.innerHTML = `To receive your certificate, please fill in your details below. For this course (**${currentCourse.title}**), please **email your Final Project** (as outlined in the last lesson) to: <strong style="color: var(--cyan-glow);">elvionailabs@gmail.com</strong>.`;
+          } else {
+              projectText.innerHTML = `Congratulations! Fill in your details below to request your **Certificate of Completion** for the **${currentCourse.title}** course. No project submission is required.`;
+          }
+          
           updateOverallProgress(); // Refresh GP
       } else {
           // Lesson Page Logic
+          document.getElementById('contentHeader').style.display = 'flex';
+          document.getElementById('lessonNavigation').style.display = 'flex';
+          
           const lesson = currentCourse.lessons.find(l => l.id === lessonNumber);
           if (!lesson) return;
 
@@ -1814,7 +1842,7 @@ function test_add_numbers() {
           const mediaPlaceholderText = document.getElementById('mediaPlaceholderText');
           if (currentCourse.mediaType === 'audio') {
             mediaPlayer.innerHTML = `
-                <audio controls style="width:100%; height: auto; outline:none; border-radius:10px; box-shadow:0 0 8px var(--cyan-glow);">
+                <audio controls style="width:100%; height: 100px; outline:none; border-radius:10px; box-shadow:0 0 8px var(--cyan-glow); margin: 0 auto; display: block;">
                     <source src="university/generic_audio.mp3" type="audio/mpeg">
                     Your browser does not support the audio element.
                 </audio>
@@ -1884,16 +1912,33 @@ function test_add_numbers() {
         const quizQuestionsContainer = document.getElementById('quizQuestions');
         quizQuestionsContainer.innerHTML = '';
         document.getElementById('quizResult').innerHTML = ''; // Clear result area
+        
+        const enrolledCourse = userData.enrolledCourses?.find(c => c.courseId === courseId);
+        const isLessonCompleted = enrolledCourse?.completedLessons?.includes(currentLesson);
+        
+        // If already completed, show a message and disable quiz
+        if (isLessonCompleted) {
+            quizQuestionsContainer.innerHTML = `<p style="color: var(--success-color); text-align: center; font-size: 1.1rem; margin-top: 1rem;">
+                <i class="fas fa-award"></i> This lesson has been successfully completed. You can move to the next lesson.
+            </p>`;
+            document.getElementById('submitQuizBtn').style.display = 'none';
+            return;
+        }
+        
         document.getElementById('submitQuizBtn').style.display = 'block';
         
         quizData.forEach((q, index) => {
             const questionElement = document.createElement('div');
             questionElement.className = 'quiz-question-wrapper';
+            
+            const optionsHtml = q.type === 'mcq' 
+                ? q.options.map(option => `<div class="quiz-option" data-answer="${option}">${option}</div>`).join('')
+                : `<input type="text" class="text-input-answer" placeholder="Type your answer here..." style="width: 100%; padding: 1rem; border-radius: 8px; border: 2px solid rgba(0, 255, 255, 0.3); background: rgba(0, 0, 0, 0.5); color: var(--text-color); font-size: 1rem;">`;
+            
             questionElement.innerHTML = `
                 <div class="quiz-question">Question ${index + 1}: ${q.question}</div>
                 <div class="quiz-options" data-question-index="${index}">
-                    ${q.type === 'mcq' ? q.options.map(option => `<div class="quiz-option" data-answer="${option}">${option}</div>`).join('') : ''}
-                    ${q.type === 'text' ? `<input type="text" class="text-input-answer" placeholder="Type your answer here..." style="width: 100%; padding: 1rem; border-radius: 8px; border: 2px solid rgba(0, 255, 255, 0.3); background: rgba(0, 0, 0, 0.5); color: var(--text-color); font-size: 1rem;">` : ''}
+                    ${optionsHtml}
                 </div>
             `;
             quizQuestionsContainer.appendChild(questionElement);
@@ -1917,6 +1962,10 @@ function test_add_numbers() {
         let allCorrect = true;
         let score = 0;
         
+        // Reset/Clear feedback
+        const quizResultElement = document.getElementById('quizResult');
+        quizResultElement.innerHTML = '';
+
         // Reset and evaluate
         quizData.forEach((q, index) => {
             const optionsGroup = document.querySelector(`.quiz-options[data-question-index="${index}"]`);
@@ -1934,12 +1983,14 @@ function test_add_numbers() {
                         selectedOption.classList.add('correct');
                     } else {
                         selectedOption.classList.add('incorrect');
+                        allCorrect = false;
                         // Highlight the correct answer
-                        optionsGroup.querySelector(`.quiz-option[data-answer="${q.answer}"]`).classList.add('correct');
+                        optionsGroup.querySelector(`.quiz-option[data-answer="${q.answer}"]`)?.classList.add('correct');
                     }
                 } else {
                     // User did not select an answer, fail and highlight correct answer
-                    optionsGroup.querySelector(`.quiz-option[data-answer="${q.answer}"]`).classList.add('correct');
+                    optionsGroup.querySelector(`.quiz-option[data-answer="${q.answer}"]`)?.classList.add('correct');
+                    allCorrect = false;
                 }
             } else if (q.type === 'text') {
                 const input = optionsGroup.querySelector('.text-input-answer');
@@ -1951,17 +2002,18 @@ function test_add_numbers() {
                     input.style.border = `2px solid var(--success-color)`;
                 } else {
                     input.style.border = `2px solid var(--error-color)`;
+                    allCorrect = false;
+                    quizResultElement.innerHTML += `<div class="quiz-feedback incorrect" style="margin-bottom: 0.5rem;">
+                        <i class="fas fa-times-circle"></i> Question ${index + 1} (Text): Expected answer was: <strong style="color: var(--cyan-glow);">${q.answer}</strong>
+                    </div>`;
                 }
             }
 
             if (isCorrect) {
                 score++;
-            } else {
-                allCorrect = false;
             }
         });
 
-        const quizResultElement = document.getElementById('quizResult');
         const totalQuestions = quizData.length;
         
         if (allCorrect) {
@@ -1974,11 +2026,15 @@ function test_add_numbers() {
             markLessonComplete();
             document.getElementById('submitQuizBtn').style.display = 'none'; // Hide submit after passing
         } else {
-            quizResultElement.innerHTML = `
-                <div class="quiz-feedback incorrect">
-                    <i class="fas fa-times-circle"></i> **Incorrect Answers.** Score: ${score}/${totalQuestions}. Please review the lesson and try again.
-                </div>
-            `;
+            // Only show a general error if specific text feedback hasn't been added
+            if (quizResultElement.innerHTML.length < 10) { 
+                quizResultElement.innerHTML = `
+                    <div class="quiz-feedback incorrect">
+                        <i class="fas fa-times-circle"></i> **Incorrect Answers.** Score: ${score}/${totalQuestions}. Please review the lesson and try again.
+                    </div>
+                `;
+            }
+            
             // Disable navigation controls if quiz failed
             quizPassed = false;
             updateNavigationControls();
@@ -1990,6 +2046,7 @@ function test_add_numbers() {
 
     // Event Listeners
     document.getElementById('prevLessonBtn').addEventListener('click', () => {
+        // FIX: Ensure clicking prev from final page goes back to last lesson
       if (currentLesson === totalLessons + 1) {
           loadLesson(totalLessons); // Back from final page to last lesson
       } else if (currentLesson > 1) {
@@ -1998,7 +2055,7 @@ function test_add_numbers() {
     });
 
     document.getElementById('nextLessonBtn').addEventListener('click', () => {
-      if (currentLesson < totalLessons) {
+      if (currentLesson < totalLessons && (quizPassed || userData.enrolledCourses?.find(c => c.courseId === courseId)?.completedLessons?.includes(currentLesson))) {
         // This is only enabled if the lesson is completed/quiz is passed
         loadLesson(currentLesson + 1);
       } else if (currentLesson === totalLessons) {
@@ -2021,7 +2078,7 @@ function test_add_numbers() {
 
     // Corrected Dashboard Redirect
     document.getElementById('backToDashboardBtn').addEventListener('click', () => {
-      window.location.href = 'studyingatelvion.html';
+      window.location.href = 'dashboard.html';
     });
 
     async function markLessonComplete() {
