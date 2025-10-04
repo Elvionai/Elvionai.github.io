@@ -1117,15 +1117,39 @@
     // Helper to generate default lessons for other courses
     const generateDefaultLessons = (count, coursePrefix, isProject) => {
         return Array(count).fill(0).map((_, i) => {
-            let lessonTitle = `Lesson ${i+1}: Introduction`;
+            let lessonTitle = `Lesson ${i+1}: Introduction to ${coursePrefix} Concepts`;
+            let content = defaultLessonContent.replace(/Welcome!|This is the first lesson/g, `Welcome to ${coursePrefix}!`).replace(/Introduction/g, lessonTitle);
+            
+            if (i === 0) {
+                // Keep the original quiz for the first lesson of a new course
+                return {
+                    ...defaultLesson,
+                    id: i + 1,
+                    title: `${coursePrefix} ${lessonTitle}`,
+                    content: content,
+                };
+            }
+            
             if (i === count - 1) {
                 lessonTitle = isProject ? `Lesson ${i+1}: Final Project / Capstone` : `Lesson ${i+1}: Conclusion & Next Steps`;
+                content = `<h2>${lessonTitle}</h2>
+                    <p>Congratulations on reaching the final lesson of the ${coursePrefix} course!</p>
+                    <p>This course's final requirement is a **Project Submission** (if \`isProject\` is true) or a final reflection. Follow the certificate steps on the next page.</p>
+                `;
             }
+            
+            // Simplified, universal quiz for placeholder lessons after the first one
+            const simpleQuiz = [
+                { type: 'mcq', question: 'How many lessons are in the ${coursePrefix} course?', options: ['1', '5', '8', count.toString()], answer: count.toString() },
+                { type: 'mcq', question: 'What is the most important skill for a ${coursePrefix} professional?', options: ['Memorization', 'Critical Thinking & Problem Solving', 'Speed Reading', 'Ignoring details'], answer: 'Critical Thinking & Problem Solving' },
+            ];
+
             return {
-                ...defaultLesson,
                 id: i + 1,
                 title: `${coursePrefix} ${lessonTitle}`,
-                content: i === 0 ? defaultLessonContent : defaultLessonContent.replace(/Welcome!|This is the first lesson/g, 'Continued Learning').replace(/Introduction/g, lessonTitle),
+                duration: `${40 + Math.floor(Math.random() * 20)} min`, // Varied duration
+                content: content,
+                quiz: simpleQuiz,
             };
         });
     };
@@ -1235,7 +1259,6 @@ print(car["model"])</textarea>
                 { type: 'mcq', question: 'How is data stored in a Dictionary?', options: ['By index number', 'In key-value pairs', 'As a single, long string', 'In a sequential line'], answer: 'In key-value pairs' },
             ]
         },
-        // ... (Other CS lessons shortened for brevity but follow the detailed, practical structure)
         { id: 3, title: 'Object-Oriented Programming', duration: '55 min', content: `<h2>Object-Oriented Programming (OOP)</h2><p>OOP organizes code around <strong>objects</strong>, which are instances of <strong>classes</strong> (blueprints). The four pillars are Encapsulation, Inheritance, Polymorphism, and Abstraction.</p>
             <h3>Classes and Objects Example</h3>
             <p>A Car class is the blueprint; a specific red Toyota is an object.</p>
@@ -1361,10 +1384,156 @@ TCP: Connection-oriented, reliable data transfer</code></pre>
         }
     ];
     
+    // --- NEW SOFTWARE ENGINEERING COURSE CONTENT ---
+    const se101Lessons = [
+        {
+            id: 1, 
+            title: 'Foundations of Software Engineering', 
+            duration: '50 min', 
+            content: `
+                <h2>What is Software Engineering?</h2>
+                <p><strong>Software Engineering (SE)</strong> is the systematic approach to the design, development, and maintenance of software. Unlike simple programming, SE focuses on scalability, reliability, and working in a team environment.</p>
+                
+                <h3>Code vs. Engineering</h3>
+                <ul>
+                    <li><strong>Programming:</strong> Writing code to solve a specific, immediate problem.</li>
+                    <li><strong>Software Engineering:</strong> Applying established engineering principles to build robust, long-lasting, and easily modifiable software products.</li>
+                </ul>
+
+                <h3>The Software Development Life Cycle (SDLC)</h3>
+                <p>This systematic process ensures quality. The main stages are: **Planning, Analysis, Design, Implementation, Testing, and Deployment/Maintenance.**</p>
+                
+                <div class="interactive-code-area">
+                    <div class="area-header"><span>Core Principles</span></div>
+                    <p>Think about a large app like a banking system. What would happen if the planning stage was skipped?</p>
+                    <div class="output">Result: Chaos, security flaws, and massive cost overruns.</div>
+                </div>
+            `,
+            quiz: [
+                { type: 'mcq', question: 'What is the primary difference between programming and software engineering?', options: ['SE uses C++, programming uses Python', 'SE is systematic and focuses on large-scale products', 'Programming is only for web development', 'There is no difference'], answer: 'SE is systematic and focuses on large-scale products' },
+                { type: 'mcq', question: 'Which stage of the SDLC involves deciding on the architecture (e.g., choosing a database)?', options: ['Implementation', 'Analysis', 'Design', 'Testing'], answer: 'Design' },
+            ]
+        },
+        { 
+            id: 2, 
+            title: 'Agile vs. Waterfall Methodologies', 
+            duration: '65 min', 
+            content: `
+                <h2>Modern Development Methodologies</h2>
+                <p>How teams manage the SDLC is crucial. The two most prominent methods are **Waterfall** and **Agile**.</p>
+                
+                <h3>Waterfall (Traditional)</h3>
+                <p>A sequential, linear process where each phase must be completed before the next begins. It's rigid but simple and suitable for small, well-defined projects.</p>
+                <p style="color: var(--error-color);">**Drawback:** Difficult to adapt to changes once a phase is complete.</p>
+
+                <h3>Agile (Modern)</h3>
+                <p>An iterative and incremental approach that prioritizes flexibility and customer collaboration. Work is done in short cycles (**Sprints** in Scrum).</p>
+                <ul>
+                    <li>**Scrum:** A framework of Agile using Sprints, daily standups, and product backlogs.</li>
+                    <li>**Kanban:** A visual system for managing work, focusing on limiting work in progress.</li>
+                </ul>
+                <pre><code>// Agile Principle Example:
+// Respond to change over following a plan.</code></pre>
+
+                <h3>Practical: Choosing a Method</h3>
+                <div class="interactive-code-area">
+                    <div class="area-header" style="color: var(--success-color);"><span>Scenario: Unclear Requirements</span></div>
+                    <p>If a client's requirements are constantly changing, which methodology is best?</p>
+                    <div class="output">Best Method: Agile (Scrum or Kanban)</div>
+                </div>
+            `,
+            quiz: [
+                { type: 'mcq', question: 'Which methodology is characterized by short, iterative work cycles called Sprints?', options: ['Waterfall', 'SDLC', 'Scrum (Agile)', 'Sequential'], answer: 'Scrum (Agile)' },
+                { type: 'mcq', question: 'What is the main weakness of the Waterfall model?', options: ['It is too fast', 'It is not documented enough', 'It is very rigid and struggles with requirement changes', 'It requires too many programmers'], answer: 'It is very rigid and struggles with requirement changes' },
+            ]
+        },
+        { 
+            id: 3, 
+            title: 'Requirements and Design Patterns', 
+            duration: '50 min', 
+            content: `
+                <h2>Formalizing Software Needs</h2>
+                <p>Requirements gathering is the most critical phase. Requirements are typically categorized as **Functional** (what the system must do) and **Non-Functional** (how the system performs, e.g., speed, security, usability).</p>
+
+                <h3>UML Diagrams</h3>
+                <p>The **Unified Modeling Language (UML)** is a standard way to visualize a system's design. A **Use Case Diagram** models the user's interaction with the system.</p>
+
+                <h3>Design Patterns</h3>
+                <p>These are reusable solutions to common problems in software design. They are *templates*, not finished designs.</p>
+                <ul>
+                    <li>**Singleton:** Ensures a class has only one instance and provides a global access point to it (e.g., a central configuration manager).</li>
+                    <li>**Factory:** Provides an interface for creating objects in a superclass, but allows subclasses to alter the type of objects that will be created.</li>
+                </ul>
+            `,
+            quiz: [
+                { type: 'mcq', question: 'Which type of requirement defines *how* the system should behave (e.g., load time, security)?', options: ['Functional Requirement', 'User Requirement', 'Non-Functional Requirement', 'Business Requirement'], answer: 'Non-Functional Requirement' },
+                { type: 'mcq', question: 'The Singleton design pattern is used to ensure:', options: ['A class can be inherited', 'A class can create multiple object types', 'A class has only one instance globally', 'The code is highly abstract'], answer: 'A class has only one instance globally' },
+            ]
+        },
+        { 
+            id: 4, 
+            title: 'Testing and Quality Assurance', 
+            duration: '45 min', 
+            content: `
+                <h2>Ensuring Software Quality</h2>
+                <p>Testing is a continuous process. Quality Assurance (QA) aims to prevent bugs, while Testing aims to find them.</p>
+
+                <h3>Testing Levels (Recap and Deep Dive)</h3>
+                <ol>
+                    <li>**Unit Testing:** Testing the smallest piece of code (function/method). Crucial for catching early bugs.</li>
+                    <li>**Integration Testing:** Testing the flow between two or more integrated modules.</li>
+                    <li>**System Testing:** Testing the complete, integrated system to evaluate the system's compliance with the specified requirements.</li>
+                    <li>**Acceptance Testing (UAT):** The final test by the customer to ensure the software is ready for deployment.</li>
+                </ol>
+
+                <h3>Automated Testing</h3>
+                <p>Writing code to test other code. This is a pillar of modern SE, especially in Agile environments, allowing for fast, repeatable checks.</p>
+                <pre><code>// Example of a Unit Test in a language like Python/Jest
+function test_add_numbers() {
+    assert_equals(add(2, 3), 5); // Expected vs. Actual
+}</code></pre>
+            `,
+            quiz: [
+                { type: 'mcq', question: 'What is the most fundamental level of testing, focused on individual functions?', options: ['System Testing', 'Integration Testing', 'Unit Testing', 'Acceptance Testing'], answer: 'Unit Testing' },
+                { type: 'mcq', question: 'The primary goal of Quality Assurance (QA) is to:', options: ['Fix bugs found by testers', 'Prevent defects from occurring in the first place', 'Deploy the code to production', 'Manage the project schedule'], answer: 'Prevent defects from occurring in the first place' },
+            ]
+        },
+        { 
+            id: 5, 
+            title: 'Final Project: SE Design Document', 
+            duration: '90 min', 
+            content: `
+                <h2>Software Engineering Capstone</h2>
+                <p class="lead" style="color: var(--warning-color);">The final lesson of your Software Engineering course is the **Design Document Project**. This is mandatory for your certificate.</p>
+                
+                <h3>Project Goal: Create a Design Document</h3>
+                <p>Instead of writing code, you will **design** the solution for a small software product (e.g., a simple task manager or a university course registration system). The focus is on the *engineering* process.</p>
+                
+                <h4>Required Sections in Your Document (PDF or Markdown):</h4>
+                <ol>
+                    <li>**Requirements:** List at least 5 Functional and 3 Non-Functional Requirements.</li>
+                    <li>**Methodology:** State and justify your choice of SDLC methodology (Agile or Waterfall).</li>
+                    <li>**Architecture/Design:** Sketch a basic UML Use Case Diagram and name at least two **Design Patterns** you would use, explaining why.</li>
+                    <li>**Testing Plan:** Outline the approach for Unit Testing and User Acceptance Testing.</li>
+                </ol>
+
+                <h3>Submission Guidelines (Crucial)</h3>
+                <p style="color: var(--cyan-glow);">**Submit your Final Design Document to: elvionailabs@gmail.com** after filling out the certificate form on the next page. Use the subject line: "SE101 Final Project: [Your Name]".</p>
+            `,
+            quiz: [
+                { type: 'mcq', question: 'For the SE101 Final Project, what is the required deliverable?', options: ['1000 lines of code', 'A fully tested deployed application', 'A detailed Software Design Document', 'A recorded video presentation'], answer: 'A detailed Software Design Document' },
+                { type: 'text', question: 'What is the email address to which you must submit your project for certificate review? (Enter exactly)', answer: 'elvionailabs@gmail.com' },
+            ]
+        }
+    ];
+
+    
     // Assembling all courses
     const allCourses = [
       { id: 'cs101', title: 'Computer Science', description: 'Fundamentals of computing, programming, and algorithms', icon: 'fas fa-laptop-code', totalLessons: 8, estimatedHours: 120, mediaType: 'video', lessons: cs101Lessons },
-      { id: 'se101', title: 'Software Engineering', description: 'Design, develop, and maintain large-scale software systems.', icon: 'fas fa-cogs', totalLessons: 5, estimatedHours: 80, mediaType: 'video', lessons: generateDefaultLessons(5, 'SE', true) },
+      // NEW SOFTWARE ENGINEERING COURSE
+      { id: 'se101', title: 'Software Engineering', description: 'Design, develop, and maintain large-scale software systems.', icon: 'fas fa-cogs', totalLessons: 5, estimatedHours: 80, mediaType: 'video', lessons: se101Lessons },
+      // OTHER COURSES WITH GENERATED PLACEHOLDERS
       { id: 'law101', title: 'Law (LLB)', description: 'Comprehensive study of legal principles and practice.', icon: 'fas fa-balance-scale', totalLessons: 6, estimatedHours: 90, mediaType: 'video', lessons: generateDefaultLessons(6, 'LAW', false) },
       { id: 'eng101', title: 'English & Literary Studies', description: 'Study of English language, literature, and critical analysis.', icon: 'fas fa-pen-nib', totalLessons: 4, estimatedHours: 60, mediaType: 'audio', lessons: generateDefaultLessons(4, 'ENG', false) },
       { id: 'his101', title: 'History & Strategic Studies', description: 'World history, Nigerian history, and strategic studies.', icon: 'fas fa-globe-africa', totalLessons: 5, estimatedHours: 75, mediaType: 'audio', lessons: generateDefaultLessons(5, 'HIS', false) },
