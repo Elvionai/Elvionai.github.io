@@ -2370,69 +2370,607 @@ plt.show()
   ]
         },
         {
-            id: 2,
-            title: 'L2: Code Quality, Metrics, and Refactoring',
-            duration: '75 min',
-            content: `
-                <h2>Quantifying Quality: Metrics and Maintainability</h2>
-                <p>High-quality software is reliable, readable, and maintainable. This lesson explores the metrics engineers use to measure code quality and the practice of **refactoring** to improve it.</p>
+  id: 2,
+  title: 'Software Development Lifecycle: From Idea to Product',
+  duration: '100 min',
+  content: `
+    <h2>The Software Development Lifecycle (SDLC)</h2>
+    <p>Every successful software project follows a lifecycle—a structured process from initial concept to deployment and maintenance. Understanding SDLC models helps teams deliver quality software on time and within budget.</p>
 
-                <h3>Measuring Code Health</h3>
-                <p>We use quantitative metrics to measure how 'good' our code and design truly are, moving beyond subjective opinions. Lower complexity and higher readability mean lower maintenance costs (L8).</p>
+    <h3>The Six Phases of SDLC</h3>
+    
+    <h4>1. Planning & Feasibility</h4>
+    <p><strong>Goal:</strong> Define the project scope, identify stakeholders, assess feasibility.</p>
+    <p><strong>Questions:</strong></p>
+    <ul>
+      <li>What problem are we solving?</li>
+      <li>Who are the users?</li>
+      <li>Is it technically feasible?</li>
+      <li>Do we have the budget and time?</li>
+      <li>What are the risks?</li>
+    </ul>
+
+    <p><strong>Example: Planning a Food Delivery App</strong></p>
+    <pre><code># Project Planning Document
+
+Project: Elvion Eats - Campus Food Delivery
+Stakeholders:
+  - Students (customers)
+  - Campus restaurants (vendors)
+  - Delivery personnel
+  - University administration
+
+Technical Feasibility:
+  - Mobile app (iOS/Android)
+  - Real-time order tracking (GPS integration)
+  - Payment processing (integration with payment gateways)
+  - Backend infrastructure (cloud hosting)
+
+Budget: $50,000
+Timeline: 6 months
+Team: 5 developers, 1 designer, 1 project manager
+
+Risks:
+  - Vendor adoption
+  - Payment gateway delays
+  - GPS accuracy on campus
+  - User acquisition</code></pre>
+
+    <h4>2. Requirements Analysis</h4>
+    <p><strong>Goal:</strong> Document exactly what the system must do.</p>
+
+    <h5>Functional Requirements (What the system does)</h5>
+    <ul>
+      <li>FR1: Users shall be able to browse restaurant menus</li>
+      <li>FR2: Users shall be able to place orders with delivery address</li>
+      <li>FR3: System shall calculate delivery time estimates</li>
+      <li>FR4: Vendors shall receive real-time order notifications</li>
+      <li>FR5: Users shall be able to track order status</li>
+    </ul>
+
+    <h5>Non-Functional Requirements (How the system performs)</h5>
+    <ul>
+      <li>NFR1: System shall support 1000 concurrent users</li>
+      <li>NFR2: Order placement shall complete within 3 seconds</li>
+      <li>NFR3: System uptime shall be 99.9%</li>
+      <li>NFR4: All payment data shall be encrypted</li>
+      <li>NFR5: Mobile app shall work offline for browsing</li>
+    </ul>
+
+    <h4>3. System Design</h4>
+    <p><strong>Goal:</strong> Create the blueprint for how the system will be built.</p>
+
+    <h5>High-Level Architecture</h5>
+    <pre><code># System Architecture: Elvion Eats
+
+┌─────────────┐
+│  Mobile App │ (iOS/Android)
+└──────┬──────┘
+       │ HTTPS/REST API
+┌──────▼──────────────┐
+│   API Gateway       │
+└──────┬──────────────┘
+       │
+┌──────▼──────────────┐
+│  Load Balancer      │
+└──┬────────────────┬─┘
+   │                │
+┌──▼───────┐  ┌────▼─────┐
+│ App      │  │   App    │
+│ Server 1 │  │ Server 2 │
+└──┬───────┘  └────┬─────┘
+   │               │
+   └───────┬───────┘
+       ┌───▼────────┐
+       │  Database  │
+       │ (PostgreSQL)│
+       └────────────┘
+
+External Services:
+- Payment Gateway (Stripe/Paystack)
+- SMS Service (Twilio)
+- Maps API (Google Maps)
+- Push Notifications (Firebase)</code></pre>
+
+    <h5>Database Design</h5>
+    <pre><code class="language-sql">-- Core Tables Design
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE restaurants (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    location VARCHAR(500) NOT NULL,
+    rating DECIMAL(2,1),
+    is_active BOOLEAN DEFAULT true
+);
+
+CREATE TABLE menu_items (
+    id SERIAL PRIMARY KEY,
+    restaurant_id INT REFERENCES restaurants(id),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    is_available BOOLEAN DEFAULT true
+);
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    restaurant_id INT REFERENCES restaurants(id),
+    status VARCHAR(50) NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    delivery_address TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INT REFERENCES orders(id),
+    menu_item_id INT REFERENCES menu_items(id),
+    quantity INT NOT NULL,
+    price_at_time DECIMAL(10,2) NOT NULL
+);</code></pre>
+
+    <h4>4. Implementation (Development)</h4>
+    <p><strong>Goal:</strong> Write the actual code following the design.</p>
+
+    <pre><code class="language-python"># Sample Implementation: Order Service
+
+from datetime import datetime
+from typing import List, Dict
+import logging
+
+class OrderService:
+    """Handles order creation and management"""
+    
+    def __init__(self, db, payment_service, notification_service):
+        self.db = db
+        self.payment_service = payment_service
+        self.notification_service = notification_service
+        self.logger = logging.getLogger(__name__)
+    
+    def create_order(self, user_id: int, items: List[Dict], 
+                     delivery_address: str) -> Dict:
+        """
+        Create a new order with payment processing
+        
+        Args:
+            user_id: ID of the user placing order
+            items: List of {menu_item_id, quantity}
+            delivery_address: Delivery location
+            
+        Returns:
+            Order details dictionary
+            
+        Raises:
+            ValueError: If validation fails
+            PaymentError: If payment processing fails
+        """
+        try:
+            # Validate input
+            self._validate_order_input(user_id, items, delivery_address)
+            
+            # Calculate total
+            total_amount = self._calculate_total(items)
+            
+            # Start database transaction
+            with self.db.transaction():
+                # Create order record
+                order_id = self.db.insert_order({
+                    'user_id': user_id,
+                    'status': 'pending',
+                    'total_amount': total_amount,
+                    'delivery_address': delivery_address,
+                    'created_at': datetime.now()
+                })
                 
-                <h4>Key Quality Metrics</h4>
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                    <tr style="background: rgba(99, 102, 241, 0.1);">
-                        <th style="padding: 10px; text-align: left;">Metric</th>
-                        <th style="padding: 10px; text-align: left;">Definition</th>
-                        <th style="padding: 10px; text-align: left;">Impact on SWE</th>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px;">**Cyclomatic Complexity**</td>
-                        <td style="padding: 10px;">Measures the number of independent execution paths through a function.</td>
-                        <td style="padding: 10px;">High $\rightarrow$ Harder to test and more prone to bugs.</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px;">**Maintainability Index**</td>
-                        <td style="padding: 10px;">A score combining complexity and size.</td>
-                        <td style="padding: 10px;">Higher score $\rightarrow$ Easier for a new team member to understand and change.</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px;">**Code Duplication**</td>
-                        <td style="padding: 10px;">Percentage of repeated code blocks.</td>
-                        <td style="padding: 10px;">High $\rightarrow$ Violates DRY (L1), makes maintenance risky.</td>
-                    </tr>
-                </table>
-
-                <h3>Refactoring: Paying Down Technical Debt</h3>
-                <p>**Refactoring** is restructuring existing code *without* changing its external behavior. It is done solely to improve non-functional attributes like readability and maintainability.</p>
-
-                <h4>Example: Refactoring to Reduce Complexity</h4>
-                <p>The original function below has high Cyclomatic Complexity because of multiple nested conditionals. It should be refactored using helper functions to reduce risk.</p>
+                # Insert order items
+                for item in items:
+                    self.db.insert_order_item({
+                        'order_id': order_id,
+                        'menu_item_id': item['menu_item_id'],
+                        'quantity': item['quantity'],
+                        'price_at_time': item['price']
+                    })
                 
-                <pre><code class="language-python"># Function B: High Complexity (CC=3)
-def process_order(is_premium, is_local):
-    if is_premium: # 1st decision point
-        if is_local: # 2nd decision point
-            return "Local Premium"
-        return "Standard Premium"
-    return "Basic Order" 
+                # Process payment
+                payment_result = self.payment_service.charge(
+                    user_id=user_id,
+                    amount=total_amount,
+                    order_id=order_id
+                )
+                
+                if not payment_result.success:
+                    raise PaymentError("Payment failed")
+                
+                # Update order status
+                self.db.update_order_status(order_id, 'confirmed')
+                
+                # Send notifications
+                self._send_notifications(order_id, user_id)
+                
+                self.logger.info(f"Order {order_id} created successfully")
+                
+                return {
+                    'order_id': order_id,
+                    'status': 'confirmed',
+                    'total': total_amount,
+                    'estimated_delivery': self._estimate_delivery_time()
+                }
+        
+        except Exception as e:
+            self.logger.error(f"Order creation failed: {e}")
+            raise
+    
+    def _validate_order_input(self, user_id, items, address):
+        """Validate order input data"""
+        if not user_id or not isinstance(user_id, int):
+            raise ValueError("Invalid user ID")
+        if not items or len(items) == 0:
+            raise ValueError("Order must contain at least one item")
+        if not address or len(address) < 10:
+            raise ValueError("Invalid delivery address")
+        # Additional validation...
+    
+    def _calculate_total(self, items):
+        """Calculate order total"""
+        return sum(item['price'] * item['quantity'] for item in items)
+    
+    def _estimate_delivery_time(self):
+        """Estimate delivery time based on restaurant load"""
+        # Implementation...
+        pass
+    
+    def _send_notifications(self, order_id, user_id):
+        """Send order confirmations"""
+        # Send to user
+        self.notification_service.send_user_confirmation(user_id, order_id)
+        # Send to restaurant
+        self.notification_service.send_restaurant_alert(order_id)</code></pre>
+
+    <h4>5. Testing & Quality Assurance</h4>
+    <p><strong>Goal:</strong> Ensure the system works correctly and meets requirements.</p>
+
+    <h5>Testing Pyramid</h5>
+    <pre><code>      /\\
+     /  \\     E2E Tests (Few)
+    /----\\    Integration Tests (Some)
+   /------\\   Unit Tests (Many)
+  /________\\
 </code></pre>
-                
-                <p class="task-highlight">Task: Analyze the complexity of <code>process_order</code>. Propose a refactoring plan that breaks the logic down into one function for premium checks and another for local checks, thereby reducing its overall complexity score.</p>
 
-                <div class="further-reading-section">
-                    <h4>📚 Academic References & Further Reading</h4>
-                    <p>Read Martin Fowler's classic book, *Refactoring: Improving the Design of Existing Code*, to understand the catalog of refactoring techniques.</p>
-                </div>
-            `,
-            quiz: [
-                { type: 'mcq', question: 'Which metric directly measures the number of independent paths through a program?', options: ['Test Coverage', 'Lines of Code', 'Cyclomatic Complexity', 'Maintainability Index'], answer: 'Cyclomatic Complexity' },
-                { type: 'mcq', question: 'What is the primary goal of **refactoring**?', options: ['To fix a known bug', 'To add a new feature', 'To improve internal design without changing external behavior', 'To increase code duplication'], answer: 'To improve internal design without changing external behavior' },
-                { type: 'text', question: 'High Cyclomatic Complexity is dangerous because it leads to higher rates of...', answer: 'bugs, maintenance cost, testing difficulty.' },
-                { type: 'mcq', question: 'High **Code Duplication** in a codebase is a direct violation of which engineering principle?', options: ['KISS', 'SRP', 'DRY', 'YOLO'], answer: 'DRY' },
-                { type: 'mcq', question: 'The **Maintainability Index** primarily indicates:', options: ['How fast the code executes', 'How easy the code is to understand and change', 'How many developers worked on the code', 'How many files are in the repository'], answer: 'How easy the code is to understand and change' },
-            ],
+    <h5>Unit Test Example</h5>
+    <pre><code class="language-python">import pytest
+from order_service import OrderService
+
+class TestOrderService:
+    
+    def setup_method(self):
+        self.mock_db = MockDatabase()
+        self.mock_payment = MockPaymentService()
+        self.mock_notification = MockNotificationService()
+        self.service = OrderService(
+            self.mock_db,
+            self.mock_payment,
+            self.mock_notification
+        )
+    
+    def test_create_order_success(self):
+        """Test successful order creation"""
+        items = [
+            {'menu_item_id': 1, 'quantity': 2, 'price': 10.00}
+        ]
+        
+        result = self.service.create_order(
+            user_id=1,
+            items=items,
+            delivery_address="123 Campus Road, Dorm A"
+        )
+        
+        assert result['status'] == 'confirmed'
+        assert result['total'] == 20.00
+        assert 'order_id' in result
+    
+    def test_create_order_empty_items(self):
+        """Test order creation fails with empty items"""
+        with pytest.raises(ValueError, match="at least one item"):
+            self.service.create_order(
+                user_id=1,
+                items=[],
+                delivery_address="123 Campus Road"
+            )
+    
+    def test_create_order_invalid_address(self):
+        """Test order creation fails with invalid address"""
+        items = [{'menu_item_id': 1, 'quantity': 1, 'price': 10.00}]
+        
+        with pytest.raises(ValueError, match="Invalid delivery address"):
+            self.service.create_order(
+                user_id=1,
+                items=items,
+                delivery_address="Bad"
+            )
+    
+    def test_create_order_payment_failure(self):
+        """Test order rollback on payment failure"""
+        self.mock_payment.should_fail = True
+        items = [{'menu_item_id': 1, 'quantity': 1, 'price': 10.00}]
+        
+        with pytest.raises(PaymentError):
+            self.service.create_order(
+                user_id=1,
+                items=items,
+                delivery_address="123 Campus Road"
+            )
+        
+        # Verify no order was created
+        assert self.mock_db.order_count() == 0</code></pre>
+
+    <h4>6. Deployment & Maintenance</h4>
+    <p><strong>Goal:</strong> Release to production and keep it running.</p>
+
+    <h5>Deployment Checklist</h5>
+    <ul>
+      <li>All tests passing</li>
+      <li>Code reviewed and approved</li>
+      <li>Database migrations tested</li>
+      <li>Environment variables configured</li>
+      <li>Monitoring and logging enabled</li>
+      <li>Rollback plan prepared</li>
+      <li>Stakeholders notified</li>
+      <li>Documentation updated</li>
+    </ul>
+
+    <h3>SDLC Methodologies</h3>
+
+    <h4>Waterfall Model</h4>
+    <p>Sequential phases: complete one before moving to the next.</p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+      <tr style="background: rgba(99, 102, 241, 0.1);">
+        <th style="padding: 10px;">Advantages</th>
+        <th style="padding: 10px;">Disadvantages</th>
+        <th style="padding: 10px;">Best For</th>
+      </tr>
+      <tr>
+        <td style="padding: 10px;">
+          - Clear structure<br>
+          - Easy to manage<br>
+          - Well-documented<br>
+          - Works with fixed requirements
+        </td>
+        <td style="padding: 10px;">
+          - Inflexible<br>
+          - Late testing<br>
+          - No working software until end<br>
+          - Difficult to change
+        </td>
+        <td style="padding: 10px;">
+          - Government contracts<br>
+          - Regulated industries<br>
+          - Projects with stable requirements<br>
+          - Hardware integration
+        </td>
+      </tr>
+    </table>
+
+    <h4>Agile Methodology</h4>
+    <p>Iterative approach with frequent releases and continuous feedback.</p>
+
+    <h5>Agile Manifesto Values</h5>
+    <ul>
+      <li>Individuals and interactions over processes and tools</li>
+      <li>Working software over comprehensive documentation</li>
+      <li>Customer collaboration over contract negotiation</li>
+      <li>Responding to change over following a plan</li>
+    </ul>
+
+    <h5>Scrum Framework</h5>
+    <pre><code># Scrum Sprint Cycle (2 weeks)
+
+Week 1:
+  Monday: Sprint Planning
+    - Review backlog
+    - Commit to sprint goals
+    - Break down user stories
+  
+  Daily: Standup (15 min)
+    - What did you do yesterday?
+    - What will you do today?
+    - Any blockers?
+  
+  Friday: Sprint Review
+    - Demo completed work
+    - Gather feedback
+
+Week 2:
+  Daily: Continue standups
+  
+  Friday: Sprint Retrospective
+    - What went well?
+    - What could improve?
+    - Action items for next sprint
+  
+  Then: Start next sprint</code></pre>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+      <tr style="background: rgba(99, 102, 241, 0.1);">
+        <th style="padding: 10px;">Advantages</th>
+        <th style="padding: 10px;">Disadvantages</th>
+        <th style="padding: 10px;">Best For</th>
+      </tr>
+      <tr>
+        <td style="padding: 10px;">
+          - Flexible to changes<br>
+          - Early delivery of features<br>
+          - Continuous feedback<br>
+          - Higher customer satisfaction
+        </td>
+        <td style="padding: 10px;">
+          - Requires discipline<br>
+          - Can be chaotic without structure<br>
+          - Documentation may suffer<br>
+          - Requires customer involvement
+        </td>
+        <td style="padding: 10px;">
+          - Startups<br>
+          - Web/mobile apps<br>
+          - Projects with evolving requirements<br>
+          - Innovation-focused teams
+        </td>
+      </tr>
+    </table>
+
+    <h4>DevOps: Continuous Integration/Continuous Deployment (CI/CD)</h4>
+    <p>Automate everything from code commit to production deployment.</p>
+
+    <pre><code># CI/CD Pipeline Example
+
+1. Developer commits code
+   ↓
+2. Automated tests run
+   ↓
+3. Code quality checks (linting, security scan)
+   ↓
+4. Build application
+   ↓
+5. Deploy to staging environment
+   ↓
+6. Run integration tests
+   ↓
+7. Manual approval (optional)
+   ↓
+8. Deploy to production
+   ↓
+9. Monitor and alert</code></pre>
+
+    <h3>Real-World Case Studies</h3>
+
+    <h4>Case Study 1: Healthcare.gov Launch Failure</h4>
+    <p><strong>Problem:</strong> The US healthcare website crashed on launch day (2013).</p>
+    <p><strong>Causes:</strong></p>
+    <ul>
+      <li>Poor project management</li>
+      <li>Insufficient testing</li>
+      <li>Integration issues between 55 contractors</li>
+      <li>Tight deadline with late changes</li>
+    </ul>
+    <p><strong>Lessons:</strong> Incremental development, continuous testing, clear ownership, realistic timelines.</p>
+
+    <h4>Case Study 2: Spotify's Agile Success</h4>
+    <p><strong>Approach:</strong> Squad-based agile development.</p>
+    <ul>
+      <li>Small, autonomous teams (squads)</li>
+      <li>Each squad owns a feature area</li>
+      <li>Regular releases (multiple per day)</li>
+      <li>Strong automation and testing</li>
+    </ul>
+    <p><strong>Results:</strong> Rapid innovation, high employee satisfaction, market leadership.</p>
+
+    <h3>Exercise 2.1: Choose Your Methodology</h3>
+    <p>For each scenario, recommend Waterfall, Agile, or hybrid and justify:</p>
+    <ol>
+      <li>Building a mobile game with uncertain features</li>
+      <li>Developing aircraft control software</li>
+      <li>Creating a university course registration system</li>
+      <li>Building a social media startup</li>
+    </ol>
+    <p class="task-highlight">Save analysis as <code>methodology_analysis.md</code>.</p>
+
+    <h3>Exercise 2.2: Sprint Planning</h3>
+    <p>Create a 2-week sprint plan for adding a "favorites" feature to Elvion Eats:</p>
+    <ul>
+      <li>User stories with acceptance criteria</li>
+      <li>Task breakdown</li>
+      <li>Estimation (story points)</li>
+      <li>Daily standup questions</li>
+    </ul>
+    <p class="task-highlight">Save as <code>sprint_plan.md</code>.</p>
+
+    <h3>Key Takeaways</h3>
+    <p>The SDLC provides structure for software development. Waterfall offers predictability, Agile offers flexibility. Modern teams often blend approaches based on project needs. Understanding these models helps you deliver quality software on time.</p>
+  `,
+  quiz: [
+    {
+      type: 'mcq',
+      question: 'In which SDLC phase do you define what the system must do?',
+      options: ['Implementation', 'Requirements Analysis', 'Testing', 'Deployment'],
+      answer: 'Requirements Analysis'
+    },
+    {
+      type: 'mcq',
+      question: 'Which statement is a functional requirement?',
+      options: [
+        'System must respond in under 2 seconds',
+        'System must support 10,000 users',
+        'Users shall be able to reset their password',
+        'System must be available 99.9% of the time'
+      ],
+      answer: 'Users shall be able to reset their password'
+    },
+    {
+      type: 'text',
+      question: 'Explain the difference between functional and non-functional requirements with examples.',
+      answer: 'Functional requirements define what the system does (features); non-functional requirements define how it performs (speed, security, scalability).'
+    },
+    {
+      type: 'mcq',
+      question: 'In the Agile Manifesto, which is valued more?',
+      options: [
+        'Comprehensive documentation over working software',
+        'Working software over comprehensive documentation',
+        'Following a plan over responding to change',
+        'Contract negotiation over customer collaboration'
+      ],
+      answer: 'Working software over comprehensive documentation'
+    },
+    {
+      type: 'mcq',
+      question: 'What is the typical duration of a Scrum sprint?',
+      options: ['1 day', '1 week', '2-4 weeks', '6 months'],
+      answer: '2-4 weeks'
+    },
+    {
+      type: 'text',
+      question: 'Name three things discussed in a daily Scrum standup meeting.',
+      answer: 'What you did yesterday, what you will do today, and any blockers/impediments.'
+    },
+    {
+      type: 'mcq',
+      question: 'Which SDLC model is best for projects with frequently changing requirements?',
+      options: ['Waterfall', 'Agile', 'V-Model', 'Spiral'],
+      answer: 'Agile'
+    },
+    {
+      type: 'mcq',
+      question: 'What is the purpose of CI/CD in modern software development?',
+      options: [
+        'To write documentation',
+        'To automate testing, building, and deployment',
+        'To hold meetings',
+        'To design user interfaces'
+      ],
+      answer: 'To automate testing, building, and deployment'
+    },
+    {
+      type: 'text',
+      question: 'What was a primary cause of the Healthcare.gov launch failure?',
+      answer: 'Poor project management, insufficient testing, integration issues, tight deadlines.'
+    },
+    {
+      type: 'mcq',
+      question: 'In the testing pyramid, which type of test should you have the most of?',
+      options: ['End-to-end tests', 'Integration tests', 'Unit tests', 'Manual tests'],
+      answer: 'Unit tests'
+    }
+  ]
         },
         {
             id: 3,
