@@ -1,38 +1,30 @@
-const CACHE_NAME = "elvionai-cache-v1";
+const CACHE_NAME = "philadelphia-ai-v1";
 const CACHE_ASSETS = [
-  "/",
-  "/index.html",
-  "/about.html",
-  "/course-viewer.html",
-  "/enroll.html",
   "/philadelphia.html",
-  "/privacy.html",
-  "/profile.html",
-  "/signup-login.html",
-  "/studyingatelvion.html",
-  "/terms.html",
-  "/university.html",
   "/manifest.json",
-  "/images/IMG_20251007_234104_159.webp",
+  "/css/style.css",
   "/images/IMG_20250715_102103_129.jpg",
-  "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&display=swap",
-  "https://fonts.gstatic.com"
+  "/images/IMG_20250824_133336_309.jpg",
+  "/js/app.js"
 ];
 
-// Install event
-self.addEventListener("install", (event) => {
+// ✅ Install event — cache all core assets
+self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_ASSETS))
+    caches.open(CACHE_NAME).then(cache => {
+      console.log("📦 Caching files...");
+      return cache.addAll(CACHE_ASSETS);
+    })
   );
-  console.log("✅ Service Worker installed and cached assets");
+  self.skipWaiting();
 });
 
-// Activate event
-self.addEventListener("activate", (event) => {
+// ✅ Activate event — clean up old caches
+self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then(keys => {
       return Promise.all(
-        keys.map((key) => {
+        keys.map(key => {
           if (key !== CACHE_NAME) {
             console.log("🧹 Removing old cache:", key);
             return caches.delete(key);
@@ -41,18 +33,14 @@ self.addEventListener("activate", (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
-// Fetch event
-self.addEventListener("fetch", (event) => {
+// ✅ Fetch event — serve cached files first, then network fallback
+self.addEventListener("fetch", event => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() =>
-          caches.match("/index.html")
-        )
-      );
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
     })
   );
 });
