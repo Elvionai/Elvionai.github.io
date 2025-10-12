@@ -1,4 +1,5 @@
-const CACHE_NAME = "philadelphia-ai-cache-v1";
+// ✅ Philadelphia AI Service Worker
+const CACHE_NAME = "philadelphia-ai-cache-v2";
 const CACHE_ASSETS = [
   "/",
   "/philadelphia.html",
@@ -19,15 +20,16 @@ const CACHE_ASSETS = [
   "https://fonts.gstatic.com"
 ];
 
-// ✅ Install event — cache all essential assets
+// ✅ INSTALL EVENT – cache all essential assets immediately
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_ASSETS))
   );
+  self.skipWaiting(); // ⚡ instantly activate this SW
   console.log("✅ Philadelphia AI Service Worker installed and cached assets");
 });
 
-// ✅ Activate event — remove old caches
+// ✅ ACTIVATE EVENT – clean up old caches and take control right away
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -41,9 +43,11 @@ self.addEventListener("activate", (event) => {
       );
     })
   );
+  clients.claim(); // ⚡ take control of all open pages immediately
+  console.log("🔥 Philadelphia AI Service Worker activated");
 });
 
-// ✅ Fetch event — use cache first, then network fallback
+// ✅ FETCH EVENT – serve from cache first, fallback to network, offline fallback
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
