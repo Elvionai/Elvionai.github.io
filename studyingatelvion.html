@@ -1473,30 +1473,36 @@
       try {
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
+        
+        // --- START PHOTO FIX: Prioritize custom Firestore data, then Auth defaults ---
+        const firestoreData = userDoc.exists() ? userDoc.data() : {};
 
-        if (userDoc.exists()) {
-          userData = userDoc.data();
-        } else {
-          userData = {
-            name: user.displayName || user.email.split('@')[0],
-            email: user.email,
-            bio: '',
-            photoURL: user.photoURL || '',
-            enrolledCourses: [],
-            completedLessons: 0,
-            totalPoints: 0,
-            studyStreak: 0,
-            studyHours: 0,
-            lastLoginDate: serverTimestamp(),
-            level: 'Novice Learner',
-            createdAt: serverTimestamp()
-          };
+        userData = {
+            name: firestoreData.name || user.displayName || user.email.split('@')[0],
+            email: firestoreData.email || user.email,
+            bio: firestoreData.bio || '',
+            // Use custom photoURL from Firestore if available
+            photoURL: firestoreData.photoURL || user.photoURL || '', 
+            enrolledCourses: firestoreData.enrolledCourses || [],
+            completedLessons: firestoreData.completedLessons || 0,
+            totalPoints: firestoreData.totalPoints || 0,
+            studyStreak: firestoreData.studyStreak || 0,
+            studyHours: firestoreData.studyHours || 0,
+            lastLoginDate: firestoreData.lastLoginDate || serverTimestamp(),
+            level: firestoreData.level || 'Novice Learner',
+            createdAt: firestoreData.createdAt || serverTimestamp()
+        };
+
+        if (!userDoc.exists()) {
+          // Create the user document if it doesn't exist
           await setDoc(userDocRef, userData);
+        } else {
+           // Only update lastLoginDate for existing users
+           await updateDoc(userDocRef, {
+            lastLoginDate: serverTimestamp()
+          });
         }
-
-        await updateDoc(userDocRef, {
-          lastLoginDate: serverTimestamp()
-        });
+        // --- END PHOTO FIX ---
 
         updateUserProfile();
       } catch (error) {
@@ -1518,11 +1524,14 @@
         document.getElementById('settingsAvatarPreview')
       ];
 
+      // Determine the photo URL to use: Firestore > Auth > Initial
+      const finalPhotoURL = userData.photoURL || currentUser.photoURL;
+
       avatarElements.forEach(element => {
-        if (userData.photoURL) {
-          element.innerHTML = `<img src="${userData.photoURL}" alt="Avatar">`;
+        if (finalPhotoURL) {
+          element.innerHTML = `<img src="${finalPhotoURL}" alt="Avatar">`;
         } else {
-          element.textContent = userInitial;
+          element.innerHTML = userInitial; // Use innerHTML to set the initial text
         }
       });
 
@@ -1774,8 +1783,10 @@
       document.getElementById('settingsBio').value = userData.bio || '';
 
       const avatarPreview = document.getElementById('settingsAvatarPreview');
-      if (userData.photoURL) {
-        avatarPreview.innerHTML = `<img src="${userData.photoURL}" alt="Avatar">`;
+      const finalPhotoURL = userData.photoURL || currentUser.photoURL;
+
+      if (finalPhotoURL) {
+        avatarPreview.innerHTML = `<img src="${finalPhotoURL}" alt="Avatar">`;
       } else {
         const initial = (userData.name || 'A').charAt(0).toUpperCase();
         avatarPreview.textContent = initial;
@@ -1792,16 +1803,23 @@
       }
 
       try {
+        // --- START PHOTO FIX: Upload Process ---
+        // 1. Upload to storage
         const storageRef = ref(storage, `avatars/${currentUser.uid}/${Date.now()}_${file.name}`);
         await uploadBytes(storageRef, file);
         const photoURL = await getDownloadURL(storageRef);
 
+        // 2. Update Firestore (prioritized source)
         await updateDoc(doc(db, 'users', currentUser.uid), { photoURL });
+        
+        // 3. Update Firebase Auth Profile (secondary source/sync)
         await updateProfile(currentUser, { photoURL });
 
+        // 4. Update local data and UI immediately
         userData.photoURL = photoURL;
         updateUserProfile();
         showSuccess();
+        // --- END PHOTO FIX ---
       } catch (error) {
         console.error('Error uploading avatar:', error);
         showError('Failed to upload avatar');
