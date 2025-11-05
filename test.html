@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Craft Unforgettable Characters | Elvion AI Blog</title>
+    <meta name="description" content="Learn proven techniques to create compelling, three-dimensional characters that readers will remember long after the final page.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+    
+    <style>
+        /* Shared Styles (from blog.html) */
+        :root {
+            --dark-navy: #00001a;
+            --black-bg: #000000;
+            --cyan-glow: #00ffff;
+            --light-blue-glow: #00aaff;
+            --text-color: #e0e0e0;
+            --heading-color: #ffffff;
+            --gradient-start: #0a1128;
+            --gradient-end: #121a30;
+            --card-bg: rgba(18, 26, 48, 0.7);
+            --border-glow: 0 0 10px var(--cyan-glow), 0 0 20px var(--light-blue-glow);
+            --hover-glow: 0 0 15px var(--cyan-glow), 0 0 30px var(--light-blue-glow);
+            --button-bg: linear-gradient(45deg, var(--cyan-glow), var(--light-blue-glow));
+            --button-text-color: var(--black-bg);
+            --star-color: rgba(255, 255, 255, 0.7);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-top: 60px;
+            background-color: var(--black-bg);
+            color: var(--text-color);
+            line-height: 1.7;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--heading-color);
+            margin-top: 0;
+            text-shadow: 0 0 5px var(--cyan-glow);
+        }
+        
+        a {
+            color: var(--cyan-glow);
+            text-decoration: none;
+            transition: color 0.3s ease, text-shadow 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--light-blue-glow);
+            text-shadow: 0 0 5px var(--cyan-glow);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        #stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .star {
+            position: absolute;
+            background-color: var(--star-color);
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle 4s infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(0, 0, 26, 0.95);
+            padding: 1rem 0;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .navbar-brand {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--heading-color);
+            text-shadow: var(--border-glow);
+        }
+        
+        .navbar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links { display: none; } /* Hide for simplicity on single page */
+        .hamburger { display: none; }
+        .footer {
+            background: var(--dark-navy);
+            color: var(--text-color);
+            padding: 4rem 0;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(0, 255, 255, 0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            margin-top: 4rem;
+        }
+
+        .footer .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 2rem;
+            text-align: left;
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer .col {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .footer h4 {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--cyan-glow);
+            text-shadow: 0 0 5px rgba(0,255,255,0.4);
+        }
+        .footer ul {
+            list-style: none;
+            padding: 0;
+        }
+        .footer ul li {
+            margin-bottom: 0.8rem;
+        }
+        .footer ul li a {
+            color: var(--text-color);
+        }
+        .footer .brand-info {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--heading-color);
+            text-shadow: var(--border-glow);
+            margin-bottom: 1rem;
+            display: block;
+        }
+        .footer .legal-info {
+            margin-top: 2rem;
+            text-align: center;
+            width: 100%;
+            border-top: 1px solid rgba(0, 255, 255, 0.1);
+            padding-top: 1.5rem;
+            color: rgba(224, 224, 224, 0.7);
+            position: relative;
+            z-index: 2;
+        }
+
+        /* --- Article Specific Styles --- */
+        .article-main {
+            position: relative;
+            z-index: 2;
+            padding: 4rem 0 2rem;
+        }
+
+        .article-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+            padding-bottom: 2rem;
+        }
+
+        .article-tag {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            background: rgba(0, 255, 255, 0.15);
+            color: var(--cyan-glow);
+            border: 1px solid var(--cyan-glow);
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .article-header h1 {
+            font-size: 3rem;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+            text-shadow: var(--border-glow);
+        }
+
+        .article-meta {
+            color: rgba(224, 224, 224, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .article-meta span {
+            margin: 0 0.8rem;
+        }
+        
+        .article-meta i {
+            margin-right: 0.4rem;
+            color: var(--light-blue-glow);
+        }
+
+        .article-content {
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .article-content h2 {
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--cyan-glow);
+            padding-left: 1rem;
+            text-shadow: 0 0 3px var(--cyan-glow);
+        }
+
+        .article-content ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .article-content ul li {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .article-content ul li::before {
+            content: "\f00c"; /* Font Awesome checkmark */
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            color: var(--light-blue-glow);
+            position: absolute;
+            left: 0;
+            top: 0.2rem;
+            text-shadow: 0 0 5px var(--light-blue-glow);
+        }
+        
+        .article-content strong {
+            color: var(--cyan-glow);
+        }
+        
+        /* Highlighting for Audio */
+        .highlighted {
+            background-color: rgba(0, 255, 255, 0.2);
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+        }
+        
+        /* Audio Player Styling */
+        .audio-player-container {
+            text-align: center;
+            margin: 2rem auto;
+            max-width: 500px;
+        }
+
+        #audioPlayer {
+            padding: 1rem 2rem;
+            background: var(--card-bg);
+            border: 1px solid var(--cyan-glow);
+            border-radius: 50px;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            cursor: pointer;
+            color: var(--cyan-glow);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        #audioPlayer:hover {
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.1), rgba(0, 170, 255, 0.1));
+            box-shadow: var(--hover-glow);
+        }
+        
+        #audioPlayer i {
+            margin-right: 0.7rem;
+        }
+        
+        #audioPlayer.playing i {
+            color: red;
+        }
+        
+        /* --- Comments Section --- */
+        #comments-section {
+            max-width: 800px;
+            margin: 4rem auto 0;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        #comments-section h3 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--light-blue-glow);
+        }
+        
+        .comment-form-container {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .comment-form-container h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .comment-form input[type="text"],
+        .comment-form input[type="email"],
+        .comment-form textarea {
+            width: 100%;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--cyan-glow);
+            background-color: rgba(0, 0, 0, 0.3);
+            color: var(--text-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .comment-form textarea {
+            min-height: 100px;
+        }
+
+        .comment-form button {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            background: var(--button-bg);
+            color: var(--button-text-color);
+            font-weight: 700;
+            cursor: pointer;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .comment-form button:hover {
+            box-shadow: 0 0 10px var(--cyan-glow);
+        }
+        
+        .comments-list {
+            margin-top: 2rem;
+        }
+
+        .comment-item {
+            background: rgba(18, 26, 48, 0.4);
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            border-left: 3px solid var(--light-blue-glow);
+            margin-bottom: 1.5rem;
+        }
+
+        .comment-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .comment-author {
+            font-weight: 700;
+            color: var(--cyan-glow);
+        }
+
+        .comment-date {
+            color: rgba(224, 224, 224, 0.6);
+        }
+
+        @media (max-width: 768px) {
+            .article-header h1 { font-size: 2.2rem; }
+            .article-content { font-size: 1rem; padding: 0 1rem; }
+            .comment-form input, .comment-form textarea { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="stars-container"></div>
+    
+    <header class="navbar">
+        <div class="container">
+            <a href="blog.html" class="navbar-brand">Elvion AI Blog</a>
+            <a href="blog.html" class="nav-links" style="display: block; margin-left: auto;">
+                <i class="fas fa-arrow-left"></i> Back to Blog
+            </a>
+        </div>
+    </header>
+
+    <main class="article-main container">
+        <article>
+            <section class="article-header">
+                <span class="article-tag"><i class="fas fa-pen-fancy"></i> Creative Writing</span>
+                <h1 id="articleTitle">How to Craft Unforgettable Characters: A Writer's Guide ✍️</h1>
+                <div class="article-meta">
+                    <span><i class="fas fa-calendar-alt"></i> Nov 8, 2025</span>
+                    <span><i class="fas fa-clock"></i> 8 min read</span>
+                    <span><i class="fas fa-user-edit"></i> Elvion AI Writer</span>
+                </div>
+            </section>
+
+            <div class="audio-player-container">
+                <button id="audioPlayer">
+                    <i class="fas fa-play"></i> Listen to this Article
+                </button>
+            </div>
+
+            <section class="article-content" id="articleContent">
+                <p>
+                    <span class="sentence">Your characters are the **heart of your story**, the anchors that hold the reader's attention and emotion.</span> 
+                    <span class="sentence">A compelling plot is important, but a reader will abandon a book if they don't care about the people experiencing the events.</span> 
+                    <span class="sentence">Learning how to build three-dimensional, memorable characters is arguably the most crucial skill for any writer.</span>
+                </p>
+
+                <h2>1. The Iceberg Principle: Visible vs. Hidden Depth 🧊</h2>
+                <p>
+                    <span class="sentence">Think of your character like an iceberg.</span> 
+                    <span class="sentence">Only a small fraction of their personality—their actions and dialogue—is visible to the reader.</span> 
+                    <span class="sentence">The vast majority is the hidden mass of **backstory, trauma, secrets, and core beliefs**.</span> 
+                    <span class="sentence">To create depth, you must know the 90% below the surface, even if you only show 10%.</span>
+                </p>
+
+                <h2>2. Need, Want, and Lie (The Core Conflict) ⚔️</h2>
+                <p>
+                    <span class="sentence">Every great character has three driving forces:</span>
+                    <ul>
+                        <li><span class="sentence">**Want (External Goal):** What they actively pursue (e.g., getting the treasure, winning the competition).</span></li>
+                        <li><span class="sentence">**Need (Internal Goal):** What they truly require for fulfillment (e.g., accepting their vulnerability, forgiving themselves).</span></li>
+                        <li><span class="sentence">**The Lie:** The flawed belief or worldview preventing them from achieving their Need (e.g., "I must control everything," "I am unlovable").</span></li>
+                    </ul>
+                    <span class="sentence">The story’s arc is the journey where the character confronts **The Lie** to fulfill their **Need**.</span> 
+                    <span class="sentence">This creates authentic, emotional stakes.</span>
+                </p>
+
+                <h2>3. Quirks and Inconsistencies: Embrace Flaws 💥</h2>
+                <p>
+                    <span class="sentence">Perfect characters are boring; relatable characters are flawed.</span> 
+                    <span class="sentence">Give your character a specific, non-essential quirk—a passion for vintage typewriters, a habit of humming under stress, or an irrational fear of pigeons.</span> 
+                    <span class="sentence">More importantly, give them **contradictory traits**.</span> 
+                    <span class="sentence">A ruthless CEO who secretly volunteers at an animal shelter.</span> 
+                    <span class="sentence">A brilliant scientist who can't figure out how to operate a microwave.</span> 
+                    <span class="sentence">These human inconsistencies make them leap off the page.</span>
+                </p>
+
+                <p>
+                    <span class="sentence">By diligently building these layers—from their subconscious secrets to their observable actions—you move beyond flat archetypes and create people readers genuinely invest in.</span> 
+                    <span class="sentence">Happy crafting!</span>
+                </p>
+            </section>
+        </article>
+
+        <section id="comments-section">
+            <h3>Comments (0) 💬</h3>
+            <div class="comment-form-container">
+                <h4 id="comment-auth-status">Post a Comment</h4>
+                <form id="comment-form" class="comment-form">
+                    <input type="text" id="comment-name" placeholder="Your Name (Required)" required>
+                    <input type="email" id="comment-email" placeholder="Your Email (Used for Gravatar/Auth)" required>
+                    <textarea id="comment-text" placeholder="Share your thoughts..." required></textarea>
+                    <button type="submit">Submit Comment</button>
+                    <p style="font-size: 0.85rem; margin-top: 1rem; color: rgba(224, 224, 224, 0.5);">
+                        *Note: If you are an authenticated user, we'd typically skip the name/email fields. For this demo, please fill them out.
+                    </p>
+                </form>
+            </div>
+            
+            <div class="comments-list" id="comments-list">
+                <p style="text-align: center; color: rgba(224, 224, 224, 0.6);">Be the first to leave a comment!</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="col">
+                <span class="brand-info">Elvion AI</span>
+                <p>Where Assistance Meets Excellence.</p>
+            </div>
+            <div class="col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="blog.html">Blog</a></li>
+                    <li><a href="#">University</a></li>
+                    <li><a href="#">Products</a></li>
+                </ul>
+            </div>
+            <div class="col">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                </ul>
+            </div>
+            <div class="legal-info">
+                &copy; <span id="current-year-footer"></span> Elvion AI. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+            authDomain: "elvionai.firebaseapp.com",
+            projectId: "elvionai",
+            storageBucket: "elvionai.firebasestorage.app",
+            messagingSenderId: "161078300830",
+            appId: "1:161078300830:web:f460df8591704eb0e96b8f"
+        };
+        
+        // --- DOM Elements ---
+        const audioPlayerButton = document.getElementById('audioPlayer');
+        const articleContent = document.getElementById('articleContent');
+        const sentences = document.querySelectorAll('.sentence');
+        const commentsList = document.getElementById('comments-list');
+        const commentForm = document.getElementById('comment-form');
+        const commentNameInput = document.getElementById('comment-name');
+        const commentEmailInput = document.getElementById('comment-email');
+        const commentTextInput = document.getElementById('comment-text');
+
+        let isReading = false;
+        let utterance = null;
+        let currentSentenceIndex = -1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('current-year-footer').textContent = new Date().getFullYear();
+            createStars(document.getElementById('stars-container'), 100);
+            
+            // 1. Initialize Firebase and load comments
+            try {
+                firebase.initializeApp(firebaseConfig);
+                const db = firebase.firestore();
+                loadComments(db);
+                
+                commentForm.addEventListener('submit', (e) => submitComment(e, db));
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                // Display a fallback message if Firebase fails
+                commentsList.innerHTML = `<p style="color: red; text-align: center;">Comments are temporarily unavailable.</p>`;
+            }
+            
+            // 2. Setup Audio Player
+            if ('speechSynthesis' in window) {
+                audioPlayerButton.addEventListener('click', toggleAudioPlayback);
+            } else {
+                audioPlayerButton.textContent = "Text-to-Speech Not Supported";
+                audioPlayerButton.disabled = true;
+            }
+        });
+        
+        // --- Star Generation Function (from blog.html) ---
+        function createStars(container, numStars) {
+            const minSize = 1;
+            const maxSize = 3;
+            
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                container.appendChild(star);
+                
+                const size = Math.random() * (maxSize - minSize) + minSize;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.animationDelay = `${Math.random() * 4}s`;
+                star.style.animationDuration = `${3 + Math.random() * 2}s`;
+            }
+        }
+        
+        // --- Audio Player Functions ---
+        function highlightSentence(index) {
+            // Remove highlight from previous sentence
+            if (currentSentenceIndex > -1 && sentences[currentSentenceIndex]) {
+                sentences[currentSentenceIndex].classList.remove('highlighted');
+            }
+            
+            // Add highlight to current sentence
+            if (index > -1 && sentences[index]) {
+                sentences[index].classList.add('highlighted');
+                currentSentenceIndex = index;
+            } else {
+                currentSentenceIndex = -1; // Reading finished or paused
+            }
+        }
+
+        function toggleAudioPlayback() {
+            if (speechSynthesis.speaking) {
+                if (isReading) {
+                    speechSynthesis.pause();
+                    isReading = false;
+                    audioPlayerButton.innerHTML = '<i class="fas fa-play"></i> Resume Reading';
+                    sentences[currentSentenceIndex].classList.remove('highlighted');
+                } else {
+                    speechSynthesis.resume();
+                    isReading = true;
+                    audioPlayerButton.innerHTML = '<i class="fas fa-pause"></i> Pause Reading';
+                    sentences[currentSentenceIndex].classList.add('highlighted');
+                }
+            } else {
+                startReading();
+            }
+        }
+
+        function startReading() {
+            // Combine all sentence text for the full article
+            const articleText = Array.from(sentences).map(s => s.textContent.trim()).join(' ');
+            
+            utterance = new SpeechSynthesisUtterance(articleText);
+            
+            // Find a suitable voice (optional: ensures better quality)
+            const voices = speechSynthesis.getVoices();
+            const preferredVoice = voices.find(voice => voice.name.includes('Google') || voice.lang.startsWith('en'));
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+            
+            // Event listener to track the end of a word/sentence
+            utterance.onboundary = (event) => {
+                if (event.name === 'sentence' || event.name === 'word') {
+                    // Simple logic: we'll try to sync with sentences based on overall progress
+                    
+                    const totalLength = articleText.length;
+                    const charIndex = event.charIndex;
+                    let accumulatedLength = 0;
+
+                    for (let i = 0; i < sentences.length; i++) {
+                        accumulatedLength += sentences[i].textContent.trim().length + 1; // +1 for the space separator
+                        if (charIndex < accumulatedLength) {
+                            highlightSentence(i);
+                            break;
+                        }
+                    }
+                }
+            };
+            
+            utterance.onend = () => {
+                isReading = false;
+                currentSentenceIndex = -1;
+                audioPlayerButton.innerHTML = '<i class="fas fa-play"></i> Listen to this Article';
+                highlightSentence(-1); // Clear all highlights
+            };
+            
+            utterance.onerror = (e) => {
+                console.error('Speech Synthesis Error:', e);
+                isReading = false;
+                audioPlayerButton.innerHTML = '<i class="fas fa-volume-xmark"></i> Playback Error';
+            };
+
+            speechSynthesis.speak(utterance);
+            isReading = true;
+            audioPlayerButton.innerHTML = '<i class="fas fa-pause"></i> Pause Reading';
+        }
+
+        // --- Firebase Comments Functions ---
+
+        function renderComment(comment) {
+            const date = comment.timestamp ? new Date(comment.timestamp.seconds * 1000).toLocaleDateString() : 'Just now';
+            const commentHTML = `
+                <div class="comment-item">
+                    <div class="comment-meta">
+                        <span class="comment-author">${comment.name}</span>
+                        <span class="comment-date">${date}</span>
+                    </div>
+                    <p>${comment.text}</p>
+                </div>
+            `;
+            return commentHTML;
+        }
+
+        function loadComments(db) {
+            const articleId = 'unforgettable-characters';
+            const commentsRef = db.collection('articles').doc(articleId).collection('comments').orderBy('timestamp', 'desc');
+
+            commentsRef.onSnapshot((snapshot) => {
+                commentsList.innerHTML = '';
+                if (snapshot.empty) {
+                    commentsList.innerHTML = `<p style="text-align: center; color: rgba(224, 224, 224, 0.6);">Be the first to leave a comment! 🚀</p>`;
+                    document.querySelector('#comments-section h3').textContent = 'Comments (0) 💬';
+                    return;
+                }
+                
+                let commentCount = 0;
+                snapshot.forEach(doc => {
+                    commentsList.insertAdjacentHTML('beforeend', renderComment(doc.data()));
+                    commentCount++;
+                });
+                document.querySelector('#comments-section h3').textContent = `Comments (${commentCount}) 💬`;
+            }, (error) => {
+                console.error("Error loading comments: ", error);
+                commentsList.innerHTML = `<p style="color: red; text-align: center;">Failed to load comments.</p>`;
+            });
+        }
+
+        function submitComment(e, db) {
+            e.preventDefault();
+            
+            const articleId = 'unforgettable-characters';
+            const name = commentNameInput.value.trim();
+            const email = commentEmailInput.value.trim(); // Required for unauthenticated users
+            const text = commentTextInput.value.trim();
+
+            if (!name || !email || !text) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            db.collection('articles').doc(articleId).collection('comments').add({
+                name: name,
+                email: email,
+                text: text,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                commentNameInput.value = '';
+                commentEmailInput.value = '';
+                commentTextInput.value = '';
+                alert("Comment posted successfully!");
+            })
+            .catch((error) => {
+                console.error("Error adding document: ", error);
+                alert("Failed to post comment. Please try again.");
+            });
+        }
+    </script>
+</body>
+</html>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
