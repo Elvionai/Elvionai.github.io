@@ -751,12 +751,19 @@
             };
         });
     </script>
+       <script type="module" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js"></script>
+    
+    <script type="module">
+        // NEW COMMENT SCRIPT START
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, doc, arrayUnion, arrayRemove, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-
-    <script>
-        // --- FIREBASE/COMMENT SCRIPT (FINAL, FIXED VERSION) ---
-        
+        // --- 0. CONFIG & INITIALIZATION ---
         const firebaseConfig = {
+            // !!! IMPORTANT: Replace this with your Elvion AI configuration !!!
             apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
             authDomain: "elvionai.firebaseapp.com",
             projectId: "elvionai",
@@ -764,19 +771,14 @@
             messagingSenderId: "161078300830",
             appId: "1:161078300830:web:f460df8591704eb0e96b8f"
         };
-
-        try {
-            firebase.initializeApp(firebaseConfig);
-        } catch (e) {
-            console.error("Firebase Init Error:", e);
-        }
         
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const ARTICLE_ID = 'crafting-characters-01'; // This MUST match your rules
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const ARTICLE_ID = 'crafting-characters-01';
         const ADMIN_EMAIL = 'koladhino@gmail.com'; 
 
-        // --- DOM Elements ---
+        // --- 1. DOM Elements ---
         const commentForm = document.getElementById('comment-form');
         const commentTextInput = document.getElementById('comment-input-text');
         const commentList = document.getElementById('comment-list');
@@ -786,7 +788,6 @@
         const commentFormContainer = document.getElementById('comment-form-container');
         const googleSignInBtn = document.getElementById('google-sign-in-btn');
         const currentUserNameEl = document.getElementById('current-user-name');
-        const authStatusEl = document.getElementById('auth-status');
         const guestCommentLink = document.getElementById('guest-comment-link');
         const guestNameInputDiv = document.getElementById('guest-name-input');
         const guestNameField = document.getElementById('guest-name-field');
@@ -794,66 +795,125 @@
         let currentUser = null;
         let isGuestMode = false;
 
-        // --- 1. Authentication & Guest Logic ---
+        // --- 2. Authentication & Guest Logic ---
         
         function setAuthState(user) {
+            currentUser = user;
+            
             if (user) {
                 // Authenticated User
-                currentUser = user;
                 isGuestMode = false;
                 authPrompt.style.display = 'none';
                 commentFormContainer.style.display = 'block';
                 currentUserNameEl.textContent = user.displayName || user.email;
                 guestNameInputDiv.style.display = 'none';
                 guestNameField.removeAttribute('required');
-
+                guestNameField.value = ''; // Clear just in case
             } else {
-                // Guest/Logged Out State
-                currentUser = null;
+                // Logged Out/Guest State
                 if (!isGuestMode) {
                     authPrompt.style.display = 'block';
                     commentFormContainer.style.display = 'none';
                     currentUserNameEl.textContent = 'Guest';
+                    guestNameInputDiv.style.display = 'none';
+                } else {
+                    // Guest Mode Activated
+                    authPrompt.style.display = 'none';
+                    commentFormContainer.style.display = 'block';
+                    currentUserNameEl.textContent = 'Guest User';
+                    guestNameInputDiv.style.display = 'block';
+                    guestNameField.setAttribute('required', 'required');
                 }
             }
-            loadComments(); // Reload comments
         }
 
+        // Handle Guest Link Click
         guestCommentLink.addEventListener('click', (e) => {
             e.preventDefault();
             isGuestMode = true;
-            authPrompt.style.display = 'none';
-            commentFormContainer.style.display = 'block';
-            currentUserNameEl.textContent = 'Guest User';
-            guestNameInputDiv.style.display = 'block';
-            guestNameField.setAttribute('required', 'required');
+            setAuthState(null); // Force the Guest view update
             guestNameField.focus();
         });
 
+        // Google Sign-In Handler
         googleSignInBtn.addEventListener('click', async () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
+            const provider = new GoogleAuthProvider();
             try {
-                await auth.signInWithPopup(provider);
+                await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
-                authStatusEl.textContent = `Sign in failed: ${error.message}`;
             }
         });
         
-        auth.onAuthStateChanged(user => {
+        // State Observer
+        onAuthStateChanged(auth, user => {
             setAuthState(user);
         });
 
-
-        // --- 2. Comment Display & Actions ---
+        // --- 3. Comment Display & Actions ---
         
-        function loadComments() {
-             commentList.innerHTML = `<p class="loading-message" style="text-align: center; color: #777;">Loading comments...</p>`;
+        function createCommentElement(comment) {
+            const div = document.createElement('div');
+            div.className = 'comment';
             
-            db.collection('comments')
-                .where('articleId', '==', ARTICLE_ID)
-                .orderBy('timestamp', 'desc')
-                .onSnapshot(snapshot => {
+            const userName = escapeHtml(comment.userName) || 'Anonymous';
+            const initial = userName.charAt(0).toUpperCase();
+            const timestamp = comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString() : 'Just now';
+            
+            let badge = '';
+            let canAct = false; // Can the user like/reply?
+            
+            if (comment.userEmail === ADMIN_EMAIL) {
+                 badge = '<span class="admin-badge" title="Admin/Author"><i class="fas fa-crown"></i> Admin</span>';
+                 canAct = true;
+            } else if (comment.userId && comment.userId !== 'guest') {
+                badge = '<span class="verified-badge" title="Verified User">✔</span>';
+                canAct = true;
+            } else {
+                badge = '<span class="guest-badge" title="Guest User"><i class="fas fa-user-tag"></i> Guest</span>';
+                canAct = false; 
+            }
+            
+            const isLiked = currentUser && !isGuestMode && comment.likes && comment.likes.includes(currentUser.uid);
+            const likeCount = comment.likes ? comment.likes.length : 0;
+            // Disable like/reply if it's a guest or if the current viewer is a guest
+            const actionDisabled = !canAct || !currentUser || isGuestMode; 
+
+
+            const processedText = formatCommentText(comment.text);
+            
+            div.innerHTML = `
+                <div class="comment-avatar">${initial}</div>
+                <div class="comment-content" style="flex-grow: 1;">
+                    <span class="comment-user">${userName}</span>${badge}
+                    <p class="comment-text">${processedText}</p>
+                    <div class="comment-meta">🕐 ${timestamp}</div>
+                    <div class="comment-actions">
+                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${actionDisabled ? 'disabled' : ''}>
+                            <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> 
+                            <span>Like</span> (<span class="like-count">${likeCount}</span>)
+                        </button>
+                        <button class="reply-btn" data-comment-id="${comment.id}" ${actionDisabled ? 'disabled' : ''}>
+                            <i class="fas fa-reply"></i> Reply
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Add listener for like button
+            const likeBtn = div.querySelector('.like-btn');
+            if (likeBtn && !actionDisabled) {
+                likeBtn.addEventListener('click', () => toggleLike(comment.id, likeBtn));
+            }
+            
+            return div;
+        }
+
+        function loadComments() {
+             const q = query(collection(db, 'comments'), where('articleId', '==', ARTICLE_ID), orderBy('timestamp', 'desc'));
+
+             // Use onSnapshot for real-time updates
+             onSnapshot(q, (snapshot) => {
                     commentList.innerHTML = '';
                     
                     if (snapshot.empty) {
@@ -879,74 +939,8 @@
                     commentList.innerHTML = `<p class="loading-message" style="color: red;">Failed to load comments. (Check Firestore Rules)</p>`;
                 });
         }
-
-        function createCommentElement(comment) {
-            const div = document.createElement('div');
-            div.className = 'comment';
-            
-            const userName = comment.userName || 'Anonymous';
-            const initial = userName.charAt(0).toUpperCase();
-            const timestamp = comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString() : 'Just now';
-            
-            let badge = '';
-            let canAct = false; // Can the user like/reply?
-            
-            if (comment.userEmail === ADMIN_EMAIL) {
-                 badge = '<span class="admin-badge" title="Admin/Author"><i class="fas fa-crown"></i> Admin</span>';
-                 canAct = true;
-            } else if (comment.userId && comment.userId !== 'guest') {
-                badge = '<span class="verified-badge" title="Verified User">✔</span>';
-                canAct = true;
-            } else {
-                badge = '<span class="guest-badge" title="Guest User"><i class="fas fa-user-tag"></i> Guest</span>';
-                canAct = false; // Guests cannot like/reply
-            }
-            
-            const isLiked = currentUser && !isGuestMode && comment.likes && comment.likes.includes(currentUser.uid);
-            const likeCount = comment.likes ? comment.likes.length : 0;
-            const likeDisabled = !canAct || !currentUser || isGuestMode;
-            
-            div.innerHTML = `
-                <div class="comment-avatar">${initial}</div>
-                <div class="comment-content">
-                    <span class="comment-user-name">${userName}</span>${badge}
-                    <p class="comment-text"></p> <div class="comment-meta">🕐 ${timestamp}</div>
-                    <div class="comment-actions">
-                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${likeDisabled ? 'disabled' : ''}>
-                            <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> 
-                            <span>Like</span> (<span class="like-count">${likeCount}</span>)
-                        </button>
-                        <button class="reply-btn" data-comment-id="${comment.id}" ${likeDisabled ? 'disabled' : ''}>
-                            <i class="fas fa-reply"></i> Reply
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            // SAFELY set text content to prevent XSS attacks
-            div.querySelector('.comment-text').textContent = comment.text;
-
-            // Add listener for like button
-            const likeBtn = div.querySelector('.like-btn');
-            if (likeBtn && !likeDisabled) {
-                likeBtn.addEventListener('click', () => toggleLike(comment.id, likeBtn));
-            }
-
-            // FIXED: Add listener for reply button
-            const replyBtn = div.querySelector('.reply-btn');
-            if (replyBtn && !likeDisabled) {
-                replyBtn.addEventListener('click', () => {
-                    const userNameToReply = div.querySelector('.comment-user-name').textContent;
-                    commentTextInput.value = `@${userNameToReply} `;
-                    commentTextInput.focus();
-                    window.scrollTo(0, commentFormContainer.offsetTop);
-                });
-            }
-            
-            return div;
-        }
         
-        // --- 3. Comment Submission & Actions ---
+        // --- 4. Comment Submission & Actions ---
 
         commentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -957,10 +951,9 @@
             }
 
             const commentText = commentTextInput.value.trim();
-            
-            // FIXED: Add validation to match security rules
-            if (commentText.length < 6) {
-                alert('Please enter a comment (at least 6 characters)! 😊');
+
+            if (!commentText) {
+                alert('Please enter your comment! 😊');
                 return;
             }
 
@@ -971,99 +964,112 @@
 
             if (isGuestMode) {
                 const guestName = guestNameField.value.trim();
-                // FIXED: Add validation to match security rules
-                if (guestName.length < 2) {
-                    alert('Please enter a name (at least 2 characters)!');
+                if (!guestName) {
+                    alert('Please enter a name to comment as a guest!');
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
                     return;
                 }
-                
-                // This object MUST match the guest rules
                 commentData = {
                     articleId: ARTICLE_ID,
-                    userId: 'guest',
+                    userId: 'guest', 
                     userName: guestName,
-                    userEmail: '', // Must be empty string
+                    userEmail: '', 
                     text: commentText,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    likes: [] // Must be empty array
+                    timestamp: serverTimestamp(), // Use serverTimestamp()
+                    likes: [] 
                 };
             } else {
-                // This object MUST match the authenticated rules
                 commentData = {
                     articleId: ARTICLE_ID,
                     userId: currentUser.uid,
                     userName: currentUser.displayName || currentUser.email.split('@')[0],
                     userEmail: currentUser.email,
                     text: commentText,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    likes: [] // Must be empty array
+                    timestamp: serverTimestamp(), // Use serverTimestamp()
+                    likes: [] 
                 };
             }
 
             try {
-                // This is where the security rules are checked.
-                await db.collection('comments').add(commentData);
+                await addDoc(collection(db, 'comments'), commentData);
 
                 commentTextInput.value = '';
                 guestNameField.value = ''; 
 
                 if (isGuestMode) {
-                    isGuestMode = false;
+                    isGuestMode = false; 
                     setAuthState(auth.currentUser);
                 }
 
             } catch (error) {
                 console.error('Error posting comment:', error);
-                alert('Oops! Failed to post comment. (Reason: ' + error.message + ') 😅');
+                alert('Oops! Failed to post comment. Check console and your Firestore Security Rules! 😅');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
             }
         });
 
-        // Secure 'like' transaction
         async function toggleLike(commentId, button) {
              if (!currentUser || isGuestMode) return;
              
-             const commentRef = db.collection('comments').doc(commentId);
+             const commentRef = doc(db, 'comments', commentId);
              const userId = currentUser.uid;
              
              try {
-                await db.runTransaction(async (transaction) => {
-                    const doc = await transaction.get(commentRef);
-                    if (!doc.exists) {
-                        throw "Comment does not exist!";
-                    }
-                    
-                    const likes = doc.data().likes || [];
-                    const isCurrentlyLiked = likes.includes(userId);
-                    
-                    if (isCurrentlyLiked) {
-                        transaction.update(commentRef, {
-                            likes: firebase.firestore.FieldValue.arrayRemove(userId)
-                        });
-                    } else {
-                        transaction.update(commentRef, {
-                            likes: firebase.firestore.FieldValue.arrayUnion(userId)
-                        });
-                    }
-                });
+                 await runTransaction(db, async (transaction) => {
+                     const docSnapshot = await transaction.get(commentRef);
+                     if (!docSnapshot.exists()) {
+                         throw "Comment does not exist!";
+                     }
+                     
+                     const likes = docSnapshot.data().likes || [];
+                     const isCurrentlyLiked = likes.includes(userId);
+                     
+                     if (isCurrentlyLiked) {
+                         // Remove like
+                         transaction.update(commentRef, {
+                             likes: arrayRemove(userId)
+                         });
+                     } else {
+                         // Add like
+                         transaction.update(commentRef, {
+                             likes: arrayUnion(userId)
+                         });
+                     }
+                 });
              } catch (error) {
-                console.error("Like failed: ", error);
-                alert("Like failed: " + error.message);
+                 console.error("Transaction failed:", error);
              }
         }
 
-        // --- 4. Utility Functions ---
-        
-        // DELETED: escapeHtml and formatCommentText are no longer needed
-        // as we are using .textContent for 100% security.
 
-        // Initialize comments on load
+        // --- 5. Utility Functions ---
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            let formattedText = div.innerHTML;
+            
+            // Link detection
+            formattedText = formattedText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); 
+            // Bold detection
+            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            // Line break detection
+            formattedText = formattedText.replace(/\n/g, '<br>');
+            
+            return formattedText;
+        }
+        
+        function formatCommentText(text) {
+            return escapeHtml(text);
+        }
+
+        // --- 6. Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            setAuthState(auth.currentUser); 
+            loadComments(); 
+            // onAuthStateChanged will handle the first call to setAuthState
         });
     </script>
 </body>
