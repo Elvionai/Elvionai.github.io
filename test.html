@@ -15,7 +15,7 @@
     <style>
         /* --- DUAL THEME VARIABLES --- */
         :root {
-            /* Default: DARK MODE (Closer to Elvion AI original theme) */
+            /* Default: DARK MODE (Aligned with Elvion AI blue/cyan theme) */
             --bg-color: #0d1117;
             --text-color: #e6edf3;
             --heading-color: #ffffff;
@@ -119,7 +119,13 @@
         }
         .nav-links a:hover::after, .nav-links .active-link::after { width: 100%; }
         
-        .hamburger .bar { background-color: var(--heading-color); }
+        .hamburger { display: none; flex-direction: column; cursor: pointer; padding: 0.5rem; background: transparent; border: none; }
+        .hamburger .bar { 
+            width: 25px; height: 3px; background-color: var(--heading-color); margin: 4px 0; transition: 0.4s; box-shadow: none; 
+        }
+        .hamburger.active .bar:nth-child(2) { opacity: 0; }
+        .hamburger.active .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .hamburger.active .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
         
         /* Theme Toggle Button */
         #theme-toggle {
@@ -141,7 +147,6 @@
             border-color: var(--link-color);
             color: var(--link-color);
         }
-        /* Flex to hold links and toggle */
         .nav-controls {
             display: flex;
             align-items: center;
@@ -187,11 +192,16 @@
         
         /* Word Highlighting (Inline span) */
         .word-highlight {
-            background-color: rgba(255, 255, 0, 0.4);
+            background-color: var(--highlight-color);
+            box-shadow: 0 0 5px rgba(255, 255, 0, 0.5); /* Subtle glow for dark mode */
             color: var(--heading-color);
             padding: 0 1px;
             border-radius: 2px;
             transition: background-color 0.1s;
+        }
+        body.light-theme .word-highlight {
+            box-shadow: none; /* Remove glow in light mode */
+            color: var(--heading-color);
         }
         
         /* --- Comment Section Styles --- */
@@ -228,12 +238,10 @@
         .custom-verified-badge { background: var(--link-color); }
         
         .replies-container { border-left: 2px solid var(--border-color); }
-
-        /* Responsive adjustments */
+        
         @media (max-width: 992px) {
             .nav-links { background: var(--navbar-bg); border-top: 1px solid var(--border-color); }
         }
-
     </style>
 </head>
 <body>
@@ -243,6 +251,11 @@
             <a href="index.html" class="navbar-brand">Elvion AI</a>
             
             <div class="nav-controls">
+                <button class="hamburger" aria-label="Toggle navigation">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
                 <nav class="nav-links">
                     <li><a href="university.html">Elvion University</a></li>
                     <li><a href="blog.html" class="active-link">Blog</a></li>
@@ -250,11 +263,6 @@
                 </nav>
                 <button id="theme-toggle" aria-label="Toggle theme">
                     <i class="fas fa-sun"></i> 
-                </button>
-                <button class="hamburger" aria-label="Toggle navigation">
-                    <span class="bar"></span>
-                    <span class="bar"></span>
-                    <span class="bar"></span>
                 </button>
             </div>
         </div>
@@ -420,7 +428,7 @@
     </footer>
 
     <script>
-        // --- Theme Toggle Script ---
+        // --- Theme Toggle Script & Hamburger ---
         document.addEventListener('DOMContentLoaded', () => {
             const body = document.body;
             const toggleButton = document.getElementById('theme-toggle');
@@ -454,6 +462,15 @@
                 hamburger.classList.toggle('active');
                 navLinks.classList.toggle('active');
             });
+            // Close menu on link click
+            navLinks.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 992) {
+                        hamburger.classList.remove('active');
+                        navLinks.classList.remove('active');
+                    }
+                });
+            });
 
             document.getElementById('current-year-footer').textContent = new Date().getFullYear();
         });
@@ -472,39 +489,41 @@
 
             let isPlaying = false;
             let isPaused = false;
-            let totalArticleText = '';
-            let totalWordCount = 0;
-            let wordsMap = []; // Array of {text: 'word', element: <p>, index: 5}
             let currentUtterance = null;
+            let wordsMap = []; // Array of {text: 'word', element: <p>, originalHTML: '...' }
+            let wordIndexInMap = 0;
 
             if ('speechSynthesis' in window) {
                 
                 // --- 1. Content Processing & Read Time ---
                 function processArticleContent() {
-                    let fullText = '';
-                    let wordIndex = 0;
+                    let totalWordCount = 0;
                     wordsMap = [];
                     
-                    // Select all relevant content containers
+                    // Select all relevant content containers (p, h2, h3, li, blockquote)
                     const elements = articleContent.querySelectorAll('p:not(.post-meta), h2, h3, li, blockquote');
                     
                     elements.forEach(el => {
-                        let text = el.textContent.trim();
+                        const originalHTML = el.innerHTML;
+                        const text = el.textContent.trim();
                         if (text.length === 0) return;
                         
-                        // Clean HTML for reading and ensure separation (e.g., periods after list items)
-                        const sentenceDelimiter = (el.tagName === 'LI' || el.tagName === 'P') ? '. ' : '... ';
-                        fullText += text + sentenceDelimiter;
+                        // Use a full sentence split, not just words, for accurate TTS segmenting
+                        // This text will be the basis for the SpeechSynthesisUtterance
+                        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
 
-                        // Create word map for accurate highlighting
-                        const words = text.match(/\b\w+\b/g) || [];
-                        words.forEach(word => {
-                            wordsMap.push({ text: word, element: el, index: wordIndex++ });
+                        sentences.forEach(sentence => {
+                            const words = sentence.match(/\b\w+[\.,;:]?\b/g) || [];
+                            
+                            words.forEach((word) => {
+                                wordsMap.push({ text: word, element: el, originalHTML: originalHTML, sentence: sentence });
+                                totalWordCount++;
+                            });
                         });
+                        
+                        // Store the sentence text for the utterance
+                        el.setAttribute('data-tts-text', sentences.join(' '));
                     });
-
-                    totalArticleText = fullText;
-                    totalWordCount = wordsMap.length;
                     
                     // Calculate and display reading time
                     const readTimeMinutes = Math.ceil(totalWordCount / WPM);
@@ -517,110 +536,108 @@
                     voiceSelect.innerHTML = '<option value="">Select Voice...</option>';
                     
                     // Filter for two preferred English voices (Male/Female)
-                    const preferredVoices = [];
-                    let femaleVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google') && v.name.includes('Female')) || 
-                                      voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'));
-                    let maleVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google') && v.name.includes('Male')) || 
-                                    voices.find(v => v.lang.startsWith('en') && v.name.includes('Male'));
-
-                    if (femaleVoice) preferredVoices.push(femaleVoice);
-                    if (maleVoice) preferredVoices.push(maleVoice);
+                    const englishVoices = voices.filter(v => v.lang.startsWith('en'));
                     
-                    // Fallback to first two English voices
-                    if (preferredVoices.length < 2) {
-                        voices.filter(v => v.lang.startsWith('en')).slice(0, 2).forEach(v => preferredVoices.push(v));
+                    let femaleVoice = englishVoices.find(v => v.name.toLowerCase().includes('female')) || englishVoices[0];
+                    let maleVoice = englishVoices.find(v => v.name.toLowerCase().includes('male')) || englishVoices[1];
+                    
+                    if (femaleVoice) {
+                        const option = document.createElement('option');
+                        option.textContent = `${femaleVoice.name} (Female)`;
+                        option.value = femaleVoice.name;
+                        option.selected = true; // Set female as default
+                        voiceSelect.appendChild(option);
+                    }
+                    if (maleVoice && maleVoice.name !== (femaleVoice ? femaleVoice.name : '')) {
+                        const option = document.createElement('option');
+                        option.textContent = `${maleVoice.name} (Male)`;
+                        option.value = maleVoice.name;
+                        voiceSelect.appendChild(option);
                     }
 
-                    preferredVoices.forEach((voice, index) => {
-                        const option = document.createElement('option');
-                        option.textContent = `${voice.name} (${voice.lang}) - ${voice.default ? 'Default' : ''}`;
-                        option.value = voice.name;
-                        
-                        if (index === 0) { // Set first preferred voice as default selection
-                            option.selected = true;
-                        }
-                        voiceSelect.appendChild(option);
-                    });
-                    
-                    speechStatus.textContent = "Ready";
-                    playPauseBtn.disabled = false;
+                    if (voiceSelect.options.length > 1) {
+                         speechStatus.textContent = "Voice selected. Ready to listen.";
+                         playPauseBtn.disabled = false;
+                    } else {
+                        speechStatus.textContent = "Voices loading or not found.";
+                    }
                 }
                 
                 // --- 3. Speech Control & Highlighting ---
                 function startSpeaking(voiceName) {
-                    if (!totalArticleText || !voiceName) {
-                        speechStatus.textContent = "Please select a voice.";
+                    removeHighlighting();
+                    wordIndexInMap = 0; // Reset word index
+                    
+                    // Combine all tts-text attributes for the full reading
+                    const fullText = Array.from(articleContent.querySelectorAll('[data-tts-text]'))
+                        .map(el => el.getAttribute('data-tts-text')).join(' ');
+
+                    if (!fullText) {
+                        speechStatus.textContent = "No text found to read.";
                         return;
                     }
 
-                    utterance = new SpeechSynthesisUtterance(totalArticleText);
+                    currentUtterance = new SpeechSynthesisUtterance(fullText);
                     
                     const selectedVoice = synth.getVoices().find(v => v.name === voiceName);
                     if (selectedVoice) {
-                        utterance.voice = selectedVoice;
+                        currentUtterance.voice = selectedVoice;
                     }
 
-                    let highlightIndex = 0; // Tracks the current index in the wordsMap array
-                    
-                    utterance.onstart = () => {
+                    currentUtterance.onstart = () => {
                         isPlaying = true;
                         playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
                         speechStatus.textContent = "Reading aloud...";
-                        removeHighlighting();
                     };
                     
-                    // Event fires when the speech engine hits a word boundary
-                    utterance.onboundary = (event) => {
+                    currentUtterance.onboundary = (event) => {
                         if (event.name === 'word') {
-                            // Remove previous highlight
-                            const previousHighlight = document.querySelector('.word-highlight');
-                            if (previousHighlight) {
-                                // Replace the highlighted span with its original content
-                                previousHighlight.outerHTML = previousHighlight.textContent;
-                            }
+                            removeHighlighting(); // Clean previous word highlight
                             
-                            if (highlightIndex < wordsMap.length) {
-                                const currentWordData = wordsMap[highlightIndex];
-                                const currentElement = currentWordData.element;
+                            // Find the word in the map that corresponds to the current spoken boundary
+                            let foundWordData = wordsMap[wordIndexInMap];
+                            
+                            if (foundWordData) {
+                                const currentElement = foundWordData.element;
+                                const wordToHighlight = foundWordData.text;
                                 
-                                // Clean the element's text to handle existing HTML/emphasis tags
-                                let rawText = currentElement.innerHTML;
+                                // Restore the element's original content (in case of previous highlights)
+                                currentElement.innerHTML = currentElement.getAttribute('data-original-html') || currentElement.innerHTML;
+
+                                // Regex to find the *exact* word in the element's text and wrap it
+                                // Must handle punctuation (e.g., "story." vs "story")
+                                const regex = new RegExp(`(?<!<[^>]*>)(\\b${wordToHighlight}\\b)`);
                                 
-                                // Use a regular expression to find the word and wrap it in a span
-                                // This is a simplified regex; a robust system requires more complex DOM traversal
-                                const regex = new RegExp(`\\b${currentWordData.text}\\b`);
-                                
-                                if (regex.test(rawText)) {
-                                    // Wrap the word
-                                    currentElement.innerHTML = rawText.replace(regex, `<span class="word-highlight">$&</span>`);
+                                if (regex.test(currentElement.innerHTML)) {
+                                    currentElement.innerHTML = currentElement.innerHTML.replace(regex, `<span class="word-highlight">$1</span>`);
                                     currentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 }
                                 
-                                highlightIndex++;
+                                wordIndexInMap++;
                             }
                         }
                     };
 
-                    utterance.onend = () => {
+                    currentUtterance.onend = () => {
                         resetPlayer();
                         removeHighlighting();
                         speechStatus.textContent = "Finished reading.";
                     };
                     
-                    utterance.onerror = (e) => {
+                    currentUtterance.onerror = (e) => {
                         console.error('Speech synthesis error:', e);
                         resetPlayer();
                         speechStatus.textContent = "Error reading";
                     };
 
-                    synth.speak(utterance);
+                    synth.speak(currentUtterance);
                 }
 
                 function removeHighlighting() {
                     // Clean up all highlighting spans across the article
                     const highlightedSpans = articleContent.querySelectorAll('.word-highlight');
                     highlightedSpans.forEach(span => {
-                        // Replace the span with its content text
+                         // Use a temporary element to safely replace the span with its content
                         span.outerHTML = span.innerHTML; 
                     });
                 }
@@ -628,9 +645,10 @@
                 function resetPlayer() {
                     isPlaying = false;
                     isPaused = false;
+                    wordIndexInMap = 0; // Reset map index
                     removeHighlighting();
                     playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen to this Article</span>';
-                    speechSynthesis.cancel();
+                    synth.cancel();
                 }
 
                 // --- 4. Event Listeners ---
@@ -658,12 +676,15 @@
                     }
                 });
 
+                // Re-process content on load
+                processArticleContent();
+                // Store original HTML for accurate highlighting
+                articleContent.querySelectorAll('p:not(.post-meta), h2, h3, li, blockquote')
+                    .forEach(el => el.setAttribute('data-original-html', el.innerHTML));
+
                 // Re-populate voice list if voices load later
                 synth.onvoiceschanged = populateVoiceList;
-
-                // Initial load
-                processArticleContent();
-                populateVoiceList();
+                populateVoiceList(); // Call immediately for browsers that load voices fast
 
                 // Clean up on page exit
                 window.onbeforeunload = () => {
@@ -742,7 +763,7 @@
         const commentList = document.getElementById('comment-list');
         const emojiSuggestionBox = document.getElementById('emoji-suggestion-box');
         
-        // --- 4. AUTHENTICATION (FIXED) ---
+        // --- 4. AUTHENTICATION ---
 
         function toggleAuthForm(isLogin) {
             authError.textContent = '';
@@ -873,7 +894,6 @@
             const li = document.createElement('li');
             li.className = 'comment';
             
-            // Check if user has interacted with the comment
             const hasLiked = currentUser && comment.likes.includes(currentUser.uid);
             const hasFoundHelpful = currentUser && comment.helpful.includes(currentUser.uid);
             const hasFoundNotHelpful = currentUser && comment.notHelpful.includes(currentUser.uid);
@@ -965,7 +985,6 @@
                     toggleArrayVote(commentRef, 'notHelpful', currentUser.uid);
                 } else if (button.classList.contains('reply-button')) {
                     const replyBox = commentContent.querySelector(`#reply-box-${commentId}`);
-                    // Toggle reply box visibility
                     replyBox.style.display = replyBox.style.display === 'none' ? 'block' : 'none';
                 }
             }
