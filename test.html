@@ -46,13 +46,13 @@
             --link-color: #0056b3;
             --link-hover-color: #003d80;
             --border-color: #e0e0e0;
-            --card-bg: #ffffff;
+            --card-bg: #ffffff; /* Card background is still white */
             --button-bg: #0056b3;
             --button-text-color: #ffffff;
             --button-hover-bg: #003d80;
             --navbar-bg: rgba(255, 255, 255, 0.95);
             --footer-bg: #eeeeee;
-            --highlight-color: #ffeb3b; 
+            --highlight-color: #ffeb3b; /* A subtle yellow highlight */
             --comment-bg: #ffffff;
             --shadow-glow: none;
             /* New: Light Mode Headline Color */
@@ -243,6 +243,7 @@
             border-radius: 4px;
         }
         
+        /* UPDATED: Headline colors */
         .article-content h2 { 
             font-size: 2rem; margin-top: 3rem; margin-bottom: 1rem;
             border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;
@@ -257,47 +258,25 @@
         /* --- Audio Player Styles (Aesthetic Update) --- */
         .audio-player {
             background: var(--card-bg); 
-            border: 1px solid var(--link-color); 
+            border: 1px solid var(--link-color); /* Added link color border for glow */
             padding: 1.25rem; border-radius: 8px; margin-bottom: 2.5rem;
-            display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+            display: flex; flex-wrap: wrap; align-items: center; 
             gap: 1rem;
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); /* Stronger glow effect */
             transition: all 0.3s;
-            position: relative; /* Needed for progress bar positioning */
         }
         body.light-theme .audio-player {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Subtle shadow for light mode */
             border-color: var(--border-color);
         }
         
-        .audio-progress-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 5px;
-            background: var(--link-color);
-            width: 0%;
-            border-radius: 0 0 0 8px;
-            transition: width 0.1s linear;
-        }
-
         #reading-time {
             font-size: 0.95rem;
             color: var(--link-color);
             font-weight: 600;
         }
         
-        /* Word Highlighting (Inline span) */
-        .word-highlight {
-            background-color: var(--highlight-color);
-            padding: 0 1px;
-            border-radius: 2px;
-            transition: background-color 0.1s;
-        }
-        body.light-theme .word-highlight {
-            box-shadow: none; 
-            color: var(--heading-color);
-        }
+        /* Removed .word-highlight styles as feature is removed */
 
         .btn-primary {
             background: var(--button-bg); color: var(--button-text-color); border: none;
@@ -337,22 +316,23 @@
             border-bottom: none;
         }
         
-        /* New: Authentication prompt as suggestion, not blocker */
+        /* New: Authentication Prompt */
         .auth-prompt {
-            border: 1px solid var(--border-color);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
             background: var(--card-bg);
+            border: 1px solid var(--link-color);
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 3rem;
             text-align: center;
         }
         .auth-prompt h3 {
             font-size: 1.4rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
-        
-        .guest-inputs {
-            /* Now handled by JS based on auth status */
-            display: none; 
+        .auth-prompt .guest-comment-link {
+            display: block;
+            margin-top: 1rem;
+            font-size: 0.9rem;
         }
 
         .comment-form-container {
@@ -391,6 +371,10 @@
             color: gold; margin-left: 5px; font-size: 0.8rem;
             vertical-align: middle;
         }
+        .guest-badge {
+            color: #999; margin-left: 5px; font-size: 0.8rem;
+            vertical-align: middle;
+        }
         .comment-meta {
             font-size: 0.85rem;
             color: #888;
@@ -416,11 +400,6 @@
         }
         .like-btn.liked {
             color: #E91E63;
-        }
-        .comment-actions button:disabled {
-             opacity: 0.5;
-             cursor: not-allowed;
-             color: #777;
         }
         
         .no-comments {
@@ -504,15 +483,16 @@
             
             <section class="audio-player">
                 <span id="reading-time"></span>
-                <select id="voice-select" class="form-input" style="width: 250px; margin: 0; flex-grow: 1;">
-                    <option value="">Select Voice...</option>
+                <select id="voice-select" class="form-input" style="width: 250px; margin: 0;">
+                    <option value="" disabled selected>Select AI Voice...</option>
+                    <option value="audios/a5cae336-01dd-431b-b388-9a319258d85f.wav">Philadelphia AI (Female)</option>
+                    <option value="audios/c72d8fbf-8a99-451d-b94c-8d7c8ffef5e5.wav">Funny Daddy (Male)</option>
                 </select>
-                <button id="audio-play-pause-btn" class="btn-primary" disabled style="width: 200px;">
+                <button id="audio-play-pause-btn" class="btn-primary" disabled style="width: 150px; flex-shrink: 0;">
                     <i class="fas fa-play"></i>
                     <span>Listen</span>
                 </button>
-                <span id="speech-status" style="font-size: 0.9rem; color: #aaa;">Loading voices...</span>
-                <div class="audio-progress-bar" id="audio-progress-bar"></div>
+                <span id="speech-status" style="font-size: 0.9rem; color: #aaa; flex-grow: 1;">Select a voice and click Listen.</span>
             </section>
             
             <article class="article-content" id="article-content">
@@ -559,27 +539,22 @@
                 <h2>💬 Join the Conversation (<span id="comment-count">0</span> Comments)</h2>
 
                 <div id="auth-prompt" class="auth-prompt">
-                    <div id="logged-in-message" style="display: none;">
-                         <p>Posting as: <b id="current-user-name" style="color: var(--link-color);"></b> <button id="sign-out-btn" style="color: #DB4437; background: none; border: none; cursor: pointer; font-weight: 500;">(Sign Out)</button></p>
-                    </div>
-                    <div id="logged-out-message">
-                        <h3>Want a verified badge and likes/replies?</h3>
-                        <button id="google-sign-in-btn" class="btn-primary" style="background: #DB4437; background-image: none;">
-                            <i class="fab fa-google"></i> Sign in with Google
-                        </button>
-                    </div>
+                    <h3>Join the discussion!</h3>
+                    <p>Sign in to post, like, and reply with a verified profile, or comment as a guest.</p>
+                    <button id="google-sign-in-btn" class="btn-primary" style="background: #DB4437; background-image: none;">
+                        <i class="fab fa-google"></i> Sign in with Google
+                    </button>
+                    <a href="#" id="guest-comment-link" class="guest-comment-link">Or, comment as a Guest User (No likes/replies)</a>
+                    <p id="auth-status" style="margin-top: 1rem; font-size: 0.9rem;"></p>
                 </div>
                 
-                <div class="comment-form-container" id="comment-form-container">
-                    <h3>Post Your Comment</h3>
+                <div class="comment-form-container" id="comment-form-container" style="display: none;">
+                    <h3>Leave a Comment As <span id="current-user-name" style="color: var(--link-color);"></span></h3>
                     <form id="comment-form">
-                        <div id="guest-inputs" class="guest-inputs">
-                            <div>
-                                <label for="comment-name" class="form-label">Your Name <span style="color: red;">*</span></label>
-                                <input type="text" id="comment-name" class="form-input" placeholder="Guest Name" required>
-                            </div>
+                        <div id="guest-name-input" style="display: none; margin-bottom: 1rem;">
+                            <label for="guest-name-field" class="form-label">Your Name <span style="color: red;">*</span></label>
+                            <input type="text" id="guest-name-field" class="form-input" placeholder="Enter a name to display" required>
                         </div>
-
                         <div>
                             <label for="comment-input-text" class="form-label">Share your thoughts <span style="color: red;">*</span></label>
                             <textarea id="comment-input-text" class="form-input" placeholder="What did you think about this article? (Supports links, bold, and line breaks!)" required></textarea>
@@ -640,7 +615,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
     <script>
-        // --- Theme Toggle Script & Hamburger ---
+        // --- Theme Toggle Script & Hamburger (No change) ---
         document.addEventListener('DOMContentLoaded', () => {
             const body = document.body;
             const toggleButton = document.getElementById('theme-toggle');
@@ -686,236 +661,88 @@
     </script>
     
     <script>
-        // --- TEXT TO SPEECH SCRIPT (Reverted to Native TTS for Perfected Highlights) ---
+        // --- TEXT TO SPEECH SCRIPT (CLEANED UP - NO HIGHLIGHTING) ---
         document.addEventListener('DOMContentLoaded', () => {
             const playPauseBtn = document.getElementById('audio-play-pause-btn');
             const speechStatus = document.getElementById('speech-status');
-            const articleContent = document.getElementById('article-content');
             const voiceSelect = document.getElementById('voice-select');
+            const articleContent = document.getElementById('article-content');
             const estimatedTimeEl = document.getElementById('estimated-time');
-            const progressBar = document.getElementById('audio-progress-bar'); 
+            const readingTimeEl = document.getElementById('reading-time');
             
-            const synth = window.speechSynthesis;
             const WPM = 200; 
 
+            let audio = new Audio();
             let isPlaying = false;
-            let isPaused = false;
-            let currentUtterance = null;
-            let wordsMap = []; 
-            let wordIndexInMap = 0;
-
-            if ('speechSynthesis' in window) {
+            
+            // --- 1. Content Processing & Read Time ---
+            function processArticleContent() {
+                const fullText = articleContent.textContent;
                 
-                // --- 1. Content Processing & Read Time ---
-                function processArticleContent() {
-                    let totalWordCount = 0;
-                    wordsMap = [];
-                    
-                    const elements = articleContent.querySelectorAll('p, h2, h3, li, blockquote');
-                    
-                    elements.forEach(el => {
-                        const originalHTML = el.innerHTML;
-                        const text = el.textContent.trim();
-                        if (text.length === 0) return;
-                        
-                        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-
-                        sentences.forEach(sentence => {
-                            const words = sentence.match(/\b\w+['’]*\w*[\.,;:]*\b/g) || []; 
-                            
-                            words.forEach((word) => {
-                                // Store the word in its original case/form for highlighting regex, but clean for tracking map
-                                wordsMap.push({ text: word, element: el }); 
-                                totalWordCount++;
-                            });
-                        });
-                        
-                        el.setAttribute('data-tts-text', sentences.join(' '));
-                        el.setAttribute('data-original-html', originalHTML);
-                    });
-                    
-                    const readTimeMinutes = Math.ceil(totalWordCount / WPM);
-                    estimatedTimeEl.innerHTML = `<i class="fas fa-clock"></i> ${readTimeMinutes} min read`;
-                    document.getElementById('reading-time').textContent = `Duration: ${readTimeMinutes} min`;
-                }
+                // Calculate and display reading time
+                const totalWordCount = fullText.split(/\s+/).length;
+                const readTimeMinutes = Math.ceil(totalWordCount / WPM);
                 
-                // --- 2. Voice Selection Setup ---
-                function populateVoiceList() {
-                    const voices = synth.getVoices();
-                    voiceSelect.innerHTML = '<option value="">Select Voice...</option>';
-                    
-                    const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-                    
-                    // Priority list for a default, clear voice
-                    const priorityNames = ['Google US English', 'Zira', 'David', 'Microsoft Zira'];
-                    let preferredVoice = englishVoices.find(v => priorityNames.some(name => v.name.includes(name))) || englishVoices[0];
-                    
-                    if (preferredVoice) {
-                        const option = document.createElement('option');
-                        option.textContent = `${preferredVoice.name} (${preferredVoice.lang})`;
-                        option.value = preferredVoice.name;
-                        option.selected = true;
-                        voiceSelect.appendChild(option);
-                    }
-                    
-                    englishVoices.filter(v => v.name !== (preferredVoice ? preferredVoice.name : '')).forEach(v => {
-                        const option = document.createElement('option');
-                        option.textContent = `${v.name} (${v.lang})`;
-                        option.value = v.name;
-                        voiceSelect.appendChild(option);
-                    });
+                estimatedTimeEl.innerHTML = `<i class="fas fa-clock"></i> ${readTimeMinutes} min read`;
+                readingTimeEl.textContent = `Article Duration: ${readTimeMinutes} min`;
 
-
-                    if (voiceSelect.options.length > 1) {
-                         speechStatus.textContent = "Ready to listen.";
-                         playPauseBtn.disabled = false;
-                    } else {
-                        speechStatus.textContent = "Voices loading or not supported.";
-                    }
-                }
-                
-                // --- 3. Speech Control & Highlighting (Perfected) ---
-                function startSpeaking(voiceName) {
-                    removeHighlighting();
-                    wordIndexInMap = 0; 
-                    
-                    const fullText = Array.from(articleContent.querySelectorAll('[data-tts-text]'))
-                        .map(el => el.getAttribute('data-tts-text')).join(' ');
-
-                    if (!fullText) { return; }
-
-                    currentUtterance = new SpeechSynthesisUtterance(fullText);
-                    
-                    const selectedVoice = synth.getVoices().find(v => v.name === voiceName);
-                    if (selectedVoice) {
-                        currentUtterance.voice = selectedVoice;
-                    }
-
-                    currentUtterance.rate = 1.0; 
-                    currentUtterance.pitch = 1.0;
-
-                    currentUtterance.onstart = () => {
-                        isPlaying = true;
-                        isPaused = false;
-                        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
-                        speechStatus.textContent = "Reading aloud...";
-                        progressBar.style.width = '0%';
-                    };
-                    
-                    currentUtterance.onboundary = (event) => {
-                        if (event.name === 'word') {
-                            // Progress Bar update
-                            const totalLength = currentUtterance.text.length;
-                            const progress = (event.charIndex / totalLength) * 100;
-                            progressBar.style.width = `${progress}%`;
-                            
-                            let foundWordData = wordsMap[wordIndexInMap];
-                            
-                            if (foundWordData) {
-                                removeHighlighting();
-                                
-                                const currentElement = foundWordData.element;
-                                const wordToHighlight = foundWordData.text;
-                                
-                                currentElement.innerHTML = currentElement.getAttribute('data-original-html') || currentElement.textContent;
-
-                                // Escaped regex for safe replacement
-                                const escapedWord = wordToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                // Targets the whole word (non-greedy) and is case-insensitive
-                                const regex = new RegExp(`(?<!<[^>]*>)(\\b${escapedWord}\\b)`, 'i'); 
-                                
-                                // Only highlight the first instance found in the element
-                                if (regex.test(currentElement.innerHTML)) {
-                                    currentElement.innerHTML = currentElement.innerHTML.replace(regex, `<span class="word-highlight">${wordToHighlight}</span>`);
-                                    currentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                                
-                                wordIndexInMap++;
-                            }
-                        }
-                    };
-
-                    currentUtterance.onend = () => {
-                        resetPlayer();
-                        speechStatus.textContent = "Finished reading.";
-                        progressBar.style.width = '100%';
-                    };
-                    
-                    currentUtterance.onerror = (e) => {
-                        console.error('Speech synthesis error:', e);
-                        resetPlayer();
-                        speechStatus.textContent = `Error reading: ${e.error}`;
-                    };
-
-                    synth.speak(currentUtterance);
-                }
-
-                function removeHighlighting() {
-                    const highlightedSpans = articleContent.querySelectorAll('.word-highlight');
-                    highlightedSpans.forEach(span => {
-                        span.outerHTML = span.textContent; 
-                    });
-                }
-                
-                function resetPlayer() {
-                    isPlaying = false;
-                    isPaused = false;
-                    wordIndexInMap = 0;
-                    removeHighlighting();
-                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen</span>';
-                    synth.cancel();
-                    progressBar.style.width = '0%';
-                }
-
-                // --- 4. Event Listeners ---
-                playPauseBtn.addEventListener('click', () => {
-                    const selectedVoice = voiceSelect.value;
-                    if (!selectedVoice && synth.getVoices().length > 0) {
-                        speechStatus.textContent = "Please select a voice first!";
-                        return;
-                    } else if (synth.getVoices().length === 0) {
-                         speechStatus.textContent = "Voices not yet loaded. Try again in a moment.";
-                         return;
-                    }
-
-                    if (!isPlaying && !isPaused) {
-                        startSpeaking(selectedVoice);
-                    } else if (isPlaying && !isPaused) {
-                        isPlaying = false;
-                        isPaused = true;
-                        synth.pause();
-                        speechStatus.textContent = "Paused";
-                        playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Resume</span>';
-                    } else if (!isPlaying && isPaused) {
-                        isPlaying = true;
-                        isPaused = false;
-                        synth.resume();
-                        speechStatus.textContent = "Reading aloud...";
-                        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
-                    }
-                });
-                
-                synth.onvoiceschanged = populateVoiceList;
-
-                processArticleContent();
-                populateVoiceList();
-
-                window.onbeforeunload = () => {
-                    synth.cancel();
-                };
-
-            } else {
-                speechStatus.textContent = "Audio playback not supported by your browser.";
-                playPauseBtn.disabled = true;
-                estimatedTimeEl.textContent = '';
-                document.getElementById('reading-time').textContent = 'Audio not supported.';
+                // Enable button since content is processed
+                playPauseBtn.disabled = false;
             }
+
+            // --- 2. Custom Audio Control ---
+            
+            function resetPlayer() {
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen</span>';
+                speechStatus.textContent = "Select a voice and click Listen.";
+                audio.pause();
+                audio.currentTime = 0; 
+            }
+
+            // --- 3. Event Listeners ---
+            voiceSelect.addEventListener('change', () => {
+                resetPlayer(); // Reset if voice changes
+                const audioSrc = voiceSelect.value;
+                if (audioSrc) {
+                    audio.src = audioSrc;
+                    playPauseBtn.disabled = false;
+                    speechStatus.textContent = "Ready to play " + voiceSelect.options[voiceSelect.selectedIndex].text + ".";
+                } else {
+                    playPauseBtn.disabled = true;
+                    speechStatus.textContent = "Select an AI Voice...";
+                }
+            });
+
+            playPauseBtn.addEventListener('click', () => {
+                if (!audio.src || playPauseBtn.disabled) return;
+                
+                if (!isPlaying) {
+                    isPlaying = true;
+                    audio.play();
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+                    speechStatus.textContent = "Reading aloud...";
+                } else {
+                    isPlaying = false;
+                    audio.pause();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Resume</span>';
+                    speechStatus.textContent = "Paused";
+                }
+            });
+
+            audio.onended = () => {
+                resetPlayer();
+                speechStatus.textContent = "Finished reading.";
+            };
+            
+            // Initial load
+            processArticleContent();
         });
     </script>
 
 
     <script>
-        // --- FIREBASE/COMMENT SCRIPT (Updated for Guest/Auth Hybrid) ---
+        // --- FIREBASE/COMMENT SCRIPT (FIXED & GUEST COMMENTING ADDED) ---
         
         const firebaseConfig = {
             apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
@@ -935,7 +762,7 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const ARTICLE_ID = 'crafting-characters-01';
-        const ADMIN_EMAIL = 'koladhino@gmail.com'; 
+        const ADMIN_EMAIL = 'koladhino@gmail.com'; // Admin definition
 
         // --- DOM Elements ---
         const commentForm = document.getElementById('comment-form');
@@ -943,20 +770,56 @@
         const commentList = document.getElementById('comment-list');
         const commentCountEl = document.getElementById('comment-count');
         const submitBtn = document.getElementById('comment-button');
+        const authPrompt = document.getElementById('auth-prompt');
+        const commentFormContainer = document.getElementById('comment-form-container');
         const googleSignInBtn = document.getElementById('google-sign-in-btn');
         const currentUserNameEl = document.getElementById('current-user-name');
-        
-        // New/Re-added elements for guest comments
-        const commentNameInput = document.getElementById('comment-name'); 
-        const guestInputsDiv = document.getElementById('guest-inputs'); 
-        const loggedInMessage = document.getElementById('logged-in-message'); 
-        const loggedOutMessage = document.getElementById('logged-out-message'); 
-        const signOutBtn = document.getElementById('sign-out-btn'); 
+        const authStatusEl = document.getElementById('auth-status');
+        const guestCommentLink = document.getElementById('guest-comment-link');
+        const guestNameInputDiv = document.getElementById('guest-name-input');
+        const guestNameField = document.getElementById('guest-name-field');
         
         let currentUser = null;
+        let isGuestMode = false;
 
-        // --- 1. Authentication Logic ---
+        // --- 1. Authentication & Guest Logic ---
         
+        function setAuthState(user) {
+            if (user) {
+                // Authenticated User
+                currentUser = user;
+                isGuestMode = false;
+                authPrompt.style.display = 'none';
+                commentFormContainer.style.display = 'block';
+                currentUserNameEl.textContent = user.displayName || user.email;
+                guestNameInputDiv.style.display = 'none';
+                guestNameField.removeAttribute('required');
+
+            } else {
+                // Guest/Logged Out State
+                currentUser = null;
+                // Only show auth prompt, hide form unless guest mode is activated
+                if (!isGuestMode) {
+                    authPrompt.style.display = 'block';
+                    commentFormContainer.style.display = 'none';
+                    currentUserNameEl.textContent = 'Guest';
+                }
+            }
+            loadComments(); // Reload comments to show user status/actions
+        }
+
+        // Handle Guest Link Click
+        guestCommentLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            isGuestMode = true;
+            authPrompt.style.display = 'none';
+            commentFormContainer.style.display = 'block';
+            currentUserNameEl.textContent = 'Guest User';
+            guestNameInputDiv.style.display = 'block';
+            guestNameField.setAttribute('required', 'required');
+            guestNameField.focus();
+        });
+
         // Google Sign-In Handler
         googleSignInBtn.addEventListener('click', async () => {
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -964,40 +827,20 @@
                 await auth.signInWithPopup(provider);
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
-                alert(`Sign in failed: ${error.message}`);
+                authStatusEl.textContent = `Sign in failed: ${error.message}`;
             }
         });
         
-        // Sign Out Handler
-        signOutBtn.addEventListener('click', () => {
-            auth.signOut();
-        });
-
-        // State Observer (Manages UI based on Guest/Auth status)
+        // State Observer
         auth.onAuthStateChanged(user => {
-            if (user) {
-                // Logged In
-                currentUser = user;
-                loggedInMessage.style.display = 'block';
-                loggedOutMessage.style.display = 'none';
-                guestInputsDiv.style.display = 'none'; // Hide guest inputs
-                currentUserNameEl.textContent = user.displayName || user.email.split('@')[0];
-
-            } else {
-                // Logged Out (Guest)
-                currentUser = null;
-                loggedInMessage.style.display = 'none';
-                loggedOutMessage.style.display = 'block';
-                guestInputsDiv.style.display = 'block'; // Show guest inputs
-            }
-            loadComments(); 
+            setAuthState(user);
         });
 
 
         // --- 2. Comment Display & Actions ---
         
         function loadComments() {
-            commentList.innerHTML = `<p class="loading-message" style="text-align: center; color: #777;">Loading comments...</p>`;
+             commentList.innerHTML = `<p class="loading-message" style="text-align: center; color: #777;">Loading comments...</p>`;
             
             db.collection('comments')
                 .where('articleId', '==', ARTICLE_ID)
@@ -1037,19 +880,29 @@
             const initial = userName.charAt(0).toUpperCase();
             const timestamp = comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString() : 'Just now';
             
+            // Determine badges & capabilities
             let badge = '';
+            let canAct = false; // Can the user like/reply?
+            
             if (comment.userEmail === ADMIN_EMAIL) {
                  badge = '<span class="admin-badge" title="Admin/Author"><i class="fas fa-crown"></i> Admin</span>';
-            } else if (comment.userId) { 
+                 canAct = true;
+            } else if (comment.userId && comment.userId !== 'guest') {
                 badge = '<span class="verified-badge" title="Verified User">✔</span>';
+                canAct = true;
+            } else {
+                badge = '<span class="guest-badge" title="Guest User"><i class="fas fa-user-tag"></i> Guest</span>';
+                canAct = false; // Guests cannot like/reply
             }
             
+            // Check if current authenticated user has liked this comment
+            const isLiked = currentUser && !isGuestMode && comment.likes && comment.likes.includes(currentUser.uid);
+            const likeCount = comment.likes ? comment.likes.length : 0;
+            const likeDisabled = !canAct || !currentUser || isGuestMode;
+
+
             const processedText = formatCommentText(comment.text);
             
-            const isLiked = currentUser && comment.likes && comment.likes.includes(currentUser.uid);
-            const likeCount = comment.likes ? comment.likes.length : 0;
-            const actionsDisabled = !currentUser ? 'disabled' : '';
-
             div.innerHTML = `
                 <div class="comment-avatar">${initial}</div>
                 <div class="comment-content" style="flex-grow: 1;">
@@ -1057,61 +910,39 @@
                     <p class="comment-text">${processedText}</p>
                     <div class="comment-meta">🕐 ${timestamp}</div>
                     <div class="comment-actions">
-                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${actionsDisabled}>
+                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${likeDisabled ? 'disabled' : ''}>
                             <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> 
                             <span>Like</span> (<span class="like-count">${likeCount}</span>)
                         </button>
-                        <button class="reply-btn" data-comment-id="${comment.id}" ${actionsDisabled}>
+                        <button class="reply-btn" data-comment-id="${comment.id}" ${likeDisabled ? 'disabled' : ''}>
                             <i class="fas fa-reply"></i> Reply
                         </button>
                     </div>
                 </div>
             `;
             
+            // Add listener for like button
             const likeBtn = div.querySelector('.like-btn');
-            if (likeBtn) {
+            if (likeBtn && !likeDisabled) {
                 likeBtn.addEventListener('click', () => toggleLike(comment.id, likeBtn));
-            }
-            const replyBtn = div.querySelector('.reply-btn');
-            if (replyBtn) {
-                replyBtn.addEventListener('click', () => {
-                    alert(`Replying to ${userName}. (Full reply functionality requires more complex UI/Firestore structure.)`);
-                });
             }
             
             return div;
         }
         
-        // --- 3. Comment Submission & Actions (FIXED) ---
+        // --- 3. Comment Submission & Actions ---
 
         commentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const commentText = commentTextInput.value.trim();
-            
-            let postData = {
-                articleId: ARTICLE_ID,
-                text: commentText,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                likes: [] 
-            };
-
-            if (currentUser) {
-                // AUTHENTICATED USER
-                postData.userId = currentUser.uid;
-                postData.userName = currentUser.displayName || currentUser.email.split('@')[0];
-                postData.userEmail = currentUser.email;
-            } else {
-                // GUEST USER
-                const guestName = commentNameInput.value.trim();
-                if (!guestName) {
-                    alert('Please enter your Name and Comment! 😊');
-                    return;
-                }
-                postData.userName = guestName;
-                // Note: userEmail/userId intentionally excluded for guests (matches corrected rules)
+            // Guest mode validation
+            if (!currentUser && !isGuestMode) {
+                alert('You must sign in or choose to comment as a Guest!');
+                return;
             }
-            
+
+            const commentText = commentTextInput.value.trim();
+
             if (!commentText) {
                 alert('Please enter your comment! 😊');
                 return;
@@ -1120,17 +951,55 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
 
+            let commentData = {};
+
+            if (isGuestMode) {
+                const guestName = guestNameField.value.trim();
+                if (!guestName) {
+                    alert('Please enter a name to comment as a guest!');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
+                    return;
+                }
+                commentData = {
+                    articleId: ARTICLE_ID,
+                    userId: 'guest', // Unique identifier for guests
+                    userName: guestName,
+                    userEmail: '', // No email for guests
+                    text: commentText,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    likes: [] 
+                };
+            } else {
+                // Authenticated user
+                commentData = {
+                    articleId: ARTICLE_ID,
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName || currentUser.email.split('@')[0],
+                    userEmail: currentUser.email,
+                    text: commentText,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    // CRITICAL FIX: Ensure 'likes' is an array when posting
+                    likes: [] 
+                };
+            }
+
             try {
-                // FIX: Posting logic now handles both authenticated and guest data structures correctly
-                await db.collection('comments').add(postData);
+                // If it fails here, it's almost certainly a Firestore Rule issue.
+                await db.collection('comments').add(commentData);
 
                 commentTextInput.value = '';
-                if (!currentUser) {
-                    commentNameInput.value = '';
+                guestNameField.value = ''; // Clear guest name too
+
+                // Reset guest mode view after successful post if it was guest mode
+                if (isGuestMode) {
+                    isGuestMode = false; // Reset to prompt view
+                    setAuthState(auth.currentUser);
                 }
+
             } catch (error) {
                 console.error('Error posting comment:', error);
-                alert(`Oops! Failed to post comment. Check console. You might need to publish the new Firebase Security Rules. Error: ${error.message}`);
+                alert('Oops! Failed to post comment. Check console and your Firestore Security Rules! 😅');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
@@ -1138,12 +1007,11 @@
         });
 
         async function toggleLike(commentId, button) {
-             if (!currentUser) return;
+             if (!currentUser || isGuestMode) return;
              
              const commentRef = db.collection('comments').doc(commentId);
              const userId = currentUser.uid;
              
-             // Atomically update the array to add or remove the user ID
              await db.runTransaction(async (transaction) => {
                  const doc = await transaction.get(commentRef);
                  if (!doc.exists) {
@@ -1175,10 +1043,9 @@
             div.textContent = text;
             let formattedText = div.innerHTML;
             
-            // Convert simple formatting: links, **bold**, and line breaks
-            formattedText = formattedText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); // Simple link detection
-            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>'); // **bold** to <b>
-            formattedText = formattedText.replace(/\n/g, '<br>'); // New lines to <br>
+            formattedText = formattedText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'); 
+            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            formattedText = formattedText.replace(/\n/g, '<br>');
             
             return formattedText;
         }
@@ -1189,8 +1056,20 @@
 
         // Initialize comments on load
         document.addEventListener('DOMContentLoaded', () => {
-            // Initial load is handled by auth.onAuthStateChanged
+            // Initial call will be handled by auth.onAuthStateChanged
+            // or by setAuthState if user is null
+            setAuthState(auth.currentUser); 
         });
     </script>
 </body>
 </html>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
