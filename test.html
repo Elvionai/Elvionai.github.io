@@ -263,7 +263,7 @@
             grid-template-columns: auto 1fr auto;
             align-items: center; 
             gap: 1rem;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); 
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); /* Stronger glow for allure */
             transition: all 0.3s;
         }
         body.light-theme .audio-player {
@@ -754,39 +754,95 @@
             
             // --- 1. Content Processing & Read Time ---
             function processArticleContent() {
-                let fullText = articleContent.textContent;
-                
                 // Calculate and display reading time
-                const totalWordCount = fullText.split(/\s+/).length;
+                const fullText = articleContent.textContent;
+                const totalWordCount = fullText.split(/\s+/).filter(word => word.length > 0).length;
                 const readTimeMinutes = Math.ceil(totalWordCount / WPM);
                 
                 estimatedTimeEl.innerHTML = `<i class="fas fa-clock"></i> ${readTimeMinutes} min read`;
                 readingTimeEl.textContent = `Duration: ${readTimeMinutes} min (Approx)`;
 
-                // 2. Wrap words for highlighting (only text content, not tags)
-                let newHtml = articleContent.innerHTML.replace(/(<p>.*?<\/p>)|(<h2>.*?<\/h2>)|(<blockquote>.*?<\/blockquote>)/gs, (match) => {
-                    // Ignore h2 and blockquote, only process <p> tags for word wrapping
-                    if (match.startsWith('<p>')) {
-                        const content = match.substring(3, match.length - 4);
-                        const wrappedContent = content.split(/(\s+)/).map((word, index) => {
-                            if (word.trim() === '') return word;
-                            // Use a marker index for words that were *not* wrapped in a <b> or <span> previously
-                            return `<span class="tts-word" data-word-index="${index}">${word}</span>`;
-                        }).join('');
-                        return `<p>${wrappedContent}</p>`;
-                    }
-                    return match;
-                });
+                // 2. Word wrapping logic: Only wrap text nodes *inside* desired elements.
+                // Reset content to original HTML structure before wrapping
+                const originalHtml = `
+                    <p>Your characters are the heart of your story. They are the vessels through which your reader experiences the world you've built, the conflicts you've crafted, and the emotions you want to evoke. A weak plot can sometimes be saved by compelling characters, but even the most brilliant plot will fall flat if the characters feel like cardboard cutouts. So, how do you create three-dimensional, <span class="tts-word">unforgettable</span> <span class="tts-word">characters</span> that leap off the page?</p>
+
+                    <h2>1. Beyond the Surface: The Iceberg Method</h2>
+                    <p>What we see of a character—their appearance, their job, their actions—is just the tip of the iceberg. The real substance lies beneath the surface. This is their <span class="tts-word">backstory</span>. You don't need to dump all of this information on the reader (in fact, please don't!), but <i>you</i> need to know it. What was their childhood like? What's their biggest regret? What is the secret they've never told anyone? This hidden weight informs their every decision, fear, and desire.</p>
+
+                    <blockquote>
+                        <b>Pro-Tip:</b> Ask yourself: What is the single most important event that shaped my character into who they are today? How does it affect their behavior in Chapter 1?
+                    </blockquote>
+
+                    <h2>2. Give Them Flaws (Real Ones)</h2>
+                    <p>Perfection is boring. A character who is always right, always strong, and always kind is not relatable—they're annoying. Real people are messy. They are impatient, they are selfish, they are afraid of spiders, they procrastinate. A flaw makes a character human. More importantly, a character's <span class="tts-word">fatal</span> <span class="tts-word">flaw</span> is often the engine of the plot. It's the internal obstacle they must overcome to achieve their external goal. Is your hero brave? Make them reckless. Is your heroine brilliant? Make her arrogant.</p>
+
+                    <h2>3. Wants vs. Needs</h2>
+                    <p>This is a classic writing technique for a reason. Every compelling character has two goals:</p>
+                    
+                    <ul>
+                        <li><b>The Want:</b> This is the external, conscious goal. It's what the character <i>thinks</i> they need to be happy. (e.g., "I want to win the championship.")</li>
+                        <li><b>The Need:</b> This is the internal, often subconscious truth. It's what the character <i>actually</i> needs to grow as a person. (e.g., "I need to learn to trust my teammates.")</li>
+                    </ul>
+
+                    <p>The best stories create conflict by putting the Want and the Need at odds. The character's journey (their "arc") is complete when they either sacrifice their Want to achieve their Need, or finally realize that what they Needed was the key to getting what they Wanted all along.</p>
+                    
+                    <h2>4. Let Their Voice Be Heard</h2>
+                    <p>How does your character speak? Their dialogue is a window into their soul. A character's voice is more than just an accent; it's their word choice, their sentence structure, their rhythm, and what they choose to say (or not say).</p>
+                    
+                    <h3>Quick Voice Tips:</h3>
+                    <ul>
+                        <li>An educated professor might use complex sentences and precise vocabulary.</li>
+                        <li>A nervous teenager might speak in short, halting sentences, using a lot of "like" or "um."</li>
+                        <li>A cynical detective might use dry, sarcastic wit.</li>
+                    </ul>
+                    <p>Try this exercise: Write a scene with two characters arguing, but remove all dialogue tags ("he said," "she yelled"). Can you tell who is speaking just by their words and rhythm? If so, you're on the right track.</p>
+
+                    <h2>5. Make Them Act: Decisions Define Character</h2>
+                    <p>Don't just <i>tell</i> us your character is brave; put them in a situation where they must <i>choose</i> to be brave, especially when it's hard. Character is revealed through action and choice, especially choices made under pressure. The harder the choice, the more we learn about who they really are. A character who chooses to run into a burning building is defined by that action in a way no amount of descriptive prose ever could.</p>
+                    
+                    <p>Ultimately, an unforgettable character feels <b>real</b>. They are a bundle of contradictions, flaws, desires, and secrets, just like us. By digging deep into their past, understanding their internal conflicts, and letting them express themselves through a unique voice, you can create characters that readers will carry with them long after the final page.</p>
+                `;
                 
-                // Final clean-up for the article: only wrap unwrapped words
-                articleContent.innerHTML = newHtml.replace(/<p>(.*?)<\/p>/gs, (match, content) => {
-                    // This function ensures only bare words in <p> tags get wrapped, avoiding nested <span>s
-                    return `<p>${content.replace(/(<[^>]+>|[^<\s]+)/g, (word) => {
-                        if (word.startsWith('<')) return word; // Skip HTML tags
-                        if (word.match(/[\W]/)) return word; // Skip punctuation/symbols
-                        return `<span class="tts-word">${word}</span>`;
-                    })}</p>`;
+                // Temporarily create a container to safely modify the HTML structure
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = originalHtml;
+
+                const paragraphs = tempDiv.querySelectorAll('p');
+                paragraphs.forEach(p => {
+                    // This function recursively processes text nodes within the paragraph
+                    function processNode(node) {
+                        if (node.nodeType === 3) { // Text Node
+                            const text = node.nodeValue;
+                            const words = text.split(/(\s+)/);
+                            const fragment = document.createDocumentFragment();
+                            
+                            words.forEach(word => {
+                                if (word.trim().length > 0) {
+                                    const span = document.createElement('span');
+                                    span.classList.add('tts-word');
+                                    span.textContent = word;
+                                    fragment.appendChild(span);
+                                } else {
+                                    fragment.appendChild(document.createTextNode(word)); // Keep spaces
+                                }
+                            });
+                            
+                            // Replace the text node with the fragment of wrapped words
+                            node.parentNode.replaceChild(fragment, node);
+                        } else if (node.nodeType === 1) { // Element Node
+                            // Recursively process children, preventing wrapping inside <i>, <b>, or existing <span>
+                            if (node.tagName !== 'I' && node.tagName !== 'B' && !node.classList.contains('tts-word')) {
+                                Array.from(node.childNodes).forEach(processNode);
+                            }
+                        }
+                    }
+
+                    Array.from(p.childNodes).forEach(processNode);
                 });
+
+                // Replace the article content with the newly wrapped HTML
+                articleContent.innerHTML = tempDiv.innerHTML;
                 
                 // Re-select all tts-words based on the final, rendered content
                 ttsWords = Array.from(articleContent.querySelectorAll('.tts-word'));
@@ -811,9 +867,10 @@
             }
             
             function seekAudio(event) {
-                if (!audio.src) return;
-                const clickX = event.offsetX;
-                const width = progressContainer.offsetWidth;
+                if (!audio.src || isNaN(audio.duration)) return;
+                const rect = progressContainer.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const width = rect.width;
                 const seekTime = (clickX / width) * audio.duration;
                 audio.currentTime = seekTime;
             }
@@ -836,29 +893,31 @@
             }
 
             function highlightWordByTime(time) {
-                // Simplified highlighting: We don't have word-level timings, so we approximate
-                // based on the total progress and total words.
                 if (ttsWords.length === 0) return;
                 
                 const totalDuration = audio.duration;
                 if (isNaN(totalDuration) || totalDuration === 0) return;
 
+                // Simple linear approximation for word index
                 const progressRatio = time / totalDuration;
                 const targetIndex = Math.floor(progressRatio * ttsWords.length);
 
-                if (targetIndex !== currentWordIndex) {
+                if (targetIndex !== currentWordIndex && targetIndex < ttsWords.length) {
                     removeHighlighting();
                     currentWordIndex = targetIndex;
                     
-                    // Highlight the current word and scroll it into view
-                    if (ttsWords[currentWordIndex]) {
-                        ttsWords[currentWordIndex].classList.add('word-highlight');
+                    const wordSpan = ttsWords[currentWordIndex];
+                    if (wordSpan) {
+                        wordSpan.classList.add('word-highlight');
                         
-                        // Basic scroll-into-view logic
-                        const rect = ttsWords[currentWordIndex].getBoundingClientRect();
-                        const offset = 100; // Offset from top
+                        // Scroll logic: Center the word if it's outside a comfortable view range
+                        const rect = wordSpan.getBoundingClientRect();
+                        const offset = 200; // Offset from top/bottom
+                        const viewportTop = window.scrollY + offset;
+                        const viewportBottom = window.scrollY + window.innerHeight - offset;
+                        
                         if (rect.top < offset || rect.bottom > window.innerHeight - offset) {
-                            ttsWords[currentWordIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                     }
                 }
@@ -923,8 +982,9 @@
 
 
     <script type="module">
-        // --- FIREBASE/COMMENT SCRIPT (FIXED & CONVERTED TO MODULES) ---
+        // --- FIREBASE/COMMENT SCRIPT (FIXED IMPORTS & LOGIC) ---
         
+        // Use full CDN paths for module imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, doc, arrayUnion, arrayRemove, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
@@ -1027,10 +1087,19 @@
             
             const userName = escapeHtml(comment.userName) || 'Anonymous';
             const initial = userName.charAt(0).toUpperCase();
-            const timestamp = comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString() : 'Just now';
+            
+            // Fix: Check if timestamp exists and is a Firestore Timestamp object before calling toDate()
+            let timestampString;
+            if (comment.timestamp && typeof comment.timestamp.toDate === 'function') {
+                timestampString = new Date(comment.timestamp.toDate()).toLocaleString();
+            } else {
+                 // Fallback for locally generated 'Just now' or server pending
+                const date = comment.timestamp || new Date(); 
+                timestampString = date instanceof Date ? date.toLocaleString() : 'Just now';
+            }
             
             let badge = '';
-            let canAct = false; 
+            let canAct = false; // Only logged-in, non-guest users can like/reply
             
             if (comment.userEmail === ADMIN_EMAIL) {
                  badge = '<span class="admin-badge" title="Admin/Author"><i class="fas fa-crown"></i> Admin</span>';
@@ -1040,13 +1109,14 @@
                 canAct = true;
             } else {
                 badge = '<span class="guest-badge" title="Guest User"><i class="fas fa-user-tag"></i> Guest</span>';
-                canAct = false; 
+                // Guest can see the buttons but they will be disabled.
             }
             
             const isLiked = currentUser && !isGuestMode && comment.likes && comment.likes.includes(currentUser.uid);
             const likeCount = comment.likes ? comment.likes.length : 0;
-            const actionDisabled = !canAct || !currentUser || isGuestMode; 
-
+            
+            // Check for both authentication AND non-guest status for actions
+            const actionDisabled = !currentUser || isGuestMode || comment.userId === 'guest'; 
 
             const processedText = formatCommentText(comment.text);
             
@@ -1055,7 +1125,7 @@
                 <div class="comment-content" style="flex-grow: 1;">
                     <span class="comment-user">${userName}</span>${badge}
                     <p class="comment-text">${processedText}</p>
-                    <div class="comment-meta">🕐 ${timestamp}</div>
+                    <div class="comment-meta">🕐 ${timestampString}</div>
                     <div class="comment-actions">
                         <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${actionDisabled ? 'disabled' : ''}>
                             <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> 
@@ -1078,11 +1148,11 @@
         }
 
         function loadComments() {
-            // FIX: Ensure the query is structured correctly and the snapshot listener is set up
              const q = query(collection(db, 'comments'), 
                              where('articleId', '==', ARTICLE_ID), 
                              orderBy('timestamp', 'desc'));
 
+             // Clear current list and show loading message temporarily
              commentList.innerHTML = `<p class="loading-message" style="text-align: center; color: #777;">Loading comments...</p>`;
 
 
@@ -1238,9 +1308,8 @@
         }
 
         // --- 6. Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initial load is called within onAuthStateChanged/setAuthState
-        });
+        // Initial load is now fully handled by onAuthStateChanged which calls setAuthState, 
+        // which in turn calls loadComments()
     </script>
 </body>
 </html>
