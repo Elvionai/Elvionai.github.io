@@ -395,6 +395,26 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             position: relative;
         }
+        /* NEW: Reply Indentation */
+        .comment.reply {
+            margin-left: 50px; /* Indent replies */
+            border-left: 4px solid var(--link-hover-color); /* Visual distinction */
+            margin-top: -0.5rem; /* Reduce vertical spacing between parent and first reply */
+            margin-bottom: 1rem;
+        }
+        
+        /* NEW: Styling for the dynamic reply form */
+        .reply-form-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-top: 1px dashed var(--border-color);
+            background: var(--bg-color); /* Use base color for subtle contrast */
+            border-radius: 4px;
+        }
+        .reply-form .form-input {
+            margin-bottom: 0.5rem;
+        }
+        
         .comment-avatar { 
             width: 45px; height: 45px; border-radius: 50%; background: var(--link-color); 
             display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
@@ -497,6 +517,9 @@
             .progress-container, .progress-time {
                 grid-column: 1 / 2;
             }
+            .comment.reply {
+                margin-left: 20px;
+            }
         }
     </style>
 </head>
@@ -555,7 +578,7 @@
                         <option value="1.25">1.25x</option>
                         <option value="1.5">1.5x</option>
                     </select>
-                    <button id="audio-play-pause-btn" class="btn-primary" disabled style="width: 100px; flex-shrink: 0; padding: 0.6rem;">
+                    <button id="audio-play-pause-btn" class="btn-primary" disabled style="width: 100px; flex-shrink: 0; padding: 0.6rem;" aria-label="Select a voice to play audio">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>
@@ -571,7 +594,6 @@
             </section>
             
             <article class="article-content" id="article-content">
-                <!-- **FIX:** Removed pre-wrapped .tts-word spans from static HTML. The script will now wrap ALL words. -->
                 <p>Your characters are the heart of your story. They are the vessels through which your reader experiences the world you've built, the conflicts you've crafted, and the emotions you want to evoke. A weak plot can sometimes be saved by compelling characters, but even the most brilliant plot will fall flat if the characters feel like cardboard cutouts. So, how do you create three-dimensional, unforgettable characters that leap off the page?</p>
 
                 <h2>1. Beyond the Surface: The Iceberg Method</h2>
@@ -686,10 +708,6 @@
         </div>
     </footer>
 
-    <!-- 
-      Using Firebase 10+ modular SDK. 
-      These MUST be type="module"
-    -->
     <script type="module" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js"></script>
     <script type="module" src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js"></script>
@@ -773,7 +791,7 @@
                 readingTimeEl.textContent = `Duration: ${readTimeMinutes} min (Approx)`;
 
                 // 2. Word wrapping logic
-                // **FIX:** This is the hardcoded original HTML *without* the pre-wrapped spans.
+                // This is the hardcoded original HTML *without* the pre-wrapped spans.
                 const originalHtml = `
                     <p>Your characters are the heart of your story. They are the vessels through which your reader experiences the world you've built, the conflicts you've crafted, and the emotions you want to evoke. A weak plot can sometimes be saved by compelling characters, but even the most brilliant plot will fall flat if the characters feel like cardboard cutouts. So, how do you create three-dimensional, unforgettable characters that leap off the page?</p>
 
@@ -818,7 +836,7 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = originalHtml;
 
-                // **FIX:** Select from 'p' AND 'li' tags to wrap all readable text
+                // Select from 'p' AND 'li' tags to wrap all readable text
                 const paragraphs = tempDiv.querySelectorAll('p, li');
                 
                 paragraphs.forEach(p => {
@@ -891,6 +909,7 @@
             function resetPlayer() {
                 isPlaying = false;
                 playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                playPauseBtn.setAttribute('aria-label', 'Play audio');
                 speechStatus.textContent = "Select a voice to begin listening.";
                 audio.pause();
                 audio.currentTime = 0; 
@@ -909,11 +928,11 @@
                 ttsWords.forEach(span => span.classList.remove('word-highlight'));
             }
 
+            // This function uses linear approximation (not exact alignment)
             function highlightWordByTime(time) {
-                if (ttsWords.length === 0) return;
+                if (ttsWords.length === 0 || isNaN(audio.duration) || audio.duration === 0) return;
                 
                 const totalDuration = audio.duration;
-                if (isNaN(totalDuration) || totalDuration === 0) return;
 
                 // Simple linear approximation for word index
                 const progressRatio = time / totalDuration;
@@ -973,11 +992,13 @@
                     isPlaying = true;
                     audio.play().catch(e => console.error("Audio play failed:", e));
                     playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                    playPauseBtn.setAttribute('aria-label', 'Pause audio'); // ACCESSIBILITY FIX
                     speechStatus.textContent = `Reading aloud at ${audio.playbackRate}x speed...`;
                 } else {
                     isPlaying = false;
                     audio.pause();
                     playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                    playPauseBtn.setAttribute('aria-label', 'Play audio'); // ACCESSIBILITY FIX
                     speechStatus.textContent = "Paused";
                 }
             });
@@ -1003,13 +1024,13 @@
 
 
     <script type="module">
-        // --- FIREBASE/COMMENT SCRIPT (FIXED IMPORTS & LOGIC) ---
+        // --- FIREBASE/COMMENT SCRIPT (FIXED IMPORTS & LOGIC FOR REPLIES) ---
         
         // Use full CDN paths for module imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
         import { 
-            getFirestore, collection, addDoc, query, where, orderBy, 
+            getFirestore, collection, addDoc, query, where, 
             onSnapshot, doc, arrayUnion, arrayRemove, runTransaction, serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
@@ -1046,12 +1067,17 @@
         
         let currentUser = null;
         let isGuestMode = false;
+        let currentReplyToId = null; // New state to track the active reply form
 
         // --- 2. Authentication & Guest Logic ---
         
         function setAuthState(user) {
             currentUser = user;
             
+            // Clear any active reply forms when auth state changes
+            document.querySelectorAll('.reply-form-container').forEach(el => el.remove());
+            currentReplyToId = null; 
+
             if (user) {
                 // Authenticated User
                 isGuestMode = false;
@@ -1108,6 +1134,11 @@
         function createCommentElement(comment) {
             const div = document.createElement('div');
             div.className = 'comment';
+
+            // NEW: Add a class for reply indentation
+            if (comment.parentId) {
+                div.classList.add('reply');
+            }
             
             const userName = escapeHtml(comment.userName) || 'Anonymous';
             const initial = userName.charAt(0).toUpperCase();
@@ -1115,9 +1146,11 @@
             let timestampString;
             if (comment.timestamp && typeof comment.timestamp.toDate === 'function') {
                 timestampString = new Date(comment.timestamp.toDate()).toLocaleString();
-            } else {
+            } else if (comment.timestamp) {
                 const date = comment.timestamp || new Date(); 
                 timestampString = date instanceof Date ? date.toLocaleString() : 'Just now';
+            } else {
+                timestampString = 'Pending...';
             }
             
             let badge = '';
@@ -1165,9 +1198,58 @@
             return div;
         }
 
+        // NEW: Hierarchical Rendering Function
+        function renderComments(comments) {
+            commentList.innerHTML = '';
+            
+            // 1. Separate top-level comments from replies
+            const topLevelComments = comments.filter(c => !c.parentId);
+            const repliesByParentId = comments
+                .filter(c => c.parentId)
+                .reduce((acc, reply) => {
+                    acc[reply.parentId] = acc[reply.parentId] || [];
+                    acc[reply.parentId].push(reply);
+                    return acc;
+                }, {});
+
+            // 2. Render in order: Parent -> Reply 1 -> Reply 2 -> Next Parent
+            topLevelComments.forEach(comment => {
+                // Render Top-Level Comment
+                const topEl = createCommentElement(comment);
+                commentList.appendChild(topEl);
+                
+                // Attach reply listener to the main comment element's button
+                const replyBtn = topEl.querySelector('.reply-btn');
+                if (replyBtn) {
+                     replyBtn.addEventListener('click', (e) => handleReplyButtonClick(e));
+                }
+
+                // Render Replies (Append as sibling with indentation)
+                const replies = repliesByParentId[comment.id] || [];
+                replies.forEach(reply => {
+                    const replyEl = createCommentElement(reply);
+                    commentList.appendChild(replyEl); 
+                    
+                    // Attach reply listener to the reply's reply button
+                    const nestedReplyBtn = replyEl.querySelector('.reply-btn');
+                    if (nestedReplyBtn) {
+                        nestedReplyBtn.addEventListener('click', (e) => handleReplyButtonClick(e));
+                    }
+                });
+            });
+
+            if (comments.length === 0) {
+                commentList.innerHTML = `
+                    <div class="no-comments">
+                        <i class="fas fa-comments" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem; display: block;"></i>
+                        <p>No comments yet. Be the first to share your thoughts! 🌟</p>
+                    </div>
+                `;
+            }
+        }
+
+
         function loadComments() {
-             // **FIX:** Removed orderBy('timestamp', 'desc') to avoid needing a composite index.
-             // We will sort manually in the onSnapshot callback.
              const q = query(collection(db, 'comments'), 
                              where('articleId', '==', ARTICLE_ID));
 
@@ -1176,7 +1258,8 @@
 
 
              onSnapshot(q, (snapshot) => {
-                    commentList.innerHTML = ''; // Clear existing comments
+                    // Remove loading message
+                    commentList.innerHTML = ''; 
                     
                     if (snapshot.empty) {
                         commentList.innerHTML = `
@@ -1191,27 +1274,24 @@
 
                     commentCountEl.textContent = snapshot.size;
                     
-                    // **FIX:** Sort the documents manually after fetching
+                    // FIX: Sort the documents manually after fetching (newest first)
                     const sortedDocs = snapshot.docs.sort((a, b) => {
                         const timeA = a.data().timestamp;
                         const timeB = b.data().timestamp;
                         
-                        // Handle server timestamps (which can be null) or local timestamps
-                        const dateA = timeA && timeA.toDate ? timeA.toDate() : new Date(0);
+                        // Handle null/pending server timestamps by treating them as very old for sorting
+                        const dateA = timeA && timeA.toDate ? timeA.toDate() : new Date(0); 
                         const dateB = timeB && timeB.toDate ? timeB.toDate() : new Date(0);
                         
                         return dateB - dateA; // Sort descending (newest first)
                     });
 
-                    sortedDocs.forEach(doc => {
-                        const comment = { id: doc.id, ...doc.data() };
-                        const commentEl = createCommentElement(comment);
-                        commentList.appendChild(commentEl);
-                    });
+                    const comments = sortedDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderComments(comments); // Use new rendering function
+
                 }, error => {
                     console.error("Error loading comments:", error);
-                    // **FIX:** Updated error message
-                    commentList.innerHTML = `<p class="loading-message" style="color: red;">Failed to load comments. (This may be a Firestore Security Rule or a missing Index issue.)</p>`;
+                    commentList.innerHTML = `<p class="loading-message" style="color: red;">Failed to load comments. (This may be a Firestore Security Rule issue, ensure you allow 'read' access on the 'comments' collection.)</p>`;
                 });
         }
         
@@ -1221,7 +1301,6 @@
             e.preventDefault();
             
             if (!currentUser && !isGuestMode) {
-                // Use a custom modal or just log; avoid alert()
                 console.warn('User must sign in or choose to comment as a Guest!');
                 return;
             }
@@ -1281,7 +1360,6 @@
 
             } catch (error) {
                 console.error('Error posting comment:', error);
-                // alert('Oops! Failed to post comment. Check console and your Firestore Security Rules! 😅');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
@@ -1322,6 +1400,102 @@
              }
         }
 
+        // NEW: Function to create the dynamic reply form HTML
+        function createReplyFormHtml(parentId) {
+            const formContainer = document.createElement('div');
+            formContainer.className = 'reply-form-container'; 
+            formContainer.innerHTML = `
+                <h4 style="font-size: 1.2rem; margin-top: 0; margin-bottom: 0.5rem; color: var(--heading-color);">
+                    Replying to a comment as <span style="color: var(--link-color);">${currentUser.displayName || currentUser.email.split('@')[0]}</span>
+                </h4>
+                <form class="reply-form" data-parent-id="${parentId}">
+                    <textarea class="form-input" placeholder="Your reply..." required></textarea>
+                    <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        <i class="fas fa-paper-plane"></i> Post Reply
+                    </button>
+                    <button type="button" class="btn-cancel-reply btn-primary" style="background: #555; background-image: none; margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                        Cancel
+                    </button>
+                </form>
+            `;
+            
+            // Add event listeners to the dynamically created form
+            const form = formContainer.querySelector('.reply-form');
+            const cancelBtn = formContainer.querySelector('.btn-cancel-reply');
+
+            form.addEventListener('submit', handleReplySubmit);
+            cancelBtn.addEventListener('click', () => {
+                formContainer.remove();
+                currentReplyToId = null;
+            });
+
+            return formContainer;
+        }
+
+        // NEW: Handler for reply button click
+        function handleReplyButtonClick(e) {
+            e.preventDefault();
+            const replyBtn = e.currentTarget;
+            const parentId = replyBtn.dataset.commentId;
+
+            // 1. Remove any existing reply forms
+            document.querySelectorAll('.reply-form-container').forEach(el => el.remove());
+            
+            if (currentReplyToId === parentId) {
+                // If clicking the same button, close the form
+                currentReplyToId = null;
+                return;
+            }
+
+            // 2. Append the new form
+            const formEl = createReplyFormHtml(parentId);
+            const commentContentDiv = replyBtn.closest('.comment-content');
+            
+            if (commentContentDiv) {
+                commentContentDiv.appendChild(formEl);
+                formEl.querySelector('textarea').focus();
+                currentReplyToId = parentId;
+            }
+        }
+        
+        // NEW: Handler for dynamically created reply forms submission
+        async function handleReplySubmit(e) {
+            e.preventDefault();
+            if (!currentUser || isGuestMode) return;
+
+            const form = e.target;
+            const parentId = form.dataset.parentId;
+            const textarea = form.querySelector('textarea');
+            const replyText = textarea.value.trim();
+            const submitButton = form.querySelector('.btn-primary');
+
+            if (!replyText) return;
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+            
+            const replyData = {
+                articleId: ARTICLE_ID,
+                userId: currentUser.uid,
+                userName: currentUser.displayName || currentUser.email.split('@')[0],
+                userEmail: currentUser.email,
+                text: replyText,
+                timestamp: serverTimestamp(),
+                likes: [],
+                parentId: parentId // KEY: Links to parent comment
+            };
+
+            try {
+                await addDoc(collection(db, 'comments'), replyData);
+            } catch (error) {
+                console.error('Error posting reply:', error);
+            } finally {
+                // Remove the form upon completion (success or failure)
+                form.closest('.reply-form-container').remove(); 
+                currentReplyToId = null;
+            }
+        }
+
 
         // --- 5. Utility Functions ---
         
@@ -1351,7 +1525,6 @@
     </script>
 </body>
 </html>
-
 
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
