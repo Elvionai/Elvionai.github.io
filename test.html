@@ -46,13 +46,13 @@
             --link-color: #0056b3;
             --link-hover-color: #003d80;
             --border-color: #e0e0e0;
-            --card-bg: #ffffff; /* Card background is still white */
+            --card-bg: #ffffff;
             --button-bg: #0056b3;
             --button-text-color: #ffffff;
             --button-hover-bg: #003d80;
             --navbar-bg: rgba(255, 255, 255, 0.95);
             --footer-bg: #eeeeee;
-            --highlight-color: #ffeb3b; /* A subtle yellow highlight */
+            --highlight-color: #ffeb3b; 
             --comment-bg: #ffffff;
             --shadow-glow: none;
             /* New: Light Mode Headline Color */
@@ -243,7 +243,6 @@
             border-radius: 4px;
         }
         
-        /* UPDATED: Headline colors */
         .article-content h2 { 
             font-size: 2rem; margin-top: 3rem; margin-bottom: 1rem;
             border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;
@@ -258,18 +257,30 @@
         /* --- Audio Player Styles (Aesthetic Update) --- */
         .audio-player {
             background: var(--card-bg); 
-            border: 1px solid var(--link-color); /* Added link color border for glow */
+            border: 1px solid var(--link-color); 
             padding: 1.25rem; border-radius: 8px; margin-bottom: 2.5rem;
             display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
             gap: 1rem;
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.5); /* Stronger glow effect */
             transition: all 0.3s;
+            position: relative; /* Needed for progress bar positioning */
         }
         body.light-theme .audio-player {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Subtle shadow for light mode */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
             border-color: var(--border-color);
         }
         
+        .audio-progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 5px;
+            background: var(--link-color);
+            width: 0%;
+            border-radius: 0 0 0 8px;
+            transition: width 0.1s linear;
+        }
+
         #reading-time {
             font-size: 0.95rem;
             color: var(--link-color);
@@ -326,18 +337,22 @@
             border-bottom: none;
         }
         
-        /* New: Authentication Prompt */
+        /* New: Authentication prompt as suggestion, not blocker */
         .auth-prompt {
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
             background: var(--card-bg);
-            border: 1px solid var(--link-color);
-            padding: 2rem;
-            border-radius: 8px;
-            margin-bottom: 3rem;
             text-align: center;
         }
         .auth-prompt h3 {
             font-size: 1.4rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .guest-inputs {
+            /* Now handled by JS based on auth status */
+            display: none; 
         }
 
         .comment-form-container {
@@ -401,6 +416,11 @@
         }
         .like-btn.liked {
             color: #E91E63;
+        }
+        .comment-actions button:disabled {
+             opacity: 0.5;
+             cursor: not-allowed;
+             color: #777;
         }
         
         .no-comments {
@@ -485,15 +505,14 @@
             <section class="audio-player">
                 <span id="reading-time"></span>
                 <select id="voice-select" class="form-input" style="width: 250px; margin: 0; flex-grow: 1;">
-                    <option value="" disabled selected>Select AI Voice...</option>
-                    <option value="audios/a5cae336-01dd-431b-b388-9a319258d85f.wav">Philadelphia AI (Female)</option>
-                    <option value="audios/c72d8fbf-8a99-451d-b94c-8d7c8ffef5e5.wav">Funny Daddy (Male)</option>
+                    <option value="">Select Voice...</option>
                 </select>
                 <button id="audio-play-pause-btn" class="btn-primary" disabled style="width: 200px;">
                     <i class="fas fa-play"></i>
                     <span>Listen</span>
                 </button>
-                <span id="speech-status" style="font-size: 0.9rem; color: #aaa;">Select a voice and click Listen.</span>
+                <span id="speech-status" style="font-size: 0.9rem; color: #aaa;">Loading voices...</span>
+                <div class="audio-progress-bar" id="audio-progress-bar"></div>
             </section>
             
             <article class="article-content" id="article-content">
@@ -540,17 +559,27 @@
                 <h2>💬 Join the Conversation (<span id="comment-count">0</span> Comments)</h2>
 
                 <div id="auth-prompt" class="auth-prompt">
-                    <h3>Join the discussion!</h3>
-                    <p>You must be signed in to post, like, or reply to comments.</p>
-                    <button id="google-sign-in-btn" class="btn-primary" style="background: #DB4437; background-image: none;">
-                        <i class="fab fa-google"></i> Sign in with Google
-                    </button>
-                    <p id="auth-status" style="margin-top: 1rem; font-size: 0.9rem;"></p>
+                    <div id="logged-in-message" style="display: none;">
+                         <p>Posting as: <b id="current-user-name" style="color: var(--link-color);"></b> <button id="sign-out-btn" style="color: #DB4437; background: none; border: none; cursor: pointer; font-weight: 500;">(Sign Out)</button></p>
+                    </div>
+                    <div id="logged-out-message">
+                        <h3>Want a verified badge and likes/replies?</h3>
+                        <button id="google-sign-in-btn" class="btn-primary" style="background: #DB4437; background-image: none;">
+                            <i class="fab fa-google"></i> Sign in with Google
+                        </button>
+                    </div>
                 </div>
                 
-                <div class="comment-form-container" id="comment-form-container" style="display: none;">
-                    <h3>Leave a Comment As <span id="current-user-name" style="color: var(--link-color);"></span></h3>
+                <div class="comment-form-container" id="comment-form-container">
+                    <h3>Post Your Comment</h3>
                     <form id="comment-form">
+                        <div id="guest-inputs" class="guest-inputs">
+                            <div>
+                                <label for="comment-name" class="form-label">Your Name <span style="color: red;">*</span></label>
+                                <input type="text" id="comment-name" class="form-input" placeholder="Guest Name" required>
+                            </div>
+                        </div>
+
                         <div>
                             <label for="comment-input-text" class="form-label">Share your thoughts <span style="color: red;">*</span></label>
                             <textarea id="comment-input-text" class="form-input" placeholder="What did you think about this article? (Supports links, bold, and line breaks!)" required></textarea>
@@ -611,7 +640,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
     <script>
-        // --- Theme Toggle Script & Hamburger (No change) ---
+        // --- Theme Toggle Script & Hamburger ---
         document.addEventListener('DOMContentLoaded', () => {
             const body = document.body;
             const toggleButton = document.getElementById('theme-toggle');
@@ -657,178 +686,236 @@
     </script>
     
     <script>
-        // --- TEXT TO SPEECH SCRIPT (Updated for Custom Audio Playback) ---
+        // --- TEXT TO SPEECH SCRIPT (Reverted to Native TTS for Perfected Highlights) ---
         document.addEventListener('DOMContentLoaded', () => {
             const playPauseBtn = document.getElementById('audio-play-pause-btn');
             const speechStatus = document.getElementById('speech-status');
-            const voiceSelect = document.getElementById('voice-select');
             const articleContent = document.getElementById('article-content');
+            const voiceSelect = document.getElementById('voice-select');
             const estimatedTimeEl = document.getElementById('estimated-time');
+            const progressBar = document.getElementById('audio-progress-bar'); 
             
+            const synth = window.speechSynthesis;
             const WPM = 200; 
 
-            let audio = new Audio();
             let isPlaying = false;
-            let currentWordIndex = 0;
+            let isPaused = false;
+            let currentUtterance = null;
             let wordsMap = []; 
+            let wordIndexInMap = 0;
 
-            // --- 1. Content Processing & Read Time (Modified to use original text for simplicity) ---
-            function processArticleContent() {
-                let fullText = "";
-                wordsMap = [];
+            if ('speechSynthesis' in window) {
                 
-                // Collect text content from specific tags
-                const elements = articleContent.querySelectorAll('p, h2, h3, li, blockquote');
-                
-                elements.forEach(el => {
-                    const text = el.textContent.trim();
-                    if (text.length === 0) return;
+                // --- 1. Content Processing & Read Time ---
+                function processArticleContent() {
+                    let totalWordCount = 0;
+                    wordsMap = [];
                     
-                    // Add text to full text buffer for playback tracking
-                    fullText += text + " ";
+                    const elements = articleContent.querySelectorAll('p, h2, h3, li, blockquote');
                     
-                    // Simple word splitting for highlighting (adjust if needed for precise boundaries)
-                    const words = text.match(/\b\w+['’]*\w*[\.,;:]*\b/g) || [];
-                    words.forEach((word) => {
-                        wordsMap.push({ text: word.toLowerCase().replace(/[^a-z0-9]/g, ''), element: el });
+                    elements.forEach(el => {
+                        const originalHTML = el.innerHTML;
+                        const text = el.textContent.trim();
+                        if (text.length === 0) return;
+                        
+                        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+
+                        sentences.forEach(sentence => {
+                            const words = sentence.match(/\b\w+['’]*\w*[\.,;:]*\b/g) || []; 
+                            
+                            words.forEach((word) => {
+                                // Store the word in its original case/form for highlighting regex, but clean for tracking map
+                                wordsMap.push({ text: word, element: el }); 
+                                totalWordCount++;
+                            });
+                        });
+                        
+                        el.setAttribute('data-tts-text', sentences.join(' '));
+                        el.setAttribute('data-original-html', originalHTML);
                     });
-                });
-                
-                // Calculate and display reading time
-                const totalWordCount = fullText.split(/\s+/).length;
-                const readTimeMinutes = Math.ceil(totalWordCount / WPM);
-                estimatedTimeEl.innerHTML = `<i class="fas fa-clock"></i> ${readTimeMinutes} min read`;
-                document.getElementById('reading-time').textContent = `Duration: ${readTimeMinutes} min`;
-
-                // Enable button since content is processed
-                playPauseBtn.disabled = false;
-            }
-
-            // --- 2. Custom Audio Control & Highlighting ---
-            
-            // NOTE: Since a custom .wav file is used, we cannot rely on the 'onboundary' event for precise word timing.
-            // A simplified, timer-based highlighting is implemented here to simulate reading progress based on WPM.
-
-            let highlightInterval = null;
-            let startTime = 0;
-            
-            function startHighlighting() {
-                const totalWordCount = wordsMap.length;
-                const totalDurationSeconds = audio.duration;
-                
-                if (totalWordCount === 0 || totalDurationSeconds === 0) return;
-
-                // Calculate the average time (in milliseconds) per word
-                const timePerWord = (totalDurationSeconds * 1000) / totalWordCount;
-                
-                currentWordIndex = 0;
-                startTime = Date.now();
-                
-                highlightInterval = setInterval(() => {
-                    const elapsedTime = Date.now() - startTime;
-                    // Calculate expected word index based on elapsed time and average word time
-                    const expectedIndex = Math.floor(elapsedTime / timePerWord);
                     
-                    if (expectedIndex >= totalWordCount) {
-                        // Stop interval if playback is complete
-                        clearInterval(highlightInterval);
-                        return;
+                    const readTimeMinutes = Math.ceil(totalWordCount / WPM);
+                    estimatedTimeEl.innerHTML = `<i class="fas fa-clock"></i> ${readTimeMinutes} min read`;
+                    document.getElementById('reading-time').textContent = `Duration: ${readTimeMinutes} min`;
+                }
+                
+                // --- 2. Voice Selection Setup ---
+                function populateVoiceList() {
+                    const voices = synth.getVoices();
+                    voiceSelect.innerHTML = '<option value="">Select Voice...</option>';
+                    
+                    const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+                    
+                    // Priority list for a default, clear voice
+                    const priorityNames = ['Google US English', 'Zira', 'David', 'Microsoft Zira'];
+                    let preferredVoice = englishVoices.find(v => priorityNames.some(name => v.name.includes(name))) || englishVoices[0];
+                    
+                    if (preferredVoice) {
+                        const option = document.createElement('option');
+                        option.textContent = `${preferredVoice.name} (${preferredVoice.lang})`;
+                        option.value = preferredVoice.name;
+                        option.selected = true;
+                        voiceSelect.appendChild(option);
                     }
                     
-                    // Only update the highlight if the expected index has advanced
-                    if (expectedIndex > currentWordIndex) {
-                         highlightWord(expectedIndex);
-                         currentWordIndex = expectedIndex;
+                    englishVoices.filter(v => v.name !== (preferredVoice ? preferredVoice.name : '')).forEach(v => {
+                        const option = document.createElement('option');
+                        option.textContent = `${v.name} (${v.lang})`;
+                        option.value = v.name;
+                        voiceSelect.appendChild(option);
+                    });
+
+
+                    if (voiceSelect.options.length > 1) {
+                         speechStatus.textContent = "Ready to listen.";
+                         playPauseBtn.disabled = false;
+                    } else {
+                        speechStatus.textContent = "Voices loading or not supported.";
                     }
-                }, 50); // Check for update frequently
-
-            }
-
-            function highlightWord(index) {
-                removeHighlighting();
-                
-                let foundWordData = wordsMap[index];
-                if (!foundWordData) return;
-                
-                const currentElement = foundWordData.element;
-                const wordToHighlight = foundWordData.text;
-
-                // Restore original HTML before highlighting
-                currentElement.innerHTML = currentElement.getAttribute('data-original-html') || currentElement.textContent;
-
-                // Regex to find the word, avoiding corrupting existing HTML structure 
-                const escapedWord = wordToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const regex = new RegExp(`(?<!<[^>]*>)(\\b${escapedWord}\\b)`, 'i');
-                
-                if (regex.test(currentElement.innerHTML)) {
-                    currentElement.innerHTML = currentElement.innerHTML.replace(regex, `<span class="word-highlight">${foundWordData.text}</span>`);
-                    currentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
-            }
-
-            function removeHighlighting() {
-                const highlightedSpans = articleContent.querySelectorAll('.word-highlight');
-                highlightedSpans.forEach(span => {
-                    span.outerHTML = span.textContent; 
-                });
-            }
-
-            function resetPlayer() {
-                isPlaying = false;
-                currentWordIndex = 0;
-                removeHighlighting();
-                clearInterval(highlightInterval);
-                playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen</span>';
-                speechStatus.textContent = "Select a voice and click Listen.";
-                audio.pause();
-                audio.currentTime = 0; 
-            }
-
-            // --- 3. Event Listeners ---
-            voiceSelect.addEventListener('change', () => {
-                resetPlayer(); // Reset if voice changes
-                const audioSrc = voiceSelect.value;
-                if (audioSrc) {
-                    audio.src = audioSrc;
-                    playPauseBtn.disabled = false;
-                    speechStatus.textContent = "Ready to play " + voiceSelect.options[voiceSelect.selectedIndex].text + ".";
-                } else {
-                    playPauseBtn.disabled = true;
-                    speechStatus.textContent = "Select an AI Voice...";
-                }
-            });
-
-            playPauseBtn.addEventListener('click', () => {
-                if (!audio.src || playPauseBtn.disabled) return;
                 
-                if (!isPlaying) {
-                    isPlaying = true;
-                    audio.play();
-                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
-                    speechStatus.textContent = "Reading aloud...";
-                    startHighlighting();
-                } else {
+                // --- 3. Speech Control & Highlighting (Perfected) ---
+                function startSpeaking(voiceName) {
+                    removeHighlighting();
+                    wordIndexInMap = 0; 
+                    
+                    const fullText = Array.from(articleContent.querySelectorAll('[data-tts-text]'))
+                        .map(el => el.getAttribute('data-tts-text')).join(' ');
+
+                    if (!fullText) { return; }
+
+                    currentUtterance = new SpeechSynthesisUtterance(fullText);
+                    
+                    const selectedVoice = synth.getVoices().find(v => v.name === voiceName);
+                    if (selectedVoice) {
+                        currentUtterance.voice = selectedVoice;
+                    }
+
+                    currentUtterance.rate = 1.0; 
+                    currentUtterance.pitch = 1.0;
+
+                    currentUtterance.onstart = () => {
+                        isPlaying = true;
+                        isPaused = false;
+                        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+                        speechStatus.textContent = "Reading aloud...";
+                        progressBar.style.width = '0%';
+                    };
+                    
+                    currentUtterance.onboundary = (event) => {
+                        if (event.name === 'word') {
+                            // Progress Bar update
+                            const totalLength = currentUtterance.text.length;
+                            const progress = (event.charIndex / totalLength) * 100;
+                            progressBar.style.width = `${progress}%`;
+                            
+                            let foundWordData = wordsMap[wordIndexInMap];
+                            
+                            if (foundWordData) {
+                                removeHighlighting();
+                                
+                                const currentElement = foundWordData.element;
+                                const wordToHighlight = foundWordData.text;
+                                
+                                currentElement.innerHTML = currentElement.getAttribute('data-original-html') || currentElement.textContent;
+
+                                // Escaped regex for safe replacement
+                                const escapedWord = wordToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                // Targets the whole word (non-greedy) and is case-insensitive
+                                const regex = new RegExp(`(?<!<[^>]*>)(\\b${escapedWord}\\b)`, 'i'); 
+                                
+                                // Only highlight the first instance found in the element
+                                if (regex.test(currentElement.innerHTML)) {
+                                    currentElement.innerHTML = currentElement.innerHTML.replace(regex, `<span class="word-highlight">${wordToHighlight}</span>`);
+                                    currentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                                
+                                wordIndexInMap++;
+                            }
+                        }
+                    };
+
+                    currentUtterance.onend = () => {
+                        resetPlayer();
+                        speechStatus.textContent = "Finished reading.";
+                        progressBar.style.width = '100%';
+                    };
+                    
+                    currentUtterance.onerror = (e) => {
+                        console.error('Speech synthesis error:', e);
+                        resetPlayer();
+                        speechStatus.textContent = `Error reading: ${e.error}`;
+                    };
+
+                    synth.speak(currentUtterance);
+                }
+
+                function removeHighlighting() {
+                    const highlightedSpans = articleContent.querySelectorAll('.word-highlight');
+                    highlightedSpans.forEach(span => {
+                        span.outerHTML = span.textContent; 
+                    });
+                }
+                
+                function resetPlayer() {
                     isPlaying = false;
-                    audio.pause();
-                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Resume</span>';
-                    speechStatus.textContent = "Paused";
-                    clearInterval(highlightInterval);
+                    isPaused = false;
+                    wordIndexInMap = 0;
+                    removeHighlighting();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen</span>';
+                    synth.cancel();
+                    progressBar.style.width = '0%';
                 }
-            });
 
-            audio.onended = () => {
-                resetPlayer();
-                speechStatus.textContent = "Finished reading.";
-            };
-            
-            // Initial load
-            processArticleContent();
+                // --- 4. Event Listeners ---
+                playPauseBtn.addEventListener('click', () => {
+                    const selectedVoice = voiceSelect.value;
+                    if (!selectedVoice && synth.getVoices().length > 0) {
+                        speechStatus.textContent = "Please select a voice first!";
+                        return;
+                    } else if (synth.getVoices().length === 0) {
+                         speechStatus.textContent = "Voices not yet loaded. Try again in a moment.";
+                         return;
+                    }
+
+                    if (!isPlaying && !isPaused) {
+                        startSpeaking(selectedVoice);
+                    } else if (isPlaying && !isPaused) {
+                        isPlaying = false;
+                        isPaused = true;
+                        synth.pause();
+                        speechStatus.textContent = "Paused";
+                        playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Resume</span>';
+                    } else if (!isPlaying && isPaused) {
+                        isPlaying = true;
+                        isPaused = false;
+                        synth.resume();
+                        speechStatus.textContent = "Reading aloud...";
+                        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+                    }
+                });
+                
+                synth.onvoiceschanged = populateVoiceList;
+
+                processArticleContent();
+                populateVoiceList();
+
+                window.onbeforeunload = () => {
+                    synth.cancel();
+                };
+
+            } else {
+                speechStatus.textContent = "Audio playback not supported by your browser.";
+                playPauseBtn.disabled = true;
+                estimatedTimeEl.textContent = '';
+                document.getElementById('reading-time').textContent = 'Audio not supported.';
+            }
         });
     </script>
 
 
     <script>
-        // --- FIREBASE/COMMENT SCRIPT (Updated for Authentication) ---
+        // --- FIREBASE/COMMENT SCRIPT (Updated for Guest/Auth Hybrid) ---
         
         const firebaseConfig = {
             apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
@@ -848,7 +935,7 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const ARTICLE_ID = 'crafting-characters-01';
-        const ADMIN_EMAIL = 'koladhino@gmail.com'; // Admin definition
+        const ADMIN_EMAIL = 'koladhino@gmail.com'; 
 
         // --- DOM Elements ---
         const commentForm = document.getElementById('comment-form');
@@ -856,11 +943,15 @@
         const commentList = document.getElementById('comment-list');
         const commentCountEl = document.getElementById('comment-count');
         const submitBtn = document.getElementById('comment-button');
-        const authPrompt = document.getElementById('auth-prompt');
-        const commentFormContainer = document.getElementById('comment-form-container');
         const googleSignInBtn = document.getElementById('google-sign-in-btn');
         const currentUserNameEl = document.getElementById('current-user-name');
-        const authStatusEl = document.getElementById('auth-status');
+        
+        // New/Re-added elements for guest comments
+        const commentNameInput = document.getElementById('comment-name'); 
+        const guestInputsDiv = document.getElementById('guest-inputs'); 
+        const loggedInMessage = document.getElementById('logged-in-message'); 
+        const loggedOutMessage = document.getElementById('logged-out-message'); 
+        const signOutBtn = document.getElementById('sign-out-btn'); 
         
         let currentUser = null;
 
@@ -873,37 +964,40 @@
                 await auth.signInWithPopup(provider);
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
-                authStatusEl.textContent = `Sign in failed: ${error.message}`;
+                alert(`Sign in failed: ${error.message}`);
             }
         });
         
-        // State Observer
+        // Sign Out Handler
+        signOutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // State Observer (Manages UI based on Guest/Auth status)
         auth.onAuthStateChanged(user => {
             if (user) {
-                // User is signed in.
+                // Logged In
                 currentUser = user;
-                authPrompt.style.display = 'none';
-                commentFormContainer.style.display = 'block';
-                currentUserNameEl.textContent = user.displayName || user.email;
-                console.log("User authenticated:", user.email);
+                loggedInMessage.style.display = 'block';
+                loggedOutMessage.style.display = 'none';
+                guestInputsDiv.style.display = 'none'; // Hide guest inputs
+                currentUserNameEl.textContent = user.displayName || user.email.split('@')[0];
 
             } else {
-                // User is signed out.
+                // Logged Out (Guest)
                 currentUser = null;
-                authPrompt.style.display = 'block';
-                commentFormContainer.style.display = 'none';
-                currentUserNameEl.textContent = 'Guest';
-                console.log("User signed out.");
+                loggedInMessage.style.display = 'none';
+                loggedOutMessage.style.display = 'block';
+                guestInputsDiv.style.display = 'block'; // Show guest inputs
             }
-            loadComments(); // Reload comments to show user status/actions
+            loadComments(); 
         });
 
 
         // --- 2. Comment Display & Actions ---
         
         function loadComments() {
-             // Show loading message while fetching
-             commentList.innerHTML = `<p class="loading-message" style="text-align: center; color: #777;">Loading comments...</p>`;
+            commentList.innerHTML = `<p class="loading-message" style="text-align: center; color: #777;">Loading comments...</p>`;
             
             db.collection('comments')
                 .where('articleId', '==', ARTICLE_ID)
@@ -943,20 +1037,18 @@
             const initial = userName.charAt(0).toUpperCase();
             const timestamp = comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString() : 'Just now';
             
-            // Determine badges
             let badge = '';
             if (comment.userEmail === ADMIN_EMAIL) {
                  badge = '<span class="admin-badge" title="Admin/Author"><i class="fas fa-crown"></i> Admin</span>';
-            } else if (comment.userId) { // All authenticated users are "verified"
+            } else if (comment.userId) { 
                 badge = '<span class="verified-badge" title="Verified User">✔</span>';
             }
             
-            // Process text for links and simple formatting
             const processedText = formatCommentText(comment.text);
             
-            // Check if current user has liked this comment (simple client-side check)
             const isLiked = currentUser && comment.likes && comment.likes.includes(currentUser.uid);
             const likeCount = comment.likes ? comment.likes.length : 0;
+            const actionsDisabled = !currentUser ? 'disabled' : '';
 
             div.innerHTML = `
                 <div class="comment-avatar">${initial}</div>
@@ -965,23 +1057,21 @@
                     <p class="comment-text">${processedText}</p>
                     <div class="comment-meta">🕐 ${timestamp}</div>
                     <div class="comment-actions">
-                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${currentUser ? '' : 'disabled'}>
+                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-comment-id="${comment.id}" ${actionsDisabled}>
                             <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> 
                             <span>Like</span> (<span class="like-count">${likeCount}</span>)
                         </button>
-                        <button class="reply-btn" data-comment-id="${comment.id}" ${currentUser ? '' : 'disabled'}>
+                        <button class="reply-btn" data-comment-id="${comment.id}" ${actionsDisabled}>
                             <i class="fas fa-reply"></i> Reply
                         </button>
                     </div>
                 </div>
             `;
             
-            // Add listener for like button
             const likeBtn = div.querySelector('.like-btn');
             if (likeBtn) {
                 likeBtn.addEventListener('click', () => toggleLike(comment.id, likeBtn));
             }
-            // Add listener for reply button (simplified, just logs for now)
             const replyBtn = div.querySelector('.reply-btn');
             if (replyBtn) {
                 replyBtn.addEventListener('click', () => {
@@ -992,18 +1082,36 @@
             return div;
         }
         
-        // --- 3. Comment Submission & Actions ---
+        // --- 3. Comment Submission & Actions (FIXED) ---
 
         commentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!currentUser) {
-                alert('You must be signed in to post a comment!');
-                return;
-            }
-
             const commentText = commentTextInput.value.trim();
+            
+            let postData = {
+                articleId: ARTICLE_ID,
+                text: commentText,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                likes: [] 
+            };
 
+            if (currentUser) {
+                // AUTHENTICATED USER
+                postData.userId = currentUser.uid;
+                postData.userName = currentUser.displayName || currentUser.email.split('@')[0];
+                postData.userEmail = currentUser.email;
+            } else {
+                // GUEST USER
+                const guestName = commentNameInput.value.trim();
+                if (!guestName) {
+                    alert('Please enter your Name and Comment! 😊');
+                    return;
+                }
+                postData.userName = guestName;
+                // Note: userEmail/userId intentionally excluded for guests (matches corrected rules)
+            }
+            
             if (!commentText) {
                 alert('Please enter your comment! 😊');
                 return;
@@ -1013,20 +1121,16 @@
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
 
             try {
-                await db.collection('comments').add({
-                    articleId: ARTICLE_ID,
-                    userId: currentUser.uid,
-                    userName: currentUser.displayName || currentUser.email.split('@')[0],
-                    userEmail: currentUser.email,
-                    text: commentText,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    likes: [] // Initialize likes array
-                });
+                // FIX: Posting logic now handles both authenticated and guest data structures correctly
+                await db.collection('comments').add(postData);
 
                 commentTextInput.value = '';
+                if (!currentUser) {
+                    commentNameInput.value = '';
+                }
             } catch (error) {
                 console.error('Error posting comment:', error);
-                alert('Oops! Failed to post comment. Check console and Firestore rules. 😅');
+                alert(`Oops! Failed to post comment. Check console. You might need to publish the new Firebase Security Rules. Error: ${error.message}`);
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
@@ -1066,7 +1170,6 @@
 
         // --- 4. Utility Functions ---
         
-        // Escape HTML for safety and simple text formatting
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -1080,26 +1183,14 @@
             return formattedText;
         }
         
-        // This is a placeholder since the Firestore fetch is using onSnapshot (real-time). 
-        // We'll keep the final utility function simpler.
         function formatCommentText(text) {
             return escapeHtml(text);
         }
 
         // Initialize comments on load
         document.addEventListener('DOMContentLoaded', () => {
-            // Initial call will be handled by auth.onAuthStateChanged
+            // Initial load is handled by auth.onAuthStateChanged
         });
     </script>
 </body>
 </html>
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
