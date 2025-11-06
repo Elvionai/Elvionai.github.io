@@ -28,7 +28,7 @@
             --button-hover-bg: #003d80;
             --navbar-bg: rgba(13, 17, 23, 0.95);
             --footer-bg: #0a0e14;
-            --highlight-color: #384109; /* Subtle green/yellow highlight for dark mode */
+            --highlight-color: rgba(255, 255, 0, 0.4); /* Yellow/transparent highlight */
             --comment-bg: #0d1117;
         }
 
@@ -183,6 +183,9 @@
         /* --- Audio Player Styles --- */
         .audio-player {
             background: var(--card-bg); border: 1px solid var(--border-color);
+            padding: 1.25rem; border-radius: 8px; margin-bottom: 2.5rem;
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+            gap: 1rem;
         }
         #reading-time {
             font-size: 0.9rem;
@@ -210,38 +213,40 @@
 
         .btn-primary {
             background: var(--button-bg); color: var(--button-text-color); 
+            padding: 0.8rem 1.5rem; border-radius: 25px; cursor: pointer; font-weight: 700;
+            font-family: 'Lato', sans-serif; font-size: 1rem; transition: all 0.3s ease;
         }
+        .btn-primary:hover { background: var(--button-hover-bg); }
         .btn-secondary {
             border: 1px solid var(--border-color); color: var(--text-color);
+            padding: 0.7rem 1.4rem; border-radius: 25px; cursor: pointer; font-weight: 600;
+            font-size: 0.9rem; transition: all 0.3s ease;
         }
         .btn-secondary:hover { background: var(--card-bg); border-color: #ccc; }
-        .btn-secondary.active { background: var(--button-bg); border-color: var(--button-bg); }
+        .btn-secondary.active { background: var(--button-bg); color: var(--button-text-color); border-color: var(--button-bg); }
 
-        #auth-container { background: var(--card-bg); border: 1px solid var(--border-color); }
+        #auth-container { background: var(--card-bg); border: 1px solid var(--border-color); padding: 2rem; border-radius: 8px; }
         .form-input {
             background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color);
+            display: block; width: 100%; padding: 0.8rem; margin-bottom: 1rem; border-radius: 4px; box-sizing: border-box;
         }
         .form-input:focus { border-color: var(--link-color); box-shadow: 0 0 0 2px var(--link-color); }
 
         .comment {
             background: var(--comment-bg); border: 1px solid var(--border-color);
+            display: flex; gap: 1rem; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;
         }
-        .comment img { border: 2px solid var(--border-color); }
-        .comment-user { color: var(--heading-color); }
-        .comment-text { color: var(--text-color); }
-        .comment-meta { color: #777; }
+        .comment img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--border-color); object-fit: cover; }
+        .comment-user { color: var(--heading-color); font-weight: 700; font-family: 'Lato', sans-serif; display: flex; align-items: center;}
         .comment-actions button {
             border: 1px solid var(--border-color); color: #999;
+            padding: 0.3rem 0.8rem; border-radius: 15px; cursor: pointer; font-size: 0.8rem; margin-right: 0.5rem;
         }
-        .comment-actions button:hover { border-color: var(--link-color); color: var(--link-color); background: var(--card-bg); }
         .comment-actions button.active { background: var(--link-color); color: var(--button-text-color); border-color: var(--link-color); }
         .custom-verified-badge { background: var(--link-color); }
         
-        .replies-container { border-left: 2px solid var(--border-color); }
-        
-        @media (max-width: 992px) {
-            .nav-links { background: var(--navbar-bg); border-top: 1px solid var(--border-color); }
-        }
+        .replies-container { border-left: 2px solid var(--border-color); padding-left: 1.5rem; margin-top: 1.5rem; }
+        .reply-box { margin-top: 1rem; display: none; }
     </style>
 </head>
 <body>
@@ -509,20 +514,22 @@
                         if (text.length === 0) return;
                         
                         // Use a full sentence split, not just words, for accurate TTS segmenting
-                        // This text will be the basis for the SpeechSynthesisUtterance
                         const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
 
                         sentences.forEach(sentence => {
-                            const words = sentence.match(/\b\w+[\.,;:]?\b/g) || [];
+                            // Match words including trailing punctuation
+                            const words = sentence.match(/\b\w+['’]*\w*[\.,;:]*\b/g) || []; 
                             
                             words.forEach((word) => {
-                                wordsMap.push({ text: word, element: el, originalHTML: originalHTML, sentence: sentence });
+                                wordsMap.push({ text: word, element: el });
                                 totalWordCount++;
                             });
                         });
                         
                         // Store the sentence text for the utterance
                         el.setAttribute('data-tts-text', sentences.join(' '));
+                        // Store original HTML for safe highlighting/unhighlighting
+                        el.setAttribute('data-original-html', originalHTML);
                     });
                     
                     // Calculate and display reading time
@@ -535,17 +542,16 @@
                     const voices = synth.getVoices();
                     voiceSelect.innerHTML = '<option value="">Select Voice...</option>';
                     
-                    // Filter for two preferred English voices (Male/Female)
                     const englishVoices = voices.filter(v => v.lang.startsWith('en'));
                     
-                    let femaleVoice = englishVoices.find(v => v.name.toLowerCase().includes('female')) || englishVoices[0];
-                    let maleVoice = englishVoices.find(v => v.name.toLowerCase().includes('male')) || englishVoices[1];
+                    let femaleVoice = englishVoices.find(v => v.name.toLowerCase().includes('female')) || englishVoices.find(v => v.name.toLowerCase().includes('zira')) || englishVoices[0];
+                    let maleVoice = englishVoices.find(v => v.name.toLowerCase().includes('male')) || englishVoices.find(v => v.name.toLowerCase().includes('david')) || englishVoices[1];
                     
                     if (femaleVoice) {
                         const option = document.createElement('option');
                         option.textContent = `${femaleVoice.name} (Female)`;
                         option.value = femaleVoice.name;
-                        option.selected = true; // Set female as default
+                        option.selected = true;
                         voiceSelect.appendChild(option);
                     }
                     if (maleVoice && maleVoice.name !== (femaleVoice ? femaleVoice.name : '')) {
@@ -566,9 +572,8 @@
                 // --- 3. Speech Control & Highlighting ---
                 function startSpeaking(voiceName) {
                     removeHighlighting();
-                    wordIndexInMap = 0; // Reset word index
+                    wordIndexInMap = 0; 
                     
-                    // Combine all tts-text attributes for the full reading
                     const fullText = Array.from(articleContent.querySelectorAll('[data-tts-text]'))
                         .map(el => el.getAttribute('data-tts-text')).join(' ');
 
@@ -592,21 +597,20 @@
                     
                     currentUtterance.onboundary = (event) => {
                         if (event.name === 'word') {
-                            removeHighlighting(); // Clean previous word highlight
+                            removeHighlighting();
                             
-                            // Find the word in the map that corresponds to the current spoken boundary
                             let foundWordData = wordsMap[wordIndexInMap];
                             
                             if (foundWordData) {
                                 const currentElement = foundWordData.element;
                                 const wordToHighlight = foundWordData.text;
                                 
-                                // Restore the element's original content (in case of previous highlights)
+                                // Restore the element's original content before applying new highlight
                                 currentElement.innerHTML = currentElement.getAttribute('data-original-html') || currentElement.innerHTML;
 
-                                // Regex to find the *exact* word in the element's text and wrap it
-                                // Must handle punctuation (e.g., "story." vs "story")
-                                const regex = new RegExp(`(?<!<[^>]*>)(\\b${wordToHighlight}\\b)`);
+                                // Regex to find the word, allowing for HTML tags/bolding within the element
+                                // This is a powerful regex to avoid corrupting existing HTML structure while highlighting
+                                const regex = new RegExp(`(?<!<[^>]*>)(\\b${wordToHighlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b)`, 'i');
                                 
                                 if (regex.test(currentElement.innerHTML)) {
                                     currentElement.innerHTML = currentElement.innerHTML.replace(regex, `<span class="word-highlight">$1</span>`);
@@ -634,10 +638,8 @@
                 }
 
                 function removeHighlighting() {
-                    // Clean up all highlighting spans across the article
                     const highlightedSpans = articleContent.querySelectorAll('.word-highlight');
                     highlightedSpans.forEach(span => {
-                         // Use a temporary element to safely replace the span with its content
                         span.outerHTML = span.innerHTML; 
                     });
                 }
@@ -645,7 +647,7 @@
                 function resetPlayer() {
                     isPlaying = false;
                     isPaused = false;
-                    wordIndexInMap = 0; // Reset map index
+                    wordIndexInMap = 0;
                     removeHighlighting();
                     playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen to this Article</span>';
                     synth.cancel();
@@ -676,17 +678,14 @@
                     }
                 });
 
-                // Re-process content on load
+                // Initial load
                 processArticleContent();
-                // Store original HTML for accurate highlighting
                 articleContent.querySelectorAll('p:not(.post-meta), h2, h3, li, blockquote')
                     .forEach(el => el.setAttribute('data-original-html', el.innerHTML));
 
-                // Re-populate voice list if voices load later
                 synth.onvoiceschanged = populateVoiceList;
-                populateVoiceList(); // Call immediately for browsers that load voices fast
+                populateVoiceList();
 
-                // Clean up on page exit
                 window.onbeforeunload = () => {
                     synth.cancel();
                 };
@@ -735,13 +734,11 @@
             appId: "1:161078300830:web:f460df8591704eb0e96b8f"
         };
         
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
         // --- 2. STATE & CONSTANTS ---
         let currentUser = null;
         const ARTICLE_ID = 'crafting-characters-01';
+        
+        let app, auth, db; // Initialize global Firebase variables
 
         // --- 3. DOM ELEMENTS ---
         const authContainer = document.getElementById('auth-container');
@@ -762,8 +759,25 @@
         const commentInput = document.getElementById('comment-input');
         const commentList = document.getElementById('comment-list');
         const emojiSuggestionBox = document.getElementById('emoji-suggestion-box');
-        
-        // --- 4. AUTHENTICATION ---
+
+
+        // --- FUNCTION TO INITIALIZE FIREBASE AND LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                authError.textContent = "Failed to initialize Firebase. Check console for details.";
+                return;
+            }
+
+            setupAuthListeners();
+            setupCommentFormListeners();
+            setupRealtimeComments();
+            toggleAuthForm(true); // Default to login view
+        });
 
         function toggleAuthForm(isLogin) {
             authError.textContent = '';
@@ -781,112 +795,112 @@
                 authSubmitButton.textContent = 'Sign Up';
             }
         }
-        
-        authToggleLogin.addEventListener('click', () => toggleAuthForm(true));
-        authToggleSignup.addEventListener('click', () => toggleAuthForm(false));
 
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = authEmailInput.value;
-            const password = authPasswordInput.value;
-            const isLogin = authSubmitButton.textContent === 'Login';
-            authError.textContent = '';
+        function setupAuthListeners() {
+            authToggleLogin.addEventListener('click', () => toggleAuthForm(true));
+            authToggleSignup.addEventListener('click', () => toggleAuthForm(false));
 
-            try {
-                if (isLogin) {
-                    await signInWithEmailAndPassword(auth, email, password);
-                } else {
-                    const username = authUsernameInput.value;
-                    const picUrl = authPicInput.value || `https://api.dicebear.com/8.x/initials/svg?seed=${username}`;
-                    
-                    if (!username) {
-                        authError.textContent = 'Please enter a username.';
-                        return;
+            authForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = authEmailInput.value;
+                const password = authPasswordInput.value;
+                const isLogin = authSubmitButton.textContent === 'Login';
+                authError.textContent = '';
+
+                try {
+                    if (isLogin) {
+                        await signInWithEmailAndPassword(auth, email, password);
+                    } else {
+                        const username = authUsernameInput.value;
+                        const picUrl = authPicInput.value || `https://api.dicebear.com/8.x/initials/svg?seed=${username}`;
+                        
+                        if (!username) {
+                            authError.textContent = 'Please enter a username.';
+                            return;
+                        }
+
+                        await createUserWithEmailAndPassword(auth, email, password);
+                        await updateProfile(auth.currentUser, { 
+                            displayName: username, 
+                            photoURL: picUrl 
+                        });
                     }
-
-                    await createUserWithEmailAndPassword(auth, email, password);
-                    await updateProfile(auth.currentUser, { 
-                        displayName: username, 
-                        photoURL: picUrl 
-                    });
+                } catch (error) {
+                    console.error("Auth error:", error);
+                    authError.textContent = error.message;
                 }
-            } catch (error) {
-                console.error("Auth error:", error);
-                authError.textContent = error.message;
-            }
-        });
-
-        // State change listener ensures the UI reflects the logged-in status
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                authContainer.style.display = 'none';
-                commentFormContainer.style.display = 'block';
-            } else {
-                currentUser = null;
-                authContainer.style.display = 'block';
-                commentFormContainer.style.display = 'none';
-                toggleAuthForm(true); 
-            }
-        });
-
-        // --- 5. COMMENTS LOGIC ---
-
-        commentButton.addEventListener('click', async () => {
-            if (!currentUser) return;
-
-            const commentText = commentInput.value.trim();
-            if (!commentText) return;
-            
-            const commentData = {
-                text: commentText,
-                userName: currentUser.displayName,
-                userProfilePic: currentUser.photoURL,
-                userId: currentUser.uid,
-                timestamp: Timestamp.fromDate(new Date()),
-                articleId: ARTICLE_ID,
-                replies: [],
-                likes: [],
-                helpful: [],
-                notHelpful: []
-            };
-
-            try {
-                await addDoc(collection(db, 'comments'), commentData);
-                commentInput.value = '';
-            } catch (error) {
-                console.error("Error posting comment: ", error);
-                authError.textContent = 'Failed to post comment. Check console.';
-            }
-        });
-
-        emojiSuggestionBox.addEventListener('click', (e) => {
-            if (e.target.tagName === 'SPAN') {
-                commentInput.value += e.target.textContent;
-                commentInput.focus();
-            }
-        });
-
-        // --- 6. REAL-TIME COMMENT RENDERING ---
-
-        const q = query(
-            collection(db, 'comments'), 
-            where("articleId", "==", ARTICLE_ID),
-            orderBy("timestamp", "desc")
-        );
-
-        onSnapshot(q, (snapshot) => {
-            commentList.innerHTML = ''; 
-            if (snapshot.empty) {
-                document.getElementById('comment-list-title').textContent = 'No comments yet. Be the first!';
-                return;
-            }
-            
-            document.getElementById('comment-list-title').textContent = `${snapshot.size} Comments`;
-            snapshot.forEach((doc) => {
-                commentList.appendChild(renderComment(doc));
             });
-        });
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    authContainer.style.display = 'none';
+                    commentFormContainer.style.display = 'block';
+                } else {
+                    currentUser = null;
+                    authContainer.style.display = 'block';
+                    commentFormContainer.style.display = 'none';
+                }
+            });
+        }
+
+        function setupCommentFormListeners() {
+            commentButton.addEventListener('click', async () => {
+                if (!currentUser) return;
+
+                const commentText = commentInput.value.trim();
+                if (!commentText) return;
+                
+                const commentData = {
+                    text: commentText,
+                    userName: currentUser.displayName,
+                    userProfilePic: currentUser.photoURL,
+                    userId: currentUser.uid,
+                    timestamp: Timestamp.fromDate(new Date()),
+                    articleId: ARTICLE_ID,
+                    replies: [],
+                    likes: [],
+                    helpful: [],
+                    notHelpful: []
+                };
+
+                try {
+                    await addDoc(collection(db, 'comments'), commentData);
+                    commentInput.value = '';
+                } catch (error) {
+                    console.error("Error posting comment: ", error);
+                    authError.textContent = 'Failed to post comment. Check console.';
+                }
+            });
+
+            emojiSuggestionBox.addEventListener('click', (e) => {
+                if (e.target.tagName === 'SPAN') {
+                    commentInput.value += e.target.textContent;
+                    commentInput.focus();
+                }
+            });
+        }
+
+        function setupRealtimeComments() {
+            const q = query(
+                collection(db, 'comments'), 
+                where("articleId", "==", ARTICLE_ID),
+                orderBy("timestamp", "desc")
+            );
+
+            onSnapshot(q, (snapshot) => {
+                commentList.innerHTML = ''; 
+                if (snapshot.empty) {
+                    document.getElementById('comment-list-title').textContent = 'No comments yet. Be the first!';
+                    return;
+                }
+                
+                document.getElementById('comment-list-title').textContent = `${snapshot.size} Comments`;
+                snapshot.forEach((doc) => {
+                    commentList.appendChild(renderComment(doc));
+                });
+            });
+        }
 
         function renderComment(doc) {
             const comment = doc.data();
@@ -1028,7 +1042,6 @@
                 const data = docSnap.data();
                 const array = data[fieldName] || [];
                 
-                // If user ID is present, remove it. If not, add it.
                 const operation = array.includes(userId) ? arrayRemove(userId) : arrayUnion(userId);
                 
                 await updateDoc(docRef, { [fieldName]: operation });
