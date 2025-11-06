@@ -740,9 +740,131 @@
         });
     </script>
 
+        <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <script>
+        // --- Theme Toggle Script & Hamburger (Keeping these as is for functionality) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const body = document.body;
+            const toggleButton = document.getElementById('theme-toggle');
+            const hamburger = document.querySelector('.hamburger');
+            const navLinks = document.querySelector('.nav-links');
+
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+
+            function applyTheme(theme) {
+                if (theme === 'light') {
+                    body.classList.add('light-theme');
+                    toggleButton.innerHTML = '<i class="fas fa-moon"></i>';
+                } else {
+                    body.classList.remove('light-theme');
+                    toggleButton.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+                localStorage.setItem('theme', theme);
+            }
+
+            applyTheme(savedTheme);
+
+            toggleButton.addEventListener('click', () => {
+                const currentTheme = body.classList.contains('light-theme') ? 'light' : 'dark';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(newTheme);
+            });
+
+            hamburger.addEventListener('click', () => {
+                hamburger.classList.toggle('active');
+                navLinks.classList.toggle('active');
+            });
+            navLinks.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 992) {
+                        hamburger.classList.remove('active');
+                        navLinks.classList.remove('active');
+                    }
+                });
+            });
+
+            document.getElementById('current-year-footer').textContent = new Date().getFullYear();
+        });
+    </script>
+    
+    <script>
+        // --- TEXT TO SPEECH SCRIPT (No change needed here) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const playPauseBtn = document.getElementById('audio-play-pause-btn');
+            const speechStatus = document.getElementById('speech-status');
+            const voiceSelect = document.getElementById('voice-select');
+            const articleContent = document.getElementById('article-content');
+            const estimatedTimeEl = document.getElementById('estimated-time');
+            const readingTimeEl = document.getElementById('reading-time');
+            
+            const WPM = 200; 
+
+            let audio = new Audio();
+            let isPlaying = false;
+            
+            function processArticleContent() {
+                const fullText = articleContent.textContent;
+                const totalWordCount = fullText.split(/\s+/).length;
+                const readTimeMinutes = Math.ceil(totalWordCount / WPM);
+                
+                estimatedTimeEl.innerHTML = `<i class="fas fa-clock"></i> ${readTimeMinutes} min read`;
+                readingTimeEl.textContent = `Article Duration: ${readTimeMinutes} min`;
+
+                playPauseBtn.disabled = false;
+            }
+
+            function resetPlayer() {
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Listen</span>';
+                speechStatus.textContent = "Select a voice and click Listen.";
+                audio.pause();
+                audio.currentTime = 0; 
+            }
+
+            voiceSelect.addEventListener('change', () => {
+                resetPlayer();
+                const audioSrc = voiceSelect.value;
+                if (audioSrc) {
+                    audio.src = audioSrc;
+                    playPauseBtn.disabled = false;
+                    speechStatus.textContent = "Ready to play " + voiceSelect.options[voiceSelect.selectedIndex].text + ".";
+                } else {
+                    playPauseBtn.disabled = true;
+                    speechStatus.textContent = "Select an AI Voice...";
+                }
+            });
+
+            playPauseBtn.addEventListener('click', () => {
+                if (!audio.src || playPauseBtn.disabled) return;
+                
+                if (!isPlaying) {
+                    isPlaying = true;
+                    audio.play();
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> <span>Pause</span>';
+                    speechStatus.textContent = "Reading aloud...";
+                } else {
+                    isPlaying = false;
+                    audio.pause();
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> <span>Resume</span>';
+                    speechStatus.textContent = "Paused";
+                }
+            });
+
+            audio.onended = () => {
+                resetPlayer();
+                speechStatus.textContent = "Finished reading.";
+            };
+            
+            processArticleContent();
+        });
+    </script>
+
 
     <script>
-        // --- FIREBASE/COMMENT SCRIPT (FIXED & GUEST COMMENTING ADDED) ---
+        // --- FIREBASE/COMMENT SCRIPT (FIXED & GUEST COMMENTING IMPLEMENTED) ---
         
         const firebaseConfig = {
             apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
@@ -756,13 +878,13 @@
         try {
             firebase.initializeApp(firebaseConfig);
         } catch (e) {
-            console.error("Firebase Init Error (Check API Key/Config):", e);
+            console.error("Firebase Init Error:", e);
         }
         
         const db = firebase.firestore();
         const auth = firebase.auth();
-        const ARTICLE_ID = 'crafting-characters-01';
-        const ADMIN_EMAIL = 'koladhino@gmail.com'; // Admin definition
+        const ARTICLE_ID = 'crafting-characters-01'; // Ensure this matches Firestore Rules
+        const ADMIN_EMAIL = 'koladhino@gmail.com'; 
 
         // --- DOM Elements ---
         const commentForm = document.getElementById('comment-form');
@@ -805,10 +927,9 @@
                     currentUserNameEl.textContent = 'Guest';
                 }
             }
-            loadComments(); // Reload comments to show user status/actions
+            loadComments(); 
         }
 
-        // Handle Guest Link Click
         guestCommentLink.addEventListener('click', (e) => {
             e.preventDefault();
             isGuestMode = true;
@@ -820,7 +941,6 @@
             guestNameField.focus();
         });
 
-        // Google Sign-In Handler
         googleSignInBtn.addEventListener('click', async () => {
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
@@ -831,7 +951,6 @@
             }
         });
         
-        // State Observer
         auth.onAuthStateChanged(user => {
             setAuthState(user);
         });
@@ -878,11 +997,11 @@
             
             const userName = escapeHtml(comment.userName) || 'Anonymous';
             const initial = userName.charAt(0).toUpperCase();
-            const timestamp = comment.timestamp ? new Date(comment.timestamp.toDate()).toLocaleString() : 'Just now';
+            // FIX: Ensure timestamp is converted correctly if it's a Firestore Timestamp object
+            const timestamp = comment.timestamp && comment.timestamp.toDate ? comment.timestamp.toDate().toLocaleString() : 'Just now';
             
-            // Determine badges & capabilities
             let badge = '';
-            let canAct = false; // Can the user like/reply?
+            let canAct = false;
             
             if (comment.userEmail === ADMIN_EMAIL) {
                  badge = '<span class="admin-badge" title="Admin/Author"><i class="fas fa-crown"></i> Admin</span>';
@@ -892,14 +1011,12 @@
                 canAct = true;
             } else {
                 badge = '<span class="guest-badge" title="Guest User"><i class="fas fa-user-tag"></i> Guest</span>';
-                canAct = false; // Guests cannot like/reply
+                canAct = false; 
             }
             
-            // Check if current authenticated user has liked this comment
             const isLiked = currentUser && !isGuestMode && comment.likes && comment.likes.includes(currentUser.uid);
             const likeCount = comment.likes ? comment.likes.length : 0;
             const likeDisabled = !canAct || !currentUser || isGuestMode;
-
 
             const processedText = formatCommentText(comment.text);
             
@@ -921,7 +1038,6 @@
                 </div>
             `;
             
-            // Add listener for like button
             const likeBtn = div.querySelector('.like-btn');
             if (likeBtn && !likeDisabled) {
                 likeBtn.addEventListener('click', () => toggleLike(comment.id, likeBtn));
@@ -935,7 +1051,6 @@
         commentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Guest mode validation
             if (!currentUser && !isGuestMode) {
                 alert('You must sign in or choose to comment as a Guest!');
                 return;
@@ -963,11 +1078,12 @@
                 }
                 commentData = {
                     articleId: ARTICLE_ID,
-                    userId: 'guest', // Unique identifier for guests
+                    userId: 'guest',
                     userName: guestName,
-                    userEmail: '', // No email for guests
+                    userEmail: '', // Matches Firestore Rule requirement for guests
                     text: commentText,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    // FIX: Use Server Timestamp! CRUCIAL for Firestore rules.
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
                     likes: [] 
                 };
             } else {
@@ -978,28 +1094,27 @@
                     userName: currentUser.displayName || currentUser.email.split('@')[0],
                     userEmail: currentUser.email,
                     text: commentText,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    // CRITICAL FIX: Ensure 'likes' is an array when posting
+                    // FIX: Use Server Timestamp! CRUCIAL for Firestore rules.
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
                     likes: [] 
                 };
             }
 
             try {
-                // If it fails here, it's almost certainly a Firestore Rule issue.
+                // This will succeed if the Firestore rules are set as defined previously.
                 await db.collection('comments').add(commentData);
 
                 commentTextInput.value = '';
-                guestNameField.value = ''; // Clear guest name too
+                guestNameField.value = ''; 
 
-                // Reset guest mode view after successful post if it was guest mode
                 if (isGuestMode) {
-                    isGuestMode = false; // Reset to prompt view
+                    isGuestMode = false;
                     setAuthState(auth.currentUser);
                 }
 
             } catch (error) {
                 console.error('Error posting comment:', error);
-                alert('Oops! Failed to post comment. Check console and your Firestore Security Rules! 😅');
+                alert('Oops! Failed to post comment. Double-check your Firestore Security Rules! 😅');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Comment';
@@ -1022,12 +1137,10 @@
                  const isCurrentlyLiked = likes.includes(userId);
                  
                  if (isCurrentlyLiked) {
-                     // Remove like
                      transaction.update(commentRef, {
                          likes: firebase.firestore.FieldValue.arrayRemove(userId)
                      });
                  } else {
-                     // Add like
                      transaction.update(commentRef, {
                          likes: firebase.firestore.FieldValue.arrayUnion(userId)
                      });
@@ -1054,10 +1167,7 @@
             return escapeHtml(text);
         }
 
-        // Initialize comments on load
         document.addEventListener('DOMContentLoaded', () => {
-            // Initial call will be handled by auth.onAuthStateChanged
-            // or by setAuthState if user is null
             setAuthState(auth.currentUser); 
         });
     </script>
