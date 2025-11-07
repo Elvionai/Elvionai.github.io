@@ -671,6 +671,11 @@
             <a href="index.html" class="navbar-brand">Elvion AI</a>
             
             <div class="nav-controls">
+                <nav class="nav-links">
+                    <li><a href="https://elvionai.github.io/university.html">Digital University</a></li>
+                    <li><a href="https://elvionai.github.io/blog.html">Back to Blog</a></li>
+                    <li><a href="https://elvionai.github.io/about.html">About Us</a></li>
+                </nav>
                 <button id="theme-toggle" aria-label="Toggle theme">
                     <i class="fas fa-sun"></i> 
                 </button>
@@ -699,7 +704,7 @@
             </header>
             
             <div class="post-thumbnail-container">
-                <img src="" alt="A blank page with a blinking cursor turning into a lightbulb, symbolizing writer's block solved by an idea.">
+                <img src="https://i.postimg.cc/brDXVT7J/20251107-195215.jpg" alt="A quill pen rests on a piece of paper, symbolizing creative writing and character crafting.">
             </div>
             
             <section id="initial-listen-cta">
@@ -989,7 +994,7 @@
     </script>
     
     <script>
-        // --- NEW: WORD-FOR-WORD TEXT TO SPEECH SCRIPT (UPDATED FOR DYNAMIC SPAN INJECTION) ---
+        // --- WORD-FOR-WORD TEXT TO SPEECH SCRIPT (UPDATED FOR DYNAMIC SPAN INJECTION) ---
         document.addEventListener('DOMContentLoaded', () => {
             const voiceSelect = document.getElementById('voice-select');
             const speedSelect = document.getElementById('speed-select');
@@ -1022,64 +1027,33 @@
             function wrapWordsInSpans(element) {
                 const elementsToScan = element.querySelectorAll('p, li, blockquote');
                 
-                elementsToScan.forEach(el => {
-                    // Temporarily store the original content HTML, excluding tags that should remain
-                    const contentHtml = el.innerHTML;
-                    
-                    // Regex to find text nodes, excluding content inside tags like <b> or <i>, but this is complicated.
-                    // A simpler robust method: use DOM methods and filter out non-text nodes.
-                    
-                    const tempDiv = document.createElement('div');
-                    Array.from(el.childNodes).forEach(node => {
-                        if (node.nodeType === 3) { // Text Node
-                            const text = node.textContent;
-                            // This regex splits on sequences of non-whitespace characters, 
-                            // ensuring punctuation stays attached to the word.
-                            const spannedText = text.replace(/([^\s]+)/g, '<span class="word-content">$&</span>');
-                            tempDiv.insertAdjacentHTML('beforeend', spannedText);
-                        } else {
-                            // Elements (<b>, <i>, <a>, etc.) are cloned and processed recursively if needed,
-                            // but here we just need them to contain the spanned words.
-                            // Since the input HTML only contains basic formatting (<b>, <i>), we re-insert them.
-                            tempDiv.appendChild(node.cloneNode(true));
+                function processNode(node) {
+                    if (node.nodeType === 3) { // Text node
+                        const text = node.textContent;
+                        if (text.trim().length > 0) {
+                            // Regex to wrap non-whitespace sequences in span
+                            return text.replace(/([^\s]+)/g, '<span class="word-content">$&</span>');
                         }
-                    });
-                    
-                    // NOTE: Since the input content is mostly plain text with occasional <i> or <b> tags,
-                    // and we want to wrap text *around* those tags, processing text nodes is the most reliable method.
-                    // We need a helper to iterate child nodes and inject spans only in text nodes.
-                    
-                    function processNode(node) {
-                        if (node.nodeType === 3) { // Text node
-                            const text = node.textContent;
-                            if (text.trim().length > 0) {
-                                // Simple word split and wrap
-                                return text.replace(/(\S+)/g, '<span class="word-content">$&</span>');
-                            }
-                            return text; // Return original if just whitespace
-                        } else if (node.nodeType === 1) { // Element node (e.g., <b>, <i>)
-                            // Recurse for elements, re-creating the structure
-                            let newContent = '';
-                            Array.from(node.childNodes).forEach(child => {
-                                newContent += processNode(child);
-                            });
-                            node.innerHTML = newContent; // Update the element's content
-                            return node.outerHTML; // Return the full element HTML
-                        }
-                        return '';
+                        return text; // Return original if just whitespace
+                    } else if (node.nodeType === 1) { // Element node (e.g., <b>, <i>, <a>)
+                        // Create a temporary clone to safely modify its innerHTML
+                        const clone = node.cloneNode(false); // Clone the element tag, but not its children
+                        let newContent = '';
+                        Array.from(node.childNodes).forEach(child => {
+                            newContent += processNode(child);
+                        });
+                        clone.innerHTML = newContent; // Update the cloned element's content
+                        return clone.outerHTML; // Return the full element HTML
                     }
+                    return '';
+                }
 
+                elementsToScan.forEach(el => {
                     let newHtml = '';
                     Array.from(el.childNodes).forEach(node => {
                         newHtml += processNode(node);
                     });
                     el.innerHTML = newHtml;
-                    
-                    // Fallback cleanup: If the direct text replacement was used, ensure a second pass.
-                    if (el.textContent.includes('<span')) {
-                        // This indicates the first pass was successful, skip the second pass
-                    }
-                    
                 });
                 
                 // Final Recalculation
@@ -1371,7 +1345,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const ARTICLE_ID = 'creative-prompts-02'; // New unique article ID
+        const ARTICLE_ID = 'creative-prompts-02'; // CORRECTED ARTICLE ID
         
         const ADMIN_EMAIL = 'koladhino@gmail.com'; 
 
@@ -1972,6 +1946,8 @@
             let safeText = escapeHtml(text);
             
             // 1. Format blockquotes: lines starting with >
+            // Replace "> text\n> more text" with "<blockquote>text<br>more text</blockquote>"
+            // Find blocks of lines starting with '>'
             safeText = safeText.replace(/(^|\n)(>\s*[^\n]*)+/g, (match) => {
                 const lines = match.trim().split('\n').map(line => {
                     // Remove '>' and trim leading space
