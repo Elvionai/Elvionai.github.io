@@ -279,6 +279,7 @@
         
         /* TTS Word Highlighting Style */
         .article-content span.tts-highlight {
+            /* THIS CLASS IS NOW APPLIED BY JS TO THE DYNAMICALLY WRAPPED WORDS */
             background-color: var(--highlight-color);
             border-radius: 2px;
             padding: 2px 0;
@@ -673,7 +674,7 @@
             <div class="nav-controls">
                 <nav class="nav-links">
                     <li><a href="https://elvionai.github.io/university.html">Digital University</a></li>
-                    <li><a href="https://elvionai.github.io/blog.html">Back to Blog</a></li>
+                    <li><a href="https://elvionai.github.io/blog.html" class="active-link">Back to Blog</a></li>
                     <li><a href="https://elvionai.github.io/about.html">About Us</a></li>
                 </nav>
                 <button id="theme-toggle" aria-label="Toggle theme">
@@ -735,7 +736,7 @@
 
                 <h2>Getting weird with It because normal is overrated</h2>
                 <ol>
-                    <li>Your character wakes up with the ability to hear plants screaming. Every salad is now a horror show. How do they cope? Do they become a reluctant plant therapist? This is your chance to write *Little shop of horrors* meets existential crisis.</li>
+                    <li>Your character wakes up with the ability to hear plants screaming. Every salad is now a horror show. How do they cope? Do they become a reluctant plant therapist? This is your chance to write <i>Little shop of horrors</i> meets existential crisis.</li>
                     <li>A support group for people who've accidentally traveled through time. Think about it, the person who stepped on a butterfly, the one who told their grandmother to invest in Blockbuster, the Victorian who brought back the plague. The drama writes itself.</li>
                     <li>Your protagonist discovers his reflection has been living a completely different life. While he has been binge-watching reality TV in sweatpants, his reflection has been training for the Olympics. Who's really in control?</li>
                     <li>Write about a world where lying makes you physically shrink. Politicians are now the size of ants. I'm just saying, there's potential here.</li>
@@ -994,7 +995,7 @@
     </script>
     
     <script>
-        // --- WORD-FOR-WORD TEXT TO SPEECH SCRIPT (UPDATED FOR DYNAMIC SPAN INJECTION) ---
+        // --- WORD-FOR-WORD TEXT TO SPEECH SCRIPT (STABLE VERSION) ---
         document.addEventListener('DOMContentLoaded', () => {
             const voiceSelect = document.getElementById('voice-select');
             const speedSelect = document.getElementById('speed-select');
@@ -1013,41 +1014,41 @@
 
             // Data
             const WPM = 200; 
-            let ALL_WORD_SPANS = []; // Now populated dynamically
+            let ALL_WORD_SPANS = []; 
             let TOTAL_WORD_COUNT = 0;
             
             let audio = new Audio();
             let isPlaying = false;
             let currentWordIndex = -1;
-            let currentTTSDuration = 0; // Duration of the currently selected audio track (seconds)
-            let wordTimings = []; // Array of {start: 0.0, end: 0.1, index: 0}
+            let currentTTSDuration = 0; 
+            let wordTimings = []; 
 
-            // --- 1. Content Processing: Inject Spans into Text Nodes ---
+            // --- 1. Content Processing: Dynamic Span Injection (CRITICAL FOR HIGHLIGHTING) ---
             
-            function wrapWordsInSpans(element) {
-                const elementsToScan = element.querySelectorAll('p, li, blockquote');
-                
-                function processNode(node) {
-                    if (node.nodeType === 3) { // Text node
-                        const text = node.textContent;
-                        if (text.trim().length > 0) {
-                            // Regex to wrap non-whitespace sequences in span
-                            return text.replace(/([^\s]+)/g, '<span class="word-content">$&</span>');
-                        }
-                        return text; // Return original if just whitespace
-                    } else if (node.nodeType === 1) { // Element node (e.g., <b>, <i>, <a>)
-                        // Create a temporary clone to safely modify its innerHTML
-                        const clone = node.cloneNode(false); // Clone the element tag, but not its children
-                        let newContent = '';
-                        Array.from(node.childNodes).forEach(child => {
-                            newContent += processNode(child);
-                        });
-                        clone.innerHTML = newContent; // Update the cloned element's content
-                        return clone.outerHTML; // Return the full element HTML
+            function processNode(node) {
+                if (node.nodeType === 3) { // Text node
+                    const text = node.textContent;
+                    if (text.trim().length > 0) {
+                        // Regex to wrap non-whitespace sequences in span
+                        return text.replace(/([^\s]+)/g, '<span class="word-content">$&</span>');
                     }
-                    return '';
+                    return text; // Return original if just whitespace
+                } else if (node.nodeType === 1) { // Element node (e.g., <b>, <i>, <a>, <h2>, <li>)
+                    // Recurse for elements, re-creating the structure and processing children
+                    const clone = node.cloneNode(false); // Clone the element tag, but not its children
+                    let newContent = '';
+                    Array.from(node.childNodes).forEach(child => {
+                        newContent += processNode(child);
+                    });
+                    clone.innerHTML = newContent; // Update the cloned element's content
+                    return clone.outerHTML; // Return the full element HTML
                 }
+                return '';
+            }
 
+            function wrapWordsInSpans(element) {
+                const elementsToScan = element.querySelectorAll('p, li, blockquote, h2, h3');
+                
                 elementsToScan.forEach(el => {
                     let newHtml = '';
                     Array.from(el.childNodes).forEach(node => {
@@ -1056,7 +1057,7 @@
                     el.innerHTML = newHtml;
                 });
                 
-                // Final Recalculation
+                // Final Recalculation after DOM manipulation
                 ALL_WORD_SPANS = Array.from(articleContent.querySelectorAll('.word-content'));
                 TOTAL_WORD_COUNT = ALL_WORD_SPANS.length;
                 calculateReadTime();
@@ -1148,7 +1149,7 @@
                         const wordSpan = ALL_WORD_SPANS[currentWordIndex];
                         wordSpan.classList.add('tts-highlight');
                         
-                        const parentEl = wordSpan.closest('p, li, blockquote');
+                        const parentEl = wordSpan.closest('p, li, blockquote, h2, h3');
                         if (parentEl) {
                             const rect = parentEl.getBoundingClientRect();
                             const viewportHeight = window.innerHeight;
@@ -1345,7 +1346,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const ARTICLE_ID = 'creative-prompts-02'; // CORRECTED ARTICLE ID
+        const ARTICLE_ID = 'creative-prompts-02'; // CORRECT ARTICLE ID
         
         const ADMIN_EMAIL = 'koladhino@gmail.com'; 
 
@@ -1946,8 +1947,6 @@
             let safeText = escapeHtml(text);
             
             // 1. Format blockquotes: lines starting with >
-            // Replace "> text\n> more text" with "<blockquote>text<br>more text</blockquote>"
-            // Find blocks of lines starting with '>'
             safeText = safeText.replace(/(^|\n)(>\s*[^\n]*)+/g, (match) => {
                 const lines = match.trim().split('\n').map(line => {
                     // Remove '>' and trim leading space
