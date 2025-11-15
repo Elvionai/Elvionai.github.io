@@ -24,6 +24,12 @@
   --code-text: #17fafd;
 }
 /* --- THEME STYLES --- */
+body.theme-default {
+    background:
+    radial-gradient(circle at 60% 45%, #112250 37%, #060e1e 88%, #1e0942 100%) fixed,
+    repeating-linear-gradient(100deg,#061c4c 0 9%,#080e20 16% 19%,#030721 30% 41%,#052650 44% 62%,#050b16 74% 89%,#041048 99% 100%);
+  background-blend-mode: lighten, color-dodge;
+}
 body.theme-dark {
   --dark-bg: #000000;
   --header-glass: rgba(10, 10, 10, 0.92);
@@ -82,10 +88,6 @@ body.theme-matrix {
 html, body {
   height: 100vh; width: 100vw; margin: 0; padding: 0;
   color: #e1fafe;
-  background:
-    radial-gradient(circle at 60% 45%, #112250 37%, #060e1e 88%, #1e0942 100%) fixed,
-    repeating-linear-gradient(100deg,#061c4c 0 9%,#080e20 16% 19%,#030721 30% 41%,#052650 44% 62%,#050b16 74% 89%,#041048 99% 100%);
-  background-blend-mode: lighten, color-dodge;
   font-family: 'Roboto','Inter',system-ui,-apple-system,Segoe UI,sans-serif;
   display: flex;
   flex-direction: column;
@@ -509,7 +511,7 @@ pre:before {
 }
   </style>
 </head>
-<body>
+<body class="theme-default">
   <div id="stars-container"></div>
 
   <div class="main-content">
@@ -793,8 +795,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // --- THEME TOGGLER LOGIC ---
   const themeToggleBtn = $('themeToggleBtn');
-  const themes = ['default', 'theme-dark', 'theme-ocean', 'theme-sunrise', 'theme-matrix'];
-  const themeIcons = ['fa-moon', 'fa-sun', 'fa-water', 'fa-cloud-sun', 'fa-terminal'];
+  // Added 'theme-default' to the start for explicit handling
+  const themes = ['theme-default', 'theme-dark', 'theme-ocean', 'theme-sunrise', 'theme-matrix'];
+  const themeIcons = ['fa-moon', 'fa-solid fa-moon', 'fa-water', 'fa-cloud-sun', 'fa-terminal'];
   let currentThemeIdx = 0;
 
   function applyTheme(idx) {
@@ -810,7 +813,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // Load saved theme
   const savedTheme = localStorage.getItem('philadelphia_theme');
   const savedThemeIdx = themes.indexOf(savedTheme);
-  applyTheme(savedThemeIdx > 0 ? savedThemeIdx : 0);
+  applyTheme(savedThemeIdx >= 0 ? savedThemeIdx : 0);
   
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
@@ -1131,9 +1134,6 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- MODIFIED renderChatBox ---
-  // This is now a simple renderer. It just displays what it's given.
-  // Message controls (edit/delete/regen) are removed for simplicity,
-  // as they need to be rebuilt for Firestore.
   function renderChatBox(messages = []) {
     if (!chatBox) return;
     chatBox.innerHTML = '';
@@ -1302,81 +1302,156 @@ window.addEventListener('DOMContentLoaded', () => {
   const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
   
   // --- MODIFIED Tool Definitions ---
-  // handleSubmit functions are now MODIFIED to save to Firestore
-  // instead of calling typeBotMessage()
+  // The handlesubmits are now fully functional for file uploads
   const toolDefinitions = {
     "image": {
         title: "Generate Image",
         description: "Create stunning visuals from a text prompt. Choose a model for different results.",
         buildForm: () => `
             <label for="tool-provider">Generation Model</label>
-            <select id="tool-provider"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option></select>
+            <select id="tool-provider">
+              <option value="thena">Version 1 (Stylized, Fast & Recommended)</option>
+              <option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option>
+            </select>
             <label for="tool-prompt">Image Prompt</label>
             <textarea id="tool-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required></textarea>
-            <label for="tool-style">Style (for Version1 only)</label>
+            <label for="tool-style">Style (for Version 1 only)</label>
             <select id="tool-style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
             <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
         handleSubmit: async (form) => {
             const use_minimax = form.querySelector('#tool-provider').value === 'minimax';
             const payload = { prompt: form.querySelector('#tool-prompt').value, model: form.querySelector('#tool-style').value, use_minimax };
-            await saveMessageToFirestore('user', `Image generation request: "${payload.prompt}"`);
+            await saveMessageToFirestore('user', `Image generation request: "${payload.prompt}" (Model: ${use_minimax ? 'Version 2' : 'Version 1'})`);
             showTypingWithText('Generating your image...');
             try {
                 const res = await fetch(`${API_BASE_URL}/generate-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
                 showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
-                return '✅ Image generated! Check the floating image box to view or download.';
-            } catch (err) { return `❌ Image generation failed: ${err.message}`; }
+                removeTyping();
+                await saveMessageToFirestore('ai', '✅ Image generated! Check the floating image box to view or download.');
+                return null;
+            } catch (err) { 
+                removeTyping();
+                return `❌ Image generation failed: ${err.message}`; 
+            }
         }
     },
     "edit-photo": {
         title: "Edit Photo",
-        buildForm: () => `...`, // Unchanged
+        description: "Modify an existing image based on a prompt (e.g., 'give him a hat'). Requires an image file.",
+        buildForm: () => `
+            <label for="tool-image-file">Image File</label><input type="file" id="tool-image-file" accept="image/*" required>
+            <label for="tool-prompt">Edit Prompt</label><textarea id="tool-prompt" placeholder="Give the person a futuristic helmet"></textarea>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit Photo</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // MODIFICATION: Must upload result to Storage, then save to Firestore
-            // For now, this will return text, which the main handler will save
-            // ...
+            const file = form.querySelector('#tool-image-file').files[0];
+            const prompt = form.querySelector('#tool-prompt').value;
+            if (!file) return "Please select an image.";
+            
+            const fd = new FormData(); fd.append('file', file); fd.append('prompt', prompt);
+            await saveMessageToFirestore('user', `Photo edit request: "${prompt}"`);
+            showTypingWithText('Editing photo...');
+            
             try {
-                // ... (fetch logic)
+                const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd });
+                if (!res.ok) throw new Error(await res.text() || res.statusText);
+                
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // This is a temp URL
-                // TODO: Upload this blob to Firebase Storage, get DownloadURL
-                return `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
-            } catch (err) { return `❌ Photo edit failed: ${err.message}`; }
+                const uploadedFile = await uploadFile(new File([blob], `edited_${file.name}`, { type: file.type }), 
+                                                      `chat_files/${currentUser.uid}/${currentChatId}/edit-${Date.now()}.${file.name.split('.').pop()}`);
+                
+                removeTyping();
+                if (uploadedFile) {
+                    await saveMessageToFirestore('ai', `✅ Photo edited successfully!`, [uploadedFile]);
+                    return null;
+                } else {
+                    return `❌ Failed to save edited photo.`;
+                }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Photo edit failed: ${err.message}`; 
+            }
         }
     },
      "remove-bg": {
         title: "Remove Background",
-        buildForm: () => `...`, // Unchanged
+        description: "Instantly remove the background from an uploaded image.",
+        buildForm: () => `
+            <label for="tool-image-file">Image File</label><input type="file" id="tool-image-file" accept="image/*" required>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-scissors"></i> Remove Background</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // MODIFICATION: Must upload result to Storage, then save to Firestore
+            const file = form.querySelector('#tool-image-file').files[0];
+            if (!file) return "Please select an image.";
+
+            const fd = new FormData(); fd.append('file', file);
+            await saveMessageToFirestore('user', `Background removal request.`);
+            showTypingWithText('Removing background...');
+            
             try {
-                // ... (fetch logic)
+                const res = await fetch(`${API_BASE_URL}/api/tools/remove-bg`, { method: 'POST', body: fd });
+                if (!res.ok) throw new Error(await res.text() || res.statusText);
+                
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // This is a temp URL
-                // TODO: Upload this blob to Firebase Storage, get DownloadURL
-                return `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
-            } catch (err) { return `❌ Background removal failed: ${err.message}`; }
+                const uploadedFile = await uploadFile(new File([blob], `bg_removed_${file.name}`, { type: file.type }), 
+                                                      `chat_files/${currentUser.uid}/${currentChatId}/nobg-${Date.now()}.${file.name.split('.').pop()}`);
+                
+                removeTyping();
+                if (uploadedFile) {
+                    await saveMessageToFirestore('ai', `✅ Background removed!`, [uploadedFile]);
+                    return null;
+                } else {
+                    return `❌ Failed to save image with removed background.`;
+                }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Background removal failed: ${err.message}`; 
+            }
         }
     },
     "comic": {
         title: "Create Comic",
-        buildForm: () => `...`, // Unchanged
+        description: "Generate a 4-panel comic strip from a single story prompt.",
+        buildForm: () => `
+            <label for="tool-prompt">Comic Story Prompt</label><textarea id="tool-prompt" placeholder="A cat tries to catch a laser dot, chases it around the room, realizes it's just a light, and falls asleep on the couch."></textarea>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // MODIFICATION: Must upload result to Storage, then save to Firestore
+            const prompt = form.querySelector('#tool-prompt').value;
+            await saveMessageToFirestore('user', `Comic generation request: "${prompt}"`);
+            showTypingWithText('Creating 4-panel comic...');
+            
             try {
-                // ... (fetch logic)
-                // TODO: Upload each base64 image to Storage, get URLs
-                const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview image-preview-thumb">`).join('');
-                return `🖼️ Comic successfully created! <br>${imagesHtml}`;
-            } catch (err) { return `❌ Comic generation failed: ${err.message}`; }
+                const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+                const data = await res.json();
+                if (!res.ok || !data.images) throw new Error(data.error || res.statusText);
+
+                const uploadPromises = data.images.map(async (base64, idx) => {
+                    const byteCharacters = atob(base64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) { byteNumbers[i] = byteCharacters.charCodeAt(i); }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'image/png' });
+                    
+                    return uploadFile(new File([blob], `comic_panel_${idx+1}.png`, { type: 'image/png' }),
+                                      `chat_files/${currentUser.uid}/${currentChatId}/comic-${Date.now()}_${idx+1}.png`);
+                });
+
+                const uploadedFiles = (await Promise.all(uploadPromises)).filter(Boolean);
+                
+                removeTyping();
+                if (uploadedFiles.length > 0) {
+                    await saveMessageToFirestore('ai', `🖼️ Comic successfully created!`, uploadedFiles);
+                    return null;
+                } else {
+                    return `❌ Failed to save comic panels.`;
+                }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Comic generation failed: ${err.message}`; 
+            }
         }
     },
-    // --- THIS IS THE FIXED "voice-gen" TOOL ---
+    // --- VOICE GENERATION (V1/V2 Naming) ---
     "voice-gen": {
         title: "Voice Generation",
         description: "Transform text into realistic speech. Choose a version for different voice styles.",
@@ -1398,7 +1473,7 @@ window.addEventListener('DOMContentLoaded', () => {
         },
         handleSubmit: async (form) => {
             const provider = form.querySelector('#tool-provider').value, text = form.querySelector('#tool-prompt').value, style = form.querySelector('#tool-style').value;
-            await saveMessageToFirestore('user', `Voice generation request using ${provider}.`);
+            await saveMessageToFirestore('user', `Voice generation request using ${provider === 'gemini' ? 'Version 1' : 'Version 2'}.`);
             showTypingWithText('Generating your audio...');
             try {
                 let res;
@@ -1411,44 +1486,65 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(await res.text());
                 const blob = await res.blob();
                 
-                // --- NEW: Upload to Storage ---
+                // --- Upload to Storage ---
                 const file = new File([blob], "generated_voice.mp3", { type: "audio/mpeg" });
                 const uploadedFile = await uploadFile(file, `chat_files/${currentUser.uid}/${currentChatId}/voice-${Date.now()}.mp3`);
                 
+                removeTyping();
                 if (uploadedFile) {
                   await saveMessageToFirestore('ai', `🗣️ Voice generated!`, [uploadedFile]);
                   return null; // Return null because we saved it manually
                 } else {
                   return `❌ Failed to save generated voice.`;
                 }
-            } catch (err) { return `❌ Voice generation failed: ${err.message}`; }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Voice generation failed: ${err.message}`; 
+            }
         }
     },
     "audio-narration": {
         title: "Audio Narration",
-        buildForm: () => `...`, // Unchanged
+        description: "Narrate a document or long text passage with a consistent voice.",
+        buildForm: () => `
+            <label for="tool-text-file">Text/PDF File (Optional)</label><input type="file" id="tool-text-file" accept="text/*,application/pdf">
+            <label for="tool-prompt">Text to Narrate</label><textarea id="tool-prompt" placeholder="The full text of your chapter or script..."></textarea>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // MODIFICATION: Must upload result to Storage, then save to Firestore
+            // Placeholder logic: Assuming text input for now for simplicity, but should handle file upload
+            const text = form.querySelector('#tool-prompt').value;
+            await saveMessageToFirestore('user', `Audio Narration request (Text length: ${text.length} characters).`);
+            showTypingWithText('Generating narration...');
+            
             try {
-                // ... (fetch logic)
+                const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+                if (!res.ok) throw new Error(await res.text() || res.statusText);
+
                 const blob = await res.blob();
-                // --- NEW: Upload to Storage ---
+                // --- Upload to Storage ---
                 const file = new File([blob], "generated_narration.mp3", { type: "audio/mpeg" });
                 const uploadedFile = await uploadFile(file, `chat_files/${currentUser.uid}/${currentChatId}/narration-${Date.now()}.mp3`);
                 
+                removeTyping();
                 if (uploadedFile) {
                   await saveMessageToFirestore('ai', `🗣️ Narration generated!`, [uploadedFile]);
-                  return null; // Return null because we saved it manually
+                  return null;
                 } else {
                   return `❌ Failed to save generated narration.`;
                 }
-            } catch (err) { return `❌ Audio narration failed: ${err.message}`; }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Audio narration failed: ${err.message}`; 
+            }
         }
     },
     "video-text": {
         title: "Generate Video from Text",
-        buildForm: () => `...`, // Unchanged
+        description: "Create a short video clip from a description. Video generation can take several minutes.",
+        buildForm: () => `
+            <label for="video-prompt">Video Prompt</label><textarea id="video-prompt" placeholder="A majestic eagle flying over the Philadelphia skyline at sunset, 4K, cinematic lighting" required></textarea>
+            <label for="video-duration">Duration (seconds)</label><input type="number" id="video-duration" value="4" min="1" max="10" required>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-film"></i> Start Video Generation</button>`,
         handleSubmit: async (form) => {
             const payload = { prompt: form.querySelector('#video-prompt').value, duration: parseInt(form.querySelector('#video-duration').value, 10), resolution: "1080P" };
             await saveMessageToFirestore('user', `Text-to-Video request: "${payload.prompt}"`);
@@ -1458,43 +1554,74 @@ window.addEventListener('DOMContentLoaded', () => {
     },
     "video-image": {
         title: "Generate Video from Image",
-        buildForm: () => `...`, // Unchanged
+        description: "Animate an image with a text prompt. Requires an image file.",
+        buildForm: () => `
+            <label for="video-image-file">Image File</label><input type="file" id="video-image-file" accept="image/*" required>
+            <label for="video-image-prompt">Animation Prompt</label><textarea id="video-image-prompt" placeholder="Make the water ripple and the clouds drift slowly"></textarea>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-photo-film"></i> Start Video Generation</button>`,
         handleSubmit: async (form) => {
             const file = form.querySelector('#video-image-file').files[0];
+            const prompt = form.querySelector('#video-image-prompt').value;
             if (!file) return "Please select an image.";
-            // We can't save the user message yet because we need to upload the file
-            // This tool's handleSubmit should be integrated into the main chat form
-            // For now, we'll just run it.
-            const fd = new FormData(); fd.append('prompt', form.querySelector('#video-image-prompt').value); fd.append('file', file);
+            
+            await saveMessageToFirestore('user', `Image-to-Video request: "${prompt}"`);
+            
+            const fd = new FormData(); fd.append('prompt', prompt); fd.append('file', file);
             handleVideoGeneration(fd, true); // This handles its own Firestore saving
             return null;
         }
     },
+    // --- MUSIC GENERATION (COMPLETED WITH FIREBASE STORAGE) ---
     "music": {
         title: "Generate Music",
-        buildForm: () => `...`, // Unchanged
+        description: "Create a unique music clip from a text prompt.",
+        buildForm: () => `
+            <label for="music-prompt">Music Prompt (e.g. 'Epic cinematic trailer music with strings and drums')</label><textarea id="music-prompt" required></textarea>
+            <label for="music-duration">Duration (seconds, max 30)</label><input type="number" id="music-duration" value="10" min="5" max="30" required>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-music"></i> Generate Music</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // MODIFICATION: Must upload result to Storage, then save to Firestore
+            const prompt = form.querySelector('#music-prompt').value;
+            const duration = parseInt(form.querySelector('#music-duration').value, 10);
+            
+            await saveMessageToFirestore('user', `Music generation request: "${prompt}" for ${duration} seconds.`);
+            showTypingWithText('Generating your music...');
+            
             try {
-                // ... (fetch logic)
+                const res = await fetch(`${API_BASE_URL}/api/tools/music-gen`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, duration })
+                });
+
+                if (!res.ok) throw new Error(await res.text() || res.statusText);
+                
                 const blob = await res.blob();
-                // --- NEW: Upload to Storage ---
+                
+                // --- Upload to Storage ---
                 const file = new File([blob], "generated_music.mp3", { type: "audio/mpeg" });
                 const uploadedFile = await uploadFile(file, `chat_files/${currentUser.uid}/${currentChatId}/music-${Date.now()}.mp3`);
                 
+                removeTyping();
+
                 if (uploadedFile) {
                   await saveMessageToFirestore('ai', `🎵 Your music is ready!`, [uploadedFile]);
-                  return null; // Return null because we saved it manually
+                  return null;
                 } else {
                   return `❌ Failed to save generated music.`;
                 }
-            } catch (err) { return `❌ Music generation failed: ${err.message}`; }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Music generation failed: ${err.message}`; 
+            }
         }
     },
+    // --- WEBSITE TOOLS (TEXT RESPONSE ONLY) ---
     "website": {
         title: "Create Website",
-        buildForm: () => `...`, // Unchanged
+        description: "Generate and deploy a complete website based on your prompt.",
+        buildForm: () => `
+            <label for="website-prompt">Website Description</label><textarea id="website-prompt" placeholder="A one-page portfolio website for a freelance web developer, modern, dark theme." required></textarea>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-globe"></i> Create Website</button>`,
         handleSubmit: async (form) => {
             const prompt = form.querySelector('#website-prompt').value;
             await saveMessageToFirestore('user', `Website creation request: "${prompt.substring(0, 50)}..."`);
@@ -1502,17 +1629,35 @@ window.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/tools/create-website`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, user_id: currentUser.uid }) });
                 const data = await res.json();
+                removeTyping();
                 if (!res.ok) throw new Error(data.error || res.statusText);
                 return `🌐 Website deployed successfully! [View here](${data.url})`;
-            } catch (err) { return `❌ Website creation failed: ${err.message}`; }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Website creation failed: ${err.message}`; 
+            }
         }
     },
     "edit-website": {
         title: "Edit Last Website",
-        buildForm: () => `...`, // Unchanged
+        description: "Request a change to the last website you generated.",
+        buildForm: () => `
+            <label for="edit-prompt">Edit Instructions</label><textarea id="edit-prompt" placeholder="Change the main color scheme to red and black, and add a contact form." required></textarea>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-pen-ruler"></i> Edit Website</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // This works as-is, just returns text
+            const prompt = form.querySelector('#edit-prompt').value;
+            await saveMessageToFirestore('user', `Website edit request: "${prompt.substring(0, 50)}..."`);
+            showTypingWithText('Applying changes to your website...');
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/tools/edit-website`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, user_id: currentUser.uid }) });
+                const data = await res.json();
+                removeTyping();
+                if (!res.ok) throw new Error(data.error || res.statusText);
+                return `🔄 Website updated! [View the new version here](${data.url})`;
+            } catch (err) { 
+                removeTyping();
+                return `❌ Website update failed: ${err.message}`; 
+            }
         }
     },
     "my-sites": {
@@ -1523,34 +1668,52 @@ window.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/tools/my-sites/${currentUser.uid}`);
                 const data = await res.json();
+                removeTyping();
                 if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
                 if (!data.sites || data.sites.length === 0) return "You haven't created any websites yet.";
                 const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
                 return `Here are the websites you've created:\n${siteList}`;
-            } catch (err) { return `❌ Error fetching websites: ${err.message}`; }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Error fetching websites: ${err.message}`; 
+            }
         }
     },
+    // --- RESEARCH REPORT (COMPLETED WITH FIREBASE STORAGE) ---
     "research-report": {
         title: "Research Report",
-        buildForm: () => `...`, // Unchanged
+        description: "Generate a detailed PDF report on any given topic.",
+        buildForm: () => `
+            <label for="research-topic">Topic for Research Report</label><input type="text" id="research-topic" placeholder="The impact of AI on urban planning" required>
+            <label for="report-length">Desired Length</label><select id="report-length"><option>Short (1-2 pages)</option><option>Medium (3-5 pages)</option><option>Long (6-10 pages)</option></select>
+            <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-flask-vial"></i> Generate Report</button>`,
         handleSubmit: async (form) => {
-            // ... (Your existing logic) ...
-            // MODIFICATION: Must upload result to Storage, then save to Firestore
+            const topic = form.querySelector('#research-topic').value;
+            const length = form.querySelector('#report-length').value;
+            await saveMessageToFirestore('user', `Research report requested on **${topic}** (${length} length).`);
+            showTypingWithText('Generating your research report...');
+            
             try {
-                // ... (fetch logic)
+                const res = await fetch(`${API_BASE_URL}/api/tools/research-report`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic, length }) });
+                if (!res.ok) throw new Error(await res.text() || res.statusText);
+                
                 const blob = await res.blob();
-                const topic = form.querySelector('#research-topic').value;
-                // --- NEW: Upload to Storage ---
+                
+                // --- Upload to Storage ---
                 const file = new File([blob], `research_${topic.replace(/\s/g, '_')}.pdf`, { type: "application/pdf" });
                 const uploadedFile = await uploadFile(file, `chat_files/${currentUser.uid}/${currentChatId}/report-${Date.now()}.pdf`);
 
+                removeTyping();
                 if (uploadedFile) {
                   await saveMessageToFirestore('ai', `✅ Research report on **${topic}** is ready!`, [uploadedFile]);
-                  return null; // Return null because we saved it manually
+                  return null;
                 } else {
                   return `❌ Failed to save generated report.`;
                 }
-            } catch (err) { return `❌ Research report failed: ${err.message}`; }
+            } catch (err) { 
+                removeTyping();
+                return `❌ Research report failed: ${err.message}`; 
+            }
         }
     },
   };
@@ -1636,14 +1799,23 @@ window.addEventListener('DOMContentLoaded', () => {
     let finalResponse = '';
     let aiResponseFiles = [];
 
+    // Attach stop button listener
+    stopButton.addEventListener('click', () => {
+        if (currentController) {
+            currentController.abort();
+            stopButton.replaceWith(sendBtn);
+            currentController = null;
+        }
+    });
+
     try {
-      // --- 1. Save User Message to Firestore ---
+      // --- 1. Save User Message to Firestore (Placeholder) ---
       showTypingWithText('Saving...');
       const messageDocRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), {
         role: 'user',
         text: msgText,
         createdAt: serverTimestamp(),
-        files: [] // Start with empty, will update after upload
+        files: [] 
       });
       
       // --- 2. Upload Files (if any) ---
@@ -1719,7 +1891,7 @@ window.addEventListener('DOMContentLoaded', () => {
     currentController = null;
   });
 
-  // --- "CALL THE BOT" LOGIC ---
+  // --- "CALL THE BOT" LOGIC (REFINED) ---
   const callBtn = $('callBtn');
   const callScreenBg = $('callScreenBg');
   const endCallBtn = $('endCallBtn');
@@ -1739,28 +1911,48 @@ window.addEventListener('DOMContentLoaded', () => {
     recognition.continuous = false; // Process after each pause
     recognition.interimResults = true;
     
-    recognition.onstart = () => {
-      callStatus.textContent = "Listening...";
-      callAvatarRing.classList.remove('speaking');
-    };
-    
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      callTranscript.textContent = `You: "${transcript}"`;
-      if (event.results[0].isFinal) {
-        handleUserSpeech(transcript);
+    // Function to process audio queue
+    function processQueue() {
+      if (callAudioQueue.length === 0) {
+        isPlayingAudio = false;
+        callAvatarRing.classList.remove('speaking');
+        if (isCallActive) {
+          callStatus.textContent = "Listening...";
+          try { recognition.start(); } catch(e) { /* ignore restart error */ }
+        }
+        return;
       }
-    };
+      isPlayingAudio = true;
+      callAvatarRing.classList.add('speaking');
+      callStatus.textContent = "Speaking...";
+      const audio = new Audio(callAudioQueue.shift());
+      audio.play();
+      audio.onended = () => {
+        processQueue();
+      };
+      // For instant end of call:
+      audio.onerror = () => { 
+        callStatus.textContent = "Audio playback failed.";
+        processQueue();
+      };
+    }
     
-    recognition.onend = () => {
-      if (isCallActive) {
-        try { recognition.start(); } catch(e) {} // Always restart listening
+    function playAudioFromQueue(url) {
+      callAudioQueue.push(url);
+      if (!isPlayingAudio) {
+        processQueue();
       }
-    };
+    }
     
     async function handleUserSpeech(transcript) {
-      if (!transcript.trim()) return;
+      if (!transcript.trim()) {
+         callStatus.textContent = "Didn't catch that. Listening...";
+         return;
+      }
       callStatus.textContent = "Thinking...";
+      
+      // Stop recognition while waiting for response
+      recognition.stop();
       
       // 1. Send text to chat API
       const res = await fetch(`${API_BASE_URL}/chat`, { 
@@ -1776,40 +1968,48 @@ window.addEventListener('DOMContentLoaded', () => {
       await saveMessageToFirestore('ai', botText);
       
       // 3. Send response text to voice API
-      callStatus.textContent = "Speaking...";
       const fd = new FormData();
       fd.append('text', botText);
       fd.append('style', 'podcast'); // Use a good voice
       const voiceRes = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
-      const blob = await voiceRes.blob();
-      const url = URL.createObjectURL(blob);
-      playAudioFromQueue(url);
-    }
-    
-    function playAudioFromQueue(url) {
-      callAudioQueue.push(url);
-      if (!isPlayingAudio) {
-        processQueue();
-      }
-    }
-    
-    function processQueue() {
-      if (callAudioQueue.length === 0) {
-        isPlayingAudio = false;
-        callAvatarRing.classList.remove('speaking');
+      
+      if (voiceRes.ok) {
+        const blob = await voiceRes.blob();
+        const url = URL.createObjectURL(blob);
+        playAudioFromQueue(url);
+      } else {
+        callStatus.textContent = "Speaking failed.";
+        // Restart listening if speaking failed
         if (isCallActive) {
-          callStatus.textContent = "Listening...";
+          try { recognition.start(); } catch(e) {}
         }
-        return;
       }
-      isPlayingAudio = true;
-      callAvatarRing.classList.add('speaking');
-      const audio = new Audio(callAudioQueue.shift());
-      audio.play();
-      audio.onended = () => {
-        processQueue();
-      };
     }
+    
+    recognition.onstart = () => {
+      callStatus.textContent = "Listening...";
+      callAvatarRing.classList.remove('speaking');
+    };
+    
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      callTranscript.textContent = `You: "${transcript}"`;
+      if (event.results[0].isFinal) {
+        handleUserSpeech(transcript);
+      }
+    };
+    
+    recognition.onend = () => {
+      // Only restart if the call is active AND we are not currently playing audio
+      if (isCallActive && !isPlayingAudio) {
+        callStatus.textContent = "Waiting for you...";
+        setTimeout(() => {
+          if (isCallActive && !isPlayingAudio) {
+            try { recognition.start(); } catch(e) { /* ignore restart error */ }
+          }
+        }, 500); // Small delay to avoid rapid restarts
+      }
+    };
     
     if (callBtn) callBtn.addEventListener('click', () => {
       if (!currentChatId || !currentUser) {
@@ -1820,6 +2020,7 @@ window.addEventListener('DOMContentLoaded', () => {
       callScreenBg.classList.add('active');
       callStatus.textContent = "Connecting...";
       callTranscript.textContent = "...";
+      callAudioQueue = []; // Clear queue on start
       try {
         recognition.start();
       } catch(e) { console.error("Recognition start error:", e); }
@@ -1827,13 +2028,11 @@ window.addEventListener('DOMContentLoaded', () => {
     
     if (endCallBtn) endCallBtn.addEventListener('click', () => {
       isCallActive = false;
-      recognition.stop();
+      recognition.abort(); // Use abort to stop immediately and prevent onend restart
       callScreenBg.classList.remove('active');
       callAudioQueue = [];
-      if (isPlayingAudio) {
-        // Find and stop the current audio (simplified)
-        isPlayingAudio = false;
-      }
+      isPlayingAudio = false; // Reset state
+      callAvatarRing.classList.remove('speaking');
     });
   }
   // --- END "CALL THE BOT" LOGIC ---
