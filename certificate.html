@@ -1,404 +1,594 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Certificate Generator</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Montserrat:wght@400;600&family=EB+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Elvion AI — Certificate Generator</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Montserrat:wght@300;500;700&display=swap" rel="stylesheet">
+
+  <!-- html2canvas for export -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
   <style>
-    /* NEW PROFESSIONAL STYLE
-      Based on classic certificate design
-    */
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-    body {
-      background: #EAEAEA; /* Light grey background to offset the white page */
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      min-height: 100vh;
-      font-family: 'EB Garamond', 'Times New Roman', serif; /* Classic serif font */
-      color: #333;
-      flex-wrap: wrap; /* Allow controls and cert to stack */
+    :root{
+      --cream:#f7f1e6;
+      --paper:#fbf7f2;
+      --gold:#cf9a19; /* base gold */
+      --gold-dark:#b07b07;
+      --ink:#1d2326;
+      --muted:#7a7a7a;
     }
 
-    /* --- CONTROLS SECTION --- */
-    .controls {
-      width: 100%;
-      max-width: 900px;
-      background: #fff;
-      padding: 20px 25px;
-      margin-bottom: 20px;
-      border-radius: 5px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      font-family: 'Montserrat', sans-serif; /* Use sans-serif for modern controls */
+    html,body{height:100%; margin:0; font-family:'Montserrat',sans-serif; background: linear-gradient(180deg,#eeeeee 0%, #e6e2dc 100%); -webkit-font-smoothing:antialiased;}
+    .page {
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:36px;
+      box-sizing:border-box;
     }
-    .controls h2 {
-      text-align: center;
-      margin-top: 0;
-      color: #001f3f;
+
+    /* Container around printable certificate */
+    .panel {
+      width:880px;
+      max-width:96%;
+      display:flex;
+      gap:22px;
+      align-items:flex-start;
+      justify-content:center;
     }
-    .control-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 15px;
+
+    /* Certificate card */
+    .certificate {
+      width:720px;
+      background: var(--paper);
+      padding:48px 44px;
+      position:relative;
+      box-shadow: 0 30px 60px rgba(20,20,20,0.12), inset 0 1px 0 rgba(255,255,255,0.6);
+      border-radius:6px;
+      border: 1px solid rgba(0,0,0,0.06);
+      box-sizing:border-box;
+      overflow:hidden;
+      font-family: 'Playfair Display', serif;
+      color:var(--ink);
     }
-    .control-grid div {
-      display: flex;
-      flex-direction: column;
+
+    /* embossed double-gold border */
+    .certificate::before, .certificate::after{
+      content:"";
+      position:absolute;
+      inset:18px;
+      pointer-events:none;
+      border-radius:3px;
     }
-    .control-grid label {
-      font-weight: 600;
-      font-size: 0.9em;
-      margin-bottom: 5px;
-      color: #555;
+    .certificate::before{
+      border:3px solid rgba(203,165,84,0.95); /* main gold */
+      filter: drop-shadow(0 3px 0 rgba(0,0,0,0.05));
+      transform: translateZ(0);
     }
-    .control-grid input {
-      padding: 8px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 1em;
+    .certificate::after{
+      inset:12px;
+      border:1px solid rgba(255,255,255,0.65);
+      mix-blend-mode: overlay;
+      opacity:0.7;
+    }
+
+    /* decorative corners */
+    .corner {
+      position:absolute;
+      width:90px;
+      height:90px;
+      border: 2px solid rgba(203,165,84,0.95);
+      border-radius:6px;
+      opacity:0.55;
+    }
+    .corner.tl { top:8px; left:8px; border-right:none; border-bottom:none; }
+    .corner.tr { top:8px; right:8px; border-left:none; border-bottom:none; }
+    .corner.bl { bottom:8px; left:8px; border-right:none; border-top:none; }
+    .corner.br { bottom:8px; right:8px; border-left:none; border-top:none; }
+
+    /* watermark logo faint at center */
+    .watermark {
+      position:absolute;
+      left:50%;
+      top:46%;
+      transform: translate(-50%,-50%);
+      width:420px;
+      height:420px;
+      background-repeat:no-repeat;
+      background-position:center;
+      background-size:contain;
+      opacity:0.06;
+      z-index:0;
+      pointer-events:none;
+      filter: saturate(1.2) hue-rotate(0deg);
+    }
+
+    /* top area */
+    .cert-head {
+      text-align:center;
+      margin:6px 0 8px 0;
+      z-index:2;
+      position:relative;
+    }
+    .org-name {
       font-family: 'Montserrat', sans-serif;
+      font-size:14px;
+      letter-spacing:1px;
+      font-weight:700;
+      color:var(--muted);
+      margin-bottom:6px;
+      text-transform:uppercase;
     }
-    .control-grid input:focus {
-      outline: none;
-      border-color: #004a99;
-      box-shadow: 0 0 5px rgba(0,74,153,0.3);
-    }
-
-    /* --- CERTIFICATE SECTION --- */
-    .certificate-wrap {
-      width: 900px; /* Standard landscape paper ratio (approx 11 x 8.5) */
-      max-width: 100%;
-      height: 650px;
-      background: #FFFFFF; /* The "paper" */
-      border-radius: 5px;
-      padding: 30px;
-      position: relative;
-      text-align: center;
-      
-      /* This creates the formal border like your example */
-      border: 1px solid #B9975B; /* Thin outer gold */
-      box-shadow: 
-        inset 0 0 0 1px #B9975B,  /* Thin inner gold */
-        inset 0 0 0 7px #001f3f,  /* Thick inner navy */
-        inset 0 0 0 8px #B9975B,  /* Thin gold separator */
-        0 5px 15px rgba(0,0,0,0.2); /* Drop shadow */
-      
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    /* This is the ornamental border, replace with an image for a true swirl effect */
-    .certificate-wrap::before {
-      content: '';
-      position: absolute;
-      top: 15px; left: 15px; right: 15px; bottom: 15px;
-      border: 1px solid #ccc; /* Placeholder for a fancy guilloche border */
-      opacity: 0.5;
-      z-index: 0;
-      pointer-events: none;
-    }
-    
-    /* All content must be above the overlays */
-    .cert-header, .cert-body, .cert-footer {
-      position: relative;
-      z-index: 1;
-      padding: 0 25px; /* Give content space from inner border */
-    }
-
-    .cert-logo {
-      width: 100px;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 50%;
-      border: 3px solid #001f3f;
-      margin-bottom: 10px;
-    }
-
     .cert-title {
-      font-family: 'Playfair Display', serif;
-      font-weight: 700;
-      color: #001f3f; /* Dark Navy */
-      font-size: 3.5em; /* 50px */
-      margin: 0;
-      letter-spacing: 1px;
+      font-family:'Playfair Display', serif;
+      font-size:34px;
+      line-height:1;
+      font-weight:800;
+      color:var(--gold-dark);
+      letter-spacing:0.6px;
+      margin-bottom:8px;
+      text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 6px 18px rgba(176,123,7,0.08);
     }
 
-    .cert-lead {
-      font-size: 1.15em; /* 16px */
-      color: #333;
-      margin: 15px 0 0 0;
+    /* thin subline and subtitle */
+    .subtitle {
+      font-family:'Montserrat',sans-serif;
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:20px;
     }
 
-    .cert-name {
-      font-family: 'Playfair Display', serif;
-      font-size: 3em; /* 42px */
-      color: #111;
-      margin: 10px 0;
-      font-weight: 700;
+    .main-body {
+      display:block;
+      text-align:center;
+      z-index:2;
+      position:relative;
+      padding:6px 30px;
     }
 
-    .cert-message {
-      font-size: 1.15em; /* 16px */
-      color: #333;
-      margin: 10px 0;
-      line-height: 1.6;
-    }
-    .cert-message strong {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 600;
-      color: #001f3f;
-      font-size: 1.1em;
+    .cert-intro {
+      font-family:'Montserrat',sans-serif;
+      color:var(--muted);
+      font-size:14px;
+      margin-bottom:18px;
     }
 
-    .cert-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 20px;
+    .recipient {
+      font-family:'Playfair Display',serif;
+      font-weight:700;
+      font-size:30px;
+      color:var(--ink);
+      margin:6px 0 8px;
+      letter-spacing:0.6px;
     }
 
-    .signature-block {
-      width: 45%;
-      text-align: left;
+    .field-label {
+      font-size:12px;
+      color:var(--muted);
+      text-transform:uppercase;
+      font-weight:700;
+      letter-spacing:1px;
+      margin-bottom:6px;
     }
 
-    .seal-block {
-      width: 45%;
-      text-align: right;
-      display: flex;
-      justify-content: flex-end; /* Align seal to the right */
+    .course {
+      font-family:'Playfair Display',serif;
+      font-size:18px;
+      color:var(--gold-dark);
+      font-weight:700;
+      margin-bottom:8px;
     }
 
-    .sig-img {
-      width: 180px;
-      height: 60px;
-      object-fit: contain;
-      margin-bottom: -10px;
+    .meta-row {
+      display:flex;
+      gap:16px;
+      justify-content:center;
+      align-items:center;
+      margin-top:6px;
+      font-family:'Montserrat',sans-serif;
+      color:var(--muted);
+      font-size:13px;
     }
 
-    .sig-line {
-      border: 0;
-      border-top: 2px solid #333;
-      margin: 0;
+    .divider {
+      height:2px;
+      width:46%;
+      background: linear-gradient(90deg, rgba(203,165,84,0.95), rgba(255,255,255,0.65));
+      margin:26px auto 6px;
+      box-shadow: 0 6px 16px rgba(176,123,7,0.06);
     }
-    .sig-caption {
-      font-size: 1.1em;
-      margin-top: 5px;
+
+    /* signature area */
+    .sign-area {
+      display:flex;
+      gap:12px;
+      justify-content:space-between;
+      align-items:flex-end;
+      margin-top:24px;
+      padding:0 22px;
+      z-index:2;
+      position:relative;
     }
-    .sig-name {
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 600;
-      color: #000;
-      font-size: 1.1em;
-      margin: 0;
+    .sign-left { text-align:left; }
+    .sign-right { text-align:right; min-width:220px; }
+
+    .signature-image {
+      display:block;
+      width:220px;
+      height:72px;
+      object-fit:contain;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,0.08));
+      background:transparent;
     }
     .sig-title {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.9em;
-      color: #444;
-      margin: 0;
+      font-family:'Montserrat',sans-serif;
+      font-weight:700;
+      color:var(--muted);
+      font-size:12px;
+      text-transform:uppercase;
+      margin-top:6px;
+    }
+    .signed-name {
+      font-family:'Playfair Display',serif;
+      color:var(--ink);
+      font-weight:700;
+      font-size:15px;
+      margin-top:6px;
     }
 
-    .cert-seal {
-      width: 120px;
-      height: 120px;
-      object-fit: contain;
-      /* Like the red seal in your example */
+    /* gold seal positioned bottom-left */
+    .seal {
+      position:absolute;
+      left:44px;
+      bottom:42px;
+      width:92px;
+      height:92px;
+      border-radius:50%;
+      background: radial-gradient(circle at 35% 30%, #ffd777 0%, #cf9a19 35%, #b07b07 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+      font-family:'Montserrat',sans-serif;
+      font-weight:700;
+      z-index:1;
+      box-shadow: 0 8px 22px rgba(176,123,7,0.22), inset 0 2px 0 rgba(255,255,255,0.35);
     }
+    .seal .year { font-size:18px; letter-spacing:1px; color:#fff; text-shadow:0 1px 0 rgba(0,0,0,0.2); }
 
     .cert-id {
-      position: absolute;
-      bottom: 35px;
-      left: 45px;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 0.75em;
-      color: #777;
-      z-index: 1;
-    }
-    
-    /* --- DOWNLOAD BUTTON --- */
-    .download-btn {
-      display: block;
-      width: 100%;
-      max-width: 900px;
-      margin: 20px 0;
-      background: #004a99; /* Professional blue */
-      color: #FFFFFF;
-      border: none;
-      font-family: 'Montserrat', sans-gserif;
-      padding: 15px 30px;
-      font-size: 1.2em;
-      cursor: pointer;
-      font-weight: 700;
-      border-radius: 5px;
-      transition: background 0.2s;
-    }
-    .download-btn:hover {
-      background: #00366f;
+      position:absolute;
+      right:36px;
+      bottom:46px;
+      font-family:'Montserrat',sans-serif;
+      color:var(--muted);
+      font-size:12px;
+      z-index:2;
     }
 
+    .disclaimer {
+      position:absolute;
+      left:50%;
+      transform:translateX(-50%);
+      bottom:12px;
+      font-size:11px;
+      color:var(--muted);
+      max-width:70%;
+      text-align:center;
+      z-index:2;
+    }
+
+    /* Right-side control panel */
+    .controls {
+      width:260px;
+      max-width:26%;
+      box-sizing:border-box;
+      font-family:'Montserrat',sans-serif;
+      background:#fff;
+      border-radius:8px;
+      padding:14px;
+      box-shadow:0 8px 30px rgba(12,12,12,0.06);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .controls h4{margin:0 0 6px 0; font-size:14px; color:#333; font-weight:700;}
+    .controls label{font-size:12px; color:#666; display:block; margin-bottom:6px;}
+    .controls input[type="text"], .controls input[type="date"], .controls textarea {
+      width:100%;
+      padding:8px 10px;
+      border:1px solid #ddd;
+      border-radius:4px;
+      font-size:13px;
+      box-sizing:border-box;
+    }
+    .controls button{
+      padding:10px 12px;
+      border-radius:6px;
+      border:none;
+      background:var(--gold);
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(176,123,7,0.18);
+    }
+    .controls .muted{background:#f5f5f5;color:#666;border:1px solid #eee; box-shadow:none;}
+
+    .small {font-size:12px;color:#777;}
+    .sig-canvas-wrap { background:#fff; border:1px dashed #ddd; padding:8px; border-radius:6px; }
+    canvas#sigpad { width:100%; height:120px; touch-action: none; border-radius:4px; display:block; background:#fff; cursor:crosshair; }
+
+    @media (max-width:980px){
+      .panel{flex-direction:column; align-items:center; gap:18px;}
+      .controls{max-width:92%; width:92%;}
+    }
   </style>
 </head>
 <body>
 
-<div class="controls">
-  <h2>Certificate Generator</h2>
-  <div class="control-grid">
-    <div>
-      <label for="name-input">Recipient's Name:</label>
-      <input type="text" id="name-input" value="Kolade Ogunlana">
-    </div>
-    <div>
-      <label for="course-input">Course Name:</label>
-      <input type="text" id="course-input" value="Legal Foundations & Modern Practice">
-    </div>
-    <div>
-      <label for="date-input">Date of Completion (e.g., November 17, 2025):</label>
-      <input type="text" id="date-input" value="November 17, 2025">
-    </div>
-    <div>
-      <label for="sig-name-input">Signatory Name:</label>
-      <input type="text" id="sig-name-input" value="Kolade Philip Ogunlana">
-    </div>
-    <div>
-      <label for="sig-title-input">Signatory Title:</label>
-      <input type="text" id="sig-title-input" value="President, Elvion AI Innovations">
-    </div>
-    <div>
-      <label for="cert-id-input">Certificate ID:</label>
-      <input type="text" id="cert-id-input" value="ELV-LAW-2025-987654">
-    </div>
-    <div style="grid-column: 1 / -1; font-family: 'Montserrat', sans-serif; font-size: 0.9em; background: #f4f4f4; padding: 10px; border-radius: 4px;">
-      <b>To customize images:</b> Edit the 'Image URLs' in the script tag at the bottom of the HTML file.
-    </div>
-  </div>
-</div>
+<div class="page">
+  <div class="panel">
 
-<div class="main-wrap">
-  <div id="certificate-to-download" class="certificate-wrap">
-    
-    <div class="cert-header">
-      <img id="cert-logo-img" class="cert-logo" src="" alt="Institute Logo">
-      <div class="cert-title">Certificate of Completion</div>
-    </div>
-    
-    <div class="cert-body">
-      <div class="cert-lead">This is to certify that</div>
-      <div id="cert-name" class="cert-name">Kolade Ogunlana</div>
-      <div class="cert-message">
-        has successfully completed the course
-        <br>
-        <strong id="cert-course">Legal Foundations & Modern Practice</strong>
-        <br>
-        awarded on <span id="cert-date" style="font-weight: 700;">November 17, 2025</span>
+    <!-- Certificate to export -->
+    <div id="certificate" class="certificate" role="main">
+      <div class="watermark" id="wm" style="background-image:url('https://i.postimg.cc/brGKkFLC/IMG-20251007-234104-159.webp');"></div>
+
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+
+      <div class="cert-head">
+        <div class="org-name" id="org-name">Elvion AI Innovations</div>
+        <div class="cert-title" id="cert-title">Certificate of Completion</div>
+        <div class="subtitle" id="subtitle">This is to certify that the individual named below has successfully completed the course indicated.</div>
+      </div>
+
+      <div class="main-body">
+        <div class="cert-intro">Awarded to</div>
+        <div class="recipient" id="recipient">Kolade Ogunlana</div>
+
+        <div class="field-label">Course</div>
+        <div class="course" id="course">LAW — Legal Foundations &amp; Modern Practice</div>
+
+        <div class="meta-row">
+          <div><strong>Grade</strong> &nbsp; <span id="grade">4.75 / 5.00</span></div>
+          <div style="opacity:0.5;">&middot;</div>
+          <div><strong>Date</strong> &nbsp; <span id="cdate"></span></div>
+        </div>
+
+        <div class="divider" role="separator"></div>
+
+        <div class="sign-area">
+          <div class="sign-left">
+            <img id="sig-image" class="signature-image" src="" alt="" style="display:none;">
+            <div class="sig-title">Signature</div>
+            <div class="signed-name" id="sig-name">Kolade Philip Ogunlana — President</div>
+          </div>
+
+          <div class="sign-right">
+            <div class="seal" title="Official Seal">
+              <div style="text-align:center">
+                <div class="year">2025</div>
+                <div style="font-size:10px; margin-top:4px;">ELVION</div>
+              </div>
+            </div>
+
+            <div class="cert-id" id="cert-id">ID: ELV-LAW-2025-987654</div>
+          </div>
+        </div>
+
+        <div class="disclaimer">This certificate is issued by Elvion AI Innovations for recognition of learning achievement. Not an accreditation for professional licensing.</div>
       </div>
     </div>
 
-    <div class="cert-footer">
-      <div class="signature-block">
-        <img id="cert-sig-img" class="sig-img" src="" alt="Signature">
-        <hr class="sig-line">
-        <div class="sig-caption">
-          <div id="cert-sig-name" class="sig-name">Kolade Philip Ogunlana</div>
-          <div id="cert-sig-title" class="sig-title">President, Elvion AI Innovations</div>
+    <!-- Controls: editable fields and signature tools -->
+    <div class="controls" aria-label="Certificate controls">
+      <h4>Certificate Controls</h4>
+
+      <label>Recipient name</label>
+      <input id="in-recipient" type="text" value="Kolade Ogunlana" />
+
+      <label>Course / Title</label>
+      <input id="in-course" type="text" value="LAW — Legal Foundations & Modern Practice" />
+
+      <label>Grade / Notes</label>
+      <input id="in-grade" type="text" value="4.75 / 5.00" />
+
+      <label>Date</label>
+      <input id="in-date" type="date" />
+
+      <label>Certificate ID</label>
+      <input id="in-id" type="text" value="ELV-LAW-2025-987654" />
+
+      <label class="small">Organization name</label>
+      <input id="in-org" type="text" value="Elvion AI Innovations" />
+
+      <hr style="border:none;border-top:1px solid #eee;margin:6px 0 6px 0;">
+
+      <label class="small">Signature (draw)</label>
+      <div class="sig-canvas-wrap">
+        <canvas id="sigpad"></canvas>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button id="clear-sign" class="muted small">Clear</button>
+          <button id="save-sign" class="muted">Save Signature</button>
         </div>
       </div>
-      <div class="seal-block">
-        <img id="cert-seal-img" class="cert-seal" src="" alt="Official Seal">
+
+      <label class="small" style="margin-top:8px;">Or upload signature image (PNG with transparent bg preferred)</label>
+      <input id="upload-sig" type="file" accept="image/*" />
+
+      <hr style="border:none;border-top:1px solid #eee;margin:6px 0 6px 0;">
+
+      <button id="apply" title="Apply fields & signature to certificate">Apply Changes</button>
+      <button id="download">Download Certificate (PNG)</button>
+
+      <div style="margin-top:8px;">
+        <div class="small">Tip: Draw signature, press "Save Signature", then "Apply Changes" and "Download". You can edit text fields at any time.</div>
       </div>
     </div>
 
-    <div id="cert-id-display" class="cert-id">Certificate ID: ELV-LAW-2025-987654</div>
   </div>
 </div>
 
-<button class="download-btn" onclick="downloadCertificate()">Download Certificate as PNG</button>
-
-
 <script>
-  // --- IMAGE URLS ---
-  // To use your own images, upload them (e.g., to postimg.cc) and paste the URLs here.
-  const LOGO_URL = "https://i.postimg.cc/brGKkFLC/IMG-20251007-234104-159.webp"; // Your Elvion AI Logo
-  
-  // This is where you put your own signature image!
-  const SIGNATURE_URL = "https://i.postimg.cc/K8Lxd4P7/20251014-123117.jpg"; // Your Signature
-  
-  // A placeholder for a classic red wax seal. Find one you like!
-  const SEAL_URL = "https://i.postimg.cc/x8XgQV3C/red-wax-seal-png-transparent.png";
+  // ---------- Utility: set default date to today ----------
+  (function setToday() {
+    const inDate = document.getElementById('in-date');
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    let mm = today.getMonth()+1; if(mm<10) mm='0'+mm;
+    let dd = today.getDate(); if(dd<10) dd='0'+dd;
+    inDate.value = yyyy+'-'+mm+'-'+dd;
+    document.getElementById('cdate').textContent = new Date().toLocaleDateString();
+  })();
 
+  // ---------- Wire up the editable text fields ----------
+  function applyFields(){
+    document.getElementById('recipient').textContent = document.getElementById('in-recipient').value || '—';
+    document.getElementById('course').textContent = document.getElementById('in-course').value || '—';
+    document.getElementById('grade').textContent = document.getElementById('in-grade').value || '—';
+    // date: if user cleared, show today's locale
+    const d = document.getElementById('in-date').value;
+    document.getElementById('cdate').textContent = d ? new Date(d).toLocaleDateString() : new Date().toLocaleDateString();
+    document.getElementById('cert-id').textContent = 'ID: ' + (document.getElementById('in-id').value || '');
+    document.getElementById('org-name').textContent = document.getElementById('in-org').value || 'Elvion AI Innovations';
+  }
+  document.getElementById('apply').addEventListener('click', applyFields);
 
-  // --- GET ELEMENTS ---
-  // Inputs
-  const nameInput = document.getElementById('name-input');
-  const courseInput = document.getElementById('course-input');
-  const dateInput = document.getElementById('date-input');
-  const sigNameInput = document.getElementById('sig-name-input');
-  const sigTitleInput = document.getElementById('sig-title-input');
-  const certIdInput = document.getElementById('cert-id-input');
+  // ---------- Signature drawing pad ----------
+  const canvas = document.getElementById('sigpad');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+  let lastX = 0, lastY = 0;
 
-  // Certificate Display
-  const certName = document.getElementById('cert-name');
-  const certCourse = document.getElementById('cert-course');
-  const certDate = document.getElementById('cert-date');
-  const certSigName = document.getElementById('cert-sig-name');
-  const certSigTitle = document.getElementById('cert-sig-title');
-  const certIdDisplay = document.getElementById('cert-id-display');
-  const certLogo = document.getElementById('cert-logo-img');
-  const certSig = document.getElementById('cert-sig-img');
-  const certSeal = document.getElementById('cert-seal-img');
+  function resizeCanvas(){
+    // adapt for high DPI for crisp lines
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const w = canvas.clientWidth;
+    const h = 120; // fixed
+    canvas.width = Math.floor(w * ratio);
+    canvas.height = Math.floor(h * ratio);
+    canvas.style.height = h + 'px';
+    canvas.style.width = w + 'px';
+    ctx.scale(ratio, ratio);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2.8;
+    ctx.strokeStyle = '#222';
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
 
-  // --- UPDATE FUNCTION ---
-  function updateCertificate() {
-    // Update Text
-    certName.textContent = nameInput.value || 'Recipient Name';
-    certCourse.textContent = courseInput.value || 'Course Name';
-    certDate.textContent = dateInput.value || new Date().toLocaleDateString();
-    certSigName.textContent = sigNameInput.value || 'Signatory Name';
-    certSigTitle.textContent = sigTitleInput.value || 'Signatory Title';
-    certIdDisplay.textContent = 'Certificate ID: ' + (certIdInput.value || 'N/A');
-
-    // Update Images
-    certLogo.src = LOGO_URL;
-    certSig.src = SIGNATURE_URL;
-    certSeal.src = SEAL_URL;
+  function getPointerPos(e){
+    const rect = canvas.getBoundingClientRect();
+    if(e.touches){
+      const t = e.touches[0];
+      return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+    } else {
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
   }
 
-  // --- EVENT LISTENERS ---
-  // Add listeners to all inputs to update the cert in real-time
-  [nameInput, courseInput, dateInput, sigNameInput, sigTitleInput, certIdInput].forEach(input => {
-    if (input) {
-      input.addEventListener('input', updateCertificate);
-    }
+  function startDraw(e){
+    drawing = true;
+    const p = getPointerPos(e);
+    lastX = p.x; lastY = p.y;
+    e.preventDefault();
+  }
+  function endDraw(e){
+    drawing = false;
+  }
+  function draw(e){
+    if(!drawing) return;
+    const p = getPointerPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastX = p.x; lastY = p.y;
+    e.preventDefault();
+  }
+
+  // event listeners
+  canvas.addEventListener('pointerdown', startDraw);
+  canvas.addEventListener('pointermove', draw);
+  canvas.addEventListener('pointerup', endDraw);
+  canvas.addEventListener('pointerleave', endDraw);
+
+  // Clear signature
+  document.getElementById('clear-sign').addEventListener('click', function(){
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    // when cleared, hide signature from certificate if not re-saved
+    document.getElementById('sig-image').style.display = 'none';
   });
 
-  // --- INITIALIZE ---
-  // Run once on load to set default values and images
-  document.addEventListener('DOMContentLoaded', updateCertificate);
+  // Save signature: converts canvas to dataURL and shows on certificate
+  document.getElementById('save-sign').addEventListener('click', function(){
+    // Trim white space around signature for better fit (basic approach)
+    const dataURL = canvas.toDataURL('image/png');
+    applySignatureToCertificate(dataURL);
+  });
 
-  // --- DOWNLOAD FUNCTION (from your original code) ---
-  function downloadCertificate() {
-    var cert = document.getElementById('certificate-to-download');
-    var certNameValue = document.getElementById('name-input').value.replace(/ /g, '-');
-    var certCourseValue = document.getElementById('course-input').value.replace(/ /g, '-');
+  // Upload signature image
+  document.getElementById('upload-sig').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const url = URL.createObjectURL(file);
+    applySignatureToCertificate(url, true);
+  });
 
-    html2canvas(cert, {
-      scale: 3, // Increase scale for higher resolution
+  function applySignatureToCertificate(dataURL, isBlobURL=false){
+    const img = document.getElementById('sig-image');
+    img.src = dataURL;
+    img.onload = function(){
+      img.style.display = 'block';
+    };
+    // store for future downloads (we keep the data url)
+    img.dataset.src = dataURL;
+    // optionally set sig-name area if you want dynamic
+    document.getElementById('sig-name').textContent = 'Kolade Philip Ogunlana — President';
+  }
+
+  // If user draws and does not save, pressing Apply should not auto-apply; we require Save
+  // But provide a helper: double click Apply will save current canvas too (not necessary here)
+
+  // ---------- Download (export) ----------
+  document.getElementById('download').addEventListener('click', function(){
+    // ensure fields are applied
+    applyFields();
+
+    const el = document.getElementById('certificate');
+
+    // temporarily set background to cream during capture to ensure correct bg
+    html2canvas(el, {
+      scale: 2,
       useCORS: true,
-      backgroundColor: '#FFFFFF' // Ensure background is white
-    }).then(function(canvas) {
-      var link = document.createElement('a');
-      link.download = `Certificate-${certNameValue}-${certCourseValue}.png`;
+      backgroundColor: null,
+      scrollY: -window.scrollY,
+      logging:false
+    }).then(function(canvas){
+      // create link
+      const link = document.createElement('a');
+      link.download = (document.getElementById('in-recipient').value || 'certificate') + '-certificate.png';
       link.href = canvas.toDataURL('image/png');
       link.click();
+    }).catch(function(err){
+      alert('Export failed: ' + err.message);
     });
-  }
-</script>
+  });
 
+  // Preload any existing signature if present in image element's dataset (none by default)
+  // Optionally initialize with a placeholder signature
+  (function init(){
+    // If a signature was previously saved (localStorage optional), you could load it here.
+    // For now, leave empty.
+  })();
+
+</script>
 </body>
-</html>
+        </html>
