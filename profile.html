@@ -479,7 +479,7 @@ pre:before {
 #callModal {
   display: none; position: fixed; top: 0; left: 0;
   width: 100vw; height: 100vh;
-  background: radial-gradient(circle at 60% 45%, #05143a 37%, #020410 88%, #13042c 100%);
+  background: var(--dark-bg);
   z-index: 4000;
   flex-direction: column; align-items: center;
   padding: 20px; box-sizing: border-box;
@@ -488,50 +488,50 @@ pre:before {
 #callHeader {
   color: var(--cyan); font-family: 'Orbitron', sans-serif;
   font-size: 1.5em; text-shadow: 0 0 10px var(--cyan);
-  margin-top: 15px;
-}
-#callStatusText {
-  color: #00ff77; font-size: 1.1em; margin: 10px 0 25px 0;
-  text-shadow: 0 0 8px #00ff7788;
 }
 #botImageContainer {
-  margin-top: 20px; position: relative; cursor: pointer;
+  margin-top: 20px; position: relative;
 }
 #botImageContainer img {
-  width: 180px; height: 180px;
+  width: 150px; height: 150px;
   border-radius: 50%;
   border: 4px solid var(--cyan);
   box-shadow: 0 0 30px var(--cyan);
-  transition: all 0.3s ease;
 }
 #botSpeakingIndicator {
   position: absolute; top: 0; left: 0;
-  width: 180px; height: 180px;
+  width: 150px; height: 150px;
   border-radius: 50%;
-  border: 4px solid #00ff00;
+  border: 4px solid var(--cyan); /* Use theme color */
+  box-shadow: 0 0 30px var(--cyan);
+  animation: pulse 1s infinite;
+  display: none;
+}
+/* NEW: User speaking indicator */
+#userSpeakingIndicator {
+  position: absolute; top: 0; left: 0;
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  border: 4px solid #00ff00; /* Green for user */
   box-shadow: 0 0 30px #00ff00;
   animation: pulse 1s infinite;
   display: none;
 }
-@keyframes pulse { 0% { opacity: 0; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
+@keyframes pulse { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
 #callConversation {
   flex-grow: 1; width: 100%; max-width: 600px;
   overflow-y: auto; margin: 20px 0;
   border: 1px solid var(--fade-blue);
-  background: rgba(0,0,0,0.2);
   border-radius: 10px; padding: 10px;
-  box-shadow: inset 0 0 15px rgba(0, 255, 247, 0.1);
 }
 .call-msg {
   padding: 8px 12px; border-radius: 10px;
   margin-bottom: 10px; line-height: 1.5;
-  word-wrap: break-word;
 }
 .call-msg.user { background: var(--gradient-user); color: var(--submit-text); text-align: right; }
 .call-msg.bot { background: var(--gradient-1); color: var(--main-text); }
 .call-msg.status { text-align: center; color: #888; font-style: italic; }
-.call-msg.user.interim { background: rgba(8, 87, 238, 0.3); color: #00fff0; font-style: italic; opacity: 0.8; }
-#callControls { display: flex; gap: 20px; margin-bottom: 20px; }
+#callControls { display: flex; gap: 20px; }
 #endCallBtn {
   background: #d23; color: white;
   font-size: 1.2em; padding: 10px 20px;
@@ -688,11 +688,10 @@ pre:before {
 
   <div id="callModal">
     <div id="callHeader">Philadelphia AI - Live Call</div>
-    <div id="callStatusText">Ringing...</div>
     <div id="botImageContainer">
-      <img src="https://i.postimg.cc/T34gY4n2/Philadelphia-AI-Call-Avatar.png" alt="Philadelphia AI">
+      <img src="https://i.postimg.cc/XqL63yM9/IMG-20250824-133336-309.jpg" alt="Bot">
       <div id="botSpeakingIndicator"></div>
-    </div>
+      <div id="userSpeakingIndicator"></div> </div>
     <div id="callConversation">
       <div class="call-msg status">Connecting...</div>
     </div>
@@ -726,6 +725,16 @@ const db = getFirestore(app); // Initialize Firestore
 
 // Short helper
 const $ = id => document.getElementById(id);
+
+// NEW HELPER: Convert Blob to Base64 Data URL
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result); // This will be the data URL
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
 
 // API Base URL
 const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
@@ -785,8 +794,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const endCallBtn = $('endCallBtn');
   const callConversation = $('callConversation');
   const botSpeakingIndicator = $('botSpeakingIndicator');
+  const userSpeakingIndicator = $('userSpeakingIndicator'); // NEW
   const typingStatus = $('typing-status'); 
-  const callStatusText = $('callStatusText');
 
   if (!chatForm || !chatBox || !toolsMenu || !typingStatus) {
     console.error("Essential UI elements are missing. App functionality will be limited.");
@@ -1096,13 +1105,11 @@ window.addEventListener('DOMContentLoaded', () => {
   // ---------- Chat Rendering Logic ----------
 
   const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-  
-  // Custom function to safely render pre-rendered HTML content within a chat bubble
-  // This is used for tool results (audio, images, videos)
-  const isToolResult = (text) => text && text.trim().startsWith('<'); 
 
   function inlineMarkdown(t = '') {
-    let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
+    // Note: This function does NOT escape HTML, which is intentional
+    // to allow <img> and <audio> tags from tools to render.
+    let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`); // Only escape inside code
     s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
@@ -1148,6 +1155,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  // FIX: Added Auto-scrolling on render
   function renderChatBox(messages = []) {
     if (!chatBox) return;
     chatBox.innerHTML = '';
@@ -1155,14 +1163,15 @@ window.addEventListener('DOMContentLoaded', () => {
     (messages || []).forEach((msg) => {
       const div = document.createElement('div');
       div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
+      // Store message ID and index for controls
       div.setAttribute('data-message-id', msg.id);
 
       let innerHtml = '';
-      let msgContent;
-      
       if (msg.role === 'user') {
         const fileHtml = (msg.files || [])
           .map(file => {
+            // We can't show previews for files from history without a storage solution
+            // So we show a placeholder
             let icon = 'fa-file';
             if (file.type.startsWith('image/')) icon = 'fa-file-image';
             else if (file.type.startsWith('video/')) icon = 'fa-file-video';
@@ -1173,42 +1182,33 @@ window.addEventListener('DOMContentLoaded', () => {
           })
           .join('');
         
-        msgContent = `
+        innerHtml = `<div class="msg">
           ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
           ${escapeHTML(msg.text || '')}
           <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
             <button class="inline-edit-btn" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
             <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
           </div>
-        `;
+        </div>`;
       } else { // AI message
-        if (isToolResult(msg.text)) {
-            // Render tool results as raw HTML, bypassing markdown/escape
-            msgContent = msg.text + `
-                <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                    <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-                </div>
-            `;
-        } else {
-            // Render regular markdown text
-            const { html } = renderMarkdown(msg.text || '');
-            msgContent = html + `
-                <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                    <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-                    <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-                    <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-                </div>
-            `;
-        }
+        const { html } = renderMarkdown(msg.text || '');
+        innerHtml = `<div class="msg">${html}
+          <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+            <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+            <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+            <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+        </div>`;
       }
       
-      div.innerHTML = `<div class="msg">${msgContent}</div>`;
+      div.innerHTML = innerHtml;
       chatBox.appendChild(div);
     });
     enhanceCodeBlocks(chatBox);
     hookAiMsgControls();
     hookUserMsgControls();
     
+    // FIX: Force scroll to bottom on load/render
     setTimeout(() => {
         chatBox.scrollTop = chatBox.scrollHeight;
     }, 50); 
@@ -1255,9 +1255,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (copyBtn) copyBtn.onclick = () => {
         try {
-          // If it's a tool result (HTML), copy the raw text content only
-          const textToCopy = isToolResult(msg.text) ? div.querySelector('.msg').textContent.trim() : msg.text;
-          navigator.clipboard.writeText(textToCopy.replace(/<\/?[^>]+(>|$)/g, ""));
+          // Create a temporary element to get innerText of rendered HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = msg.text;
+          navigator.clipboard.writeText(tempDiv.innerText || msg.text);
+          
           copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
           setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
         } catch (e) { console.warn('copy failed', e); }
@@ -1265,68 +1267,63 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (shareBtn) shareBtn.onclick = () => {
         try {
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = msg.text;
+          const shareText = tempDiv.innerText || msg.text;
+          
           const url = window.location.origin;
-          const shareText = `${msg.text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+          const fullShareText = `${shareText}\n\nShared via Philadelphia AI: ${url}`;
           if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
-          else prompt("Copy and share manually:", shareText);
+          else prompt("Copy and share manually:", fullShareText);
         } catch (e) { console.warn('share failed', e); }
       };
 
-      if (regenBtn) {
-        // Regen is only possible for non-tool chat responses
-        if (isToolResult(msg.text)) {
-            regenBtn.style.display = 'none'; 
-            shareBtn.style.display = 'none';
-            return;
-        }
+      if (regenBtn) regenBtn.onclick = async () => {
+          const msgIndex = currentMessages.findIndex(m => m.id === messageId);
+          if (msgIndex < 1) return; // Can't regenerate first message
 
-        regenBtn.onclick = async () => {
-            const msgIndex = currentMessages.findIndex(m => m.id === messageId);
-            if (msgIndex < 1) return; // Can't regenerate first message
+          const userMsg = currentMessages[msgIndex - 1];
+          if (userMsg.role !== 'user') return; // Preceding message wasn't user
 
-            const userMsg = currentMessages[msgIndex - 1];
-            if (userMsg.role !== 'user') return; // Preceding message wasn't user
+          // Delete this AI message and all subsequent messages
+          await deleteMessagesFrom(messageId);
+          
+          // Re-send the user message
+          chatInput.value = userMsg.text; // Load text into input
+          chatInput.style.height = 'auto'; // Reset height
+          chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
+          uploadedFiles = []; // Clear files (files are handled separately via db)
+          renderFilePreview();
+          
+          // Show "thinking..." immediately
+          showTypingAtNext(); 
+          
+          // Build history for regen
+          const historyForRegen = currentMessages
+              .slice(0, msgIndex - 1) // Get all messages *before* the user's prompt
+              .map(m => ({ role: m.role, content: m.text || '' }));
 
-            // Delete this AI message and all subsequent messages
-            await deleteMessagesFrom(messageId);
-            
-            // Re-send the user message
-            chatInput.value = userMsg.text; // Load text into input
-            chatInput.style.height = 'auto'; // Reset height
-            chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
-            uploadedFiles = []; // Clear files (files are handled separately via db)
-            renderFilePreview();
-            
-            // Show "thinking..." immediately
-            showTypingAtNext(); 
-            
-            // Build history for regen
-            const historyForRegen = currentMessages
-                .slice(0, msgIndex - 1) // Get all messages *before* the user's prompt
-                .map(m => ({ role: m.role, content: m.text || '' }));
+          try {
+              const res = await fetch(`${API_BASE_URL}/chat`, { 
+                  method: 'POST', 
+                  headers: { 'Content-Type': 'application/json' }, 
+                  body: JSON.stringify({ 
+                      message: userMsg.text, 
+                      history: historyForRegen, 
+                      user_id: currentUser?.uid || "user" 
+                  }) 
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || "Server error.");
+              
+              removeTyping();
+              await startTypewriter(data.response, true); // Typewriter effect for regen, AND save
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/chat`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ 
-                        message: userMsg.text, 
-                        history: historyForRegen, 
-                        user_id: currentUser?.uid || "user" 
-                    }) 
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Server error.");
-                
-                removeTyping();
-                await startTypewriter(data.response, false); // Typewriter effect for regen
-
-            } catch (err) {
-                removeTyping();
-                await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
-            }
-        };
-      }
+          } catch (err) {
+              removeTyping();
+              await startTypewriter(`❌ Regeneration error: ${err.message}`, true); // Save error
+          }
+      };
     });
   }
 
@@ -1344,7 +1341,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (copyBtn) copyBtn.onclick = () => {
         try {
-          navigator.clipboard.writeText(msg.text.replace(/<\/?[^>]+(>|$)/g, ""));
+          navigator.clipboard.writeText(msg.text);
           copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
           setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
         } catch (e) { console.warn('copy failed', e); }
@@ -1388,90 +1385,86 @@ window.addEventListener('DOMContentLoaded', () => {
     typingStatus.innerHTML = '';
   }
 
-  // --- Typewriter Function (FIXED: Handles HTML tool results) ---
+  // --- Typewriter Function (FIXED: Real-time and streaming support) ---
   async function startTypewriter(text, saveToDb = true) {
     if (!chatBox) return;
     
-    // Check if the content is pre-rendered HTML (from a tool)
-    const isHtmlContent = isToolResult(text);
-
-    // 1. Create a temporary message node
+    // 1. Create a temporary message node for the animation
     const div = document.createElement('div');
     div.className = "chat-message ai";
     const msgdiv = document.createElement('div');
     msgdiv.className = 'msg';
     div.appendChild(msgdiv);
-    chatBox.appendChild(div);
+    chatBox.appendChild(div); // Add temp node to chatBox
 
-    if (isHtmlContent) {
-        // --- Render static HTML content instantly (for tool results) ---
-        msgdiv.innerHTML = text + `
-            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-            </div>
-        `;
-    } else {
-        // --- Run Typewriter animation for regular text responses ---
-        let sofar = '';
-        const words = text.split(/(\s+)/);
-        let tempText = '';
+    let sofar = '';
+    const words = text.split(/(\s+)/); // Split on spaces, keeping them
+    let tempText = '';
 
-        for (const word of words) {
-            if (currentController?.signal.aborted) {
-                text = tempText;
-                break;
-            }
-            tempText += word;
-            
-            if (tempText.includes('```')) {
-                const parts = tempText.split('```');
-                sofar = parts.slice(0, parts.length -1).join('```');
-                if(parts.length % 2 === 0) sofar += '```';
-            } else {
-                sofar = tempText;
-            }
+    for (const word of words) {
+      if (currentController?.signal.aborted) {
+        text = tempText; // Save the aborted text
+        break;
+      }
+      tempText += word;
+      
+      // Only render full code blocks, not partial ones
+      if (tempText.includes('```')) {
+           const parts = tempText.split('```');
+           sofar = parts.slice(0, parts.length -1).join('```');
+           if(parts.length % 2 === 0) sofar += '```'; // Re-add the last separator if we're inside a block
+      } else {
+          sofar = tempText;
+      }
 
-            msgdiv.innerHTML = renderMarkdown(sofar).html;
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
-            const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30;
-            await new Promise(res => setTimeout(res, delay));
-        }
-        
-        // Finalize text content after typing/abortion
-        const finalRenderText = text;
-        
-        // 2. Add final controls to the temporary node
-        msgdiv.innerHTML = renderMarkdown(finalRenderText).html + `
-            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-                <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-                <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
-            </div>
-        `;
+      // Render the current segment
+      const { html } = renderMarkdown(sofar); // Use renderMarkdown
+      msgdiv.innerHTML = html;
+      // Scroll to keep up with the typing
+      chatBox.scrollTop = chatBox.scrollHeight;
+      
+      // Speed check: faster for symbols/spaces, slower for words
+      const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30;
+      await new Promise(res => setTimeout(res, delay));
     }
     
+    // Final text (handles full text or aborted text)
+    const finalRenderText = text;
+    
+    // 2. Render final HTML with controls
+    const { html: finalHtml } = renderMarkdown(finalRenderText);
+    msgdiv.innerHTML = finalHtml + `
+      <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+          <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+          <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
+          <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+    `;
     enhanceCodeBlocks(msgdiv);
     chatBox.scrollTop = chatBox.scrollHeight;
 
     // 3. Save the final message to Firestore
-    if (saveToDb) {
+    if (saveToDb && currentUser && currentChatId) {
         const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
         try {
-            await addDoc(messagesCol, {
+            const newMsgDoc = await addDoc(messagesCol, {
                 role: 'ai',
-                text: text, // Save the full text/HTML content
+                text: finalRenderText, // Save the full (or aborted) text
                 createdAt: serverTimestamp()
             });
-            // onSnapshot will replace the temp node.
+            // The onSnapshot listener will now fire,
+            // replacing our temporary node with the permanent, DB-driven one.
+            // We need to update the temp node's data-id so controls work before listener fires
+            div.setAttribute('data-message-id', newMsgDoc.id);
+            hookAiMsgControls(); // Re-hook controls for this new message
         } catch (e) {
             console.error("Error saving AI message: ", e);
             msgdiv.innerHTML += "<br><small style='color: #f44;'>Failed to save message.</small>";
         }
+    } else {
+       // If not saving, still hook controls to the temporary node
+       hookAiMsgControls();
     }
-    // Re-hook controls for the immediate DOM element (before DB update replaces it)
-    hookAiMsgControls(); 
-    hookUserMsgControls();
   }
 
 
@@ -1545,7 +1538,8 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to start video task.');
         
         removeTyping();
-        await startTypewriter(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I'll notify you when it's ready. This can take a few minutes. Do not leave this page or send another message or task.`);
+        // Don't save this message, let the poll result be saved
+        await startTypewriter(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I'll notify you when it's ready. This can take a few minutes. Do not leave this page or send another message or task.`, false);
         
         const pollInterval = setInterval(async () => {
             try {
@@ -1553,20 +1547,20 @@ window.addEventListener('DOMContentLoaded', () => {
                 const statusData = await statusRes.json();
                 if (statusRes.ok && statusData.url) {
                     clearInterval(pollInterval);
-                    // FIXED: Ensure HTML content is wrapped for proper display
-                    await startTypewriter(`🎉 Your video is ready! <br><video controls src="${statusData.url}" class="chat-media-preview video-preview-thumb"></video>`);
+                    // Save this message
+                    await startTypewriter(`🎉 Your video is ready! <br><video controls src="${statusData.url}" class="chat-media-preview video-preview-thumb"></video>`, true);
                 } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
                     clearInterval(pollInterval);
-                    await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
+                    await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`, true);
                 }
             } catch (pollErr) {
                 clearInterval(pollInterval);
-                await startTypewriter(`❌ Error checking video status.`);
+                await startTypewriter(`❌ Error checking video status.`, true);
             }
         }, 20000);
     } catch (err) {
         removeTyping();
-        await startTypewriter(`❌ Could not start video generation: ${err.message}`);
+        await startTypewriter(`❌ Could not start video generation: ${err.message}`, true);
     }
   }
 
@@ -1594,9 +1588,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
                 showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
+                // This tool returns a base64 string already, but it's handled differently (popup)
+                // We should also return it to the chat for history.
+                const dataUrl = `data:image/png;base64,${data.image_b64}`;
                 removeTyping();
-                // Return Markdown text for chat history
-                return `✅ Image generated! Check the floating image box to view or download.`;
+                return `✅ Image generated! <br><img src="${dataUrl}" alt="AI Generated Image" class="chat-media-preview image-preview-thumb">`;
             } catch (err) { removeTyping(); return `❌ Image generation failed: ${err.message}`; }
         }
     },
@@ -1618,10 +1614,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error((await res.json()).error || 'Failed to edit photo.');
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const dataUrl = await blobToBase64(blob); // FIX: Convert to base64
                 removeTyping();
-                // FIXED: Ensure HTML content is wrapped for proper display
-                return `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
+                return `✅ Photo edited successfully! <br><img src="${dataUrl}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
             } catch (err) { removeTyping(); return `❌ Photo edit failed: ${err.message}`; }
         }
     },
@@ -1641,10 +1636,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const dataUrl = await blobToBase64(blob); // FIX: Convert to base64
                 removeTyping();
-                // FIXED: Ensure HTML content is wrapped for proper display
-                return `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
+                return `✅ Background removed! <br><img src="${dataUrl}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
             } catch (err) { removeTyping(); return `❌ Background removal failed: ${err.message}`; }
         }
     },
@@ -1664,9 +1658,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
+                // This already returns base64, so it's fine.
                 const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview image-preview-thumb">`).join('');
                 removeTyping();
-                // FIXED: Ensure HTML content is wrapped for proper display
                 return `🖼️ Comic successfully created! <br>${imagesHtml}`;
             } catch (err) { removeTyping(); return `❌ Comic generation failed: ${err.message}`; }
         }
@@ -1701,10 +1695,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
                 if (!res.ok) throw new Error(await res.text());
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const dataUrl = await blobToBase64(blob); // FIX: Convert to base64
                 removeTyping();
-                // FIXED: Ensure HTML content is wrapped for proper display
-                return `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                // FIX: Removed "Voice generated!" text as requested
+                return `<audio controls src="${dataUrl}" class="chat-media-preview audio-preview-thumb"></audio>`;
             } catch (err) { removeTyping(); return `❌ Voice generation failed: ${err.message}`; }
         }
     },
@@ -1724,10 +1718,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const dataUrl = await blobToBase64(blob); // FIX: Convert to base64
                 removeTyping();
-                // FIXED: Ensure HTML content is wrapped for proper display
-                return `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                // FIX: Removed "Narration generated!" text as requested
+                return `<audio controls src="${dataUrl}" class="chat-media-preview audio-preview-thumb"></audio>`;
             } catch (err) { removeTyping(); return `❌ Audio narration failed: ${err.message}`; }
         }
     },
@@ -1741,8 +1735,8 @@ window.addEventListener('DOMContentLoaded', () => {
         handleSubmit: async (form) => {
             const payload = { prompt: form.querySelector('#video-prompt').value, duration: parseInt(form.querySelector('#video-duration').value, 10), resolution: "1080P" };
             await addMessageToChat('user', `Text-to-Video request: "${payload.prompt}"`);
-            handleVideoGeneration(payload); // This will handle its own typing indicators
-            return null; // Don't show generic text
+            handleVideoGeneration(payload); // This will handle its own typing indicators and saving
+            return null; // Return null so the form submit handler doesn't type anything
         }
     },
     "video-image": {
@@ -1757,8 +1751,8 @@ window.addEventListener('DOMContentLoaded', () => {
             if (!file) return "Please select an image.";
             await addMessageToChat('user', `Image-to-Video request for: ${file.name}`, [{name: file.name, type: file.type}]);
             const fd = new FormData(); fd.append('prompt', form.querySelector('#video-image-prompt').value); fd.append('file', file);
-            handleVideoGeneration(fd, true); // This will handle its own typing indicators
-            return null; // Don't show generic text
+            handleVideoGeneration(fd, true); // This will handle its own typing indicators and saving
+            return null; // Return null so the form submit handler doesn't type anything
         }
     },
     "music": {
@@ -1788,10 +1782,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/generate-music`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!res.ok) throw new Error((await res.json()).detail || 'API request failed.');
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const dataUrl = await blobToBase64(blob); // FIX: Convert to base64
                 removeTyping();
-                // FIXED: Ensure HTML content is wrapped for proper display
-                return `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                return `🎵 Your music is ready! <br><audio controls src="${dataUrl}" class="chat-media-preview audio-preview-thumb"></audio>`;
             } catch (err) { removeTyping(); return `❌ Music generation failed: ${err.message}`; }
         }
     },
@@ -1863,8 +1856,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/research`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) });
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--link-text);font-weight:bold;">Download PDF Report</a>`;
+                const dataUrl = await blobToBase64(blob); // FIX: Convert to base64
+                const downloadLink = `<a href="${dataUrl}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--link-text);font-weight:bold;">Download PDF Report</a>`;
                 removeTyping();
                 return `✅ Research report on **${topic}** is ready! ${downloadLink}`;
             } catch (err) { removeTyping(); return `❌ Research report failed: ${err.message}`; }
@@ -1884,7 +1877,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (tool.isAction) {
             const result = await tool.runAction();
             removeTyping();
-            if(result) await startTypewriter(result); // Use typewriter
+            if(result) await startTypewriter(result, true); // Use typewriter and save
         } else {
             displayToolForm(toolKey);
         }
@@ -1907,9 +1900,11 @@ window.addEventListener('DOMContentLoaded', () => {
         toolFormModalBg.classList.remove('active');
         const resultText = await tool.handleSubmit(toolForm);
         
+        // This handles cases where the tool returns a string result (e.g., image gen)
+        // If resultText is null (e.g., video gen which uses polling), no action is taken here.
         if (resultText) {
             removeTyping();
-            await startTypewriter(resultText); // Use typewriter
+            await startTypewriter(resultText, true); // Use typewriter and save
         }
         submitButton.innerHTML = originalButtonContent;
         submitButton.disabled = false;
@@ -1920,7 +1915,7 @@ window.addEventListener('DOMContentLoaded', () => {
   /* ---------- MAIN CHAT SUBMIT HANDLER (FIXED: Stop Button and Streaming) ---------- */
   chatForm.addEventListener('submit', async function (e) {
     e.preventDefault();
-    if (!currentChatId) {
+    if (!currentChatId || !currentUser) {
       alert("Please select a chat or create a new one.");
       return;
     }
@@ -1996,7 +1991,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // 3. Handle final response and cleanup
     removeTyping(); 
     if (finalResponse) {
-      await startTypewriter(finalResponse); 
+      await startTypewriter(finalResponse, true); // Save to DB
     }
     
     // 4. Restore button and clear controller
@@ -2124,24 +2119,25 @@ window.addEventListener('DOMContentLoaded', () => {
     applyTheme('cyber'); // Default
   }
 
-  // ---------- Voice Call Logic (FIXED: Interrupt/Tap to Talk) ----------
+  // ---------- Voice Call Logic (FIXED: Elder Voice, Interrupt, UI) ----------
   let speechRecognition;
   let isCallActive = false;
   let callHistory = [];
   let botIsSpeaking = false;
-  let listeningTimeout;
-  let botImageContainer = $('botImageContainer');
+  let userSaidSomething = false;
+  let currentCallAudio = null; // NEW: To store the playing audio for interruption
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRecognition) {
     speechRecognition = new SpeechRecognition();
-    speechRecognition.continuous = false; // Set to false for single utterance
+    speechRecognition.continuous = true;
     speechRecognition.interimResults = true;
     speechRecognition.lang = 'en-US';
 
     speechRecognition.onresult = (event) => {
         let interimTranscript = '';
         let finalTranscript = '';
+        userSaidSomething = true;
         
         for (let i = event.resultIndex; i < event.results.length; ++i) {
             if (event.results[i].isFinal) {
@@ -2161,36 +2157,49 @@ window.addEventListener('DOMContentLoaded', () => {
         userMsgEl.textContent = finalTranscript || interimTranscript;
         callConversation.scrollTop = callConversation.scrollHeight;
         
-        // Clear listening timeout if user is speaking
-        clearTimeout(listeningTimeout);
+        // NEW: Show user speaking indicator
+        if (userSaidSomething && userSpeakingIndicator) {
+            userSpeakingIndicator.style.display = 'block';
+        }
     };
     
-    // Using onend to trigger response
+    speechRecognition.onspeechend = () => {
+        // This fires when user stops talking
+    };
+
     speechRecognition.onend = () => {
         if (!isCallActive) return;
         
+        // NEW: Hide user speaking indicator
+        if(userSpeakingIndicator) userSpeakingIndicator.style.display = 'none';
+        
+        let finalTranscript = '';
         const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-        let finalTranscript = userMsgEl ? userMsgEl.textContent.trim() : '';
+        if (userMsgEl) {
+            finalTranscript = userMsgEl.textContent.trim();
+            userMsgEl.classList.remove('interim');
+        }
 
-        if (finalTranscript) {
-            if(userMsgEl) userMsgEl.classList.remove('interim');
-            callStatusText.textContent = 'User Spoke, Sending...';
+        if (botIsSpeaking) {
+            // Bot is speaking, just restart listening after it's done (in speakBotResponse)
+        } else if (finalTranscript && userSaidSomething) {
+            // User finished speaking, send to bot
+            userSaidSomething = false; // Reset flag
             callHistory.push({ role: 'user', content: finalTranscript });
             handleCallBotResponse();
         } else {
-            // No speech detected, restart listening after a short pause
-            callStatusText.textContent = 'Listening... (No speech detected)';
-            listeningTimeout = setTimeout(() => {
-                if(isCallActive && !botIsSpeaking) startListening();
-            }, 3000); // Wait 3 seconds of silence before restarting
+            // User didn't say anything, just restart listening
+            if (isCallActive) {
+                try { speechRecognition.start(); } catch(e) {}
+            }
         }
     };
     
     speechRecognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
-        if (event.error !== 'no-speech' && isCallActive) {
-             callStatusText.textContent = `Error: ${event.error}. Restarting...`;
-             if (!botIsSpeaking) startListening();
+        if(userSpeakingIndicator) userSpeakingIndicator.style.display = 'none';
+        if (event.error === 'no-speech' && isCallActive) {
+             userSaidSomething = false;
         }
     };
 
@@ -2199,28 +2208,6 @@ window.addEventListener('DOMContentLoaded', () => {
     console.warn("Speech Recognition not supported in this browser.");
   }
   
-  function startListening() {
-      if (!isCallActive || botIsSpeaking) return;
-      
-      // Remove any leftover interim messages
-      const interimMsg = callConversation.querySelector('.call-msg.user.interim');
-      if(interimMsg) callConversation.removeChild(interimMsg);
-      
-      callStatusText.textContent = 'Listening...';
-      try {
-          // Restart with `continuous = false` to handle single utterance flow
-          speechRecognition.continuous = false;
-          speechRecognition.start(); 
-      } catch(e) { 
-          // Ignore if already started
-      }
-  }
-  
-  function stopListening() {
-    clearTimeout(listeningTimeout);
-    try { speechRecognition.stop(); } catch(e) {}
-  }
-
   function addCallMessage(role, text) {
       const msgEl = document.createElement('div');
       msgEl.className = `call-msg ${role}`;
@@ -2232,19 +2219,24 @@ window.addEventListener('DOMContentLoaded', () => {
   async function handleCallBotResponse() {
       if (!isCallActive) return;
       
-      stopListening();
-      callStatusText.textContent = 'Philadelphia AI is thinking...';
+      // NEW: Hide user speaking indicator
+      if(userSpeakingIndicator) userSpeakingIndicator.style.display = 'none';
+      
+      addCallMessage('status', 'Philadelphia AI is thinking...');
       
       const historyForBot = callHistory.map(m => m);
       const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
       
       try {
+          // Stop recognition while thinking
+          speechRecognition.stop(); 
+          
           const res = await fetch(`${API_BASE_URL}/chat`, { 
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' }, 
               body: JSON.stringify({ 
                   message: userMessage, 
-                  history: historyForBot.slice(0, -1),
+                  history: historyForBot.slice(0, -1), // Send history *before* last user msg
                   user_id: currentUser?.uid || "user" 
               }) 
           });
@@ -2254,10 +2246,8 @@ window.addEventListener('DOMContentLoaded', () => {
           const botResponse = data.response;
           callHistory.push({ role: 'ai', content: botResponse });
           
-          // Remove "thinking" status (should be the last child if added)
-          const thinkingMsg = callConversation.querySelector('.call-msg.status:last-child');
-          if (thinkingMsg) callConversation.removeChild(thinkingMsg);
-
+          // Remove "thinking" status and add bot response
+          callConversation.removeChild(callConversation.lastChild);
           addCallMessage('bot', botResponse);
           
           // Speak the response
@@ -2266,12 +2256,13 @@ window.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
           const errorMsg = `❌ Call error: ${err.message}`;
           // Remove "thinking" status and add error
-          const thinkingMsg = callConversation.querySelector('.call-msg.status:last-child');
-          if (thinkingMsg) callConversation.removeChild(thinkingMsg);
+          callConversation.removeChild(callConversation.lastChild);
           addCallMessage('bot', errorMsg);
           
           // Restart listening
-          if (isCallActive) startListening();
+          if (isCallActive) {
+             try { speechRecognition.start(); } catch(e) {}
+          }
       }
   }
 
@@ -2279,10 +2270,11 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!isCallActive) return;
       
       botIsSpeaking = true;
-      botSpeakingIndicator.style.display = 'block';
-      callStatusText.textContent = 'Philadelphia AI is speaking...';
+      if (botSpeakingIndicator) botSpeakingIndicator.style.display = 'block';
+      if (userSpeakingIndicator) userSpeakingIndicator.style.display = 'none';
       
       try {
+          // FIX: Using Minimax "elder" voice specifically
           const res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, { 
               method: 'POST', 
               headers: {'Content-Type': 'application/json'}, 
@@ -2293,19 +2285,28 @@ window.addEventListener('DOMContentLoaded', () => {
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           const audio = new Audio(url);
+          currentCallAudio = audio; // NEW: Store for interruption
           
           audio.onended = () => {
+              currentCallAudio = null; // NEW: Clear on end
               botIsSpeaking = false;
-              botSpeakingIndicator.style.display = 'none';
-              if (isCallActive) startListening();
+              if (botSpeakingIndicator) botSpeakingIndicator.style.display = 'none';
+              // Restart listening for user
+              if (isCallActive) {
+                  try { speechRecognition.start(); } catch(e) {}
+              }
           };
           audio.play();
           
       } catch (err) {
           console.error("Voice gen error:", err);
+          currentCallAudio = null; // NEW: Clear on error
           botIsSpeaking = false;
-          botSpeakingIndicator.style.display = 'none';
-          if (isCallActive) startListening();
+          if (botSpeakingIndicator) botSpeakingIndicator.style.display = 'none';
+          // Failed to speak, just restart listening
+          if (isCallActive) {
+              try { speechRecognition.start(); } catch(e) {}
+          }
       }
   }
 
@@ -2316,43 +2317,62 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     isCallActive = true;
     callModal.classList.add('active');
-    callConversation.innerHTML = ''; 
-    callStatusText.textContent = 'Ringing...';
-    callHistory = [];
+    callConversation.innerHTML = ''; // Clear old call
+    addCallMessage('status', 'Calling...'); // NEW: Calling status
+    callHistory = []; // Reset history
     
+    // NEW: Simulate ringing
     setTimeout(() => {
-        addCallMessage('status', 'Connected. Philadelphia AI is ready.');
-        callStatusText.textContent = 'In Call. Tap the avatar to talk.';
-        startListening();
-    }, 2000);
+        if (!isCallActive) return; // User might have cancelled
+        addCallMessage('status', 'Connected. Speak when ready...');
+        // Start listening
+        try {
+            speechRecognition.start();
+        } catch(e) {
+            console.error("Speech recognition start failed", e);
+            addCallMessage('status', 'Could not start microphone. Please check permissions.');
+        }
+    }, 2500); // 2.5 second "ring"
   });
-  
-  // TAP TO INTERRUPT
-  if(botImageContainer) {
-      botImageContainer.addEventListener('click', () => {
-          if (isCallActive && botIsSpeaking) {
-              // Stop bot speech (if possible, though Audio() has no easy stop)
-              // We'll rely on the status change and immediate listening restart
-              
-              // Simulate stopping the audio immediately
-              botIsSpeaking = false;
-              botSpeakingIndicator.style.display = 'none';
-              
-              addCallMessage('status', 'Interrupted. User is speaking...');
-              startListening();
-          } else if (isCallActive && !botIsSpeaking) {
-              addCallMessage('status', 'You can speak now...');
-              startListening();
-          }
-      });
-  }
+
+  // NEW: Add interrupt listener to the whole modal
+  callModal.addEventListener('click', () => {
+      if (botIsSpeaking && currentCallAudio) {
+          console.log("Interrupting AI...");
+          currentCallAudio.pause();
+          currentCallAudio = null;
+          botIsSpeaking = false;
+          if (botSpeakingIndicator) botSpeakingIndicator.style.display = 'none';
+          
+          addCallMessage('status', 'Listening...');
+          
+          try { 
+              speechRecognition.stop(); // Stop just in case
+          } catch(e) {} 
+          
+          setTimeout(() => { // Short delay to ensure stop completes
+              if(isCallActive) {
+                try { 
+                    speechRecognition.start(); // Immediately restart
+                } catch(e) {}
+              }
+          }, 100);
+      }
+  });
 
   endCallBtn.addEventListener('click', () => {
     isCallActive = false;
     botIsSpeaking = false;
-    stopListening();
+    if (currentCallAudio) { // Stop any playing audio
+        currentCallAudio.pause();
+        currentCallAudio = null;
+    }
     callModal.classList.remove('active');
-    botSpeakingIndicator.style.display = 'none';
+    try {
+        speechRecognition.stop();
+    } catch(e) {}
+    if (botSpeakingIndicator) botSpeakingIndicator.style.display = 'none';
+    if (userSpeakingIndicator) userSpeakingIndicator.style.display = 'none';
   });
 
   // Final initial render (will be triggered by auth state)
