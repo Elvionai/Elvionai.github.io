@@ -60,8 +60,8 @@ body { overflow: hidden; min-height: 100vh; width: 100vw; }
 }
 .star {
   position:absolute;
-  background: #08ecff;
-  box-shadow:0 0 12px #00fff9cc,0 0 22px #1bf2f2cc;
+  background: var(--cyan); /* Use theme color for stars */
+  box-shadow: 0 0 12px var(--cyan), 0 0 22px var(--cyan);
   opacity: 0.23;
   border-radius: 50%;
   pointer-events: none;
@@ -123,7 +123,7 @@ body { overflow: hidden; min-height: 100vh; width: 100vw; }
     overflow-y: hidden;
     position: relative;
     padding-top: 70px;
-    padding-bottom: 86px;
+    padding-bottom: 86px; /* Space for the input row */
     box-sizing: border-box;
 }
 .chat-box {
@@ -132,12 +132,24 @@ body { overflow: hidden; min-height: 100vh; width: 100vw; }
   overflow-x: hidden;
   width: 100vw; max-width: 635px; margin: 0 auto;
   box-sizing: border-box;
-  padding: 15px 8px 40px 8px;
+  padding: 15px 8px 15px 8px; /* Removed extra bottom padding */
   position: relative;
   z-index:3;
   scroll-behavior: smooth;
   display: flex;
   flex-direction: column;
+}
+/* This is the new, separate typing indicator container */
+#typing-status {
+  display: none; /* Hidden by default */
+  max-width: 635px;
+  margin: 0 auto;
+  padding: 0 8px;
+  width: 100vw;
+  box-sizing: border-box;
+  flex-shrink: 0; /* Prevent it from collapsing */
+  min-height: 20px; /* Give it some space */
+  padding-bottom: 10px;
 }
 .chat-message {
   width: 100%; display: flex; gap:9px; align-items: flex-end;
@@ -169,7 +181,8 @@ body { overflow: hidden; min-height: 100vh; width: 100vw; }
   max-width: 68vw;
 }
 @media (max-width:790px) {
-  .chat-box { max-width:100vw; padding: 15px 4px 40px 4px; }
+  .chat-box { max-width:100vw; padding: 15px 4px 15px 4px; }
+  #typing-status { padding: 0 4px 10px 4px; }
   .chat-message .msg { font-size: .97em; padding:9px 4vw 10px 5vw; max-width:80vw;}
   .chat-message.user .msg { max-width: 83vw; }
 }
@@ -188,11 +201,11 @@ body { overflow: hidden; min-height: 100vh; width: 100vw; }
   display:inline-block;
   width: 8px; height: 8px;
   margin:0 3px; 
-  background: #05fff9;
+  background: var(--cyan);
   border-radius: 50%;
   opacity: 0.85;
   animation: typing-blink 1.4s infinite both;
-  box-shadow: 0 0 6px #05fff9aa;
+  box-shadow: 0 0 6px var(--cyan);
 }
 .dot-anim:nth-child(2){animation-delay:.3s;}
 .dot-anim:nth-child(3){animation-delay:.6s;}
@@ -219,7 +232,7 @@ pre {
 }
 pre:before {
   content: "CODE";
-  color: #07eefb;
+  color: var(--cyan);
   font-size: 0.82em;
   font-family: 'Orbitron', monospace;
   position: absolute; top: 5px; right: 29px; opacity: 0.17;
@@ -237,13 +250,13 @@ pre:before {
 .copy-btn:hover { background: #008cee; color: #fff; }
 .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
   padding:4px 10px; border-radius:7px; border:none;
-  background:linear-gradient(94deg,#00fff6,#0090ff 97%);
-  color:#0f1a31; font-family:'Inter',Arial,sans-serif; font-size:.96em;
+  background:var(--submit-bg);
+  color:var(--submit-text); font-family:'Inter',Arial,sans-serif; font-size:.96em;
   font-weight:600; display:inline-flex; align-items:center; gap:4px; 
   margin-top:6px; margin-right: 3px; cursor:pointer;
   box-shadow:0 2px 7px #17f6fe51;transition:background .14s,color .13s;
 }
-.inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover{background:#009cff; color:#fff;}
+.inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover{background:var(--submit-hover-bg); color:var(--submit-hover-text);}
 .file-attachments {
     display: flex;
     flex-wrap: wrap;
@@ -258,8 +271,8 @@ pre:before {
   display: block;
 }
 .image-preview-thumb, .video-preview-thumb {
-  border: 2px solid #00fff2;
-  box-shadow: 0 0 10px #00eaff88;
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
 }
 /* Make AI images clickable */
 .chat-message.ai .msg img.chat-media-preview {
@@ -276,7 +289,7 @@ pre:before {
   background: #0b2447;
   border: 1px solid #1af8ff51;
   border-radius: 10px;
-  color: #00fff6;
+  color: var(--cyan);
   text-decoration: none;
   font-size: 0.9em;
   font-weight: bold;
@@ -525,6 +538,8 @@ pre:before {
     </div>
 
     <div class="chat-box" id="chatBox"></div>
+    
+    <div id="typing-status" class="chat-message ai" style="display: none;"></div>
 
     <form class="chat-input-row" id="chatForm" autocomplete="off">
       <button type="button" id="emojiBtn" title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
@@ -691,7 +706,6 @@ let currentChatId = null;
 let currentMessages = []; // Array of {id, role, text, files, createdAt}
 let uploadedFiles = [];
 let currentUser = null;
-let typingNode = null;
 let currentController = null;
 
 // Firestore listener unsubscribers
@@ -741,8 +755,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const endCallBtn = $('endCallBtn');
   const callConversation = $('callConversation');
   const botSpeakingIndicator = $('botSpeakingIndicator');
+  const typingStatus = $('typing-status'); // ** NEW: Typing indicator element **
 
-  if (!chatForm || !chatBox || !toolsMenu) {
+  if (!chatForm || !chatBox || !toolsMenu || !typingStatus) {
     console.error("Essential UI elements are missing. App functionality will be limited.");
     return;
   }
@@ -1150,13 +1165,11 @@ window.addEventListener('DOMContentLoaded', () => {
     hookAiMsgControls();
     hookUserMsgControls();
     
-    // Scroll to bottom only if user isn't scrolled up
-    if (chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 200) {
-      setTimeout(() => {
-        const last = chatBox.lastElementChild;
-        if (last) last.scrollIntoView({ behavior: "smooth", block: "end" });
-      }, 20);
-    }
+    // ** NEW: Force scroll to bottom **
+    // This ensures that on load, the chat snaps to the end.
+    setTimeout(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 50); // Small delay to ensure all elements are rendered
   }
 
   // --- New Firestore-Aware Message Controls ---
@@ -1226,13 +1239,11 @@ window.addEventListener('DOMContentLoaded', () => {
           await deleteMessagesFrom(messageId);
           
           // Re-send the user message
-          // The main submit handler will now be used, but we need to re-create the context
           chatInput.value = ''; // Clear input
           uploadedFiles = []; // Clear files
           renderFilePreview();
           
-          // Add a placeholder message to UI
-          showTypingAtNext();
+          showTypingAtNext(); // Show "thinking..."
           
           // Build history for regen
           const historyForRegen = currentMessages
@@ -1253,11 +1264,11 @@ window.addEventListener('DOMContentLoaded', () => {
               if (!res.ok) throw new Error(data.error || "Server error.");
               
               removeTyping();
-              await typeBotMessage(data.response, false); // Add AI response without adding a new user msg
+              await startTypewriter(data.response, false); // Typewriter effect for regen
 
           } catch (err) {
               removeTyping();
-              await typeBotMessage(`❌ Regeneration error: ${err.message}`, false);
+              await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
           }
       };
     });
@@ -1299,79 +1310,94 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // --- New Typing Indicator Functions ---
+  // These now control the separate `typing-status` div
   function showTypingAtNext() {
-    removeTyping();
-    if (!chatBox) return;
-    typingNode = document.createElement('div');
-    typingNode.className = 'chat-message ai';
-    typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
-    chatBox.appendChild(typingNode);
-    setTimeout(() => {
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }, 20);
+    if (!typingStatus) return;
+    typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
+    typingStatus.style.display = 'flex';
+    typingStatus.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+
+  function showTypingWithText(text) {
+      if (!typingStatus) return;
+      typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span> <span style="margin-left:8px; color:var(--main-text); font-style:italic;">${text}</span></div>`;
+      typingStatus.style.display = 'flex';
+      typingStatus.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
   function removeTyping() {
-    if (typingNode && typingNode.parentNode) {
-      typingNode.parentNode.removeChild(typingNode);
-      typingNode = null;
-    }
+    if (!typingStatus) return;
+    typingStatus.style.display = 'none';
+    typingStatus.innerHTML = '';
   }
 
-  async function typeBotMessage(text, isNewUserMessage = true) {
-    removeTyping();
-    if (!chatBox) return;
-    
-    // Add the AI message to Firestore
-    if (isNewUserMessage) {
+  // --- New Typewriter Function ---
+  async function startTypewriter(text, saveToDb = true) {
+    // 1. Create a temporary message node for the animation
+    const div = document.createElement('div');
+    div.className = "chat-message ai";
+    const msgdiv = document.createElement('div');
+    msgdiv.className = 'msg';
+    div.appendChild(msgdiv);
+    chatBox.appendChild(div); // Add temp node to chatBox
+
+    let sofar = '';
+    const words = text.split(/(\s+)/); // Split on spaces, keeping them
+    let tempText = '';
+
+    for (const word of words) {
+      if (currentController?.signal.aborted) {
+        text = tempText; // Save the aborted text
+        break;
+      }
+      tempText += word;
+      
+      // Only render full code blocks, not partial ones
+      if (tempText.includes('```')) {
+           const parts = tempText.split('```');
+           sofar = parts.slice(0, parts.length -1).join('```');
+           if(parts.length % 2 === 0) sofar += '```'; // Re-add the last separator if we're inside a block
+      } else {
+          sofar = tempText;
+      }
+
+      msgdiv.innerHTML = renderMarkdown(sofar).html;
+      chatBox.scrollTop = chatBox.scrollHeight;
+      await new Promise(res => setTimeout(res, 35)); // Typewriter speed
+    }
+
+    // 2. Add final controls to the temporary node
+    msgdiv.innerHTML = renderMarkdown(text).html + `
+      <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+          <button class="inline-copy-btn" title="Copy" disabled><i class="fa-solid fa-copy"></i></button>
+          <button class="inline-share-btn" title="Share" disabled><i class="fa-solid fa-share"></i></button>
+          <button class="regen-btn" title="Regenerate" disabled><i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+    `;
+    enhanceCodeBlocks(msgdiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // 3. Save the final message to Firestore
+    if (saveToDb) {
         const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
         try {
             await addDoc(messagesCol, {
                 role: 'ai',
-                text: text,
+                text: text, // Save the full (or aborted) text
                 createdAt: serverTimestamp()
             });
-            // The onSnapshot listener will handle rendering
+            // The onSnapshot listener will now fire,
+            // replacing our temporary node with the permanent, DB-driven one.
+            // It will look seamless.
         } catch (e) {
             console.error("Error saving AI message: ", e);
-            // Fallback: render manually
-            _renderAITypingFallback(text);
-        }
-    } else {
-        // This is for regeneration, where we don't want to re-add the user message
-        // We just add the AI's response
-        const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
-        try {
-            await addDoc(messagesCol, {
-                role: 'ai',
-                text: text,
-                createdAt: serverTimestamp()
-            });
-        } catch (e) {
-             console.error("Error saving AI regen message: ", e);
+            msgdiv.innerHTML += "<br><small style='color: #f44;'>Failed to save message.</small>";
         }
     }
+    // If saveToDb is false (for regen), we'll save it in the regen function
   }
 
-  // Fallback renderer if Firestore fails
-  function _renderAITypingFallback(text) {
-      const div = document.createElement('div');
-      div.className = "chat-message ai";
-      const msgdiv = document.createElement('div');
-      msgdiv.className = 'msg';
-      div.appendChild(msgdiv);
-      chatBox.appendChild(div);
-
-      msgdiv.innerHTML = renderMarkdown(text).html + `
-        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-            <button class="inline-copy-btn" title="Copy" disabled><i class="fa-solid fa-copy"></i></button>
-            <button class="inline-share-btn" title="Share" disabled><i class="fa-solid fa-share"></i></button>
-            <button class="regen-btn" title="Regenerate" disabled><i class="fa-solid fa-rotate-right"></i></button>
-        </div>
-      `;
-      enhanceCodeBlocks(msgdiv);
-      chatBox.scrollTop = chatBox.scrollHeight;
-  }
 
   function renderFilePreview() {
     if (!filePreview) return;
@@ -1433,16 +1459,6 @@ window.addEventListener('DOMContentLoaded', () => {
       }
   }
 
-  function showTypingWithText(text) {
-      removeTyping();
-      if (!chatBox) return;
-      typingNode = document.createElement('div');
-      typingNode.className = 'chat-message ai';
-      typingNode.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span> <span style="margin-left:8px; color:#a8eaff; font-style:italic;">${text}</span></div>`;
-      chatBox.appendChild(typingNode);
-      chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
   async function handleVideoGeneration(payload, isImageToVideo = false) {
     showTypingWithText('Submitting video generation job...');
     try {
@@ -1453,7 +1469,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to start video task.');
         
         removeTyping();
-        await typeBotMessage(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I'll notify you when it's ready. This can take a few minutes. Do not leave this page or send another message or task.`);
+        await startTypewriter(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I'll notify you when it's ready. This can take a few minutes. Do not leave this page or send another message or task.`);
         
         const pollInterval = setInterval(async () => {
             try {
@@ -1461,19 +1477,19 @@ window.addEventListener('DOMContentLoaded', () => {
                 const statusData = await statusRes.json();
                 if (statusRes.ok && statusData.url) {
                     clearInterval(pollInterval);
-                    await typeBotMessage(`🎉 Your video is ready! <br><video controls src="${statusData.url}" class="chat-media-preview video-preview-thumb"></video>`);
+                    await startTypewriter(`🎉 Your video is ready! <br><video controls src="${statusData.url}" class="chat-media-preview video-preview-thumb"></video>`);
                 } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
                     clearInterval(pollInterval);
-                    await typeBotMessage(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
+                    await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
                 }
             } catch (pollErr) {
                 clearInterval(pollInterval);
-                await typeBotMessage(`❌ Error checking video status.`);
+                await startTypewriter(`❌ Error checking video status.`);
             }
         }, 20000);
     } catch (err) {
         removeTyping();
-        await typeBotMessage(`❌ Could not start video generation: ${err.message}`);
+        await startTypewriter(`❌ Could not start video generation: ${err.message}`);
     }
   }
 
@@ -1492,16 +1508,18 @@ window.addEventListener('DOMContentLoaded', () => {
             <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
         handleSubmit: async (form) => {
             const use_minimax = form.querySelector('#tool-provider').value === 'minimax';
+            const providerName = use_minimax ? 'Version 2 (Creative)' : 'Version 1 (Stylized)';
             const payload = { prompt: form.querySelector('#tool-prompt').value, model: form.querySelector('#tool-style').value, use_minimax };
-            await addMessageToChat('user', `Image generation request: "${payload.prompt}"`);
+            await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
             showTypingWithText('Generating your image...');
             try {
                 const res = await fetch(`${API_BASE_URL}/generate-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
                 showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
+                removeTyping();
                 return '✅ Image generated! Check the floating image box to view or download.';
-            } catch (err) { return `❌ Image generation failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Image generation failed: ${err.message}`; }
         }
     },
     "edit-photo": {
@@ -1517,14 +1535,14 @@ window.addEventListener('DOMContentLoaded', () => {
             const prompt = form.querySelector('#tool-prompt').value;
             await addMessageToChat('user', `Photo edit request for ${file.name}: "${prompt}"`, [{name: file.name, type: file.type}]);
             showTypingWithText('Editing your photo...');
-            const fd = new FormData(); fd.append('prompt', prompt); fd.append('file', file);
             try {
                 const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error((await res.json()).error || 'Failed to edit photo.');
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
+                removeTyping();
                 return `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
-            } catch (err) { return `❌ Photo edit failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Photo edit failed: ${err.message}`; }
         }
     },
      "remove-bg": {
@@ -1544,8 +1562,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
+                removeTyping();
                 return `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
-            } catch (err) { return `❌ Background removal failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Background removal failed: ${err.message}`; }
         }
     },
     "comic": {
@@ -1565,8 +1584,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
                 const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview image-preview-thumb">`).join('');
+                removeTyping();
                 return `🖼️ Comic successfully created! <br>${imagesHtml}`;
-            } catch (err) { return `❌ Comic generation failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Comic generation failed: ${err.message}`; }
         }
     },
     "voice-gen": {
@@ -1586,7 +1606,8 @@ window.addEventListener('DOMContentLoaded', () => {
         },
         handleSubmit: async (form) => {
             const provider = form.querySelector('#tool-provider').value, text = form.querySelector('#tool-prompt').value, style = form.querySelector('#tool-style').value;
-            await addMessageToChat('user', `Voice generation request using ${provider}.`);
+            const providerName = provider === 'minimax' ? 'Seraphina' : 'Philadelphia';
+            await addMessageToChat('user', `Voice generation request using ${providerName}.`);
             showTypingWithText('Generating your audio...');
             try {
                 let res;
@@ -1599,8 +1620,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(await res.text());
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
+                removeTyping();
                 return `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
-            } catch (err) { return `❌ Voice generation failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Voice generation failed: ${err.message}`; }
         }
     },
     "audio-narration": {
@@ -1620,8 +1642,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
+                removeTyping();
                 return `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
-            } catch (err) { return `❌ Audio narration failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Audio narration failed: ${err.message}`; }
         }
     },
     "video-text": {
@@ -1634,7 +1657,7 @@ window.addEventListener('DOMContentLoaded', () => {
         handleSubmit: async (form) => {
             const payload = { prompt: form.querySelector('#video-prompt').value, duration: parseInt(form.querySelector('#video-duration').value, 10), resolution: "1080P" };
             await addMessageToChat('user', `Text-to-Video request: "${payload.prompt}"`);
-            handleVideoGeneration(payload);
+            handleVideoGeneration(payload); // This will handle its own typing indicators
             return null;
         }
     },
@@ -1650,7 +1673,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (!file) return "Please select an image.";
             await addMessageToChat('user', `Image-to-Video request for: ${file.name}`, [{name: file.name, type: file.type}]);
             const fd = new FormData(); fd.append('prompt', form.querySelector('#video-image-prompt').value); fd.append('file', file);
-            handleVideoGeneration(fd, true);
+            handleVideoGeneration(fd, true); // This will handle its own typing indicators
             return null;
         }
     },
@@ -1682,8 +1705,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error((await res.json()).detail || 'API request failed.');
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
+                removeTyping();
                 return `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
-            } catch (err) { return `❌ Music generation failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Music generation failed: ${err.message}`; }
         }
     },
     "website": {
@@ -1700,8 +1724,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/create-website`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, user_id: currentUser.uid }) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
+                removeTyping();
                 return `🌐 Website deployed successfully! [View here](${data.url})`;
-            } catch (err) { return `❌ Website creation failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Website creation failed: ${err.message}`; }
         }
     },
     "edit-website": {
@@ -1718,8 +1743,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/edit-website`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction, user_id: currentUser.uid }) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
+                removeTyping();
                 return `✏️ Website updated successfully! [View new version here](${data.url})`;
-            } catch (err) { return `❌ Website edit failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Website edit failed: ${err.message}`; }
         }
     },
     "my-sites": {
@@ -1733,8 +1759,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
                 if (!data.sites || data.sites.length === 0) return "You haven't created any websites yet.";
                 const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
+                removeTyping();
                 return `Here are the websites you've created:\n${siteList}`;
-            } catch (err) { return `❌ Error fetching websites: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Error fetching websites: ${err.message}`; }
         }
     },
     "research-report": {
@@ -1752,9 +1779,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
-                const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:#00eaff;font-weight:bold;">Download PDF Report</a>`;
+                const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--link-text);font-weight:bold;">Download PDF Report</a>`;
+                removeTyping();
                 return `✅ Research report on **${topic}** is ready! ${downloadLink}`;
-            } catch (err) { return `❌ Research report failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Research report failed: ${err.message}`; }
         }
     },
   };
@@ -1771,7 +1799,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (tool.isAction) {
             const result = await tool.runAction();
             removeTyping();
-            await typeBotMessage(result);
+            await startTypewriter(result); // Use typewriter
         } else {
             displayToolForm(toolKey);
         }
@@ -1795,7 +1823,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const resultText = await tool.handleSubmit(toolForm);
         if (resultText) {
             removeTyping();
-            await typeBotMessage(resultText);
+            await startTypewriter(resultText); // Use typewriter
         }
         submitButton.innerHTML = originalButtonContent;
         submitButton.disabled = false;
@@ -1865,7 +1893,7 @@ window.addEventListener('DOMContentLoaded', () => {
         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
       }
     } else if (msgText) {
-      showTypingAtNext();
+      showTypingAtNext(); // Show "..."
       try {
         // Build history from currentMessages
         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
@@ -1879,15 +1907,15 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    removeTyping();
+    removeTyping(); // Remove "..."
     if (finalResponse) {
-      await typeBotMessage(finalResponse);
+      await startTypewriter(finalResponse); // Start typewriter
     }
     stopButton.replaceWith(sendBtn);
     currentController = null;
   });
   
-  // ---------- Theme Switcher Logic ----------
+  // ---------- Theme Switcher Logic (NEW THEMES) ----------
   const themes = {
     cyber: { // Default
       '--cyan': '#00fff7', '--blue': '#0a8afe', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
@@ -1907,57 +1935,6 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-anim-glow-2': '0 0 29px #00ffe9ee,0 0 44px #31d2ff82',
       '--header-text-fill': 'linear-gradient(90deg,#00fff1,#00b4ff 40%,#fff 59%,#1093f1 89%,#24e0fa 100%)'
     },
-    matrix: {
-      '--cyan': '#00ff41', '--blue': '#00c72f', '--dark-bg': '#000000', '--fade-blue': '#002b0a',
-      '--gradient-1': 'linear-gradient(120deg, #02260c 39%, #003f0c 68%, #00ff41 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #00c72f 32%, #5bff81 89%)',
-      '--bubble-glow': '0 0 13px #00ff41b1', '--user-glow': '0 0 22px #00ff4155',
-      '--header-glass': 'rgba(0,10,0,0.92)', '--code-bg': 'linear-gradient(92deg,#001a05 79%,#00c72f 120%)',
-      '--code-border': '#00ff41', '--code-text': '#00ff41', '--main-text': '#bfffce', '--link-text': '#00ff41',
-      '--input-bg': '#002207',
-      '--body-bg': 'linear-gradient(0deg, #000 70%, #031 100%), repeating-linear-gradient(180deg, rgba(0,255,65,0.2) 0px, rgba(0,255,65,0.2) 1px, transparent 1px, transparent 3px)',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#001a05 80%,#00c72f 200%)',
-      '--panel-border': '#00ff41cb', '--panel-shadow': '0 0 42px #00ff41c9',
-      '--submit-bg': 'linear-gradient(94deg,#00ff41,#00c72f 90%)', '--submit-text': '#001a05',
-      '--submit-hover-bg': '#00c72f', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #00ff41cc',
-      '--header-text-anim-glow-1': '0 0 17px #00ff4170', '--header-text-anim-glow-2': '0 0 29px #00ff41ee',
-      '--header-text-fill': 'linear-gradient(90deg,#00ff41,#00c72f 40%,#fff 59%,#00ff41 89%,#5bff81 100%)'
-    },
-    ocean: {
-      '--cyan': '#66d9ff', '--blue': '#007acc', '--dark-bg': '#021029', '--fade-blue': '#003366',
-      '--gradient-1': 'linear-gradient(120deg, #003366 39%, #004488 68%, #007acc 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #007acc 32%, #66d9ff 89%)',
-      '--bubble-glow': '0 0 13px #007accb1', '--user-glow': '0 0 22px #66d9ff55',
-      '--header-glass': 'rgba(0,30,60,0.92)', '--code-bg': 'linear-gradient(92deg,#002244 79%,#007acc 120%)',
-      '--code-border': '#66d9ff', '--code-text': '#b3ecff', '--main-text': '#e6f7ff', '--link-text': '#66d9ff',
-      '--input-bg': '#002244',
-      '--body-bg': 'linear-gradient(180deg, #021029 0%, #001f4d 50%, #003366 100%)',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#003366 80%,#007acc 200%)',
-      '--panel-border': '#66d9ffcb', '--panel-shadow': '0 0 42px #66d9ffc9',
-      '--submit-bg': 'linear-gradient(94deg,#66d9ff,#007acc 90%)', '--submit-text': '#002244',
-      '--submit-hover-bg': '#007acc', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #66d9ffcc',
-      '--header-text-anim-glow-1': '0 0 17px #66d9ff70', '--header-text-anim-glow-2': '0 0 29px #66d9ffee',
-      '--header-text-fill': 'linear-gradient(90deg,#66d9ff,#007acc 40%,#fff 59%,#00aaff 89%,#b3ecff 100%)'
-    },
-    sunset: {
-      '--cyan': '#ff8c42', '--blue': '#ff6b6b', '--dark-bg': '#2a0033', '--fade-blue': '#4d004d',
-      '--gradient-1': 'linear-gradient(120deg, #4d004d 39%, #800080 68%, #ff6b6b 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #ff6b6b 32%, #ff8c42 89%)',
-      '--bubble-glow': '0 0 13px #ff6b6bb1', '--user-glow': '0 0 22px #ff8c4255',
-      '--header-glass': 'rgba(40,0,50,0.92)', '--code-bg': 'linear-gradient(92deg,#330033 79%,#800080 120%)',
-      '--code-border': '#ff8c42', '--code-text': '#ffd1b3', '--main-text': '#ffebcc', '--link-text': '#ff8c42',
-      '--input-bg': '#330033',
-      '--body-bg': 'linear-gradient(180deg, #2a0033 0%, #4d004d 50%, #800080 100%)',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#4d004d 80%,#800080 200%)',
-      '--panel-border': '#ff8c42cb', '--panel-shadow': '0 0 42px #ff8c42c9',
-      '--submit-bg': 'linear-gradient(94deg,#ff8c42,#ff6b6b 90%)', '--submit-text': '#2a0033',
-      '--submit-hover-bg': '#ff6b6b', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #ff8c42cc',
-      '--header-text-anim-glow-1': '0 0 17px #ff8c4270', '--header-text-anim-glow-2': '0 0 29px #ff8c42ee',
-      '--header-text-fill': 'linear-gradient(90deg,#ff8c42,#ff6b6b 40%,#fff 59%,#ff8c42 89%,#ffd1b3 100%)'
-    },
     nebula: {
       '--cyan': '#ff00ff', '--blue': '#be00be', '--dark-bg': '#00001a', '--fade-blue': '#1a0033',
       '--gradient-1': 'linear-gradient(120deg, #1a0033 39%, #330066 68%, #be00be 97%)',
@@ -1974,6 +1951,57 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-glow': '0 0 12px #ff00ffcc',
       '--header-text-anim-glow-1': '0 0 17px #ff00ff70', '--header-text-anim-glow-2': '0 0 29px #ff00ffee',
       '--header-text-fill': 'linear-gradient(90deg,#ff00ff,#be00be 40%,#fff 59%,#ff00ff 89%,#ffb3ff 100%)'
+    },
+    starlight: {
+      '--cyan': '#00f2ff', '--blue': '#00c3ff', '--dark-bg': '#030010', '--fade-blue': '#100c25',
+      '--gradient-1': 'linear-gradient(120deg, #100c25 39%, #1c153f 68%, #3f337f 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #00c3ff 32%, #a6faff 89%)',
+      '--bubble-glow': '0 0 13px #00c3ffb1', '--user-glow': '0 0 22px #00f2ff55',
+      '--header-glass': 'rgba(16,12,37,0.92)', '--code-bg': 'linear-gradient(92deg,#100c25 79%,#3f337f 120%)',
+      '--code-border': '#a6faff', '--code-text': '#a6faff', '--main-text': '#f0faff', '--link-text': '#a6faff',
+      '--input-bg': '#100c25',
+      '--body-bg': 'radial-gradient(ellipse at bottom, #0d0920 0%, #030010 70%)',
+      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#100c25 80%,#1c153f 200%)',
+      '--panel-border': '#a6faffcb', '--panel-shadow': '0 0 42px #a6faffc9',
+      '--submit-bg': 'linear-gradient(94deg,#00f2ff,#00c3ff 90%)', '--submit-text': '#030010',
+      '--submit-hover-bg': '#00c3ff', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 12px #a6faffcc',
+      '--header-text-anim-glow-1': '0 0 17px #a6faff70', '--header-text-anim-glow-2': '0 0 29px #a6faffee',
+      '--header-text-fill': 'linear-gradient(90deg,#a6faff,#00c3ff 40%,#fff 59%,#00f2ff 89%,#a6faff 100%)'
+    },
+    golden: {
+      '--cyan': '#ff8c00', '--blue': '#ffA500', '--dark-bg': '#fff8e1', '--fade-blue': '#ffe0b2',
+      '--gradient-1': 'linear-gradient(120deg, #ffe0b2 39%, #ffcc80 68%, #ffb74d 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #ffA500 32%, #ff8c00 89%)',
+      '--bubble-glow': '0 0 13px #ffA500b1', '--user-glow': '0 0 22px #ff8c0055',
+      '--header-glass': 'rgba(255,248,225,0.92)', '--code-bg': 'linear-gradient(92deg,#fff8e1 79%,#ffe0b2 120%)',
+      '--code-border': '#ffA500', '--code-text': '#d2691e', '--main-text': '#5d4037', '--link-text': '#ff8c00',
+      '--input-bg': '#fff8e1',
+      '--body-bg': 'linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%)',
+      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#fff8e1 80%,#ffe0b2 200%)',
+      '--panel-border': '#ffA500cb', '--panel-shadow': '0 0 42px #ffA500c9',
+      '--submit-bg': 'linear-gradient(94deg,#ffA500,#ff8c00 90%)', '--submit-text': '#fff',
+      '--submit-hover-bg': '#ff8c00', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 12px #ff8c00cc',
+      '--header-text-anim-glow-1': '0 0 17px #ff8c0070', '--header-text-anim-glow-2': '0 0 29px #ff8c00ee',
+      '--header-text-fill': 'linear-gradient(90deg,#ff8c00,#ffA500 40%,#8b4513 59%,#ff8c00 89%,#d2691e 100%)'
+    },
+    midnight: {
+      '--cyan': '#3391ff', '--blue': '#007bff', '--dark-bg': '#121212', '--fade-blue': '#282828',
+      '--gradient-1': 'linear-gradient(120deg, #282828 39%, #333 68%, #444 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #007bff 32%, #3391ff 89%)',
+      '--bubble-glow': '0 0 8px #007bff44', '--user-glow': '0 0 12px #3391ff44',
+      '--header-glass': 'rgba(18,18,18,0.92)', '--code-bg': 'linear-gradient(92deg,#222 79%,#333 120%)',
+      '--code-border': '#444', '--code-text': '#f1f1f1', '--main-text': '#f1f1f1', '--link-text': '#3391ff',
+      '--input-bg': '#282828',
+      '--body-bg': 'linear-gradient(180deg, #181818 0%, #121212 100%)',
+      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#1e1e1e 80%,#282828 200%)',
+      '--panel-border': '#444', '--panel-shadow': '0 0 20px #000000c9',
+      '--submit-bg': 'linear-gradient(94deg,#007bff,#3391ff 90%)', '--submit-text': '#fff',
+      '--submit-hover-bg': '#0069d9', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 10px #3391ffaa',
+      '--header-text-anim-glow-1': '0 0 12px #3391ff70', '--header-text-anim-glow-2': '0 0 15px #3391ffee',
+      '--header-text-fill': 'linear-gradient(90deg,#3391ff,#007bff 40%,#fff 59%,#3391ff 89%,#aaccff 100%)'
     }
   };
   
@@ -1982,13 +2010,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
   function applyTheme(themeName) {
     const theme = themes[themeName];
+    if (!theme) return;
     for (const key in theme) {
       document.documentElement.style.setProperty(key, theme[key]);
     }
     localStorage.setItem('philadelphia-theme', themeName);
     
     // Update theme icon
-    const icon = themeName === 'cyber' || themeName === 'ocean' ? 'fa-moon' : 'fa-sun';
+    const icon = themeName === 'golden' ? 'fa-sun' : 'fa-moon';
     themeBtn.innerHTML = `<i class="fa-solid ${icon}"></i>`;
   }
 
@@ -2138,10 +2167,12 @@ window.addEventListener('DOMContentLoaded', () => {
       botSpeakingIndicator.style.display = 'block';
       
       try {
-          const fd = new FormData();
-          fd.append('text', text);
-          fd.append('style', 'podcast'); // Use a generic style
-          const res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
+          // ** NEW: Using Minimax "elder" voice as requested **
+          const res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, { 
+              method: 'POST', 
+              headers: {'Content-Type': 'application/json'}, 
+              body: JSON.stringify({ text: text, voice_id: 'elder' }) 
+          });
           if (!res.ok) throw new Error(await res.text());
           
           const blob = await res.blob();
