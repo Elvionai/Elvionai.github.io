@@ -367,8 +367,6 @@ pre:before {
   padding:10px 12px;border:none;border-radius:11px;
   box-shadow:0 1px 6px #00f2ff27;
   transition: background 0.3s, color 0.3s;
-  /* Scrollbar for large text on mobile (might need specific vendor prefixes if general overflow:auto fails) */
-  overflow-y: auto;
 }
 .chat-input-row button, .chat-input-row label{
   background:none;border:none;color:var(--cyan);font-size:1.21em;
@@ -565,42 +563,12 @@ pre:before {
   display: flex; 
   gap: 20px; 
   padding-bottom: 20px;
-  align-items: center;
 }
 #endCallBtn {
   background: #d23; color: white;
   font-size: 1.2em; padding: 10px 20px;
   border: none; border-radius: 10px; cursor: pointer;
 }
-.call-control-btn {
-    background: var(--input-bg);
-    color: var(--cyan);
-    border: 1px solid var(--cyan);
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    font-size: 1.1em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-}
-.call-control-btn:hover {
-    background: var(--cyan);
-    color: var(--submit-text);
-}
-.call-control-btn.active {
-    background: #00ff00;
-    color: #000;
-    border-color: #00ff00;
-}
-.call-control-btn.muted {
-    background: #444;
-    color: #fff;
-    border-color: #666;
-}
-
 
 /* Spinner for loading states */
 .spinner {
@@ -762,9 +730,7 @@ pre:before {
       <div class="call-msg status">Waiting for connection...</div>
     </div>
     <div id="callControls">
-        <button id="muteBtn" class="call-control-btn" title="Mute Microphone"><i class="fa-solid fa-microphone"></i></button>
-        <button id="speakerBtn" class="call-control-btn active" title="Toggle Speaker"><i class="fa-solid fa-volume-high"></i></button>
-        <button id="endCallBtn" class="submit-btn" style="background: #d23;"><i class="fa-solid fa-phone-slash"></i> End Call</button>
+      <button id="endCallBtn" class="submit-btn" style="background: #d23;"><i class="fa-solid fa-phone-slash"></i> End Call</button>
     </div>
   </div>
 
@@ -850,8 +816,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const callBtn = $('callBtn');
   const callModal = $('callModal');
   const endCallBtn = $('endCallBtn');
-  const muteBtn = $('muteBtn');
-  const speakerBtn = $('speakerBtn');
   const callConversation = $('callConversation');
   const botImageContainer = $('botImageContainer');
   const callStatusMessage = $('callStatusMessage');
@@ -908,18 +872,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (chatInput) {
     const autoResize = () => { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px'; };
     chatInput.addEventListener('input', autoResize);
-    // FIX: Enter key only adds newline, not submit. Shift+Enter is also supported for newline, but Enter is primary on mobile.
-    chatInput.addEventListener('keydown', e => { 
-        if (e.key === 'Enter' && !e.shiftKey) { 
-            e.preventDefault(); 
-            const start = chatInput.selectionStart || 0;
-            const end = chatInput.selectionEnd || 0;
-            const newline = '\n';
-            chatInput.value = chatInput.value.slice(0, start) + newline + chatInput.value.slice(end);
-            chatInput.selectionStart = chatInput.selectionEnd = start + newline.length;
-            autoResize(); // Recalculate size
-        }
-    });
+    chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); }});
     autoResize();
   }
   
@@ -1264,12 +1217,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // Check if the message contains HTML content (like tool results)
         let content;
         if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-             // For tool output, render raw HTML but ensure Markdown is still processed if it precedes the tag
-             const parts = msg.text.split(/<img|<audio|<video/);
-             content = renderMarkdown(parts[0] || '').html;
-             if (parts.length > 1) {
-                 content += (msg.text.match(/<img|<audio|<video/)?.[0] || '') + parts.slice(1).join('<img').replace(/<img/g, '<img').replace(/<audio/g, '<audio').replace(/<video/g, '<video');
-             }
+             content = msg.text; // Render raw HTML for tool outputs
         } else {
              content = renderMarkdown(msg.text || '').html;
         }
@@ -1293,8 +1241,6 @@ window.addEventListener('DOMContentLoaded', () => {
     // FIX: Force scroll to bottom on load/render
     setTimeout(() => {
         chatBox.scrollTop = chatBox.scrollHeight;
-        // Also ensure typing indicator is visible if present
-        if(typingStatus.style.display !== 'none') typingStatus.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, 50); 
   }
 
@@ -1446,8 +1392,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!typingStatus) return;
     typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
     typingStatus.style.display = 'flex';
-    // Ensure the typing status scrolls into view immediately, but smoothly
-    setTimeout(() => typingStatus.scrollIntoView({ behavior: 'smooth', block: 'end' }), 50);
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 
   function showTypingWithText(text) {
@@ -1455,7 +1400,7 @@ window.addEventListener('DOMContentLoaded', () => {
       // Removed the bubble and just show the spinner and text
       typingStatus.innerHTML = `<div class="msg" style="display:flex;align-items:center;"><span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text); font-style:italic;">${text}</span></div>`;
       typingStatus.style.display = 'flex';
-      setTimeout(() => typingStatus.scrollIntoView({ behavior: 'smooth', block: 'end' }), 50);
+      chatBox.scrollTop = chatBox.scrollHeight;
   }
 
   function removeTyping() {
@@ -1467,7 +1412,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // --- Typewriter Function (FIXED: Real-time and streaming support) ---
   async function startTypewriter(text, saveToDb = true) {
     // If the text contains HTML tags related to media, skip typewriter and save directly
-    if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video') || text.includes('<div class="file-attachments"'))) {
+    if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
         if (saveToDb) {
             await addMessageToChat('ai', text); // Save full HTML to DB
         } else {
@@ -1689,7 +1634,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
                 const imgHtml = `✅ Image generated! Check the floating image box to view or download. <br><img src="data:image/png;base64,${data.image_b64}" alt="AI generated image" class="chat-media-preview image-preview-thumb">`;
                 removeTyping();
-                await addMessageToChat('ai', imgHtml); // Save HTML directly (note: image will disappear on refresh as it's a temp data URL)
+                await addMessageToChat('ai', imgHtml); // Save HTML directly
                 return null;
             } catch (err) { removeTyping(); return `❌ Image generation failed: ${err.message}`; }
         }
@@ -1713,9 +1658,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error((await res.json()).error || 'Failed to edit photo.');
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
-                const imgHtml = `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb"><br><small style="color: #ff0; display: block; margin-top: 5px;">NOTE: This image is temporary and will disappear on refresh. **Right-click (or hold) to download it now.**</small>`;
+                const imgHtml = `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
                 removeTyping();
-                await addMessageToChat('ai', imgHtml); // Save HTML directly (note: image will disappear on refresh as it's a temp URL)
+                await addMessageToChat('ai', imgHtml); // Save HTML directly
                 return null;
             } catch (err) { removeTyping(); return `❌ Photo edit failed: ${err.message}`; }
         }
@@ -1737,9 +1682,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
-                const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb"><br><small style="color: #ff0; display: block; margin-top: 5px;">NOTE: This image is temporary and will disappear on refresh. **Right-click (or hold) to download it now.**</small>`;
+                const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
                 removeTyping();
-                await addMessageToChat('ai', imgHtml); // Save HTML directly (note: image will disappear on refresh as it's a temp URL)
+                await addMessageToChat('ai', imgHtml); // Save HTML directly
                 return null;
             } catch (err) { removeTyping(); return `❌ Background removal failed: ${err.message}`; }
         }
@@ -1760,9 +1705,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
-                // FIX: Display immediately and instruct user to download
                 const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview image-preview-thumb" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
-                const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div><br><small style="color: #ff0; display: block; margin-top: 5px;">NOTE: These images are temporary and will disappear on refresh. **Right-click (or hold) each one to download them now.**</small>`;
+                const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                 removeTyping();
                 await addMessageToChat('ai', comicMessage); // Save HTML directly
                 return null;
@@ -1828,7 +1772,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 removeTyping();
                 await addMessageToChat('ai', narrationHtml); // Save HTML directly
                 return null;
-            } catch (err) { removeTypving(); return `❌ Audio narration failed: ${err.message}`; }
+            } catch (err) { removeTyping(); return `❌ Audio narration failed: ${err.message}`; }
         }
     },
     "video-text": {
@@ -2107,10 +2051,10 @@ window.addEventListener('DOMContentLoaded', () => {
     currentController = null;
   });
   
-  // ---------- Theme Switcher Logic (UPDATED THEMES) ----------
+  // ---------- Theme Switcher Logic (NEW THEMES) ----------
   const themes = {
-    cyber: { 
-      '--cyan': '#00fff7', '--blue': '#0a8afe', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
+    cyber: { // Default (Enhanced)
+      '--cyan': '#00fff7', '--blue': '#00aaff', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
       '--gradient-1': 'linear-gradient(120deg, #000a2e 39%, #04336a 68%, #10bfff 97%)',
       '--gradient-user': 'linear-gradient(120deg, #0857ee 32%, #00fff0 89%)',
       '--bubble-glow': '0 0 13px #00d8ffb1, 0 0 24px #0197ff40', '--user-glow': '0 0 22px #0fffd555, 0 0 14px #36f9ff70',
@@ -2127,7 +2071,7 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-anim-glow-2': '0 0 29px #00ffe9ee,0 0 44px #31d2ff82',
       '--header-text-fill': 'linear-gradient(90deg,#00fff1,#00b4ff 40%,#fff 59%,#1093f1 89%,#24e0fa 100%)'
     },
-    celestial: { 
+    celestial: { // Otherworldly, Space (Deep Purple/Pink)
       '--cyan': '#ff00ff', '--blue': '#8a2be2', '--dark-bg': '#0f001a', '--fade-blue': '#2b003e',
       '--gradient-1': 'linear-gradient(120deg, #2b003e 39%, #580080 68%, #ff00ff 97%)',
       '--gradient-user': 'linear-gradient(120deg, #8a2be2 32%, #ff00ff 89%)',
@@ -2144,7 +2088,7 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-anim-glow-1': '0 0 20px #ff00ff70', '--header-text-anim-glow-2': '0 0 35px #ff00ffee',
       '--header-text-fill': 'linear-gradient(90deg,#ff00ff,#8a2be2 40%,#fff 59%,#8a2be2 89%,#ff00ff 100%)'
     },
-    starlight: { 
+    starlight: { // Perfectable Stars (Soft Blue/White)
       '--cyan': '#a6faff', '--blue': '#00c3ff', '--dark-bg': '#030010', '--fade-blue': '#100c25',
       '--gradient-1': 'linear-gradient(120deg, #100c25 39%, #1c153f 68%, #3f337f 97%)',
       '--gradient-user': 'linear-gradient(120deg, #00c3ff 32%, #a6faff 89%)',
@@ -2161,41 +2105,24 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-anim-glow-1': '0 0 17px #a6faff70', '--header-text-anim-glow-2': '0 0 29px #a6faffee',
       '--header-text-fill': 'linear-gradient(90deg,#a6faff,#00c3ff 40%,#fff 59%,#00f2ff 89%,#a6faff 100%)'
     },
-    matrix: { // NEW: Matrix theme (Green/Black)
-      '--cyan': '#00ff41', '--blue': '#00c12e', '--dark-bg': '#000800', '--fade-blue': '#001a00',
-      '--gradient-1': 'linear-gradient(120deg, #001a00 39%, #003300 68%, #00ff41 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #00c12e 32%, #00ff41 89%)',
-      '--bubble-glow': '0 0 13px #00ff41b1', '--user-glow': '0 0 22px #00ff4155, 0 0 14px #00cc0070',
-      '--header-glass': 'rgba(0,10,0,0.92)', '--code-bg': 'linear-gradient(92deg,#001a00 79%,#003300 120%)',
-      '--code-border': '#00ff41', '--code-text': '#00ff41', '--main-text': '#c7ffc7', '--link-text': '#00ff41',
-      '--input-bg': '#001a00',
-      '--body-bg': 'radial-gradient(circle at 60% 45%, #002200 37%, #000800 88%, #000e00 100%) fixed',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#001a00 80%,#003300 200%)',
-      '--panel-border': '#00ff41cb', '--panel-shadow': '0 0 42px #00ff41c9',
-      '--submit-bg': 'linear-gradient(94deg,#00ff41,#00c12e 90%)', '--submit-text': '#000',
-      '--submit-hover-bg': '#00c12e', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #00ff41cc',
-      '--header-text-anim-glow-1': '0 0 17px #00ff4170', '--header-text-anim-glow-2': '0 0 29px #00ff41ee',
-      '--header-text-fill': 'linear-gradient(90deg,#00ff41,#00c12e 40%,#fff 59%,#00c12e 89%,#00ff41 100%)'
+    solstice: { // Golden Bright Sunny (Warm Gold/Orange)
+      '--cyan': '#ffc300', '--blue': '#ff9900', '--dark-bg': '#fff8e1', '--fade-blue': '#fff0c7',
+      '--gradient-1': 'linear-gradient(120deg, #fff0c7 39%, #ffe082 68%, #ffc300 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #ff9900 32%, #ffc300 89%)',
+      '--bubble-glow': '0 0 13px #ffc300b1', '--user-glow': '0 0 22px #ffc30055',
+      '--header-glass': 'rgba(255,248,225,0.92)', '--code-bg': 'linear-gradient(92deg,#fff0c7 79%,#ffe082 120%)',
+      '--code-border': '#ffc300', '--code-text': '#5d4037', '--main-text': '#5d4037', '--link-text': '#ff9900',
+      '--input-bg': '#fff8e1',
+      '--body-bg': 'linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%)',
+      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#fff8e1 80%,#ffe0b3 200%)',
+      '--panel-border': '#ff9900cb', '--panel-shadow': '0 0 42px #ffc300c9',
+      '--submit-bg': 'linear-gradient(94deg,#ffc300,#ff9900 90%)', '--submit-text': '#fff',
+      '--submit-hover-bg': '#ff9900', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 12px #ffc300cc',
+      '--header-text-anim-glow-1': '0 0 17px #ffc30070', '--header-text-anim-glow-2': '0 0 29px #ffc300ee',
+      '--header-text-fill': 'linear-gradient(90deg,#ffc300,#ff9900 40%,#8b4513 59%,#ff9900 89%,#ffc300 100%)'
     },
-    lava: { // NEW: Lava theme (Red/Orange/Black)
-      '--cyan': '#ff7b00', '--blue': '#ff4500', '--dark-bg': '#1a0700', '--fade-blue': '#4c130b',
-      '--gradient-1': 'linear-gradient(120deg, #4c130b 39%, #8b230f 68%, #ff4500 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #ff4500 32%, #ff7b00 89%)',
-      '--bubble-glow': '0 0 13px #ff4500b1', '--user-glow': '0 0 22px #ff7b0055, 0 0 14px #cc360070',
-      '--header-glass': 'rgba(26,7,0,0.92)', '--code-bg': 'linear-gradient(92deg,#4c130b 79%,#8b230f 120%)',
-      '--code-border': '#ff7b00', '--code-text': '#ffc3a6', '--main-text': '#ffe8d9', '--link-text': '#ff7b00',
-      '--input-bg': '#4c130b',
-      '--body-bg': 'radial-gradient(circle at 60% 45%, #4c130b 37%, #1a0700 88%, #2d0b00 100%) fixed',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#4c130b 80%,#8b230f 200%)',
-      '--panel-border': '#ff7b00cb', '--panel-shadow': '0 0 42px #ff4500c9',
-      '--submit-bg': 'linear-gradient(94deg,#ff7b00,#ff4500 90%)', '--submit-text': '#1a0700',
-      '--submit-hover-bg': '#ff4500', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #ff7b00cc',
-      '--header-text-anim-glow-1': '0 0 17px #ff7b0070', '--header-text-anim-glow-2': '0 0 29px #ff7b00ee',
-      '--header-text-fill': 'linear-gradient(90deg,#ff7b00,#ff4500 40%,#ffe8d9 59%,#ff4500 89%,#ff7b00 100%)'
-    },
-    midnight: { 
+    midnight: { // Regular Dark
       '--cyan': '#3391ff', '--blue': '#007bff', '--dark-bg': '#121212', '--fade-blue': '#282828',
       '--gradient-1': 'linear-gradient(120deg, #282828 39%, #333 68%, #444 97%)',
       '--gradient-user': 'linear-gradient(120deg, #007bff 32%, #3391ff 89%)',
@@ -2225,7 +2152,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     localStorage.setItem('philadelphia-theme', themeName);
     
-    // Update theme icon (use sun for lighter themes, moon for darker)
+    // Update theme icon
     const icon = themeName === 'solstice' ? 'fa-sun' : 'fa-moon';
     themeBtn.innerHTML = `<i class="fa-solid ${icon}"></i>`;
   }
@@ -2251,8 +2178,6 @@ window.addEventListener('DOMContentLoaded', () => {
   let botIsSpeaking = false;
   let userSaidSomething = false;
   let currentAudio = null;
-  let isMuted = false;
-  let isSpeakerOn = true;
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRecognition) {
@@ -2262,8 +2187,6 @@ window.addEventListener('DOMContentLoaded', () => {
     speechRecognition.lang = 'en-US';
 
     speechRecognition.onresult = (event) => {
-        if (isMuted) return;
-
         let interimTranscript = '';
         let finalTranscript = '';
         userSaidSomething = true;
@@ -2291,6 +2214,10 @@ window.addEventListener('DOMContentLoaded', () => {
         tapToTalk.style.display = 'none';
     };
     
+    speechRecognition.onspeechend = () => {
+        // This fires when user stops talking
+    };
+
     speechRecognition.onend = () => {
         if (!isCallActive) return;
         
@@ -2299,27 +2226,20 @@ window.addEventListener('DOMContentLoaded', () => {
         if (userMsgEl) {
             finalTranscript = userMsgEl.textContent.trim();
             userMsgEl.classList.remove('interim');
-            // Remove the interim element after capturing the text
-            callConversation.removeChild(userMsgEl);
         }
 
         if (botIsSpeaking) {
             // Bot is speaking, just wait for it to finish and restart listening (in speakBotResponse)
-        } else if (finalTranscript && userSaidSomething && !isMuted) {
+        } else if (finalTranscript && userSaidSomething) {
             // User finished speaking, send to bot
             userSaidSomething = false; // Reset flag
             callHistory.push({ role: 'user', content: finalTranscript });
             handleCallBotResponse();
         } else {
-            // User didn't say anything or was muted, just restart listening
+            // User didn't say anything, just restart listening
             if (isCallActive) {
-                if (!isMuted) {
-                    callStatusMessage.textContent = 'Listening...';
-                    tapToTalk.style.display = 'block';
-                } else {
-                    callStatusMessage.textContent = 'Muted. Tap to Speak (Muted).';
-                    tapToTalk.style.display = 'block';
-                }
+                callStatusMessage.textContent = 'Listening...';
+                tapToTalk.style.display = 'block';
                 try { speechRecognition.start(); } catch(e) {}
             }
         }
@@ -2339,28 +2259,6 @@ window.addEventListener('DOMContentLoaded', () => {
     console.warn("Speech Recognition not supported in this browser.");
   }
   
-  // Call Control Handlers
-  if (muteBtn) muteBtn.addEventListener('click', () => {
-      isMuted = !isMuted;
-      muteBtn.classList.toggle('muted', isMuted);
-      muteBtn.innerHTML = isMuted ? '<i class="fa-solid fa-microphone-slash"></i>' : '<i class="fa-solid fa-microphone"></i>';
-      callStatusMessage.textContent = isMuted ? 'Muted. Tap to Speak (Muted).' : 'Listening... (Tap to Speak)';
-      if (isCallActive) {
-          // Restart recognition to apply the mute state immediately
-          speechRecognition.stop();
-          if (!botIsSpeaking) {
-              try { speechRecognition.start(); } catch(e) {}
-          }
-      }
-  });
-
-  if (speakerBtn) speakerBtn.addEventListener('click', () => {
-      isSpeakerOn = !isSpeakerOn;
-      speakerBtn.classList.toggle('active', isSpeakerOn);
-      speakerBtn.innerHTML = isSpeakerOn ? '<i class="fa-solid fa-volume-high"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
-      if (currentAudio) currentAudio.volume = isSpeakerOn ? 1.0 : 0.0;
-  });
-
   function addCallMessage(role, text) {
       const msgEl = document.createElement('div');
       msgEl.className = `call-msg ${role}`;
@@ -2410,7 +2308,7 @@ window.addEventListener('DOMContentLoaded', () => {
           
           // Restart listening
           if (isCallActive) {
-             callStatusMessage.textContent = isMuted ? 'Muted. Tap to Speak (Muted).' : 'Listening... (Tap to Speak)';
+             callStatusMessage.textContent = 'Listening...';
              tapToTalk.style.display = 'block';
              try { speechRecognition.start(); } catch(e) {}
           }
@@ -2437,7 +2335,6 @@ window.addEventListener('DOMContentLoaded', () => {
           const url = URL.createObjectURL(blob);
           const audio = new Audio(url);
           currentAudio = audio; // Store reference to allow stopping
-          audio.volume = isSpeakerOn ? 1.0 : 0.0; // Apply speaker setting
           
           audio.onended = audio.onerror = () => {
               botIsSpeaking = false;
@@ -2445,7 +2342,7 @@ window.addEventListener('DOMContentLoaded', () => {
               currentAudio = null;
               // Restart listening for user
               if (isCallActive) {
-                  callStatusMessage.textContent = isMuted ? 'Muted. Tap to Speak (Muted).' : 'Listening... (Tap to Speak)';
+                  callStatusMessage.textContent = 'Listening...';
                   tapToTalk.style.display = 'block';
                   try { speechRecognition.start(); } catch(e) {}
               }
@@ -2458,13 +2355,13 @@ window.addEventListener('DOMContentLoaded', () => {
           botImageContainer.classList.remove('speaking');
           // Failed to speak, just restart listening
           if (isCallActive) {
-              callStatusMessage.textContent = isMuted ? 'Muted (Voice Failed).' : 'Listening (Voice Failed)...';
+              callStatusMessage.textContent = 'Listening (Voice Failed)...';
               tapToTalk.style.display = 'block';
               try { speechRecognition.start(); } catch(e) {}
           }
       }
   }
-
+  
   // FIX: User can tap the screen to stop the bot and talk
   function stopBotSpeakingAndStartListening() {
       if (!isCallActive || !botIsSpeaking) return;
@@ -2477,7 +2374,7 @@ window.addEventListener('DOMContentLoaded', () => {
       
       botIsSpeaking = false;
       botImageContainer.classList.remove('speaking');
-      callStatusMessage.textContent = isMuted ? 'Muted. Tap to Speak (Muted).' : 'Listening... (Tap to Speak)';
+      callStatusMessage.textContent = 'Listening... (Tap to Speak)';
       tapToTalk.style.display = 'block';
       
       // Restart listening for user input
@@ -2490,9 +2387,7 @@ window.addEventListener('DOMContentLoaded', () => {
       
       // Clear interim message if it exists
       const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-      if (userMsgEl) {
-         callConversation.removeChild(userMsgEl);
-      }
+      if (userMsgEl) userMsgEl.textContent = '';
   }
   
   callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
@@ -2515,11 +2410,8 @@ window.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         if (!isCallActive) return;
         addCallMessage('status', 'Call Connected. Speak when ready.');
-        
-        // Apply current mute state
-        callStatusMessage.textContent = isMuted ? 'Muted. Tap to Speak (Muted).' : 'Listening... (Tap to Speak)';
+        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
         tapToTalk.style.display = 'block';
-
         try {
             speechRecognition.start();
         } catch(e) {
@@ -2539,14 +2431,10 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     callModal.classList.remove('active');
     try {
-        // Explicitly stop recognition
         speechRecognition.stop();
     } catch(e) {}
     botImageContainer.classList.remove('speaking');
     tapToTalk.style.display = 'none';
-    // Clear the interim element if it exists
-    const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-    if (userMsgEl) callConversation.removeChild(userMsgEl);
   });
 
   // Final initial render (will be triggered by auth state)
