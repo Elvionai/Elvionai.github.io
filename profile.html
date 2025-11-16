@@ -475,7 +475,7 @@ pre:before {
   box-shadow: 0 0 50px var(--cyan);
 }
 
-/* Voice Call Modal */
+/* Voice Call Modal (IMPROVED) */
 #callModal {
   display: none; position: fixed; top: 0; left: 0;
   width: 100vw; height: 100vh;
@@ -488,6 +488,7 @@ pre:before {
 #callHeader {
   color: var(--cyan); font-family: 'Orbitron', sans-serif;
   font-size: 1.5em; text-shadow: 0 0 10px var(--cyan);
+  margin-bottom: 10px;
 }
 #botImageContainer {
   margin-top: 20px; position: relative;
@@ -506,22 +507,37 @@ pre:before {
   box-shadow: 0 0 30px #00ff00;
   animation: pulse 1s infinite;
   display: none;
+  pointer-events: none; /* Let clicks pass through */
 }
 @keyframes pulse { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
 #callConversation {
   flex-grow: 1; width: 100%; max-width: 600px;
   overflow-y: auto; margin: 20px 0;
+  background: var(--input-bg); /* Use input background for clean look */
   border: 1px solid var(--fade-blue);
   border-radius: 10px; padding: 10px;
+  box-shadow: 0 0 15px var(--fade-blue) inset;
+  cursor: pointer; /* Indicate tap-to-speak */
 }
 .call-msg {
   padding: 8px 12px; border-radius: 10px;
   margin-bottom: 10px; line-height: 1.5;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
 }
 .call-msg.user { background: var(--gradient-user); color: var(--submit-text); text-align: right; }
 .call-msg.bot { background: var(--gradient-1); color: var(--main-text); }
-.call-msg.status { text-align: center; color: #888; font-style: italic; }
-#callControls { display: flex; gap: 20px; }
+.call-msg.status { text-align: center; color: var(--cyan); font-style: italic; background: #133c8b44; }
+#callControls { 
+  display: flex; 
+  gap: 20px; 
+  margin-top: 10px;
+  padding: 10px 0;
+  width: 100%;
+  max-width: 600px;
+  justify-content: center;
+  background: rgba(17, 29, 47, 0.5);
+  border-radius: 10px;
+}
 #endCallBtn {
   background: #d23; color: white;
   font-size: 1.2em; padding: 10px 20px;
@@ -677,7 +693,7 @@ pre:before {
   </div>
 
   <div id="callModal">
-    <div id="callHeader">Philadelphia AI - Live Call</div>
+    <div id="callHeader">📞 Philadelphia AI - Live Call 📞</div>
     <div id="botImageContainer">
       <img src="https://i.postimg.cc/XqL63yM9/IMG-20250824-133336-309.jpg" alt="Bot">
       <div id="botSpeakingIndicator"></div>
@@ -730,6 +746,9 @@ let currentController = null; // Controller for ongoing chat/file fetch
 // Firestore listener unsubscribers
 let chatsUnsubscribe = null;
 let messagesUnsubscribe = null;
+
+// Global audio object for call functionality
+let botAudio = null; 
 
 window.addEventListener('DOMContentLoaded', () => {
   // ---------- Element Selectors ----------
@@ -1168,8 +1187,22 @@ window.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>`;
       } else { // AI message
-        const { html } = renderMarkdown(msg.text || '');
-        innerHtml = `<div class="msg">${html}
+        // The message text from Firestore may contain the actual HTML for images/audio
+        const rawText = msg.text || '';
+        const containsMedia = rawText.includes('<img') || rawText.includes('<audio') || rawText.includes('<video');
+        
+        let displayHtml;
+        if (containsMedia) {
+             // If it contains raw media HTML, render that first, then markdown for the rest
+             const cleanedText = rawText.replace(/<br>/g, '\n'); // Temporarily turn <br> into \n
+             const { html } = renderMarkdown(cleanedText);
+             displayHtml = html.replace(/\n/g, '<br>');
+        } else {
+             const { html } = renderMarkdown(rawText);
+             displayHtml = html;
+        }
+
+        innerHtml = `<div class="msg">${displayHtml}
           <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
             <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
             <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
@@ -1232,7 +1265,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (copyBtn) copyBtn.onclick = () => {
         try {
-          navigator.clipboard.writeText(msg.text.replace(/<\/?[^>]+(>|$)/g, ""));
+          // Strip HTML tags for clean copy
+          const cleanText = msg.text.replace(/<[^>]*>?/gm, ' ').replace(/\s\s+/g, ' ').trim();
+          navigator.clipboard.writeText(cleanText);
           copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
           setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
         } catch (e) { console.warn('copy failed', e); }
@@ -1241,7 +1276,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (shareBtn) shareBtn.onclick = () => {
         try {
           const url = window.location.origin;
-          const shareText = `${msg.text.replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
+          const shareText = `${msg.text.replace(/<[^>]*>?/gm, ' ').replace(/\s\s+/g, ' ').trim()}\n\nShared via Philadelphia AI: ${url}`;
           if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
           else prompt("Copy and share manually:", shareText);
         } catch (e) { console.warn('share failed', e); }
@@ -1286,11 +1321,11 @@ window.addEventListener('DOMContentLoaded', () => {
               if (!res.ok) throw new Error(data.error || "Server error.");
               
               removeTyping();
-              await startTypewriter(data.response, false); // Typewriter effect for regen
+              await startTypewriter(data.response, true); // Save to DB
 
           } catch (err) {
               removeTyping();
-              await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
+              await startTypewriter(`❌ Regeneration error: ${err.message}`, true);
           }
       };
     });
@@ -1369,10 +1404,12 @@ window.addEventListener('DOMContentLoaded', () => {
     let sofar = '';
     const words = text.split(/(\s+)/); // Split on spaces, keeping them
     let tempText = '';
+    let isAborted = false;
 
     for (const word of words) {
       if (currentController?.signal.aborted) {
         text = tempText; // Save the aborted text
+        isAborted = true;
         break;
       }
       tempText += word;
@@ -1397,7 +1434,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     
     // Final text (handles full text or aborted text)
-    const finalRenderText = text;
+    const finalRenderText = isAborted ? text + (text.endsWith(' ') ? '' : ' ') + '...' : text;
 
     // 2. Add final controls to the temporary node
     msgdiv.innerHTML = renderMarkdown(finalRenderText).html + `
@@ -1427,7 +1464,6 @@ window.addEventListener('DOMContentLoaded', () => {
             msgdiv.innerHTML += "<br><small style='color: #f44;'>Failed to save message.</small>";
         }
     }
-    // If saveToDb is false (for regen), we'll save it in the regen function
   }
 
 
@@ -1548,9 +1584,13 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/generate-image`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
+                
                 showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
                 removeTyping();
-                return '✅ Image generated! Check the floating image box to view or download.';
+                
+                // FIX: Return HTML for image persistence in chat
+                const imageHtml = `<img src="data:image/png;base64,${data.image_b64}" alt="Generated Image" class="chat-media-preview image-preview-thumb">`;
+                return `✅ Image generated! Check the floating image box to view or download.<br>${imageHtml}`;
             } catch (err) { removeTyping(); return `❌ Image generation failed: ${err.message}`; }
         }
     },
@@ -1574,7 +1614,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 removeTyping();
-                return `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
+                
+                // FIX: Return HTML for image persistence in chat
+                const imageHtml = `<img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
+                return `✅ Photo edited successfully! <br>${imageHtml}`;
             } catch (err) { removeTyping(); return `❌ Photo edit failed: ${err.message}`; }
         }
     },
@@ -1596,7 +1639,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 removeTyping();
-                return `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
+                
+                // FIX: Return HTML for image persistence in chat
+                const imageHtml = `<img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
+                return `✅ Background removed! <br>${imageHtml}`;
             } catch (err) { removeTyping(); return `❌ Background removal failed: ${err.message}`; }
         }
     },
@@ -1616,6 +1662,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
+                
+                // FIX: Return HTML for image persistence in chat
                 const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview image-preview-thumb">`).join('');
                 removeTyping();
                 return `🖼️ Comic successfully created! <br>${imagesHtml}`;
@@ -1654,7 +1702,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 removeTyping();
-                return `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                
+                // FIX: Removed redundant "Voice generated!" message.
+                // Now returns the HTML directly for persistence.
+                const audioHtml = `🗣️ Audio ready! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                return audioHtml;
             } catch (err) { removeTyping(); return `❌ Voice generation failed: ${err.message}`; }
         }
     },
@@ -1676,7 +1728,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 removeTyping();
-                return `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                const audioHtml = `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                return audioHtml;
             } catch (err) { removeTyping(); return `❌ Audio narration failed: ${err.message}`; }
         }
     },
@@ -1739,7 +1792,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 removeTyping();
-                return `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                const audioHtml = `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
+                return audioHtml;
             } catch (err) { removeTyping(); return `❌ Music generation failed: ${err.message}`; }
         }
     },
@@ -1859,7 +1913,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // If resultText is null (e.g., video gen which uses polling), no action is taken here.
         if (resultText) {
             removeTyping();
-            await startTypewriter(resultText); // Use typewriter
+            await startTypewriter(resultText); 
         }
         submitButton.innerHTML = originalButtonContent;
         submitButton.disabled = false;
@@ -1957,7 +2011,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // ---------- Theme Switcher Logic (NEW THEMES) ----------
   const themes = {
     cyber: { // Default (Enhanced)
-      '--cyan': '#00fff7', '--blue': '#00aaff', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
+      '--cyan': '#00fff7', '--blue': '#0a8afe', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
       '--gradient-1': 'linear-gradient(120deg, #000a2e 39%, #04336a 68%, #10bfff 97%)',
       '--gradient-user': 'linear-gradient(120deg, #0857ee 32%, #00fff0 89%)',
       '--bubble-glow': '0 0 13px #00d8ffb1, 0 0 24px #0197ff40', '--user-glow': '0 0 22px #0fffd555, 0 0 14px #36f9ff70',
@@ -2074,7 +2128,7 @@ window.addEventListener('DOMContentLoaded', () => {
     applyTheme('cyber'); // Default
   }
 
-  // ---------- Voice Call Logic (FIXED: Elder Voice) ----------
+  // ---------- Voice Call Logic (FIXED: Elder Voice & Tap to Speak) ----------
   let speechRecognition;
   let isCallActive = false;
   let callHistory = [];
@@ -2089,6 +2143,8 @@ window.addEventListener('DOMContentLoaded', () => {
     speechRecognition.lang = 'en-US';
 
     speechRecognition.onresult = (event) => {
+        if (!isCallActive || botIsSpeaking) return; // Ignore if bot is speaking
+
         let interimTranscript = '';
         let finalTranscript = '';
         userSaidSomething = true;
@@ -2104,6 +2160,10 @@ window.addEventListener('DOMContentLoaded', () => {
         // Update user's interim speech
         let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
         if (!userMsgEl) {
+            // Remove previous interim message if it exists (e.g. from previous listening block)
+            const oldInterim = callConversation.querySelector('.call-msg.user.interim');
+            if (oldInterim) oldInterim.remove(); 
+            
             userMsgEl = document.createElement('div');
             userMsgEl.className = 'call-msg user interim';
             callConversation.appendChild(userMsgEl);
@@ -2112,29 +2172,25 @@ window.addEventListener('DOMContentLoaded', () => {
         callConversation.scrollTop = callConversation.scrollHeight;
     };
     
-    speechRecognition.onspeechend = () => {
-        // This fires when user stops talking
-    };
-
     speechRecognition.onend = () => {
         if (!isCallActive) return;
         
-        let finalTranscript = '';
         const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+        let finalTranscript = '';
         if (userMsgEl) {
             finalTranscript = userMsgEl.textContent.trim();
             userMsgEl.classList.remove('interim');
         }
 
         if (botIsSpeaking) {
-            // Bot is speaking, just restart listening after it's done (in speakBotResponse)
+            // Do nothing, speakBotResponse will restart recognition
         } else if (finalTranscript && userSaidSomething) {
             // User finished speaking, send to bot
             userSaidSomething = false; // Reset flag
             callHistory.push({ role: 'user', content: finalTranscript });
             handleCallBotResponse();
         } else {
-            // User didn't say anything, just restart listening
+            // User didn't say anything, restart listening immediately
             if (isCallActive) {
                 try { speechRecognition.start(); } catch(e) {}
             }
@@ -2143,7 +2199,7 @@ window.addEventListener('DOMContentLoaded', () => {
     
     speechRecognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
-        if (event.error === 'no-speech' && isCallActive) {
+        if (isCallActive && event.error === 'no-speech') {
              userSaidSomething = false;
         }
     };
@@ -2153,6 +2209,25 @@ window.addEventListener('DOMContentLoaded', () => {
     console.warn("Speech Recognition not supported in this browser.");
   }
   
+  function stopBotSpeaking() {
+      if (botAudio) {
+          botAudio.pause();
+          botAudio.src = ''; 
+          botAudio = null;
+      }
+      if (botIsSpeaking) {
+          botIsSpeaking = false;
+          botSpeakingIndicator.style.display = 'none';
+          // Interrupt: Restart listening for user
+          if (isCallActive) {
+              try { 
+                  speechRecognition.stop(); // Stop might trigger onend, which auto-restarts, but this ensures a clean stop
+                  speechRecognition.start(); 
+              } catch(e) { /* ignore */ }
+          }
+      }
+  }
+
   function addCallMessage(role, text) {
       const msgEl = document.createElement('div');
       msgEl.className = `call-msg ${role}`;
@@ -2189,7 +2264,9 @@ window.addEventListener('DOMContentLoaded', () => {
           callHistory.push({ role: 'ai', content: botResponse });
           
           // Remove "thinking" status and add bot response
-          callConversation.removeChild(callConversation.lastChild);
+          const lastChild = callConversation.lastChild;
+          if (lastChild && lastChild.classList.contains('status')) lastChild.remove();
+          
           addCallMessage('bot', botResponse);
           
           // Speak the response
@@ -2197,8 +2274,11 @@ window.addEventListener('DOMContentLoaded', () => {
           
       } catch (err) {
           const errorMsg = `❌ Call error: ${err.message}`;
+          
           // Remove "thinking" status and add error
-          callConversation.removeChild(callConversation.lastChild);
+          const lastChild = callConversation.lastChild;
+          if (lastChild && lastChild.classList.contains('status')) lastChild.remove();
+          
           addCallMessage('bot', errorMsg);
           
           // Restart listening
@@ -2225,9 +2305,14 @@ window.addEventListener('DOMContentLoaded', () => {
           
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
-          const audio = new Audio(url);
           
-          audio.onended = () => {
+          if (botAudio) { // Clear any previous audio object
+              botAudio.pause();
+              botAudio.src = '';
+          }
+          botAudio = new Audio(url);
+          
+          botAudio.onended = () => {
               botIsSpeaking = false;
               botSpeakingIndicator.style.display = 'none';
               // Restart listening for user
@@ -2235,7 +2320,7 @@ window.addEventListener('DOMContentLoaded', () => {
                   try { speechRecognition.start(); } catch(e) {}
               }
           };
-          audio.play();
+          botAudio.play();
           
       } catch (err) {
           console.error("Voice gen error:", err);
@@ -2256,7 +2341,13 @@ window.addEventListener('DOMContentLoaded', () => {
     isCallActive = true;
     callModal.classList.add('active');
     callConversation.innerHTML = ''; // Clear old call
-    addCallMessage('status', 'Call started. Speak when ready...');
+    addCallMessage('status', 'Call connecting...');
+    setTimeout(() => {
+        const lastChild = callConversation.lastChild;
+        if (lastChild && lastChild.classList.contains('status')) lastChild.remove();
+        addCallMessage('status', '✅ Philadelphia AI picked up. Tap the screen to talk or interrupt.');
+    }, 1000); // Simulate connection time
+    
     callHistory = []; // Reset history
     
     // Start listening
@@ -2266,16 +2357,34 @@ window.addEventListener('DOMContentLoaded', () => {
         console.error("Speech recognition start failed", e);
         addCallMessage('status', 'Could not start microphone. Please check permissions.');
     }
+    
+    // Auto-initiate conversation
+    setTimeout(() => {
+        addCallMessage('bot', "Hello, I'm Philadelphia AI. How can I help you today?");
+        speakBotResponse("Hello, I'm Philadelphia AI. How can I help you today?");
+    }, 1500);
   });
 
   endCallBtn.addEventListener('click', () => {
     isCallActive = false;
-    botIsSpeaking = false;
+    stopBotSpeaking(); // Ensures audio stops
     callModal.classList.remove('active');
     try {
         speechRecognition.stop();
     } catch(e) {}
     botSpeakingIndicator.style.display = 'none';
+  });
+  
+  // FIX: Tap-to-speak/interrupt feature
+  callConversation.addEventListener('click', () => {
+      if (isCallActive && botIsSpeaking) {
+          // Remove the bot's current speaking indicator
+          const lastBotMsg = callConversation.querySelector('.call-msg.bot:last-child');
+          if (lastBotMsg) {
+               addCallMessage('status', 'User interrupted...');
+          }
+          stopBotSpeaking();
+      }
   });
 
   // Final initial render (will be triggered by auth state)
