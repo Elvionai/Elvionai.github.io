@@ -351,6 +351,8 @@ pre:before {
   padding: 9px 12px 10px 13px;
   box-shadow: 0 0 39px #007fff22, 0 11px 33px #00fff014;
   z-index: 1003;
+  /* Use env(keyboard-inset-bottom) for better mobile keyboard handling */
+  padding-bottom: calc(10px + env(keyboard-inset-bottom, 0px));
 }
 @media (max-width: 920px) {
   .chat-input-row {
@@ -504,7 +506,13 @@ pre:before {
     border-color: #00ff00;
     box-shadow: 0 0 30px #00ff00;
     transform: scale(1.05);
+    animation: head-nod 0.5s infinite alternate; /* Add subtle head nod */
 }
+@keyframes head-nod {
+    0% { transform: scale(1.05) translateY(0px); }
+    100% { transform: scale(1.04) translateY(-2px); }
+}
+
 #botSpeakingIndicator {
   position: absolute; top: -5px; left: -5px;
   width: 160px; height: 160px;
@@ -519,6 +527,12 @@ pre:before {
     box-shadow: 0 0 30px #00ff00;
     border-color: #00ff00;
     display: block;
+    animation: pulse 1s infinite cubic-bezier(0.66, 0, 0, 1),
+               glow-spread-speaking 1.5s infinite alternate; /* Different glow when speaking */
+}
+@keyframes glow-spread-speaking {
+  0% { box-shadow: 0 0 30px #00ff00; }
+  100% { box-shadow: 0 0 50px #00ff00, 0 0 80px #00ff00; }
 }
 
 #callStatusMessage {
@@ -563,6 +577,7 @@ pre:before {
   display: flex; 
   gap: 20px; 
   padding-bottom: 20px;
+  margin-top: auto; /* Push controls to the bottom of the modal */
 }
 #endCallBtn {
   background: #d23; color: white;
@@ -730,6 +745,9 @@ pre:before {
       <div class="call-msg status">Waiting for connection...</div>
     </div>
     <div id="callControls">
+      <button id="muteBtn" class="submit-btn" title="Mute Microphone" style="background: linear-gradient(94deg, #4CAF50, #8BC34A 90%);">
+        <i class="fa-solid fa-microphone"></i> Mute
+      </button>
       <button id="endCallBtn" class="submit-btn" style="background: #d23;"><i class="fa-solid fa-phone-slash"></i> End Call</button>
     </div>
   </div>
@@ -821,6 +839,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const callStatusMessage = $('callStatusMessage');
   const tapToTalk = $('tapToTalk');
   const typingStatus = $('typing-status'); 
+  const muteBtn = $('muteBtn');
 
   if (!chatForm || !chatBox || !toolsMenu || !typingStatus) {
     console.error("Essential UI elements are missing. App functionality will be limited.");
@@ -872,7 +891,20 @@ window.addEventListener('DOMContentLoaded', () => {
   if (chatInput) {
     const autoResize = () => { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px'; };
     chatInput.addEventListener('input', autoResize);
-    chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); }});
+    // Modified: Enter key for new line, Shift+Enter or button for submit
+    chatInput.addEventListener('keydown', e => { 
+        if (e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            const start = chatInput.selectionStart;
+            const end = chatInput.selectionEnd;
+            chatInput.value = chatInput.value.substring(0, start) + '\n' + chatInput.value.substring(end);
+            chatInput.selectionStart = chatInput.selectionEnd = start + 1;
+            chatInput.dispatchEvent(new Event('input')); // Trigger autoResize
+        } else if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            chatForm.requestSubmit();
+        }
+    });
     autoResize();
   }
   
@@ -1577,7 +1609,14 @@ window.addEventListener('DOMContentLoaded', () => {
     showTypingWithText('Submitting video generation job...');
     try {
         const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
-        const options = isImageToVideo ? { method: 'POST', body: payload } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+        let options;
+
+        if (isImageToVideo) {
+          options = { method: 'POST', body: payload }; // payload is FormData
+        } else {
+          options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }; // payload is JSON
+        }
+
         const startRes = await fetch(API_BASE_URL + endpoint, options);
         const startData = await startRes.json();
         if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to start video task.');
@@ -1783,7 +1822,12 @@ window.addEventListener('DOMContentLoaded', () => {
             <label for="video-duration">Duration (seconds)</label><input type="number" id="video-duration" value="6" min="2" max="15">
             <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-play"></i> Start Generation</button>`,
         handleSubmit: async (form) => {
-            const payload = { prompt: form.querySelector('#video-prompt').value, duration: parseInt(form.querySelector('#video-duration').value, 10), resolution: "1080P" };
+            const payload = { 
+                prompt: form.querySelector('#video-prompt').value, 
+                duration: parseInt(form.querySelector('#video-duration').value, 10), 
+                resolution: "1080P",
+                model: "MiniMax-Hailuo-02" // Added model
+            };
             await addMessageToChat('user', `Text-to-Video request: "${payload.prompt}"`);
             handleVideoGeneration(payload); // This will handle its own typing indicators
             return null;
@@ -1798,9 +1842,17 @@ window.addEventListener('DOMContentLoaded', () => {
             <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-play"></i> Start Generation</button>`,
         handleSubmit: async (form) => {
             const file = form.querySelector('#video-image-file').files[0];
+            const prompt = form.querySelector('#video-image-prompt').value;
             if (!file) return "Please select an image.";
             await addMessageToChat('user', `Image-to-Video request for: ${file.name}`, [{name: file.name, type: file.type}]);
-            const fd = new FormData(); fd.append('prompt', form.querySelector('#video-image-prompt').value); fd.append('file', file);
+            
+            const fd = new FormData(); 
+            fd.append('prompt', prompt); 
+            fd.append('file', file);
+            fd.append('model', "MiniMax-Hailuo-02"); // Added model
+            fd.append('duration', "6"); // Explicitly send duration
+            fd.append('resolution', "1080P"); // Explicitly send resolution
+            
             handleVideoGeneration(fd, true); // This will handle its own typing indicators
             return null;
         }
@@ -2105,23 +2157,6 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-anim-glow-1': '0 0 17px #a6faff70', '--header-text-anim-glow-2': '0 0 29px #a6faffee',
       '--header-text-fill': 'linear-gradient(90deg,#a6faff,#00c3ff 40%,#fff 59%,#00f2ff 89%,#a6faff 100%)'
     },
-    solstice: { // Golden Bright Sunny (Warm Gold/Orange)
-      '--cyan': '#ffc300', '--blue': '#ff9900', '--dark-bg': '#fff8e1', '--fade-blue': '#fff0c7',
-      '--gradient-1': 'linear-gradient(120deg, #fff0c7 39%, #ffe082 68%, #ffc300 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #ff9900 32%, #ffc300 89%)',
-      '--bubble-glow': '0 0 13px #ffc300b1', '--user-glow': '0 0 22px #ffc30055',
-      '--header-glass': 'rgba(255,248,225,0.92)', '--code-bg': 'linear-gradient(92deg,#fff0c7 79%,#ffe082 120%)',
-      '--code-border': '#ffc300', '--code-text': '#5d4037', '--main-text': '#5d4037', '--link-text': '#ff9900',
-      '--input-bg': '#fff8e1',
-      '--body-bg': 'linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%)',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#fff8e1 80%,#ffe0b3 200%)',
-      '--panel-border': '#ff9900cb', '--panel-shadow': '0 0 42px #ffc300c9',
-      '--submit-bg': 'linear-gradient(94deg,#ffc300,#ff9900 90%)', '--submit-text': '#fff',
-      '--submit-hover-bg': '#ff9900', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #ffc300cc',
-      '--header-text-anim-glow-1': '0 0 17px #ffc30070', '--header-text-anim-glow-2': '0 0 29px #ffc300ee',
-      '--header-text-fill': 'linear-gradient(90deg,#ffc300,#ff9900 40%,#8b4513 59%,#ff9900 89%,#ffc300 100%)'
-    },
     midnight: { // Regular Dark
       '--cyan': '#3391ff', '--blue': '#007bff', '--dark-bg': '#121212', '--fade-blue': '#282828',
       '--gradient-1': 'linear-gradient(120deg, #282828 39%, #333 68%, #444 97%)',
@@ -2138,6 +2173,42 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-glow': '0 0 10px #3391ffaa',
       '--header-text-anim-glow-1': '0 0 12px #3391ff70', '--header-text-anim-glow-2': '0 0 15px #3391ffee',
       '--header-text-fill': 'linear-gradient(90deg,#3391ff,#007bff 40%,#fff 59%,#3391ff 89%,#aaccff 100%)'
+    },
+    forest: { // Earthy, Green, Natural
+      '--cyan': '#7CFC00', '--blue': '#228B22', '--dark-bg': '#0A120A', '--fade-blue': '#1A331A',
+      '--gradient-1': 'linear-gradient(120deg, #1A331A 39%, #2E8B57 68%, #3CB371 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #228B22 32%, #7CFC00 89%)',
+      '--bubble-glow': '0 0 13px #7CFC00b1', '--user-glow': '0 0 22px #98FB9855, 0 0 14px #3CB37170',
+      '--header-glass': 'rgba(10,18,10,0.92)', '--code-bg': 'linear-gradient(92deg,#1A331A 79%,#2E8B57 120%)',
+      '--code-border': '#7CFC00', '--code-text': '#E0FFD7', '--main-text': '#E0FFD7', '--link-text': '#7CFC00',
+      '--input-bg': '#1A331A',
+      '--body-bg': 'radial-gradient(circle at 60% 45%, #1A3A1A 37%, #0A120A 88%, #2B0A42 100%) fixed, repeating-linear-gradient(100deg,#153015 0 9%,#0A120A 16% 19%,#050A10 30% 41%,#1A3A1A 44% 62%,#0A120A 74% 89%,#102A10 99% 100%)',
+      '--body-blend-mode': 'lighten, color-dodge', '--panel-bg': 'linear-gradient(118deg,#1A331A 80%,#2E8B57 200%)',
+      '--panel-border': '#7CFC00cb', '--panel-shadow': '0 0 42px #7CFC00c9',
+      '--submit-bg': 'linear-gradient(94deg,#7CFC00,#228B22 90%)', '--submit-text': '#0A120A',
+      '--submit-hover-bg': '#228B22', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 12px #7CFC00cc, 0 0 27px #228B2288',
+      '--header-text-anim-glow-1': '0 0 17px #7CFC0070,0 0 30px #228B2244',
+      '--header-text-anim-glow-2': '0 0 29px #7CFC00ee,0 0 44px #3CB37182',
+      '--header-text-fill': 'linear-gradient(90deg,#7CFC00,#228B22 40%,#fff 59%,#228B22 89%,#7CFC00 100%)'
+    },
+    volcano: { // Fiery, Dark Red/Orange
+      '--cyan': '#FF4500', '--blue': '#B22222', '--dark-bg': '#280A0A', '--fade-blue': '#401A1A',
+      '--gradient-1': 'linear-gradient(120deg, #401A1A 39%, #8B0000 68%, #FF4500 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #B22222 32%, #FF4500 89%)',
+      '--bubble-glow': '0 0 13px #FF4500b1', '--user-glow': '0 0 22px #FF8C0055, 0 0 14px #FF450070',
+      '--header-glass': 'rgba(40,10,10,0.92)', '--code-bg': 'linear-gradient(92deg,#401A1A 79%,#8B0000 120%)',
+      '--code-border': '#FF4500', '--code-text': '#FFE0B3', '--main-text': '#FFE0B3', '--link-text': '#FF4500',
+      '--input-bg': '#401A1A',
+      '--body-bg': 'radial-gradient(circle at 60% 45%, #401A1A 37%, #280A0A 88%, #5C0A0A 100%) fixed, repeating-linear-gradient(100deg,#402020 0 9%,#280A0A 16% 19%,#150505 30% 41%,#401A1A 44% 62%,#280A0A 74% 89%,#351010 99% 100%)',
+      '--body-blend-mode': 'lighten, color-dodge', '--panel-bg': 'linear-gradient(118deg,#401A1A 80%,#8B0000 200%)',
+      '--panel-border': '#FF4500cb', '--panel-shadow': '0 0 42px #FF4500c9',
+      '--submit-bg': 'linear-gradient(94deg,#FF4500,#B22222 90%)', '--submit-text': '#280A0A',
+      '--submit-hover-bg': '#B22222', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 12px #FF4500cc, 0 0 27px #B2222288',
+      '--header-text-anim-glow-1': '0 0 17px #FF450070,0 0 30px #B2222244',
+      '--header-text-anim-glow-2': '0 0 29px #FF4500ee,0 0 44px #FF8C0082',
+      '--header-text-fill': 'linear-gradient(90deg,#FF4500,#B22222 40%,#fff 59%,#B22222 89%,#FF4500 100%)'
     }
   };
   
@@ -2153,7 +2224,7 @@ window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('philadelphia-theme', themeName);
     
     // Update theme icon
-    const icon = themeName === 'solstice' ? 'fa-sun' : 'fa-moon';
+    const icon = themeName === 'solstice' ? 'fa-sun' : 'fa-moon'; // Keep logic for sun/moon, but solstice is removed
     themeBtn.innerHTML = `<i class="fa-solid ${icon}"></i>`;
   }
 
@@ -2178,6 +2249,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let botIsSpeaking = false;
   let userSaidSomething = false;
   let currentAudio = null;
+  let isMuted = false; // Added mute state
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRecognition) {
@@ -2187,6 +2259,8 @@ window.addEventListener('DOMContentLoaded', () => {
     speechRecognition.lang = 'en-US';
 
     speechRecognition.onresult = (event) => {
+        if (isMuted) return; // Do not process results if muted
+
         let interimTranscript = '';
         let finalTranscript = '';
         userSaidSomething = true;
@@ -2215,11 +2289,11 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     
     speechRecognition.onspeechend = () => {
-        // This fires when user stops talking
+        // This fires when user stops talking, but onend handles the final transcript
     };
 
     speechRecognition.onend = () => {
-        if (!isCallActive) return;
+        if (!isCallActive || isMuted) return; // Do not restart if call is inactive or muted
         
         let finalTranscript = '';
         const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
@@ -2237,8 +2311,8 @@ window.addEventListener('DOMContentLoaded', () => {
             handleCallBotResponse();
         } else {
             // User didn't say anything, just restart listening
-            if (isCallActive) {
-                callStatusMessage.textContent = 'Listening...';
+            if (isCallActive && !isMuted) {
+                callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                 tapToTalk.style.display = 'block';
                 try { speechRecognition.start(); } catch(e) {}
             }
@@ -2247,10 +2321,18 @@ window.addEventListener('DOMContentLoaded', () => {
     
     speechRecognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
-        if (event.error === 'no-speech' && isCallActive) {
+        if (event.error === 'no-speech' && isCallActive && !isMuted) {
              userSaidSomething = false;
-        } else if (event.error === 'network' && isCallActive) {
+        } else if (event.error === 'network' && isCallActive && !isMuted) {
              callStatusMessage.textContent = 'Network error. Attempting restart...';
+        }
+         // Attempt to restart if not muted and still active
+        if (isCallActive && !isMuted) {
+             setTimeout(() => {
+                 if (isCallActive && !isMuted) {
+                     try { speechRecognition.start(); } catch(e) {}
+                 }
+             }, 1000); // Wait a bit before retrying
         }
     };
 
@@ -2307,8 +2389,8 @@ window.addEventListener('DOMContentLoaded', () => {
           addCallMessage('bot', errorMsg);
           
           // Restart listening
-          if (isCallActive) {
-             callStatusMessage.textContent = 'Listening...';
+          if (isCallActive && !isMuted) {
+             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
              tapToTalk.style.display = 'block';
              try { speechRecognition.start(); } catch(e) {}
           }
@@ -2341,8 +2423,8 @@ window.addEventListener('DOMContentLoaded', () => {
               botImageContainer.classList.remove('speaking');
               currentAudio = null;
               // Restart listening for user
-              if (isCallActive) {
-                  callStatusMessage.textContent = 'Listening...';
+              if (isCallActive && !isMuted) {
+                  callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                   tapToTalk.style.display = 'block';
                   try { speechRecognition.start(); } catch(e) {}
               }
@@ -2354,7 +2436,7 @@ window.addEventListener('DOMContentLoaded', () => {
           botIsSpeaking = false;
           botImageContainer.classList.remove('speaking');
           // Failed to speak, just restart listening
-          if (isCallActive) {
+          if (isCallActive && !isMuted) {
               callStatusMessage.textContent = 'Listening (Voice Failed)...';
               tapToTalk.style.display = 'block';
               try { speechRecognition.start(); } catch(e) {}
@@ -2364,8 +2446,9 @@ window.addEventListener('DOMContentLoaded', () => {
   
   // FIX: User can tap the screen to stop the bot and talk
   function stopBotSpeakingAndStartListening() {
-      if (!isCallActive || !botIsSpeaking) return;
-      
+      if (!isCallActive) return; // Only act if call is active
+      if (!botIsSpeaking && !isMuted) return; // If bot isn't speaking and not muted, don't interrupt
+
       if (currentAudio) {
           currentAudio.pause();
           currentAudio.currentTime = 0;
@@ -2374,15 +2457,20 @@ window.addEventListener('DOMContentLoaded', () => {
       
       botIsSpeaking = false;
       botImageContainer.classList.remove('speaking');
-      callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-      tapToTalk.style.display = 'block';
       
-      // Restart listening for user input
-      try {
-          speechRecognition.stop(); // Stop might trigger onend, which auto-restarts. Better to stop and manually start
-          speechRecognition.start();
-      } catch(e) {
-         console.warn("Could not restart speech recognition immediately.");
+      if (!isMuted) {
+          callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+          tapToTalk.style.display = 'block';
+          // Restart listening for user input
+          try {
+              speechRecognition.stop(); // Stop might trigger onend, which auto-restarts. Better to stop and manually start
+              speechRecognition.start();
+          } catch(e) {
+             console.warn("Could not restart speech recognition immediately.", e);
+          }
+      } else {
+          callStatusMessage.textContent = 'Muted.';
+          tapToTalk.style.display = 'none';
       }
       
       // Clear interim message if it exists
@@ -2393,12 +2481,41 @@ window.addEventListener('DOMContentLoaded', () => {
   callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
   callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
 
+  // Mute button handler
+  if (muteBtn) {
+    muteBtn.addEventListener('click', () => {
+        isMuted = !isMuted;
+        if (isMuted) {
+            muteBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Muted';
+            muteBtn.style.background = 'linear-gradient(94deg, #FF5722, #FF9800 90%)'; // Orange for muted
+            if (speechRecognition) speechRecognition.stop(); // Stop listening
+            callStatusMessage.textContent = 'Muted.';
+            tapToTalk.style.display = 'none';
+            stopBotSpeakingAndStartListening(); // Ensure bot stops talking if muted
+        } else {
+            muteBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+            muteBtn.style.background = 'linear-gradient(94deg, #4CAF50, #8BC34A 90%)'; // Green for active mic
+            if (isCallActive) { // Only restart if call is active
+                callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                tapToTalk.style.display = 'block';
+                try { speechRecognition.start(); } catch(e) {}
+            }
+        }
+    });
+  }
+
+
   callBtn.addEventListener('click', () => {
     if (!SpeechRecognition) {
         alert("Sorry, your browser doesn't support the Speech Recognition needed for this feature.");
         return;
     }
     isCallActive = true;
+    isMuted = false; // Reset mute status on new call
+    if (muteBtn) {
+        muteBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+        muteBtn.style.background = 'linear-gradient(94deg, #4CAF50, #8BC34A 90%)';
+    }
     callModal.classList.add('active');
     callConversation.innerHTML = ''; // Clear old call
     addCallMessage('status', 'Connecting to Philadelphia AI...');
@@ -2424,6 +2541,7 @@ window.addEventListener('DOMContentLoaded', () => {
   endCallBtn.addEventListener('click', () => {
     isCallActive = false;
     botIsSpeaking = false;
+    isMuted = false;
     if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;
