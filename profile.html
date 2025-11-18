@@ -500,23 +500,10 @@ pre:before {
   box-shadow: 0 0 30px var(--cyan);
   transition: transform 0.3s ease;
 }
-@keyframes head-nod {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-  100% { transform: translateY(0); }
-}
-
-@keyframes glow-spread {
-  0% { box-shadow: 0 0 10px #00ff00; opacity: 0.7; }
-  50% { box-shadow: 0 0 30px #00ff00, 0 0 50px #00ff0088; opacity: 1; }
-  100% { box-shadow: 0 0 10px #00ff00; opacity: 0.7; }
-}
-
 #botImageContainer.speaking img {
     border-color: #00ff00;
     box-shadow: 0 0 30px #00ff00;
     transform: scale(1.05);
-    animation: head-nod 1.2s infinite ease-in-out;
 }
 #botSpeakingIndicator {
   position: absolute; top: -5px; left: -5px;
@@ -532,7 +519,6 @@ pre:before {
     box-shadow: 0 0 30px #00ff00;
     border-color: #00ff00;
     display: block;
-    animation: glow-spread 1.7s infinite ease-in-out;
 }
 
 #callStatusMessage {
@@ -577,29 +563,11 @@ pre:before {
   display: flex; 
   gap: 20px; 
   padding-bottom: 20px;
-  margin-top: auto; /* Push controls to bottom */
 }
-#endCallBtn, #muteCallBtn {
+#endCallBtn {
   background: #d23; color: white;
   font-size: 1.2em; padding: 10px 20px;
   border: none; border-radius: 10px; cursor: pointer;
-  box-shadow: 0 0 10px #d2388;
-  transition: background .1s, box-shadow .1s;
-}
-#endCallBtn:hover, #muteCallBtn:hover {
-  background: #ff7777;
-  box-shadow: 0 0 15px #ff7777aa;
-}
-#muteCallBtn {
-    background: #007bff; /* Default blue for unmute */
-    box-shadow: 0 0 10px #007bff88;
-}
-#muteCallBtn.muted {
-    background: #555; /* Grey when muted */
-    box-shadow: none;
-}
-#muteCallBtn.muted:hover {
-    background: #777;
 }
 
 /* Spinner for loading states */
@@ -762,7 +730,6 @@ pre:before {
       <div class="call-msg status">Waiting for connection...</div>
     </div>
     <div id="callControls">
-      <button id="muteCallBtn" class="submit-btn"><i class="fa-solid fa-microphone"></i> Mute Microphone</button>
       <button id="endCallBtn" class="submit-btn" style="background: #d23;"><i class="fa-solid fa-phone-slash"></i> End Call</button>
     </div>
   </div>
@@ -849,7 +816,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const callBtn = $('callBtn');
   const callModal = $('callModal');
   const endCallBtn = $('endCallBtn');
-  const muteCallBtn = $('muteCallBtn'); // NEW: Mute button
   const callConversation = $('callConversation');
   const botImageContainer = $('botImageContainer');
   const callStatusMessage = $('callStatusMessage');
@@ -906,21 +872,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (chatInput) {
     const autoResize = () => { chatInput.style.height = 'auto'; chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px'; };
     chatInput.addEventListener('input', autoResize);
-    // NEW: Enter for new line, Shift+Enter or Send button for submit
-    chatInput.addEventListener('keydown', e => { 
-        if (e.key === 'Enter' && !e.shiftKey) { 
-            e.preventDefault(); 
-            // Do not submit, just add new line
-            const start = chatInput.selectionStart;
-            const end = chatInput.selectionEnd;
-            chatInput.value = chatInput.value.substring(0, start) + "\n" + chatInput.value.substring(end);
-            chatInput.selectionStart = chatInput.selectionEnd = start + 1;
-            autoResize(); // Adjust height after adding new line
-        } else if (e.key === 'Enter' && e.shiftKey) {
-            e.preventDefault(); // Prevent default shift+enter behavior (sometimes inserts two lines)
-            chatForm.requestSubmit(); // Submit on Shift+Enter
-        }
-    });
+    chatInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatForm.requestSubmit(); }});
     autoResize();
   }
   
@@ -1068,7 +1020,7 @@ window.addEventListener('DOMContentLoaded', () => {
         createdAt: serverTimestamp()
       });
       currentChatId = newChatDoc.id;
-      // No need to manually switch, the listener will handle it
+      // No need to manually switch, the onSnapshot listener will handle it
     } catch (e) {
       console.error("Error creating new chat: ", e);
     }
@@ -1262,7 +1214,7 @@ window.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>`;
       } else { // AI message
-        // Check if the message contains HTML content (like tool results with images/audio/video)
+        // Check if the message contains HTML content (like tool results)
         let content;
         if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
              content = msg.text; // Render raw HTML for tool outputs
@@ -1334,10 +1286,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (copyBtn) copyBtn.onclick = () => {
         try {
           // Strip HTML tags for cleaner copy
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = msg.text;
-          const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
-
+          const textToCopy = msg.text.replace(/<[^>]*>/g, '').replace(/<\/?[^>]+(>|$)/g, "");
           navigator.clipboard.writeText(textToCopy);
           copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
           setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
@@ -1347,10 +1296,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (shareBtn) shareBtn.onclick = () => {
         try {
           const url = window.location.origin;
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = msg.text;
-          const plainText = tempDiv.textContent || tempDiv.innerText || '';
-          const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
+          const shareText = `${msg.text.replace(/<[^>]*>/g, '').replace(/<\/?[^>]+(>|$)/g, "")}\n\nShared via Philadelphia AI: ${url}`;
           if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
           else prompt("Copy and share manually:", shareText);
         } catch (e) { console.warn('share failed', e); }
@@ -1419,12 +1365,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (copyBtn) copyBtn.onclick = () => {
         try {
-          // Strip HTML tags for cleaner copy
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = msg.text;
-          const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
-
-          navigator.clipboard.writeText(textToCopy);
+          navigator.clipboard.writeText(msg.text.replace(/<\/?[^>]+(>|$)/g, ""));
           copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
           setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
         } catch (e) { console.warn('copy failed', e); }
@@ -1451,7 +1392,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!typingStatus) return;
     typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
     typingStatus.style.display = 'flex';
-    // Ensure scroll to bottom to show typing indicator
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
@@ -1460,7 +1400,6 @@ window.addEventListener('DOMContentLoaded', () => {
       // Removed the bubble and just show the spinner and text
       typingStatus.innerHTML = `<div class="msg" style="display:flex;align-items:center;"><span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text); font-style:italic;">${text}</span></div>`;
       typingStatus.style.display = 'flex';
-      // Ensure scroll to bottom to show typing indicator
       chatBox.scrollTop = chatBox.scrollHeight;
   }
 
@@ -1633,41 +1572,12 @@ window.addEventListener('DOMContentLoaded', () => {
           console.error("Error adding message to Firestore: ", e);
       }
   }
-  
-  // Helper to convert Blob to Base64
-  function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-  }
 
   async function handleVideoGeneration(payload, isImageToVideo = false) {
     showTypingWithText('Submitting video generation job...');
     try {
         const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
-        // NEW: Ensure model, duration, resolution are included for video tools
-        const commonPayload = {
-            model: "MiniMax-Hailuo-02", // Explicitly set model
-            duration: payload.duration || 6, // Default duration if not provided
-            resolution: payload.resolution || "1080P" // Default resolution
-        };
-
-        let options;
-        if (isImageToVideo) {
-            // FormData for image upload
-            payload.append('model', commonPayload.model);
-            payload.append('duration', commonPayload.duration);
-            payload.append('resolution', commonPayload.resolution);
-            options = { method: 'POST', body: payload };
-        } else {
-            // JSON for text
-            const finalPayload = { ...payload, ...commonPayload };
-            options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalPayload) };
-        }
-
+        const options = isImageToVideo ? { method: 'POST', body: payload } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
         const startRes = await fetch(API_BASE_URL + endpoint, options);
         const startData = await startRes.json();
         if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to start video task.');
@@ -1722,9 +1632,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
                 showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
-                // NEW: Only add text message to chat
+                const imgHtml = `✅ Image generated! Check the floating image box to view or download. <br><img src="data:image/png;base64,${data.image_b64}" alt="AI generated image" class="chat-media-preview image-preview-thumb">`;
                 removeTyping();
-                await addMessageToChat('ai', '✅ Image generated! Check the floating image box to view or download.');
+                await addMessageToChat('ai', imgHtml); // Save HTML directly
                 return null;
             } catch (err) { removeTyping(); return `❌ Image generation failed: ${err.message}`; }
         }
@@ -1747,9 +1657,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error((await res.json()).error || 'Failed to edit photo.');
                 const blob = await res.blob();
-                // NEW: Convert blob to base64 for persistent storage in chat
-                const base64String = await blobToBase64(blob);
-                const imgHtml = `✅ Photo edited successfully! <br><img src="${base64String}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
+                const url = URL.createObjectURL(blob);
+                const imgHtml = `✅ Photo edited successfully! <br><img src="${url}" alt="Edited Photo" class="chat-media-preview image-preview-thumb">`;
                 removeTyping();
                 await addMessageToChat('ai', imgHtml); // Save HTML directly
                 return null;
@@ -1772,7 +1681,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // Note: this URL is temporary and won't persist on reload
+                const url = URL.createObjectURL(blob);
                 const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview image-preview-thumb">`;
                 removeTyping();
                 await addMessageToChat('ai', imgHtml); // Save HTML directly
@@ -1796,7 +1705,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || res.statusText);
-                // NEW: Ensure base64 images are included directly in the chat message for persistence
                 const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview image-preview-thumb" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
                 const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                 removeTyping();
@@ -1835,7 +1743,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
                 if (!res.ok) throw new Error(await res.text());
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // Note: this URL is temporary and won't persist on reload
+                const url = URL.createObjectURL(blob);
                 const audioHtml = `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
                 removeTyping();
                 await addMessageToChat('ai', audioHtml); // Save HTML directly
@@ -1859,7 +1767,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd });
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // Note: this URL is temporary and won't persist on reload
+                const url = URL.createObjectURL(blob);
                 const narrationHtml = `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
                 removeTyping();
                 await addMessageToChat('ai', narrationHtml); // Save HTML directly
@@ -1892,9 +1800,7 @@ window.addEventListener('DOMContentLoaded', () => {
             const file = form.querySelector('#video-image-file').files[0];
             if (!file) return "Please select an image.";
             await addMessageToChat('user', `Image-to-Video request for: ${file.name}`, [{name: file.name, type: file.type}]);
-            const fd = new FormData(); 
-            fd.append('prompt', form.querySelector('#video-image-prompt').value); 
-            fd.append('file', file);
+            const fd = new FormData(); fd.append('prompt', form.querySelector('#video-image-prompt').value); fd.append('file', file);
             handleVideoGeneration(fd, true); // This will handle its own typing indicators
             return null;
         }
@@ -1926,7 +1832,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/generate-music`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (!res.ok) throw new Error((await res.json()).detail || 'API request failed.');
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // Note: this URL is temporary and won't persist on reload
+                const url = URL.createObjectURL(blob);
                 const musicHtml = `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview audio-preview-thumb"></audio>`;
                 removeTyping();
                 await addMessageToChat('ai', musicHtml); // Save HTML directly
@@ -2002,7 +1908,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${API_BASE_URL}/api/tools/research`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) });
                 if (!res.ok) throw new Error(res.statusText);
                 const blob = await res.blob();
-                const url = URL.createObjectURL(blob); // Note: this URL is temporary and won't persist on reload
+                const url = URL.createObjectURL(blob);
                 const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--link-text);font-weight:bold;">Download PDF Report</a>`;
                 removeTyping();
                 return `✅ Research report on **${topic}** is ready! ${downloadLink}`;
@@ -2148,7 +2054,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // ---------- Theme Switcher Logic (NEW THEMES) ----------
   const themes = {
     cyber: { // Default (Enhanced)
-      '--cyan': '#00fff7', '--blue': '#0a8afe', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
+      '--cyan': '#00fff7', '--blue': '#00aaff', '--dark-bg': '#070b1a', '--fade-blue': '#133c8b',
       '--gradient-1': 'linear-gradient(120deg, #000a2e 39%, #04336a 68%, #10bfff 97%)',
       '--gradient-user': 'linear-gradient(120deg, #0857ee 32%, #00fff0 89%)',
       '--bubble-glow': '0 0 13px #00d8ffb1, 0 0 24px #0197ff40', '--user-glow': '0 0 22px #0fffd555, 0 0 14px #36f9ff70',
@@ -2199,6 +2105,23 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-anim-glow-1': '0 0 17px #a6faff70', '--header-text-anim-glow-2': '0 0 29px #a6faffee',
       '--header-text-fill': 'linear-gradient(90deg,#a6faff,#00c3ff 40%,#fff 59%,#00f2ff 89%,#a6faff 100%)'
     },
+    solstice: { // Golden Bright Sunny (Warm Gold/Orange)
+      '--cyan': '#ffc300', '--blue': '#ff9900', '--dark-bg': '#fff8e1', '--fade-blue': '#fff0c7',
+      '--gradient-1': 'linear-gradient(120deg, #fff0c7 39%, #ffe082 68%, #ffc300 97%)',
+      '--gradient-user': 'linear-gradient(120deg, #ff9900 32%, #ffc300 89%)',
+      '--bubble-glow': '0 0 13px #ffc300b1', '--user-glow': '0 0 22px #ffc30055',
+      '--header-glass': 'rgba(255,248,225,0.92)', '--code-bg': 'linear-gradient(92deg,#fff0c7 79%,#ffe082 120%)',
+      '--code-border': '#ffc300', '--code-text': '#5d4037', '--main-text': '#5d4037', '--link-text': '#ff9900',
+      '--input-bg': '#fff8e1',
+      '--body-bg': 'linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%)',
+      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#fff8e1 80%,#ffe0b3 200%)',
+      '--panel-border': '#ff9900cb', '--panel-shadow': '0 0 42px #ffc300c9',
+      '--submit-bg': 'linear-gradient(94deg,#ffc300,#ff9900 90%)', '--submit-text': '#fff',
+      '--submit-hover-bg': '#ff9900', '--submit-hover-text': '#fff',
+      '--header-text-glow': '0 0 12px #ffc300cc',
+      '--header-text-anim-glow-1': '0 0 17px #ffc30070', '--header-text-anim-glow-2': '0 0 29px #ffc300ee',
+      '--header-text-fill': 'linear-gradient(90deg,#ffc300,#ff9900 40%,#8b4513 59%,#ff9900 89%,#ffc300 100%)'
+    },
     midnight: { // Regular Dark
       '--cyan': '#3391ff', '--blue': '#007bff', '--dark-bg': '#121212', '--fade-blue': '#282828',
       '--gradient-1': 'linear-gradient(120deg, #282828 39%, #333 68%, #444 97%)',
@@ -2215,40 +2138,6 @@ window.addEventListener('DOMContentLoaded', () => {
       '--header-text-glow': '0 0 10px #3391ffaa',
       '--header-text-anim-glow-1': '0 0 12px #3391ff70', '--header-text-anim-glow-2': '0 0 15px #3391ffee',
       '--header-text-fill': 'linear-gradient(90deg,#3391ff,#007bff 40%,#fff 59%,#3391ff 89%,#aaccff 100%)'
-    },
-    forest: { /* NEW THEME: Forest */
-      '--cyan': '#99cc99', '--blue': '#669966', '--dark-bg': '#2a362a', '--fade-blue': '#4a5a4a',
-      '--gradient-1': 'linear-gradient(120deg, #3a473a 39%, #5a6b5a 68%, #99cc99 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #669966 32%, #99cc99 89%)',
-      '--bubble-glow': '0 0 10px #99cc99b1', '--user-glow': '0 0 18px #99cc9955',
-      '--header-glass': 'rgba(42,54,42,0.92)', '--code-bg': 'linear-gradient(92deg,#3a473a 79%,#5a6b5a 120%)',
-      '--code-border': '#99cc99', '--code-text': '#e0ffe0', '--main-text': '#e0ffe0', '--link-text': '#99cc99',
-      '--input-bg': '#4a5a4a',
-      '--body-bg': 'linear-gradient(180deg, #3a473a 0%, #2a362a 100%)',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#3a473a 80%,#4a5a4a 200%)',
-      '--panel-border': '#99cc99cb', '--panel-shadow': '0 0 35px #99cc99c9',
-      '--submit-bg': 'linear-gradient(94deg,#99cc99,#669966 90%)', '--submit-text': '#2a362a',
-      '--submit-hover-bg': '#669966', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 10px #99cc99cc',
-      '--header-text-anim-glow-1': '0 0 15px #99cc9970', '--header-text-anim-glow-2': '0 0 25px #99cc99ee',
-      '--header-text-fill': 'linear-gradient(90deg,#99cc99,#669966 40%,#fff 59%,#669966 89%,#99cc99 100%)'
-    },
-    volcano: { /* NEW THEME: Volcano */
-      '--cyan': '#ff7043', '--blue': '#bf360c', '--dark-bg': '#3e1a0b', '--fade-blue': '#5e2a1b',
-      '--gradient-1': 'linear-gradient(120deg, #4e2211 39%, #6e3a2c 68%, #ff7043 97%)',
-      '--gradient-user': 'linear-gradient(120deg, #bf360c 32%, #ff7043 89%)',
-      '--bubble-glow': '0 0 12px #ff7043b1', '--user-glow': '0 0 20px #ff704355',
-      '--header-glass': 'rgba(62,26,11,0.92)', '--code-bg': 'linear-gradient(92deg,#4e2211 79%,#6e3a2c 120%)',
-      '--code-border': '#ff7043', '--code-text': '#fff0e0', '--main-text': '#fff0e0', '--link-text': '#ff7043',
-      '--input-bg': '#5e2a1b',
-      '--body-bg': 'radial-gradient(circle at 50% 50%, #6e3a2c 0%, #3e1a0b 100%)',
-      '--body-blend-mode': 'normal', '--panel-bg': 'linear-gradient(118deg,#4e2211 80%,#5e2a1b 200%)',
-      '--panel-border': '#ff7043cb', '--panel-shadow': '0 0 40px #ff7043c9',
-      '--submit-bg': 'linear-gradient(94deg,#ff7043,#bf360c 90%)', '--submit-text': '#3e1a0b',
-      '--submit-hover-bg': '#bf360c', '--submit-hover-text': '#fff',
-      '--header-text-glow': '0 0 12px #ff7043cc',
-      '--header-text-anim-glow-1': '0 0 17px #ff704370', '--header-text-anim-glow-2': '0 0 29px #ff7043ee',
-      '--header-text-fill': 'linear-gradient(90deg,#ff7043,#bf360c 40%,#fff 59%,#bf360c 89%,#ff7043 100%)'
     }
   };
   
@@ -2264,7 +2153,7 @@ window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('philadelphia-theme', themeName);
     
     // Update theme icon
-    const icon = themeName === 'forest' ? 'fa-leaf' : (themeName === 'volcano' ? 'fa-fire' : 'fa-moon');
+    const icon = themeName === 'solstice' ? 'fa-sun' : 'fa-moon';
     themeBtn.innerHTML = `<i class="fa-solid ${icon}"></i>`;
   }
 
@@ -2289,7 +2178,6 @@ window.addEventListener('DOMContentLoaded', () => {
   let botIsSpeaking = false;
   let userSaidSomething = false;
   let currentAudio = null;
-  let isMuted = false; // NEW: Mute state
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SpeechRecognition) {
@@ -2332,11 +2220,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     speechRecognition.onend = () => {
         if (!isCallActive) return;
-        if (isMuted) { // NEW: If muted, don't restart recognition
-            callStatusMessage.textContent = 'Microphone Muted.';
-            tapToTalk.style.display = 'none';
-            return;
-        }
         
         let finalTranscript = '';
         const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
@@ -2354,26 +2237,20 @@ window.addEventListener('DOMContentLoaded', () => {
             handleCallBotResponse();
         } else {
             // User didn't say anything, just restart listening
-            if (isCallActive && !isMuted) {
-                callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+            if (isCallActive) {
+                callStatusMessage.textContent = 'Listening...';
                 tapToTalk.style.display = 'block';
-                try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically:", e);}
+                try { speechRecognition.start(); } catch(e) {}
             }
         }
     };
     
     speechRecognition.onerror = (event) => {
         console.error('Speech recognition error', event.error);
-        if (event.error === 'no-speech' && isCallActive && !isMuted) {
-             userSaidSomething = false; // Reset flag if no speech was detected
-             // Force restart listening if no speech was detected and not muted
-             speechRecognition.stop(); // Stop might trigger onend, which then restarts
+        if (event.error === 'no-speech' && isCallActive) {
+             userSaidSomething = false;
         } else if (event.error === 'network' && isCallActive) {
              callStatusMessage.textContent = 'Network error. Attempting restart...';
-             speechRecognition.stop();
-        } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-            callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
-            endCall(); // End call if permission is denied
         }
     };
 
@@ -2430,10 +2307,10 @@ window.addEventListener('DOMContentLoaded', () => {
           addCallMessage('bot', errorMsg);
           
           // Restart listening
-          if (isCallActive && !isMuted) {
-             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+          if (isCallActive) {
+             callStatusMessage.textContent = 'Listening...';
              tapToTalk.style.display = 'block';
-             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
+             try { speechRecognition.start(); } catch(e) {}
           }
       }
   }
@@ -2464,13 +2341,10 @@ window.addEventListener('DOMContentLoaded', () => {
               botImageContainer.classList.remove('speaking');
               currentAudio = null;
               // Restart listening for user
-              if (isCallActive && !isMuted) {
-                  callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+              if (isCallActive) {
+                  callStatusMessage.textContent = 'Listening...';
                   tapToTalk.style.display = 'block';
-                  try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
-              } else if (isMuted) {
-                  callStatusMessage.textContent = 'Microphone Muted.';
-                  tapToTalk.style.display = 'none';
+                  try { speechRecognition.start(); } catch(e) {}
               }
           };
           audio.play();
@@ -2480,20 +2354,17 @@ window.addEventListener('DOMContentLoaded', () => {
           botIsSpeaking = false;
           botImageContainer.classList.remove('speaking');
           // Failed to speak, just restart listening
-          if (isCallActive && !isMuted) {
+          if (isCallActive) {
               callStatusMessage.textContent = 'Listening (Voice Failed)...';
               tapToTalk.style.display = 'block';
-              try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
-          } else if (isMuted) {
-              callStatusMessage.textContent = 'Microphone Muted.';
-              tapToTalk.style.display = 'none';
+              try { speechRecognition.start(); } catch(e) {}
           }
       }
   }
   
   // FIX: User can tap the screen to stop the bot and talk
   function stopBotSpeakingAndStartListening() {
-      if (!isCallActive || !botIsSpeaking) return; // Only act if call is active and bot is speaking
+      if (!isCallActive || !botIsSpeaking) return;
       
       if (currentAudio) {
           currentAudio.pause();
@@ -2503,20 +2374,15 @@ window.addEventListener('DOMContentLoaded', () => {
       
       botIsSpeaking = false;
       botImageContainer.classList.remove('speaking');
+      callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+      tapToTalk.style.display = 'block';
       
-      if (!isMuted) {
-        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-        tapToTalk.style.display = 'block';
-        // Restart listening for user input
-        try {
-            speechRecognition.stop(); 
-            speechRecognition.start();
-        } catch(e) {
-           console.warn("Could not restart speech recognition immediately:", e);
-        }
-      } else {
-        callStatusMessage.textContent = 'Microphone Muted.';
-        tapToTalk.style.display = 'none';
+      // Restart listening for user input
+      try {
+          speechRecognition.stop(); // Stop might trigger onend, which auto-restarts. Better to stop and manually start
+          speechRecognition.start();
+      } catch(e) {
+         console.warn("Could not restart speech recognition immediately.");
       }
       
       // Clear interim message if it exists
@@ -2533,9 +2399,6 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
     }
     isCallActive = true;
-    isMuted = false; // Reset mute state
-    muteCallBtn.classList.remove('muted');
-    muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute Microphone';
     callModal.classList.add('active');
     callConversation.innerHTML = ''; // Clear old call
     addCallMessage('status', 'Connecting to Philadelphia AI...');
@@ -2558,8 +2421,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }, 1500);
   });
 
-  // NEW: Refactored endCall logic
-  function endCall() {
+  endCallBtn.addEventListener('click', () => {
     isCallActive = false;
     botIsSpeaking = false;
     if (currentAudio) {
@@ -2573,36 +2435,7 @@ window.addEventListener('DOMContentLoaded', () => {
     } catch(e) {}
     botImageContainer.classList.remove('speaking');
     tapToTalk.style.display = 'none';
-    callStatusMessage.textContent = 'Call Ended.'; // Ensure status updates
-  }
-
-  endCallBtn.addEventListener('click', endCall);
-
-  // NEW: Mute button functionality
-  if (muteCallBtn) {
-    muteCallBtn.addEventListener('click', () => {
-        isMuted = !isMuted;
-        if (isMuted) {
-            muteCallBtn.classList.add('muted');
-            muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute Microphone';
-            speechRecognition.stop();
-            callStatusMessage.textContent = 'Microphone Muted.';
-            tapToTalk.style.display = 'none';
-        } else {
-            muteCallBtn.classList.remove('muted');
-            muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute Microphone';
-            if (isCallActive && !botIsSpeaking) { // Only restart if call is active and bot isn't speaking
-                callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                tapToTalk.style.display = 'block';
-                try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
-            } else if (isCallActive && botIsSpeaking) {
-                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
-                 tapToTalk.style.display = 'none';
-            }
-        }
-    });
-  }
-
+  });
 
   // Final initial render (will be triggered by auth state)
   if(chatInput) chatInput.focus();
