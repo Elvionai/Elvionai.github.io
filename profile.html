@@ -2,394 +2,370 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Philadelphia AI - Otherworldly Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Philadelphia AI - Cosmic Interface</title>
     <style>
         :root {
-            --primary-gradient: linear-gradient(135deg, #00c6ff, #0072ff);
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-color: #ffffff;
-            --accent-glow: 0 0 15px rgba(0, 198, 255, 0.5);
+            --neon-blue: #00f2ff;
+            --neon-purple: #bd00ff;
+            --plasma-gradient: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            --glass-bg-strong: rgba(20, 20, 35, 0.7);
+            --glass-bg-light: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --text-glow: 0 0 10px rgba(0, 242, 255, 0.7), 0 0 20px rgba(189, 0, 255, 0.5);
+            --box-glow: 0 0 20px rgba(0, 242, 255, 0.2);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: radial-gradient(circle at bottom, #1b2735 0%, #090a0f 100%);
             height: 100vh;
             overflow: hidden;
-            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+            background-color: #050714;
+            color: #fff;
             display: flex;
-            flex-direction: column;
-            position: relative;
+            justify-content: center;
         }
 
-        /* --- COSMIC BACKGROUND --- */
-        #universe {
+        /* --- COSMIC BACKGROUND ENGINE --- */
+        #cosmos-container {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .nebula-layer {
+            position: absolute; top: 0; left: 0; width: 200%; height: 200%;
+            background: 
+                radial-gradient(circle at 50% 50%, rgba(76, 0, 255, 0.15), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 242, 255, 0.15), transparent 40%),
+                linear-gradient(to bottom right, #050714, #1a0a2e);
+            mix-blend-mode: screen;
+            animation: drift 60s infinite linear;
+        }
+
+        .nebula-layer:nth-child(2) {
+            background: radial-gradient(circle at 20% 80%, rgba(189, 0, 255, 0.2), transparent 50%);
+            animation: drift 45s infinite linear reverse;
+            mix-blend-mode: overlay;
+        }
+
+        @keyframes drift {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-50%, -50%); }
+        }
+
+        .star, .shooting-star, .stardust {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
             pointer-events: none;
         }
 
         .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
+            background: white; border-radius: 50%;
             animation: twinkle var(--duration) infinite ease-in-out;
-            opacity: var(--opacity);
+            box-shadow: 0 0 5px #fff;
+        }
+        
+        .stardust {
+            background: var(--neon-blue); border-radius: 50%;
+            width: 1px; height: 1px;
+            opacity: 0.5;
+            animation: floatUp var(--duration) infinite linear;
         }
 
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); }
-        }
+        @keyframes twinkle { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+        @keyframes floatUp { to { transform: translateY(-100vh); opacity: 0; } }
 
         .shooting-star {
-            position: absolute;
             height: 2px;
-            background: linear-gradient(-45deg, rgba(255,255,255,1), rgba(0,0,255,0));
-            border-radius: 999px;
-            filter: drop-shadow(0 0 6px rgba(105, 255, 255, 1));
-            animation: shoot 3s linear;
-            opacity: 0;
-            z-index: 1;
+            background: linear-gradient(-90deg, white, transparent);
+            filter: drop-shadow(0 0 6px var(--neon-blue));
+            animation: shoot 2.5s ease-out; opacity: 0; z-index: 0;
+        }
+        @keyframes shoot { 
+            0% { transform: translate(var(--startX), var(--startY)) rotate(-35deg); opacity: 1; width: 0; }
+            20% { width: 100px; }
+            100% { transform: translate(calc(var(--startX) - 600px), calc(var(--startY) + 400px)) rotate(-35deg); opacity: 0; width: 0; }
         }
 
-        @keyframes shoot {
-            0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; width: 0; }
-            10% { width: 150px; }
-            100% { transform: translateX(-800px) translateY(800px) rotate(-45deg); opacity: 0; width: 0; }
+        /* --- UI MAIN STRUCTURE --- */
+        .ui-container {
+            width: 100%; max-width: 600px;
+            height: 100%; display: flex; flex-direction: column;
+            position: relative; z-index: 10;
+            background: rgba(5, 7, 20, 0.3); /* Subtle darkening for readability */
         }
 
-        /* --- UI LAYER --- */
-        .app-container {
-            position: relative;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            width: 100%;
-            backdrop-filter: blur(2px);
-        }
-
-        /* HEADER */
+        /* Header */
         header {
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 20px 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--glass-border);
-            background: rgba(9, 10, 15, 0.6);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
         }
 
-        .brand {
-            font-size: 1.2rem;
-            font-weight: 700;
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(0, 198, 255, 0.3);
+        .brand-plasma {
+            font-size: 1.4rem; font-weight: 800; letter-spacing: 1px;
+            background: linear-gradient(90deg, #fff, var(--neon-blue), var(--neon-purple), #fff);
+            background-size: 300% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: plasmaFlow 5s linear infinite;
+            text-shadow: var(--text-glow);
         }
+        @keyframes plasmaFlow { to { background-position: 300% center; } }
 
-        .header-icons span {
-            margin-left: 15px;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: 0.3s;
-        }
-        .header-icons span:hover { opacity: 1; text-shadow: 0 0 10px white; }
+        .header-actions { display: flex; gap: 20px; font-size: 1.4rem; }
+        .icon-btn { cursor: pointer; opacity: 0.7; transition: 0.3s; position: relative; }
+        .icon-btn:hover { opacity: 1; text-shadow: var(--text-glow); transform: scale(1.1); }
 
-        /* CHAT AREA */
-        #chat-window {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        /* Chat Area */
+        #chat-viewport {
+            flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px;
             scroll-behavior: smooth;
+             /* Hide Scrollbar visually but keep functionality */
+            scrollbar-width: none; -ms-overflow-style: none;
         }
+        #chat-viewport::-webkit-scrollbar { display: none; }
 
-        /* SCROLLBAR */
-        #chat-window::-webkit-scrollbar { width: 6px; }
-        #chat-window::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        .message-group { display: flex; flex-direction: column; gap: 8px; max-width: 85%; position: relative; }
+        .message-group.ai { align-self: flex-start; }
+        .message-group.user { align-self: flex-end; align-items: flex-end; }
 
-        .message {
-            max-width: 80%;
-            padding: 14px 18px;
-            border-radius: 18px;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            position: relative;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes popIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.9); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .message.ai {
-            align-self: flex-start;
-            background: var(--glass-bg);
+        .msg-bubble {
+            padding: 16px 22px; border-radius: 24px;
+            font-size: 1rem; line-height: 1.5;
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
             border: 1px solid var(--glass-border);
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes popIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        .ai .msg-bubble {
+            background: linear-gradient(135deg, rgba(30, 30, 60, 0.6), rgba(20, 20, 35, 0.8));
             border-bottom-left-radius: 4px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.05);
         }
 
-        .message.user {
-            align-self: flex-end;
-            background: var(--primary-gradient);
+        .user .msg-bubble {
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.3), rgba(189, 0, 255, 0.3));
             border-bottom-right-radius: 4px;
-            box-shadow: var(--accent-glow);
-            color: #000;
-            font-weight: 500;
+            color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            box-shadow: var(--box-glow);
+            border: 1px solid rgba(255,255,255,0.3);
         }
 
-        /* SUGGESTION CHIPS */
-        .suggestions {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 10px;
-            margin-top: 10px;
+        /* Holographic Suggestions */
+        .suggestions-dock {
+            display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 10px;
         }
+
+        /* The Shimmer Effect Class */
+        .holo-shimmer {
+            position: relative; overflow: hidden;
+        }
+        .holo-shimmer::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(
+                120deg, transparent, rgba(255, 255, 255, 0.4), transparent
+            );
+            transform: skewX(-25deg);
+            animation: holoSheen 3s infinite linear;
+        }
+        @keyframes holoSheen { 0% { left: -100%; } 50%, 100% { left: 200%; } }
 
         .chip {
-            background: linear-gradient(90deg, rgba(0, 198, 255, 0.2), rgba(0, 114, 255, 0.2));
-            border: 1px solid rgba(0, 198, 255, 0.3);
-            padding: 12px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-            max-width: 80%;
-            text-align: right;
-        }
-
-        .chip:hover {
-            background: linear-gradient(90deg, rgba(0, 198, 255, 0.4), rgba(0, 114, 255, 0.4));
-            transform: translateX(-5px);
-            box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
-            border-color: #fff;
-        }
-
-        /* INPUT AREA */
-        .input-area {
-            padding: 20px;
-            background: rgba(9, 10, 15, 0.8);
-            border-top: 1px solid var(--glass-border);
+            padding: 12px 20px; border-radius: 16px; font-size: 0.9rem; cursor: pointer;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(0, 242, 255, 0.3);
             backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            transition: 0.3s; text-align: right; color: rgba(255,255,255,0.9);
+        }
+        .chip:hover {
+            background: rgba(0, 242, 255, 0.15);
+            border-color: var(--neon-blue);
+            box-shadow: var(--box-glow);
+            transform: translateY(-2px); color: #fff;
         }
 
-        .input-wrapper {
-            flex: 1;
-            position: relative;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 30px;
-            border: 1px solid var(--glass-border);
-            transition: 0.3s;
+        /* Input Capsule */
+        .input-dock {
+            padding: 20px 25px;
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(25px);
+            border-top: 1px solid var(--glass-border);
+            display: flex; gap: 15px; align-items: center;
         }
 
-        .input-wrapper:focus-within {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(0, 198, 255, 0.5);
-            box-shadow: 0 0 15px rgba(0, 198, 255, 0.2);
+        .capsule-input {
+            flex: 1; position: relative; height: 55px;
+            background: var(--glass-bg-light);
+            border-radius: 30px; border: 1px solid var(--glass-border);
+            transition: 0.3s; display: flex; align-items: center;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .capsule-input:focus-within {
+            border-color: var(--neon-blue);
+            box-shadow: var(--box-glow), inset 0 2px 10px rgba(0,0,0,0.2);
+            background: rgba(0, 242, 255, 0.05);
+        }
+        .capsule-input input {
+            width: 100%; height: 100%; background: transparent; border: none;
+            padding: 0 25px; color: #fff; font-size: 1.05rem; outline: none;
         }
 
-        input {
-            width: 100%;
-            background: transparent;
-            border: none;
-            padding: 15px 20px;
-            color: white;
-            font-size: 1rem;
-            outline: none;
+        .thruster-btn {
+            width: 55px; height: 55px; border-radius: 50%; border: none; cursor: pointer;
+            background: var(--plasma-gradient);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--box-glow); transition: 0.3s;
+            color: #000;
         }
-
-        .send-btn {
-            background: var(--primary-gradient);
-            border: none;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.3s;
-            box-shadow: var(--accent-glow);
-        }
-
-        .send-btn:hover {
-            transform: scale(1.1) rotate(-10deg);
-        }
-
-        /* Mobile Optimization */
-        @media (max-width: 600px) {
-            .message { max-width: 90%; }
-        }
+        .thruster-btn:hover { transform: scale(1.05) rotate(-10deg); box-shadow: 0 0 30px rgba(189, 0, 255, 0.6); }
     </style>
 </head>
 <body>
 
-    <div id="universe"></div>
+    <div id="cosmos-container">
+        <div class="nebula-layer"></div>
+        <div class="nebula-layer"></div>
+        </div>
 
-    <div class="app-container">
+    <div class="ui-container">
         <header>
-            <div class="brand">Philadelphia AI</div>
-            <div class="header-icons">
-                <span>🌙</span>
-                <span>👤</span>
+            <div class="brand-plasma">Philadelphia AI</div>
+            <div class="header-actions">
+                <div class="icon-btn" title="User Profile">👤</div>
+                <div class="icon-btn" title="Menu Links">🔗</div>
             </div>
         </header>
 
-        <div id="chat-window">
-            <div class="message ai">
-                Well hello there, my friend! 🦅 It's absolutely wonderful to hear from you! How can your favorite Philadelphia AI make your day brighter, more creative, or just plain more fun? I'm all ears, or should I say, all circuits! 😉
+        <div id="chat-viewport">
+            <div class="message-group ai">
+                <div class="msg-bubble">
+                    Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
+                </div>
             </div>
 
-            <div class="suggestions" id="suggestions">
-                <div class="chip" onclick="sendSuggestion(this.innerText)">Comic creation request with style: anime.</div>
-                <div class="chip" onclick="sendSuggestion(this.innerText)">Comic creation request with style: american.</div>
-                <div class="chip" onclick="sendSuggestion(this.innerText)">Comic creation request with style: manga.</div>
+            <div class="suggestions-dock" id="suggestions">
+                <div class="chip holo-shimmer" onclick="sendSuggestion(this)">Create a comic. Style: Cyberpunk Anime.</div>
+                <div class="chip holo-shimmer" onclick="sendSuggestion(this)">Design a website landing page for "Orbit".</div>
+                <div class="chip holo-shimmer" onclick="sendSuggestion(this)">Generate a sci-fi short story prompt.</div>
             </div>
         </div>
 
-        <div class="input-area">
-            <div class="input-wrapper">
-                <input type="text" id="userInput" placeholder="Message Philadelphia AI..." autocomplete="off">
+        <div class="input-dock">
+            <div class="capsule-input">
+                <input type="text" id="userInput" placeholder="Broadcast your message..." autocomplete="off">
             </div>
-            <button class="send-btn" onclick="sendMessage()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+            <button class="thruster-btn holo-shimmer" onclick="sendMessage()">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
         </div>
     </div>
 
     <script>
-        // --- 1. OTHERWORLDLY VISUALS ENGINE ---
-        const universe = document.getElementById('universe');
-
-        // Create Static Stars
-        function createStars() {
-            const starCount = 150;
-            for (let i = 0; i < starCount; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                const xy = Math.random() * 100;
-                const duration = Math.random() * 3 + 1; // 1s to 4s
-                const size = Math.random() * 2 + 1;
-                
-                star.style.left = `${Math.random() * 100}%`;
-                star.style.top = `${Math.random() * 100}%`;
-                star.style.width = `${size}px`;
-                star.style.height = `${size}px`;
-                star.style.setProperty('--duration', `${duration}s`);
-                star.style.setProperty('--opacity', Math.random());
-                
-                universe.appendChild(star);
+        // --- COSMIC ENGINE JS ---
+        const cosmos = document.getElementById('cosmos-container');
+        
+        function igniteCosmos() {
+            // 1. Static distant stars
+            for (let i = 0; i < 200; i++) {
+                createParticle('star', 100, 3);
+            }
+            // 2. Floating Stardust (closer layer)
+            for (let i = 0; i < 80; i++) {
+               createParticle('stardust', 100, 20);
             }
         }
 
-        // Create Shooting Stars
-        function triggerShootingStar() {
-            const shootingStar = document.createElement('div');
-            shootingStar.className = 'shooting-star';
-            
-            // Random start position (top right area usually looks best for falling stars)
-            const startX = Math.random() * window.innerWidth + 200;
-            const startY = Math.random() * -100;
-            
-            shootingStar.style.left = `${startX}px`;
-            shootingStar.style.top = `${startY}px`;
-            
-            universe.appendChild(shootingStar);
-
-            // Cleanup after animation
-            setTimeout(() => {
-                shootingStar.remove();
-            }, 3000);
+        function createParticle(type, spread, maxDuration) {
+            const particle = document.createElement('div');
+            particle.className = type;
+            const size = Math.random() * (type === 'star' ? 2 : 1.5) + 0.5;
+            particle.style.width = `${size}px`; particle.style.height = `${size}px`;
+            particle.style.left = `${Math.random() * spread}%`;
+            particle.style.top = `${Math.random() * spread}%`;
+            particle.style.setProperty('--duration', `${Math.random() * maxDuration + 5}s`);
+            if(type==='star') particle.style.opacity = Math.random();
+            cosmos.appendChild(particle);
         }
 
-        // Initialize Space
-        createStars();
-        // Randomly trigger shooting stars every 2-6 seconds
-        setInterval(() => {
-            if(Math.random() > 0.3) triggerShootingStar();
-        }, 2000);
+        function launchShootingStar() {
+            const star = document.createElement('div');
+            star.className = 'shooting-star';
+            // Start slightly off screen top/right
+            const startX = Math.random() * window.innerWidth * 1.5;
+            const startY = -100;
+            star.style.setProperty('--startX', `${startX}px`);
+            star.style.setProperty('--startY', `${startY}px`);
+            cosmos.appendChild(star);
+            setTimeout(() => star.remove(), 2500);
+        }
+
+        igniteCosmos();
+        // Launch a shooting star randomly between 3 and 8 seconds
+        const randomLaunch = () => {
+            launchShootingStar();
+            setTimeout(randomLaunch, Math.random() * 5000 + 3000);
+        }
+        setTimeout(randomLaunch, 2000);
 
 
-        // --- 2. CHAT FUNCTIONALITY ---
-        const chatWindow = document.getElementById('chat-window');
+        // --- CHAT JS ---
+        const chatView = document.getElementById('chat-viewport');
         const userInput = document.getElementById('userInput');
-        const suggestionBox = document.getElementById('suggestions');
+        const suggestions = document.getElementById('suggestions');
 
-        function sendSuggestion(text) {
-            userInput.value = text;
-            sendMessage();
-            // Optional: Hide suggestions after selection
-            // suggestionBox.style.display = 'none';
+        function sendSuggestion(chipEl) {
+            // chipEl.style.transform = 'scale(0.9)'; // Click feedback
+            setTimeout(() => {
+                userInput.value = chipEl.innerText;
+                sendMessage();
+                suggestions.style.display = 'none'; // Hide suggestions after use
+            }, 150);
         }
 
         function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
-
-            // 1. Add User Message
             addMessage(text, 'user');
             userInput.value = '';
 
-            // 2. Simulate AI Typing/Response
+            // Simulate AI thinking/typing
             setTimeout(() => {
-                // Simple logic to mimic response
-                const responses = [
-                    "I'm processing that in the nebula... 🌌",
-                    "Generating something stellar for you! ⭐",
-                    "All circuits are go! Creating that now.",
-                    "That's an interesting request. Let me consult the star charts."
-                ];
-                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                addMessage(randomResponse, 'ai');
-            }, 1000);
+                 addMessage("Intercepting transmission... analyzing stellar data structures. 🛸", 'ai');
+            }, 800);
         }
 
         function addMessage(text, type) {
-            const div = document.createElement('div');
-            div.className = `message ${type}`;
-            div.innerText = text;
-            chatWindow.appendChild(div);
+            const group = document.createElement('div');
+            group.className = `message-group ${type}`;
+            group.innerHTML = `<div class="msg-bubble">${text}</div>`;
+            suggestions.parentNode.insertBefore(group, suggestions); // Insert before suggestions
             
-            // Auto scroll to bottom
-            chatWindow.scrollTop = chatWindow.scrollHeight;
+            // Ensure suggestions stay at bottom if they are visible
+            if(suggestions.style.display !== 'none') {
+                chatView.appendChild(suggestions);
+            }
+
+            chatView.scrollTo({ top: chatView.scrollHeight, behavior: 'smooth' });
         }
 
-        // Allow 'Enter' key to send
-        userInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
+        userInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
     </script>
 </body>
 </html>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
