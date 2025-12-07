@@ -1,2740 +1,395 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <title>Philadelphia AI - Console Interface</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai-sublime.min.css"/> <!-- Monokai for terminal code style -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Philadelphia AI - Otherworldly Interface</title>
     <style>
         :root {
-            /* Default "Cyber-Terminal" theme */
-            --terminal-bg: #1a1a1a;
-            --terminal-text: #00ff00; /* Neon green */
-            --terminal-accent: #00aaff; /* Cyan for secondary highlights, links */
-            --terminal-error: #ff3333;
-            --terminal-prompt: #aaff00; /* Lime green for user prompt */
-            --code-bg-light: #2a2a2a; /* Slightly lighter for code blocks */
-            --code-border: #00ff00;
-            --code-text: #00ffcc; /* Cyan for code */
-
-            --modal-bg: rgba(26, 26, 26, 0.95); /* Semi-transparent terminal background */
-            --modal-border: #00aaff;
-            --modal-shadow: 0 0 20px rgba(0, 170, 255, 0.5);
-
-            --input-bg: #0d0d0d;
-            --input-border: #00ff00;
-            --button-bg: #00aaff;
-            --button-text: #1a1a1a;
-            --button-hover-bg: #00ff00;
-            --button-hover-text: #1a1a1a;
-
-            --header-text-glow-1: 0 0 5px var(--terminal-text), 0 0 10px var(--terminal-accent);
-            --header-text-glow-2: 0 0 8px var(--terminal-text), 0 0 15px var(--terminal-accent);
+            --primary-gradient: linear-gradient(135deg, #00c6ff, #0072ff);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-color: #ffffff;
+            --accent-glow: 0 0 15px rgba(0, 198, 255, 0.5);
         }
 
-        /* Monokai Theme (as an example alternate) */
-        .monokai-theme {
-            --terminal-bg: #272822;
-            --terminal-text: #f8f8f2;
-            --terminal-accent: #66d9ef; /* Cyan */
-            --terminal-error: #fd5654;
-            --terminal-prompt: #a6e22e; /* Lime green */
-            --code-bg-light: #3e3d32;
-            --code-border: #a6e22e;
-            --code-text: #f92672; /* Pink */
-
-            --modal-bg: rgba(39, 40, 34, 0.95);
-            --modal-border: #66d9ef;
-            --modal-shadow: 0 0 20px rgba(102, 217, 239, 0.5);
-
-            --input-bg: #1e1f1a;
-            --input-border: #a6e22e;
-            --button-bg: #66d9ef;
-            --button-text: #272822;
-            --button-hover-bg: #a6e22e;
-            --button-hover-text: #272822;
-
-            --header-text-glow-1: 0 0 5px var(--terminal-text), 0 0 10px var(--terminal-accent);
-            --header-text-glow-2: 0 0 8px var(--terminal-text), 0 0 15px var(--terminal-accent);
-        }
-        /* Solarized Dark Theme */
-        .solarized-dark-theme {
-            --terminal-bg: #002b36;
-            --terminal-text: #839496;
-            --terminal-accent: #2aa198; /* Cyan */
-            --terminal-error: #dc322f;
-            --terminal-prompt: #b58900; /* Yellow */
-            --code-bg-light: #073642;
-            --code-border: #b58900;
-            --code-text: #cb4b16; /* Orange */
-
-            --modal-bg: rgba(0, 43, 54, 0.95);
-            --modal-border: #2aa198;
-            --modal-shadow: 0 0 20px rgba(42, 161, 152, 0.5);
-
-            --input-bg: #04242c;
-            --input-border: #b58900;
-            --button-bg: #2aa198;
-            --button-text: #002b36;
-            --button-hover-bg: #b58900;
-            --button-hover-text: #002b36;
-
-            --header-text-glow-1: 0 0 5px var(--terminal-text), 0 0 10px var(--terminal-accent);
-            --header-text-glow-2: 0 0 8px var(--terminal-text), 0 0 15px var(--terminal-accent);
-        }
-
-
-        html, body {
-            height: 100vh;
-            width: 100vw;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            background: var(--terminal-bg);
-            color: var(--terminal-text);
-            font-family: 'JetBrains Mono', monospace; /* Monospace is key */
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at bottom, #1b2735 0%, #090a0f 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: var(--text-color);
             display: flex;
             flex-direction: column;
-            box-sizing: border-box;
-            overflow: hidden;
-            transition: background-color 0.3s ease, color 0.3s ease;
+            position: relative;
         }
 
-        /* --- CRT Screen Effect (Optional) --- */
-        #crt-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 9999; /* Always on top */
-            opacity: 0.1;
-            background: 
-                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            animation: crt-flicker 0.15s infinite alternate;
-        }
-
-        @keyframes crt-flicker {
-            0% { opacity: 0.1; }
-            50% { opacity: 0.12; }
-            100% { opacity: 0.1; }
-        }
-        /* Enable if you want scanlines: */
-        /* #crt-overlay:after {
-            content: "";
-            display: block;
+        /* --- COSMIC BACKGROUND --- */
+        #universe {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-            background-size: 100% 4px;
-            z-index: 2;
-        } */
-
-
-        /* --- Top Status Bar --- */
-        #statusBar {
-            height: 30px;
-            background: var(--input-bg);
-            border-bottom: 1px solid var(--terminal-text);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-            font-size: 0.8em;
-            flex-shrink: 0;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            user-select: none;
-        }
-        #statusBar .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--terminal-text);
-            text-shadow: 0 0 3px var(--terminal-text);
-        }
-        #statusBar .status-item i {
-            color: var(--terminal-accent);
-            text-shadow: 0 0 5px var(--terminal-accent);
+            z-index: 0;
+            pointer-events: none;
         }
 
-        /* --- Main Console Output --- */
-        #consoleOutput {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px 15px;
-            white-space: pre-wrap; /* Preserve formatting, wrap text */
-            font-size: 0.9em;
-            line-height: 1.5;
-            flex-shrink: 1;
-            scroll-behavior: smooth;
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
-        #consoleOutput::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera */
-        }
-
-        .log-line {
-            padding: 2px 0;
-            display: block;
-        }
-        .log-line.user-input { color: var(--terminal-prompt); }
-        .log-line.ai-output { color: var(--terminal-text); }
-        .log-line.system-message { color: var(--terminal-accent); }
-        .log-line.error-message { color: var(--terminal-error); }
-
-        .log-line strong { color: var(--terminal-accent); text-shadow: 0 0 2px var(--terminal-accent); }
-        .log-line em { color: var(--terminal-text); }
-        .log-line a {
-            color: var(--terminal-accent);
-            text-decoration: none;
-            border-bottom: 1px dashed var(--terminal-accent);
-            cursor: pointer;
-            transition: color 0.1s;
-        }
-        .log-line a:hover {
-            color: var(--terminal-text);
-            border-bottom-color: var(--terminal-text);
-        }
-
-        .typing-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            color: var(--terminal-accent);
-            padding: 3px 0;
-            text-shadow: 0 0 3px var(--terminal-accent);
-        }
-        .typing-indicator .dot {
-            width: 6px;
-            height: 6px;
+        .star {
+            position: absolute;
+            background: white;
             border-radius: 50%;
-            background: var(--terminal-accent);
-            opacity: 0.4;
-            animation: blink-dot 1s infinite alternate;
-        }
-        .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes blink-dot {
-            to { opacity: 1; }
+            animation: twinkle var(--duration) infinite ease-in-out;
+            opacity: var(--opacity);
         }
 
-        /* --- Code Block Formatting --- */
-        pre {
-            background: var(--code-bg-light);
-            border: 1px solid var(--code-border);
-            padding: 8px 10px;
-            margin: 8px 0;
-            overflow-x: auto;
-            white-space: pre;
-            color: var(--code-text);
-            position: relative;
-            box-shadow: 0 0 5px rgba(0, 255, 0, 0.2) inset;
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
         }
-        pre code {
-            color: var(--code-text);
-            display: block;
-        }
-        pre:hover .copy-code-btn {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .copy-code-btn {
+
+        .shooting-star {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(0, 170, 255, 0.2); /* Semi-transparent button */
-            border: 1px solid var(--terminal-accent);
-            color: var(--terminal-accent);
-            padding: 3px 8px;
-            font-size: 0.7em;
-            cursor: pointer;
+            height: 2px;
+            background: linear-gradient(-45deg, rgba(255,255,255,1), rgba(0,0,255,0));
+            border-radius: 999px;
+            filter: drop-shadow(0 0 6px rgba(105, 255, 255, 1));
+            animation: shoot 3s linear;
             opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-            text-transform: uppercase;
-        }
-        .copy-code-btn:hover {
-            background: rgba(0, 170, 255, 0.5);
-            color: var(--terminal-text);
+            z-index: 1;
         }
 
-        /* --- Command Input Bar --- */
-        #commandInputBar {
-            height: 40px;
-            background: var(--input-bg);
-            border-top: 1px solid var(--terminal-text);
+        @keyframes shoot {
+            0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; width: 0; }
+            10% { width: 150px; }
+            100% { transform: translateX(-800px) translateY(800px) rotate(-45deg); opacity: 0; width: 0; }
+        }
+
+        /* --- UI LAYER --- */
+        .app-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            backdrop-filter: blur(2px);
+        }
+
+        /* HEADER */
+        header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(9, 10, 15, 0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 198, 255, 0.3);
+        }
+
+        .header-icons span {
+            margin-left: 15px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: 0.3s;
+        }
+        .header-icons span:hover { opacity: 1; text-shadow: 0 0 10px white; }
+
+        /* CHAT AREA */
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            scroll-behavior: smooth;
+        }
+
+        /* SCROLLBAR */
+        #chat-window::-webkit-scrollbar { width: 6px; }
+        #chat-window::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
+        .message {
+            max-width: 80%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .message.ai {
+            align-self: flex-start;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: var(--primary-gradient);
+            border-bottom-right-radius: 4px;
+            box-shadow: var(--accent-glow);
+            color: #000;
+            font-weight: 500;
+        }
+
+        /* SUGGESTION CHIPS */
+        .suggestions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .chip {
+            background: linear-gradient(90deg, rgba(0, 198, 255, 0.2), rgba(0, 114, 255, 0.2));
+            border: 1px solid rgba(0, 198, 255, 0.3);
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            max-width: 80%;
+            text-align: right;
+        }
+
+        .chip:hover {
+            background: linear-gradient(90deg, rgba(0, 198, 255, 0.4), rgba(0, 114, 255, 0.4));
+            transform: translateX(-5px);
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
+            border-color: #fff;
+        }
+
+        /* INPUT AREA */
+        .input-area {
+            padding: 20px;
+            background: rgba(9, 10, 15, 0.8);
+            border-top: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
-            padding: 0 15px;
-            flex-shrink: 0;
+            gap: 10px;
+        }
+
+        .input-wrapper {
+            flex: 1;
             position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            transition: 0.3s;
         }
-        #inputPrompt {
-            color: var(--terminal-prompt);
-            font-size: 0.9em;
-            margin-right: 8px;
-            user-select: none;
+
+        .input-wrapper:focus-within {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 198, 255, 0.5);
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.2);
         }
-        #commandInput {
-            flex-grow: 1;
+
+        input {
+            width: 100%;
             background: transparent;
             border: none;
-            color: var(--terminal-text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9em;
+            padding: 15px 20px;
+            color: white;
+            font-size: 1rem;
             outline: none;
-            caret-color: var(--terminal-text); /* Blinking text cursor */
-            padding: 0;
-            line-height: 1;
-            height: 100%; /* Fill available height */
-        }
-        #commandInput::selection {
-            background: var(--terminal-accent);
-            color: var(--terminal-bg);
         }
 
-        /* --- Global Command Overlay (triggered by /) --- */
-        #commandOverlay {
-            display: none;
-            position: absolute;
-            bottom: 40px; /* Above input bar */
-            left: 0;
-            right: 0;
-            background: var(--modal-bg);
-            border-top: 1px solid var(--modal-border);
-            padding: 10px 15px;
-            z-index: 1000;
-            max-height: 250px;
-            overflow-y: auto;
-            box-shadow: var(--modal-shadow);
-        }
-        #commandOverlay.active {
-            display: block;
-        }
-        #commandOverlay ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        #commandOverlay li {
-            padding: 5px 0;
-            color: var(--terminal-text);
-            cursor: pointer;
-            transition: background-color 0.1s;
-        }
-        #commandOverlay li:hover, #commandOverlay li.selected {
-            background-color: var(--code-bg-light);
-            color: var(--terminal-accent);
-        }
-        #commandOverlay li .command-syntax {
-            color: var(--terminal-prompt);
-            font-weight: bold;
-        }
-        #commandOverlay li .command-desc {
-            color: var(--terminal-text);
-            opacity: 0.7;
-            font-size: 0.85em;
-            margin-left: 10px;
-        }
-
-
-        /* --- Modals (Profile, Links, etc.) --- */
-        .console-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.85); /* Darker, more solid background */
-            z-index: 3000;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        .console-modal.active {
-            display: flex;
-            opacity: 1;
-        }
-
-        .modal-content {
-            background: var(--modal-bg);
-            border: 2px solid var(--modal-border);
-            box-shadow: var(--modal-shadow);
-            padding: 20px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-            transform: scale(0.9);
-            opacity: 0;
-            transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-            color: var(--terminal-text);
-            font-size: 0.9em;
-        }
-        .console-modal.active .modal-content {
-            transform: scale(1);
-            opacity: 1;
-        }
-
-        .modal-title {
-            color: var(--terminal-accent);
-            font-family: 'Orbitron', monospace;
-            font-size: 1.2em;
-            margin-bottom: 20px;
-            text-align: center;
-            text-shadow: 0 0 8px var(--terminal-accent);
-        }
-
-        .modal-close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: 1px solid var(--terminal-error);
-            color: var(--terminal-error);
-            font-size: 1.1em;
-            padding: 5px 8px;
-            cursor: pointer;
-            transition: background-color 0.1s, color 0.1s;
-        }
-        .modal-close-btn:hover {
-            background-color: var(--terminal-error);
-            color: var(--terminal-bg);
-        }
-
-        /* Profile Modal Specifics */
-        .profile-info {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .profile-info img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 2px solid var(--terminal-accent);
-            margin-bottom: 10px;
-            box-shadow: 0 0 10px var(--terminal-accent);
-        }
-        .profile-info .username {
-            color: var(--terminal-prompt);
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-        .profile-info .email {
-            color: var(--terminal-text);
-            opacity: 0.8;
-            font-size: 0.85em;
-        }
-
-        .form-field-group label {
-            display: block;
-            color: var(--terminal-accent);
-            margin-top: 15px;
-            margin-bottom: 5px;
-            font-size: 0.85em;
-        }
-        .form-field-group input[type="text"],
-        .form-field-group input[type="url"],
-        .form-field-group textarea,
-        .form-field-group select {
-            width: calc(100% - 10px);
-            padding: 8px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            color: var(--terminal-text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85em;
-            outline: none;
-            -webkit-appearance: none; /* Remove default styling for selects */
-            -moz-appearance: none;
-            appearance: none;
-            border-radius: 0; /* Terminal style */
-        }
-        .form-field-group input:focus, .form-field-group textarea:focus, .form-field-group select:focus {
-            border-color: var(--terminal-accent);
-            box-shadow: 0 0 5px var(--terminal-accent);
-        }
-        .form-field-group textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        .form-action-btn {
-            background: var(--button-bg);
-            color: var(--button-text);
+        .send-btn {
+            background: var(--primary-gradient);
             border: none;
-            padding: 10px 15px;
-            margin-top: 20px;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9em;
-            width: 100%;
-            transition: background-color 0.1s, color 0.1s;
-            text-transform: uppercase;
-        }
-        .form-action-btn:hover {
-            background: var(--button-hover-bg);
-            color: var(--button-hover-text);
-        }
-        .form-action-btn.logout-btn {
-            background: var(--input-bg);
-            color: var(--terminal-error);
-            border: 1px solid var(--terminal-error);
-        }
-        .form-action-btn.logout-btn:hover {
-            background: var(--terminal-error);
-            color: var(--terminal-bg);
-        }
-
-        .chat-list-item-console {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            padding: 5px 0;
-            cursor: pointer;
-            transition: background-color 0.1s;
-        }
-        .chat-list-item-console:hover, .chat-list-item-console.active-chat {
-            background-color: var(--code-bg-light);
-            color: var(--terminal-accent);
-        }
-        .chat-list-item-console .chat-name {
-            flex-grow: 1;
-            padding-left: 5px;
-        }
-        .chat-list-item-console button {
-            background: none;
-            border: none;
-            color: var(--terminal-text);
-            padding: 3px 6px;
-            cursor: pointer;
-            transition: color 0.1s;
-        }
-        .chat-list-item-console button:hover {
-            color: var(--terminal-accent);
-        }
-        .chat-list-item-console .fa-trash:hover {
-            color: var(--terminal-error);
-        }
-        .chat-status-message {
-            color: var(--terminal-accent);
-            font-size: 0.8em;
-            text-align: center;
-            margin-top: 10px;
-            text-shadow: 0 0 2px var(--terminal-accent);
-        }
-        hr.modal-divider {
-            border-color: var(--modal-border);
-            border-style: dashed;
-            margin: 20px 0;
-            opacity: 0.5;
-        }
-
-        /* --- Media Viewer (for text links) --- */
-        #mediaViewer {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0,0,0,0.95);
-            z-index: 5000;
             justify-content: center;
-            align-items: center;
-        }
-        #mediaViewer.active {
-            display: flex;
-        }
-        #mediaViewer .media-content {
-            background: var(--input-bg);
-            border: 1px solid var(--terminal-accent);
-            box-shadow: 0 0 15px var(--terminal-accent);
-            padding: 20px;
-            text-align: center;
-            position: relative;
-            max-width: 90vw;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        #mediaViewer img, #mediaViewer video, #mediaViewer audio {
-            max-width: 100%;
-            max-height: 80vh;
-            display: block;
-            margin: 0 auto 10px auto;
-            border: 1px solid var(--terminal-text);
-        }
-        #mediaViewer audio {
-            width: 100%;
-            max-width: 400px;
-        }
-        #mediaViewer .media-caption {
-            color: var(--terminal-text);
-            font-size: 0.85em;
-            margin-top: 5px;
-        }
-        #mediaViewer .media-close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--input-bg);
-            border: 1px solid var(--terminal-error);
-            color: var(--terminal-error);
-            padding: 5px 8px;
             cursor: pointer;
-            text-transform: uppercase;
-        }
-        #mediaViewer .media-close-btn:hover {
-            background: var(--terminal-error);
-            color: var(--terminal-bg);
+            transition: 0.3s;
+            box-shadow: var(--accent-glow);
         }
 
-
-        /* --- Call Modal (Stark Console Version) --- */
-        #callModal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: var(--terminal-bg); /* Full terminal background */
-            z-index: 4000;
-            flex-direction: column;
-            align-items: center;
-            padding: 15px;
-            box-sizing: border-box;
-        }
-        #callModal.active {
-            display: flex;
+        .send-btn:hover {
+            transform: scale(1.1) rotate(-10deg);
         }
 
-        #callHeader {
-            color: var(--terminal-accent);
-            font-family: 'Orbitron', monospace;
-            font-size: 1.3em;
-            text-shadow: 0 0 8px var(--terminal-accent);
-            margin-bottom: 20px;
-            margin-top: 10px;
+        /* Mobile Optimization */
+        @media (max-width: 600px) {
+            .message { max-width: 90%; }
         }
-
-        #botImageContainer {
-            margin-top: 15px;
-            margin-bottom: 15px; /* Added margin */
-            position: relative;
-            display: none; /* Hide for console, show only for speaking indicator */
-        }
-        #botImageContainer img {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 2px solid var(--terminal-accent);
-            box-shadow: 0 0 15px var(--terminal-accent);
-            opacity: 0.2; /* Subtle presence */
-        }
-        @keyframes call-glow-spread {
-            0% { box-shadow: 0 0 8px var(--terminal-accent); opacity: 0.7; }
-            50% { box-shadow: 0 0 20px var(--terminal-accent), 0 0 35px var(--terminal-text); opacity: 1; }
-            100% { box-shadow: 0 0 8px var(--terminal-accent); opacity: 0.7; }
-        }
-        #botImageContainer.speaking {
-            display: block; /* Show container when speaking */
-        }
-        #botImageContainer.speaking img {
-            opacity: 1; /* Make visible when speaking */
-            border-color: var(--terminal-text);
-            box-shadow: 0 0 20px var(--terminal-text);
-            animation: none; /* No head nod for static console img */
-        }
-
-        #botSpeakingIndicator {
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            width: 110px;
-            height: 110px;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            box-shadow: 0 0 15px var(--terminal-accent);
-            animation: call-glow-spread 1.5s infinite ease-in-out;
-        }
-        #botImageContainer.speaking #botSpeakingIndicator {
-            display: block;
-        }
-
-        #callStatusMessage {
-            color: var(--terminal-accent);
-            font-size: 1em;
-            margin-top: 10px;
-            height: 25px;
-            text-align: center;
-            text-shadow: 0 0 5px var(--terminal-accent);
-            animation: call-status-blink 1s infinite alternate;
-        }
-        @keyframes call-status-blink {
-            to { opacity: 0.7; }
-        }
-
-        #tapToTalk {
-            color: var(--terminal-prompt);
-            font-size: 1.1em;
-            margin-top: 5px;
-            text-shadow: 0 0 6px var(--terminal-prompt);
-            animation: neon-pulse 1.2s infinite alternate;
-            display: none;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-        @keyframes neon-pulse {
-            from { opacity: 0.7; transform: scale(1.0); }
-            to { opacity: 1.0; transform: scale(1.02); }
-        }
-
-        #callConversation {
-            flex-grow: 1;
-            width: 100%;
-            max-width: 700px;
-            overflow-y: auto;
-            margin: 15px 0;
-            border: 1px solid var(--input-border);
-            padding: 10px;
-            background: var(--input-bg);
-            color: var(--terminal-text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9em;
-            white-space: pre-wrap;
-            box-shadow: 0 0 10px var(--terminal-text) inset;
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        #callConversation::-webkit-scrollbar { display: none; }
-
-        .call-log-line {
-            padding: 2px 0;
-            display: block;
-            opacity: 0;
-            animation: fadeInCallLog 0.2s forwards;
-        }
-        @keyframes fadeInCallLog {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .call-log-line.user { color: var(--terminal-prompt); }
-        .call-log-line.bot { color: var(--terminal-text); }
-        .call-log-line.status { color: var(--terminal-accent); font-style: italic; }
-        .call-log-line.status.center { text-align: center; }
-
-
-        #callControls {
-            display: flex;
-            gap: 15px;
-            padding-bottom: 15px;
-            margin-top: auto;
-        }
-        #endCallBtn, #muteCallBtn {
-            background: var(--button-bg);
-            color: var(--button-text);
-            font-size: 1em;
-            padding: 8px 15px;
-            border: none;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            text-transform: uppercase;
-            box-shadow: 0 0 5px var(--button-bg);
-            transition: background .1s, box-shadow .1s;
-        }
-        #endCallBtn {
-            background: var(--terminal-error);
-            color: var(--terminal-bg);
-            box-shadow: 0 0 5px var(--terminal-error);
-        }
-        #endCallBtn:hover {
-            background: #ff6666;
-            box-shadow: 0 0 8px #ff6666;
-        }
-        #muteCallBtn {
-            background: var(--terminal-accent);
-            color: var(--terminal-bg);
-            box-shadow: 0 0 5px var(--terminal-accent);
-        }
-        #muteCallBtn:hover {
-            background: var(--terminal-text);
-            box-shadow: 0 0 8px var(--terminal-text);
-        }
-        #muteCallBtn.muted {
-            background: var(--input-bg);
-            color: var(--terminal-error);
-            border: 1px solid var(--terminal-error);
-            box-shadow: none;
-        }
-        #muteCallBtn.muted:hover {
-            background: var(--terminal-error);
-            color: var(--terminal-bg);
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(0, 255, 0, 0.3);
-            border-radius: 50%;
-            border-top-color: var(--terminal-text);
-            animation: spin 1s linear infinite;
-            margin-right: 5px;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
     </style>
 </head>
 <body>
-    <div id="crt-overlay"></div> <!-- Optional CRT overlay -->
 
-    <!-- Top Status Bar -->
-    <div id="statusBar">
-        <span class="status-item"><i class="fa-solid fa-code-branch"></i> PHI_AI_CONSOLE_V3.1</span>
-        <span class="status-item" id="systemTime"><i class="fa-solid fa-clock"></i> 00:00:00</span>
-        <span class="status-item" id="userNameStatus"><i class="fa-solid fa-user-tag"></i> COMMANDER_UNSET</span>
-    </div>
+    <div id="universe"></div>
 
-    <!-- Main Console Output Area -->
-    <div id="consoleOutput">
-        <span class="log-line system-message">[SYSTEM]: Initializing Philadelphia AI Console...</span>
-        <span class="log-line system-message">[SYSTEM]: Type <span class="log-line user-input">/help</span> for commands.</span>
-        <span class="log-line ai-output">[PHI_AI]: Awaiting command, Commander.</span>
-    </div>
+    <div class="app-container">
+        <header>
+            <div class="brand">Philadelphia AI</div>
+            <div class="header-icons">
+                <span>🌙</span>
+                <span>👤</span>
+            </div>
+        </header>
 
-    <!-- Command Input Bar -->
-    <div id="commandInputBar">
-        <span id="inputPrompt">></span>
-        <input type="text" id="commandInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-    </div>
-
-    <!-- Command Auto-completion Overlay -->
-    <div id="commandOverlay">
-        <ul></ul>
-    </div>
-
-    <!-- Modals (Profile, Links, etc.) -->
-    <div class="console-modal" id="profileModal">
-        <div class="modal-content">
-            <button class="modal-close-btn" onclick="profileModal.classList.remove('active');">X</button>
-            <h2 class="modal-title">USER PROFILE & CHAT ARCHIVES</h2>
-
-            <div class="profile-info">
-                <img id="profilePicModal" src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Profile photo">
-                <div class="username" id="profileModalUser">COMMANDER_UNKNOWN</div>
-                <div class="email" id="profileModalEmail">UNSET_EMAIL@SYSTEM.COM</div>
+        <div id="chat-window">
+            <div class="message ai">
+                Well hello there, my friend! 🦅 It's absolutely wonderful to hear from you! How can your favorite Philadelphia AI make your day brighter, more creative, or just plain more fun? I'm all ears, or should I say, all circuits! 😉
             </div>
 
-            <hr class="modal-divider">
-
-            <div class="chat-archive-section">
-                <h3 style="color:var(--terminal-accent); text-transform:uppercase; font-size:0.9em; margin-bottom:10px;">Chat Archives</h3>
-                <div id="chatsListModal" style="max-height:150px;overflow-y:auto;">
-                    <span class="chat-status-message">Loading chat logs...</span>
-                </div>
-                <button id="newChatBtnModal" class="form-action-btn" style="margin-top:10px;">
-                    <i class="fa-solid fa-plus"></i> NEW ARCHIVE
-                </button>
-            </div>
-
-            <hr class="modal-divider">
-
-            <form class="form-field-group" id="profileForm" autocomplete="off">
-                <label for="edit-name">COMMANDER NAME</label>
-                <input type="text" id="edit-name" required>
-                <label for="edit-photo">AVATAR URL</label>
-                <input type="url" id="edit-photo" placeholder="http://link.to/avatar.jpg">
-                <span style="font-size:0.7em;color:var(--terminal-text);opacity:0.6;display:block;margin:5px 0 10px 0;"> (Tip: <a href="https://postimg.cc/" target="_blank" style="color:var(--terminal-accent);">Upload to postimg.cc</a> for direct link) </span>
-                <button type="submit" class="form-action-btn">UPDATE PROFILE</button>
-                <div class="chat-status-message" id="profileStatusMsg"></div>
-            </form>
-            <button id="logoutBtnModal" class="form-action-btn logout-btn">LOGOUT</button>
-        </div>
-    </div>
-
-    <div class="console-modal" id="linksModal">
-        <div class="modal-content">
-            <button class="modal-close-btn" onclick="linksModal.classList.remove('active');">X</button>
-            <h2 class="modal-title">SYSTEM PROTOCOLS & LINKS</h2>
-            <div class="form-field-group">
-                <a href="philadelphia.html" class="form-action-btn"><i class="fa-solid fa-house-chimney"></i> PHI HOME</a>
-                <a href="index.html" class="form-action-btn"><i class="fa-solid fa-globe"></i> ELVION NET HUB</a>
-                <a href="about.html" class="form-action-btn"><i class="fa-solid fa-circle-info"></i> ABOUT SYSTEM</a>
-                <a href="privacy.html" class="form-action-btn"><i class="fa-solid fa-shield-halved"></i> PRIVACY PROTOCOLS</a>
-                <a href="terms.html" class="form-action-btn"><i class="fa-solid fa-file-contract"></i> TERMS OF SERVICE</a>
-                <a href="https://t.me/writingurubot" target="_blank" class="form-action-btn" style="background:none; border:1px solid var(--terminal-accent); color:var(--terminal-accent);"><i class="fab fa-telegram"></i> ENGAGE TELEGRAM UNIT</a>
+            <div class="suggestions" id="suggestions">
+                <div class="chip" onclick="sendSuggestion(this.innerText)">Comic creation request with style: anime.</div>
+                <div class="chip" onclick="sendSuggestion(this.innerText)">Comic creation request with style: american.</div>
+                <div class="chip" onclick="sendSuggestion(this.innerText)">Comic creation request with style: manga.</div>
             </div>
         </div>
-    </div>
 
-    <!-- Media Viewer for Image/Video/Audio Links -->
-    <div id="mediaViewer">
-        <div class="media-content">
-            <button class="media-close-btn">CLOSE</button>
-            <div id="mediaArea"></div>
-            <span class="media-caption" id="mediaCaption"></span>
+        <div class="input-area">
+            <div class="input-wrapper">
+                <input type="text" id="userInput" placeholder="Message Philadelphia AI..." autocomplete="off">
+            </div>
+            <button class="send-btn" onclick="sendMessage()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
         </div>
     </div>
 
-    <!-- Call Modal (Console Style) -->
-    <div id="callModal">
-        <h2 id="callHeader">PHI_AI COMMS LINK ACTIVE</h2>
-        <div id="botImageContainer">
-            <img src="https://i.postimg.cc/XqL63yM9/IMG-20250824-133336-309.jpg" alt="AI Bot Avatar">
-            <div id="botSpeakingIndicator"></div>
-        </div>
-        <div id="callStatusMessage">ESTABLISHING SECURE CHANNEL...</div>
-        <div id="tapToTalk">CLICK TO TRANSMIT</div>
-        <div id="callConversation">
-            <span class="call-log-line status center">INITIATING SECURE CHANNEL...</span>
-        </div>
-        <div id="callControls">
-            <button id="muteCallBtn"><i class="fa-solid fa-microphone"></i> MUTE</button>
-            <button id="endCallBtn"><i class="fa-solid fa-phone-slash"></i> TERMINATE</button>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-        import { getAuth, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, query, orderBy, serverTimestamp, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-            authDomain: "elvionai.firebaseapp.com",
-            projectId: "elvionai",
-            storageBucket: "elvionai.appspot.com",
-            messagingSenderId: "161078300830",
-            appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const $ = id => document.getElementById(id);
-
-        const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
-
-        let chats = [];
-        let currentChatId = null;
-        let currentMessages = [];
-        let uploadedFiles = [];
-        let currentUser = null;
-        let currentController = null; // For API abortion
-
-        let chatsUnsubscribe = null;
-        let messagesUnsubscribe = null;
-
-        // --- DOM Elements ---
-        const statusBar = $('statusBar');
-        const systemTime = $('systemTime');
-        const userNameStatus = $('userNameStatus');
-        const consoleOutput = $('consoleOutput');
-        const commandInput = $('commandInput');
-        const commandInputBar = $('commandInputBar');
-        const inputPrompt = $('inputPrompt');
-        const commandOverlay = $('commandOverlay');
-        const commandOverlayList = commandOverlay.querySelector('ul');
-
-        const profileModal = $('profileModal');
-        const profilePicModal = $('profilePicModal');
-        const profileModalUser = $('profileModalUser');
-        const profileModalEmail = $('profileModalEmail');
-        const profileForm = $('profileForm');
-        const editName = $('edit-name');
-        const editPhoto = $('edit-photo');
-        const profileStatusMsg = $('profileStatusMsg');
-        const chatsListModal = $('chatsListModal');
-        const newChatBtnModal = $('newChatBtnModal');
-        const logoutBtnModal = $('logoutBtnModal');
-
-        const linksModal = $('linksModal');
-
-        const mediaViewer = $('mediaViewer');
-        const mediaArea = $('mediaArea');
-        const mediaCaption = $('mediaCaption');
-        const mediaCloseBtn = mediaViewer.querySelector('.media-close-btn');
-
-        const callModal = $('callModal');
-        const callHeader = $('callHeader');
-        const botImageContainer = $('botImageContainer');
-        const callStatusMessage = $('callStatusMessage');
-        const tapToTalk = $('tapToTalk');
-        const callConversation = $('callConversation');
-        const muteCallBtn = $('muteCallBtn');
-        const endCallBtn = $('endCallBtn');
-
-        // --- Initial Setup on DOM Load ---
-        window.addEventListener('DOMContentLoaded', () => {
-            updateSystemTime();
-            setInterval(updateSystemTime, 1000);
-
-            // --- Command Input Logic ---
-            commandInput.addEventListener('keydown', handleCommandInput);
-            commandInput.addEventListener('input', handleCommandTyping);
-            commandInput.focus();
-
-            // --- Modals ---
-            document.querySelector('#statusBar .status-item:last-child').addEventListener('click', () => { // Click username status to open profile
-                profileModal.classList.add('active');
-            });
-            // Open links modal (assuming a /links command or similar)
-            // For now, we'll expose commands for them.
-
-            mediaCloseBtn.addEventListener('click', () => mediaViewer.classList.remove('active'));
-
-            // --- Firebase Auth ---
-            onAuthStateChanged(auth, user => {
-                if (!user) {
-                    window.location.href = "signup-login.html";
-                    return;
-                }
-                currentUser = user;
-                const userName = (user.displayName || 'COMMANDER_UNSET').toUpperCase().replace(/\s/g, '_');
-                userNameStatus.innerHTML = `<i class="fa-solid fa-user-tag"></i> ${userName}`;
-
-                profileModalUser.textContent = userName;
-                profileModalEmail.textContent = user.email || 'UNSET_EMAIL@SYSTEM.COM';
-                profilePicModal.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-
-                editName.value = user.displayName || "";
-                editPhoto.value = user.photoURL || "";
-
-                loadUserChats(user.uid);
-            });
-
-            // --- Profile Form Submission ---
-            if (profileForm) {
-                profileForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    if (!currentUser) return;
-                    const status = profileStatusMsg;
-                    status.textContent = '[SYSTEM]: Updating profile data...';
-                    try {
-                        await updateProfile(currentUser, { displayName: editName.value, photoURL: editPhoto.value });
-                        if (auth.currentUser) await auth.currentUser.reload();
-                        status.textContent = '[SYSTEM]: Profile data updated.';
-                        status.style.color = 'var(--terminal-text)';
-
-                        const userName = (auth.currentUser.displayName || 'COMMANDER_UNSET').toUpperCase().replace(/\s/g, '_');
-                        userNameStatus.innerHTML = `<i class="fa-solid fa-user-tag"></i> ${userName}`;
-                        profileModalUser.textContent = userName;
-                        profilePicModal.src = auth.currentUser.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-
-                        setTimeout(() => {
-                            profileModal.classList.remove('active');
-                            status.textContent = '';
-                        }, 1200);
-                    } catch (err) {
-                        status.textContent = `[ERROR]: ${err.message}`;
-                        status.style.color = 'var(--terminal-error)';
-                    }
-                });
-            }
-
-            // --- Logout ---
-            if (logoutBtnModal) logoutBtnModal.addEventListener('click', async () => {
-                await signOut(auth);
-                window.location.href = 'signup-login.html';
-            });
-        });
-
-        // --- System Functions ---
-        function updateSystemTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            systemTime.innerHTML = `<i class="fa-solid fa-clock"></i> ${timeString}`;
-        }
-
-        function appendToConsole(text, type = 'ai-output', prefix = '[PHI_AI]: ') {
-            const lines = text.split('\n');
-            lines.forEach(lineText => {
-                const span = document.createElement('span');
-                span.classList.add('log-line', type);
-                // Handle prefixes for non-user input and error messages
-                if (type === 'ai-output' && !lineText.startsWith(prefix)) {
-                    span.textContent = prefix + lineText;
-                } else if (type === 'system-message' && !lineText.startsWith('[SYSTEM]: ')) {
-                    span.textContent = '[SYSTEM]: ' + lineText;
-                } else if (type === 'error-message' && !lineText.startsWith('[ERROR]: ')) {
-                    span.textContent = '[ERROR]: ' + lineText;
-                }
-                else {
-                    span.textContent = lineText;
-                }
-
-                // Apply markdown (strong, em, links)
-                span.innerHTML = inlineMarkdown(span.textContent);
-
-                // Check for embedded media links
-                const mediaLinkRegex = /\[(IMAGE_OUTPUT|VIDEO_OUTPUT|AUDIO_OUTPUT|PDF_OUTPUT): (.*?)\]\((.*?)\)/g;
-                if (mediaLinkRegex.test(span.innerHTML)) {
-                    span.innerHTML = span.innerHTML.replace(mediaLinkRegex, (match, mediaType, displayName, url) => {
-                        return `<a href="#" data-media-type="${mediaType.toLowerCase()}" data-media-url="${url}">${displayName || `[${mediaType.toUpperCase()}]`}</a>`;
-                    });
-                    span.querySelectorAll('a[data-media-type]').forEach(link => {
-                        link.addEventListener('click', handleMediaLinkClick);
-                    });
-                }
-
-                consoleOutput.appendChild(span);
-            });
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-
-        function appendRawHTMLToConsole(htmlContent, type = 'ai-output') {
-            const div = document.createElement('div');
-            div.classList.add('log-line', type);
-            div.innerHTML = htmlContent;
-            enhanceCodeBlocks(div); // Apply highlighting and copy buttons to code blocks
-            consoleOutput.appendChild(div);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-
-        function displayTypingIndicator(show, text = 'Processing...') {
-            let indicator = consoleOutput.querySelector('.typing-indicator');
-            if (show) {
-                if (!indicator) {
-                    indicator = document.createElement('span');
-                    indicator.classList.add('log-line', 'typing-indicator');
-                    indicator.innerHTML = `<span class="spinner"></span> ${text}`;
-                    consoleOutput.appendChild(indicator);
-                } else {
-                    indicator.innerHTML = `<span class="spinner"></span> ${text}`;
-                }
-                consoleOutput.scrollTop = consoleOutput.scrollHeight;
-            } else {
-                if (indicator) {
-                    indicator.remove();
-                }
-            }
-        }
-
-        // --- Command Handling ---
-        const availableCommands = [
-            { cmd: '/help', desc: 'Display available commands.' },
-            { cmd: '/profile', desc: 'Manage user profile and chat archives.' },
-            { cmd: '/links', desc: 'Access system links and info.' },
-            { cmd: '/new_chat', desc: 'Create a new chat archive.' },
-            { cmd: '/list_chats', desc: 'List all chat archives.' },
-            { cmd: '/load_chat <id>', desc: 'Load a specific chat archive by ID.' },
-            { cmd: '/rename_chat <id> <name>', desc: 'Rename a chat archive.' },
-            { cmd: '/delete_chat <id>', desc: 'Delete a chat archive and its messages.' },
-            { cmd: '/clear', desc: 'Clear the console output.' },
-            { cmd: '/theme', desc: 'Cycle through console themes.' },
-            { cmd: '/logout', desc: 'Log out of the system.' },
-            { cmd: '/call', desc: 'Initiate a voice comms link.' },
-            // Tool commands
-            { cmd: '/image "<prompt>"', desc: 'Generate an image from a prompt.' },
-            { cmd: '/edit_photo "<instruction>" "<file_url>"', desc: 'Edit a photo with instructions.' },
-            { cmd: '/remove_bg "<file_url>"', desc: 'Remove background from an image.' },
-            { cmd: '/comic "<story>"', desc: 'Create a comic from a story.' },
-            { cmd: '/voice_gen "<text>"', desc: 'Generate voice from text.' },
-            { cmd: '/audio_narrate "<file_url>"', desc: 'Narrate an audio summary from a document.' },
-            { cmd: '/video_text "<prompt>"', desc: 'Generate video from text.' },
-            { cmd: '/video_image "<prompt>" "<file_url>"', desc: 'Generate video from image.' },
-            { cmd: '/music "<prompt>"', desc: 'Generate music from a prompt.' },
-            { cmd: '/create_website "<description>"', desc: 'Generate and deploy a website.' },
-            { cmd: '/edit_website "<instruction>"', desc: 'Modify the last generated website.' },
-            { cmd: '/my_sites', desc: 'List deployed websites.' },
-            { cmd: '/research "<topic>"', desc: 'Generate a research report (PDF).' },
-            { cmd: '/emoji', desc: 'Display available emojis.' },
-        ];
-
-        let commandHistory = [];
-        let historyIndex = -1;
-        let selectedCommandIndex = -1;
-
-        function handleCommandTyping() {
-            const inputVal = commandInput.value;
-            if (inputVal.startsWith('/')) {
-                const query = inputVal.substring(1).toLowerCase();
-                const filteredCommands = availableCommands.filter(c => c.cmd.substring(1).toLowerCase().includes(query));
-                renderCommandOverlay(filteredCommands);
-            } else {
-                commandOverlay.classList.remove('active');
-            }
-        }
-
-        function handleCommandInput(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const commandText = commandInput.value.trim();
-                commandInput.value = '';
-                commandOverlay.classList.remove('active');
-                if (commandText) {
-                    commandHistory.unshift(commandText); // Add to history
-                    historyIndex = -1; // Reset history navigation
-                    processCommand(commandText);
-                }
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (commandHistory.length > 0 && historyIndex < commandHistory.length - 1) {
-                    historyIndex++;
-                    commandInput.value = commandHistory[historyIndex];
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    commandInput.value = commandHistory[historyIndex];
-                } else if (historyIndex === 0) {
-                    historyIndex = -1;
-                    commandInput.value = '';
-                }
-            } else if (e.key === 'Tab' && commandOverlay.classList.contains('active')) {
-                e.preventDefault();
-                if (selectedCommandIndex !== -1) {
-                    const selectedCmd = commandOverlayList.children[selectedCommandIndex].dataset.command;
-                    commandInput.value = selectedCmd.split(' ')[0] + ' '; // Auto-complete the base command
-                    commandOverlay.classList.remove('active');
-                }
-            } else if (e.key === 'ArrowDown' && commandOverlay.classList.contains('active')) {
-                e.preventDefault();
-                const items = commandOverlayList.children;
-                if (items.length > 0) {
-                    if (selectedCommandIndex < items.length - 1) {
-                        if (selectedCommandIndex >= 0) items[selectedCommandIndex].classList.remove('selected');
-                        selectedCommandIndex++;
-                        items[selectedCommandIndex].classList.add('selected');
-                    } else if (selectedCommandIndex === -1) { // First time pressing down
-                        selectedCommandIndex = 0;
-                        items[selectedCommandIndex].classList.add('selected');
-                    }
-                }
-            } else if (e.key === 'ArrowUp' && commandOverlay.classList.contains('active')) {
-                e.preventDefault();
-                const items = commandOverlayList.children;
-                if (items.length > 0) {
-                    if (selectedCommandIndex > 0) {
-                        items[selectedCommandIndex].classList.remove('selected');
-                        selectedCommandIndex--;
-                        items[selectedCommandIndex].classList.add('selected');
-                    } else if (selectedCommandIndex === 0) {
-                        items[selectedCommandIndex].classList.remove('selected');
-                        selectedCommandIndex = -1; // Go back to raw input
-                    }
-                }
-            }
-        }
-
-        function renderCommandOverlay(commands) {
-            commandOverlayList.innerHTML = '';
-            selectedCommandIndex = -1; // Reset selection
-            if (commands.length > 0) {
-                commands.forEach((c, index) => {
-                    const li = document.createElement('li');
-                    li.dataset.command = c.cmd;
-                    li.innerHTML = `<span class="command-syntax">${c.cmd}</span> <span class="command-desc">${c.desc}</span>`;
-                    li.addEventListener('click', () => {
-                        commandInput.value = c.cmd + ' ';
-                        commandOverlay.classList.remove('active');
-                        commandInput.focus();
-                    });
-                    commandOverlayList.appendChild(li);
-                });
-                commandOverlay.classList.add('active');
-            } else {
-                commandOverlay.classList.remove('active');
-            }
-        }
-
-        async function processCommand(fullCommand) {
-            appendToConsole(`> ${fullCommand}`, 'user-input');
-
-            const parts = fullCommand.split(' ').filter(p => p.trim() !== '');
-            const command = parts[0].toLowerCase();
-            const args = parts.slice(1);
-
-            let handled = true;
-
-            switch (command) {
-                case '/help':
-                    appendToConsole('[SYSTEM]: Available Commands:', 'system-message');
-                    availableCommands.forEach(c => appendToConsole(`  ${c.cmd} - ${c.desc}`, 'system-message', ''));
-                    break;
-                case '/profile':
-                    profileModal.classList.add('active');
-                    break;
-                case '/links':
-                    linksModal.classList.add('active');
-                    break;
-                case '/new_chat':
-                    displayTypingIndicator(true, 'Creating new chat archive...');
-                    await createNewChat(currentUser.uid);
-                    displayTypingIndicator(false);
-                    appendToConsole('[SYSTEM]: New chat archive created.', 'system-message');
-                    break;
-                case '/list_chats':
-                    if (chats.length > 0) {
-                        appendToConsole('[SYSTEM]: Available Chat Archives:', 'system-message');
-                        chats.forEach(c => {
-                            const activeStatus = c.id === currentChatId ? ' (ACTIVE)' : '';
-                            appendToConsole(`  ID: ${c.id} | Name: ${c.name}${activeStatus}`, 'system-message', '');
-                        });
-                    } else {
-                        appendToConsole('[SYSTEM]: No chat archives found. Use /new_chat to create one.', 'system-message');
-                    }
-                    break;
-                case '/load_chat':
-                    if (args.length > 0) {
-                        const chatIdToLoad = args[0];
-                        if (chats.some(c => c.id === chatIdToLoad)) {
-                            currentChatId = chatIdToLoad;
-                            subscribeToMessages(currentUser.uid, currentChatId);
-                            appendToConsole(`[SYSTEM]: Chat archive '${chatIdToLoad}' loaded.`, 'system-message');
-                        } else {
-                            appendToConsole(`[ERROR]: Chat archive '${chatIdToLoad}' not found.`, 'error-message');
-                        }
-                    } else {
-                        appendToConsole('[ERROR]: Usage: /load_chat <id>', 'error-message');
-                    }
-                    break;
-                case '/rename_chat':
-                    if (args.length >= 2) {
-                        const chatIdToRename = args[0];
-                        const newName = args.slice(1).join(' ');
-                        const chatDocRef = doc(db, 'users', currentUser.uid, 'chats', chatIdToRename);
-                        try {
-                            await setDoc(chatDocRef, { name: newName }, { merge: true });
-                            appendToConsole(`[SYSTEM]: Chat archive '${chatIdToRename}' renamed to '${newName}'.`, 'system-message');
-                        } catch (e) {
-                            appendToConsole(`[ERROR]: Failed to rename chat: ${e.message}`, 'error-message');
-                        }
-                    } else {
-                        appendToConsole('[ERROR]: Usage: /rename_chat <id> <new_name>', 'error-message');
-                    }
-                    break;
-                case '/delete_chat':
-                    if (args.length > 0) {
-                        const chatIdToDelete = args[0];
-                        if (confirm(`[WARNING]: Are you sure you want to delete chat archive '${chatIdToDelete}' and all its messages? This action is irreversible.`)) {
-                            try {
-                                const messagesCol = collection(db, 'users', currentUser.uid, 'chats', chatIdToDelete, 'messages');
-                                const messagesSnap = await getDocs(messagesCol);
-                                const batch = writeBatch(db);
-                                messagesSnap.docs.forEach(d => batch.delete(d.ref));
-                                await batch.commit();
-
-                                const chatDoc = doc(db, 'users', currentUser.uid, 'chats', chatIdToDelete);
-                                await deleteDoc(chatDoc);
-
-                                if (currentChatId === chatIdToDelete) {
-                                    currentChatId = null;
-                                    appendToConsole('[SYSTEM]: Active chat archive deleted. Please select or create a new one.', 'system-message');
-                                } else {
-                                    appendToConsole(`[SYSTEM]: Chat archive '${chatIdToDelete}' purged.`, 'system-message');
-                                }
-                            } catch (e) {
-                                appendToConsole(`[ERROR]: Failed to delete chat: ${e.message}`, 'error-message');
-                            }
-                        } else {
-                             appendToConsole(`[SYSTEM]: Deletion of chat archive '${chatIdToDelete}' cancelled.`, 'system-message');
-                        }
-                    } else {
-                        appendToConsole('[ERROR]: Usage: /delete_chat <id>', 'error-message');
-                    }
-                    break;
-                case '/clear':
-                    consoleOutput.innerHTML = '';
-                    appendToConsole('[SYSTEM]: Console cleared.', 'system-message');
-                    break;
-                case '/theme':
-                    cycleTheme();
-                    break;
-                case '/logout':
-                    appendToConsole('[SYSTEM]: Logging out...', 'system-message');
-                    await signOut(auth);
-                    break;
-                case '/call':
-                    initiateVoiceCall();
-                    break;
-                case '/emoji':
-                    const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀","✨","🚀","💡","⚙️","📊","💾"];
-                    appendToConsole(`[SYSTEM]: Available Emojis: ${emojis.join(' ')}`, 'system-message');
-                    break;
-
-                // --- AI Tools as Commands ---
-                case '/image':
-                    await runToolCommand('image', args, { prompt: parseQuotedArgs(args).join(' ') });
-                    break;
-                case '/edit_photo':
-                    if (args.length >= 2) {
-                        const parsed = parseQuotedArgs(args);
-                        if (parsed.length >= 2) {
-                            await runToolCommand('edit-photo', args, { prompt: parsed[0], file: parsed[1] });
-                        } else {
-                            appendToConsole('[ERROR]: Usage: /edit_photo "<instruction>" "<file_url>"', 'error-message');
-                        }
-                    } else { appendToConsole('[ERROR]: Usage: /edit_photo "<instruction>" "<file_url>"', 'error-message'); }
-                    break;
-                case '/remove_bg':
-                    if (args.length >= 1) {
-                         const parsed = parseQuotedArgs(args);
-                        await runToolCommand('remove-bg', args, { file: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /remove_bg "<file_url>"', 'error-message'); }
-                    break;
-                case '/comic':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('comic', args, { story: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /comic "<story>"', 'error-message'); }
-                    break;
-                case '/voice_gen':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('voice-gen', args, { text: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /voice_gen "<text>"', 'error-message'); }
-                    break;
-                case '/audio_narrate':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('audio-narration', args, { file: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /audio_narrate "<file_url>"', 'error-message'); }
-                    break;
-                case '/video_text':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('video-text', args, { prompt: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /video_text "<prompt>"', 'error-message'); }
-                    break;
-                case '/video_image':
-                    if (args.length >= 2) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('video-image', args, { prompt: parsed[0], file: parsed[1] });
-                    } else { appendToConsole('[ERROR]: Usage: /video_image "<prompt>" "<file_url>"', 'error-message'); }
-                    break;
-                case '/music':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('music', args, { prompt: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /music "<prompt>"', 'error-message'); }
-                    break;
-                case '/create_website':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('website', args, { description: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /create_website "<description>"', 'error-message'); }
-                    break;
-                case '/edit_website':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('edit-website', args, { instruction: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /edit_website "<instruction>"', 'error-message'); }
-                    break;
-                case '/my_sites':
-                    await runToolCommand('my-sites', args);
-                    break;
-                case '/research':
-                    if (args.length >= 1) {
-                        const parsed = parseQuotedArgs(args);
-                        await runToolCommand('research-report', args, { topic: parsed[0] });
-                    } else { appendToConsole('[ERROR]: Usage: /research "<topic>"', 'error-message'); }
-                    break;
-
-                default:
-                    handled = false;
-                    break;
-            }
-
-            if (!handled) {
-                // If not a known command, treat as a regular chat message
-                await sendMessageToAI(fullCommand);
-            }
-        }
-
-        // Helper to parse arguments that might contain spaces if quoted
-        function parseQuotedArgs(args) {
-            const parsed = [];
-            let inQuote = false;
-            let currentArg = '';
-            for (const arg of args) {
-                if (arg.startsWith('"') && !inQuote) {
-                    inQuote = true;
-                    currentArg = arg.substring(1);
-                } else if (arg.endsWith('"') && inQuote) {
-                    currentArg += (currentArg ? ' ' : '') + arg.slice(0, -1);
-                    parsed.push(currentArg);
-                    currentArg = '';
-                    inQuote = false;
-                } else if (inQuote) {
-                    currentArg += (currentArg ? ' ' : '') + arg;
-                } else {
-                    parsed.push(arg);
-                }
-            }
-            if (inQuote) { // Handle unclosed quotes for partial input
-                parsed.push(currentArg);
-            }
-            return parsed.filter(a => a); // Filter out empty strings
-        }
-
-
-        // --- AI Tools as "Commands" ---
-        const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-        const toolDefinitions = {
-            "image": {
-                description: "Generate an image from a prompt.",
-                handleSubmit: async (payload) => {
-                    const provider = payload.model || 'thena'; // Default to thena if not specified
-                    const providerName = provider === 'minimax' ? 'Seraphina Engine' : 'Philadelphia Engine';
-                    appendToConsole(`[SYSTEM]: Image synthesis request initiated (Engine: ${providerName}).`, 'system-message');
-                    displayTypingIndicator(true, 'Synthesizing image data...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/generate-image`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: payload.prompt, model: payload.model, use_minimax: provider === 'minimax' })
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || res.statusText);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Image synthesized. [IMAGE_OUTPUT: Generated Image](${data.image_b64})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Image synthesis failed: ${err.message}`;
-                    }
-                }
-            },
-            "edit-photo": {
-                description: "Edit a photo with instructions.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Image modification request for ${payload.file}.`, 'system-message');
-                    displayTypingIndicator(true, 'Processing image modification...');
-                    const fd = new FormData();
-                    // In a real CLI, file upload would need a backend endpoint to handle URL or direct upload
-                    // For this example, assuming file is a URL string
-                    fd.append('prompt', payload.prompt);
-                    // This is a placeholder. Real implementation needs a way to fetch the file or handle a pre-uploaded file ID.
-                    // For now, if payload.file is a base64 string or a direct URL, it needs server-side handling.
-                    // For demonstration, will simulate failure if not a base64 for simplicity.
-                    if (payload.file.startsWith('data:image/')) {
-                         const base64Data = payload.file.split(',')[1];
-                         const byteCharacters = atob(base64Data);
-                         const byteNumbers = new Array(byteCharacters.length);
-                         for (let i = 0; i < byteCharacters.length; i++) {
-                             byteNumbers[i] = byteCharacters.charCodeAt(i);
-                         }
-                         const byteArray = new Uint8Array(byteNumbers);
-                         const blob = new Blob([byteArray], {type: 'image/png'}); // Assuming png for simplicity
-                         fd.append('file', blob, 'image_to_edit.png');
-                    } else {
-                        return "[ERROR]: Image modification requires direct file upload or a pre-uploaded file ID. URL support not active for this command. Use main chat for URL processing.";
-                    }
-
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd });
-                        if (!res.ok) throw new Error((await res.json()).error || 'Image modification failed.');
-                        const blob = await res.blob();
-                        const base64String = await blobToBase64(blob);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Image modification complete! [IMAGE_OUTPUT: Edited Photo](${base64String})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Image modification failed: ${err.message}`;
-                    }
-                }
-            },
-            "remove-bg": {
-                description: "Remove background from an image.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Background removal request for ${payload.file}.`, 'system-message');
-                    displayTypingIndicator(true, 'Executing background removal protocol...');
-                    const fd = new FormData();
-                    if (payload.file.startsWith('data:image/')) {
-                         const base64Data = payload.file.split(',')[1];
-                         const byteCharacters = atob(base64Data);
-                         const byteNumbers = new Array(byteCharacters.length);
-                         for (let i = 0; i < byteCharacters.length; i++) {
-                             byteNumbers[i] = byteCharacters.charCodeAt(i);
-                         }
-                         const byteArray = new Uint8Array(byteNumbers);
-                         const blob = new Blob([byteArray], {type: 'image/png'});
-                         fd.append('file', blob, 'image_for_bg_removal.png');
-                    } else {
-                        return "[ERROR]: Background removal requires direct file upload or a pre-uploaded file ID. URL support not active for this command. Use main chat for URL processing.";
-                    }
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd });
-                        if (!res.ok) throw new Error(res.statusText);
-                        const blob = await res.blob();
-                        const base64String = await blobToBase64(blob);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Background removed! [IMAGE_OUTPUT: BG Removed Image](${base64String})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Background removal failed: ${err.message}`;
-                    }
-                }
-            },
-            "comic": {
-                description: "Create a comic from a story.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Comic sequence generation initiated.`, 'system-message');
-                    displayTypingIndicator(true, 'Generating comic panel sequence...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ story: payload.story, style: payload.style || 'anime', panels: payload.panels || 3, user: currentUser?.displayName || "User" })
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || res.statusText);
-                        displayTypingIndicator(false);
-                        const imagesHtml = data.images.map((img, idx) => `[IMAGE_OUTPUT: Panel ${idx+1}](${img})`).join('\n');
-                        appendRawHTMLToConsole(`[PHI_AI]: Comic sequence rendered! \n${imagesHtml}`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Comic sequence generation failed: ${err.message}`;
-                    }
-                }
-            },
-            "voice-gen": {
-                description: "Generate voice from text.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Voice synthesis request initiated.`, 'system-message');
-                    displayTypingIndicator(true, 'Executing voice synthesis...');
-                    try {
-                        // Default to 'elder' voice profile
-                        const res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ text: payload.text, voice_id: payload.voice_id || 'elder' })
-                        });
-                        if (!res.ok) throw new Error(await res.text());
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Voice synthesis complete! [AUDIO_OUTPUT: Synthesized Voice](${url})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Voice synthesis failed: ${err.message}`;
-                    }
-                }
-            },
-            "audio-narration": {
-                description: "Narrate an audio summary from a document.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Document narration request for ${payload.file}.`, 'system-message');
-                    displayTypingIndicator(true, 'Processing document for narration...');
-                    const fd = new FormData();
-                    // Assuming payload.file is a URL or pre-uploaded reference
-                    // For demonstration, will simulate failure if not a valid string.
-                    if (payload.file.startsWith('data:application/pdf') || payload.file.startsWith('data:text/plain')) {
-                        const base64Data = payload.file.split(',')[1];
-                        const byteCharacters = atob(base64Data);
-                        const byteNumbers = new Array(byteCharacters.length);
-                        for (let i = 0; i < byteCharacters.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
-                        }
-                        const byteArray = new Uint8Array(byteNumbers);
-                        const type = payload.file.split(';')[0].split(':')[1];
-                        const blob = new Blob([byteArray], {type: type});
-                        fd.append('file', blob, 'document_for_narration.' + (type === 'application/pdf' ? 'pdf' : 'txt'));
-                    } else {
-                        return "[ERROR]: Document narration requires direct file upload or a pre-uploaded file ID. URL support not active for this command. Use main chat for URL processing.";
-                    }
-                    fd.append('style', 'podcast'); // Default style for narration
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd });
-                        if (!res.ok) throw new Error(res.statusText);
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Narration sequence complete! [AUDIO_OUTPUT: Document Narration](${url})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Audio narration failed: ${err.message}`;
-                    }
-                }
-            },
-            "video-text": {
-                description: "Generate video from text.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Video rendering sequence initiated (Text-to-Video).`, 'system-message');
-                    displayTypingIndicator(true, 'Compiling video assets...');
-                    try {
-                        const startRes = await fetch(`${API_BASE_URL}/api/tools/generate-video-from-text`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: payload.prompt, model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" })
-                        });
-                        const startData = await startRes.json();
-                        if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to initiate video task.');
-                        displayTypingIndicator(false);
-                        appendToConsole(`[SYSTEM]: Video task queued. ID: \`${startData.task_id}\`. Awaiting completion.`, 'system-message');
-
-                        const pollInterval = setInterval(async () => {
-                            try {
-                                const statusRes = await fetch(`${API_BASE_URL}/api/tools/video-status?task_id=${startData.task_id}`);
-                                const statusData = await statusRes.json();
-                                if (statusRes.ok && statusData.url) {
-                                    clearInterval(pollInterval);
-                                    appendRawHTMLToConsole(`[PHI_AI]: Video rendering complete! [VIDEO_OUTPUT: Generated Video](${statusData.url})`, 'ai-output');
-                                } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
-                                    clearInterval(pollInterval);
-                                    appendToConsole(`[ERROR]: Video rendering failed. Status: ${statusData.error || 'Unknown error'}`, 'error-message');
-                                }
-                            } catch (pollErr) {
-                                clearInterval(pollInterval);
-                                appendToConsole(`[ERROR]: Error querying video status.`, 'error-message');
-                            }
-                        }, 20000); // Poll every 20 seconds
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Video task initiation failed: ${err.message}`;
-                    }
-                }
-            },
-            "video-image": {
-                description: "Generate video from image.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Video rendering sequence initiated (Image-to-Video).`, 'system-message');
-                    displayTypingIndicator(true, 'Compiling video assets...');
-                    const fd = new FormData();
-                    fd.append('prompt', payload.prompt);
-                    // Assuming payload.file is a URL or pre-uploaded reference
-                    if (payload.file.startsWith('data:image/')) {
-                        const base64Data = payload.file.split(',')[1];
-                        const byteCharacters = atob(base64Data);
-                        const byteNumbers = new Array(byteCharacters.length);
-                        for (let i = 0; i < byteCharacters.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
-                        }
-                        const byteArray = new Uint8Array(byteNumbers);
-                        const blob = new Blob([byteArray], {type: 'image/png'});
-                        fd.append('file', blob, 'source_image.png');
-                    } else {
-                        return "[ERROR]: Image-to-Video requires direct file upload or a pre-uploaded file ID. URL support not active for this command. Use main chat for URL processing.";
-                    }
-                    fd.append('model', "MiniMax-Hailuo-02");
-                    fd.append('duration', payload.duration || 6);
-                    fd.append('resolution', payload.resolution || "1080P");
-
-                    try {
-                        const startRes = await fetch(`${API_BASE_URL}/api/tools/generate-video-from-image`, { method: 'POST', body: fd });
-                        const startData = await startRes.json();
-                        if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to initiate video task.');
-                        displayTypingIndicator(false);
-                        appendToConsole(`[SYSTEM]: Video task queued. ID: \`${startData.task_id}\`. Awaiting completion.`, 'system-message');
-
-                        const pollInterval = setInterval(async () => {
-                            try {
-                                const statusRes = await fetch(`${API_BASE_URL}/api/tools/video-status?task_id=${startData.task_id}`);
-                                const statusData = await statusRes.json();
-                                if (statusRes.ok && statusData.url) {
-                                    clearInterval(pollInterval);
-                                    appendRawHTMLToConsole(`[PHI_AI]: Video rendering complete! [VIDEO_OUTPUT: Generated Video](${statusData.url})`, 'ai-output');
-                                } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
-                                    clearInterval(pollInterval);
-                                    appendToConsole(`[ERROR]: Video rendering failed. Status: ${statusData.error || 'Unknown error'}`, 'error-message');
-                                }
-                            } catch (pollErr) {
-                                clearInterval(pollInterval);
-                                appendToConsole(`[ERROR]: Error querying video status.`, 'error-message');
-                            }
-                        }, 20000);
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Video task initiation failed: ${err.message}`;
-                    }
-                }
-            },
-            "music": {
-                description: "Generate music from a prompt.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Audio track synthesis initiated.`, 'system-message');
-                    displayTypingIndicator(true, 'Composing audio track via Seraphina Audio Engine...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/generate-music`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: payload.prompt, lyrics: payload.lyrics || '', model: 'music-1.5' })
-                        });
-                        if (!res.ok) throw new Error((await res.json()).detail || 'Audio engine request failed.');
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Audio track synthesized! [AUDIO_OUTPUT: Synthesized Track](${url})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Audio track synthesis failed: ${err.message}`;
-                    }
-                }
-            },
-            "website": {
-                description: "Generate and deploy a website.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Website deployment sequence initiated.`, 'system-message');
-                    displayTypingIndicator(true, 'Initiating website deployment...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/create-website`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: payload.description, user_id: currentUser.uid })
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || res.statusText);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Website deployed successfully! [LINK_OUTPUT: Access Website](${data.url})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Website deployment failed: ${err.message}`;
-                    }
-                }
-            },
-            "edit-website": {
-                description: "Modify the last generated website.",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Website modification request initiated.`, 'system-message');
-                    displayTypingIndicator(true, 'Applying changes and redeploying website...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/edit-website`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ instruction: payload.instruction, user_id: currentUser.uid })
-                        });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || res.statusText);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Website updated! [LINK_OUTPUT: Access New Version](${data.url})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Website modification failed: ${err.message}`;
-                    }
-                }
-            },
-            "my-sites": {
-                description: "List deployed websites.",
-                handleSubmit: async () => {
-                    appendToConsole(`[SYSTEM]: Querying database for deployed websites...`, 'system-message');
-                    displayTypingIndicator(true, 'Fetching deployed sites...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/my-sites/${currentUser.uid}`);
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || 'Could not retrieve deployed sites.');
-                        displayTypingIndicator(false);
-                        if (!data.sites || data.sites.length === 0) {
-                            appendToConsole("[PHI_AI]: No websites currently deployed.", 'ai-output');
-                        } else {
-                            appendToConsole("[PHI_AI]: Deployed websites:", 'ai-output');
-                            data.sites.forEach(site => {
-                                appendRawHTMLToConsole(`- [LINK_OUTPUT: ${site.site_url}](${site.site_url}) (Deployed: ${new Date(site.created_at).toLocaleString()})`, 'ai-output', '');
-                            });
-                        }
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Error retrieving websites: ${err.message}`;
-                    }
-                }
-            },
-            "research-report": {
-                description: "Generate a research report (PDF).",
-                handleSubmit: async (payload) => {
-                    appendToConsole(`[SYSTEM]: Compiling research data for report generation...`, 'system-message');
-                    displayTypingIndicator(true, 'Generating research report...');
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/api/tools/research`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ topic: payload.topic })
-                        });
-                        if (!res.ok) throw new Error(res.statusText);
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        displayTypingIndicator(false);
-                        appendRawHTMLToConsole(`[PHI_AI]: Research report on **${payload.topic}** ready! [PDF_OUTPUT: Download Report](${url})`, 'ai-output');
-                        return null;
-                    } catch (err) {
-                        displayTypingIndicator(false);
-                        return `[ERROR]: Research report generation failed: ${err.message}`;
-                    }
-                }
-            },
-        };
-
-        async function runToolCommand(toolKey, args, parsedPayload) {
-            const tool = toolDefinitions[toolKey];
-            if (!tool) {
-                appendToConsole(`[ERROR]: Unknown tool command: ${toolKey}`, 'error-message');
-                return;
-            }
-
-            // Simple validation for required arguments for some tools
-            const requiredArgsMap = {
-                'image': ['prompt'],
-                'edit-photo': ['prompt', 'file'],
-                'remove-bg': ['file'],
-                'comic': ['story'],
-                'voice-gen': ['text'],
-                'audio-narration': ['file'],
-                'video-text': ['prompt'],
-                'video-image': ['prompt', 'file'],
-                'music': ['prompt'],
-                'website': ['description'],
-                'edit-website': ['instruction'],
-                'research-report': ['topic']
-            };
-
-            const required = requiredArgsMap[toolKey] || [];
-            let missingArgs = [];
-            for(const argName of required) {
-                if (!parsedPayload[argName]) {
-                    missingArgs.push(argName);
-                }
-            }
-            if (missingArgs.length > 0) {
-                 appendToConsole(`[ERROR]: Missing required arguments for /${toolKey}: ${missingArgs.join(', ')}.`, 'error-message');
-                 return;
-            }
-
-
-            // For tools requiring file uploads that are referenced by URL/ID in CLI:
-            // This is a simplified approach. In a real system:
-            // 1. User uploads file via a separate mechanism to get a temporary ID/URL.
-            // 2. That ID/URL is then passed to the tool command.
-            // For this console demo, if a file argument is needed for the tool,
-            // we'll check `uploadedFiles` for the most recent match or look for a dummy URL.
-
-            if (parsedPayload.file && !parsedPayload.file.startsWith('data:')) {
-                const latestFile = uploadedFiles.find(f => f.name === parsedPayload.file || f.url === parsedPayload.file);
-                if (latestFile) {
-                    parsedPayload.file = latestFile.url; // Use the actual data URL from upload
-                    appendToConsole(`[SYSTEM]: Using previously uploaded file: ${latestFile.name}`, 'system-message');
-                } else if (!parsedPayload.file.startsWith('http')) { // Assume it's a file name, not a URL
-                    appendToConsole(`[ERROR]: File '${parsedPayload.file}' not found in current session uploads. Please upload the file first using chat or provide a full data URL.`, 'error-message');
-                    return;
-                }
-                 // If it's an http URL, the backend needs to support fetching it.
-                 // The current demo backend tools often expect multipart form data.
-                 // For now, we'll indicate if direct URL upload is not supported by the tool.
-            }
-
-            const result = await tool.handleSubmit(parsedPayload);
-            if (result) {
-                appendToConsole(result, 'error-message');
-            }
-        }
-
-
-        // --- Send Message to AI (General Chat) ---
-        async function sendMessageToAI(messageText, files = []) {
-            if (!currentChatId) {
-                appendToConsole('[ERROR]: No active chat archive. Use /new_chat or /load_chat <id>.', 'error-message');
-                return;
-            }
-            if (!messageText && files.length === 0) return; // Don't send empty message
-
-            // Add user input to console
-            appendToConsole(`> ${messageText}`, 'user-input');
-
-            displayTypingIndicator(true, 'Transmitting data...');
-
-            const filesForHistory = files.map(file => ({ name: file.name, type: file.type }));
-            // Add user message to Firestore
-            await addMessageToChat('user', messageText, filesForHistory);
-
-            let finalResponse = '';
-
-            // Handle file uploads (if any)
-            if (files.length > 0) {
-                displayTypingIndicator(true, 'Analyzing uploaded data stream...');
-                let endpoint = '';
-                const file = files[0]; // Assuming only one file for simple commands
-
-                if (file.type.startsWith('image/')) endpoint = '/understand-image';
-                else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
-                else if (file.type.startsWith('audio/')) endpoint = '/understand-audio';
-                else if (file.type.startsWith('video/')) endpoint = '/understand-video';
-                else {
-                    displayTypingIndicator(false);
-                    finalResponse = "[ERROR]: System cannot process this data type.";
-                }
-
-                try {
-                    if (endpoint) {
-                        const fd = new FormData();
-                        fd.append('prompt', messageText || `Analyze this ${file.type.split('/')[0]} data`);
-                        fd.append('file', file);
-                        const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Data analysis failed.");
-                        finalResponse = data.response;
-                    }
-                } catch (err) {
-                    finalResponse = `[ERROR]: Data analysis failed: ${err.message}`;
-                }
-            } else { // No files, just text message
-                const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                try {
-                    const res = await fetch(`${API_BASE_URL}/chat`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: messageText, history, user_id: currentUser?.uid || "user" })
-                    });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || "Server error.");
-                    finalResponse = data.response;
-                } catch (err) {
-                    finalResponse = `[ERROR]: System error: ${err.message}`;
-                }
-            }
-
-            displayTypingIndicator(false);
-            if (finalResponse) {
-                await startTypewriterEffect(finalResponse); // Use typewriter for AI response
-            }
-        }
-
-        // --- Typewriter Effect for AI Responses in Console ---
-        async function startTypewriterEffect(text) {
-            const span = document.createElement('span');
-            span.classList.add('log-line', 'ai-output');
-            consoleOutput.appendChild(span);
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-
-            let currentText = '';
-            const prefix = '[PHI_AI]: ';
-
-            for (let i = 0; i < text.length; i++) {
-                currentText += text[i];
-                // Render markdown dynamically
-                span.innerHTML = inlineMarkdown(prefix + currentText);
-                consoleOutput.scrollTop = consoleOutput.scrollHeight;
-                await new Promise(res => setTimeout(res, 10)); // Adjust typing speed
-            }
-
-            // Final render with full content and media links
-            span.innerHTML = inlineMarkdown(prefix + text);
-             const mediaLinkRegex = /\[(IMAGE_OUTPUT|VIDEO_OUTPUT|AUDIO_OUTPUT|PDF_OUTPUT|LINK_OUTPUT): (.*?)\]\((.*?)\)/g;
-            if (mediaLinkRegex.test(span.innerHTML)) {
-                span.innerHTML = span.innerHTML.replace(mediaLinkRegex, (match, mediaType, displayName, url) => {
-                    return `<a href="#" data-media-type="${mediaType.toLowerCase()}" data-media-url="${url}">${displayName || `[${mediaType.toUpperCase()}]`}</a>`;
-                });
-                span.querySelectorAll('a[data-media-type]').forEach(link => {
-                    link.addEventListener('click', handleMediaLinkClick);
-                });
-            }
-            enhanceCodeBlocks(span); // Ensure final state has code highlighting
-            await addMessageToChat('ai', text); // Save to DB after full typing
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-
-        // --- File Upload Handling (from previous, adapted to console) ---
-        // This simulates file upload by creating a data URL if a file is selected via chat.
-        // For CLI commands, the expectation is that the user either provides a data URL directly
-        // or a pre-uploaded file ID/URL that the backend can access.
-        let chatFileInput = document.createElement('input'); // Create a hidden file input for programmatic use
-        chatFileInput.type = 'file';
-        chatFileInput.accept = "application/pdf,image/*,audio/*,video/*";
-        chatFileInput.multiple = true;
-        chatFileInput.style.display = 'none';
-        document.body.appendChild(chatFileInput); // Append to body to avoid form issues
-
-        // This will be triggered by a fictional /upload command or an implied file attachment through the chat input
-        // For the console, direct attachment is via the /send command with a data URL or a helper function
-        // For now, assume a "pseudo-upload" that just stores the data URL.
-        commandInput.addEventListener('paste', async (e) => {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (const item of items) {
-                if (item.kind === 'file') {
-                    const file = item.getAsFile();
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                            const dataUrl = event.target.result;
-                            uploadedFiles.push({ name: file.name, type: file.type, url: dataUrl });
-                            appendToConsole(`[SYSTEM]: File attached: ${file.name} (${file.type}). Ready to transmit.`, 'system-message');
-                        };
-                        reader.readAsDataURL(file);
-                        e.preventDefault(); // Prevent default paste behavior
-                        return;
-                    }
-                }
-            }
-        });
-
-
-        // --- Markdown Rendering (retained) ---
-        const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-
-        function inlineMarkdown(t = '') {
-            let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
-            s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-            s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
-            s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-            return s; // No <br> here, as pre-wrap handles newlines
-        }
-
-        function renderMarkdown(text = '') {
-            const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-            let html = '';
-            let lastIndex = 0;
-            text = text || '';
-            text.replace(codeBlockRegex, (match, lang, code, offset) => {
-                const before = text.slice(lastIndex, offset);
-                html += inlineMarkdown(before);
-                const language = (lang || '').toLowerCase().trim();
-                const safe = escapeHTML(code);
-                html += `<pre><button class="copy-code-btn">Copy</button><code class="language-${language || 'plaintext'}">${safe}</code></pre>`;
-                lastIndex = offset + match.length;
-                return match;
-            });
-            html += inlineMarkdown(text.slice(lastIndex));
-            return { html };
-        }
-
-        function enhanceCodeBlocks(container) {
-            if (!container) return;
-            container.querySelectorAll('pre').forEach(pre => {
-                const codeEl = pre.querySelector('code');
-                if (window.hljs && codeEl) {
-                    try { hljs.highlightElement(codeEl); } catch (e) { /* ignore */ }
-                }
-                const btn = pre.querySelector('.copy-code-btn');
-                if (btn && codeEl) {
-                    btn.addEventListener('click', async () => {
-                        try {
-                            await navigator.clipboard.writeText(codeEl.innerText);
-                            const prev = btn.textContent;
-                            btn.textContent = 'Copied!';
-                            setTimeout(() => btn.textContent = prev, 800);
-                        } catch (e) {
-                            btn.textContent = 'Failed';
-                            setTimeout(() => btn.textContent = 'Copy', 800);
-                        }
-                    });
-                }
-            });
-        }
-
-
-        // --- Chat Management (Firebase Firestore) (retained, adapted to console) ---
-        async function loadUserChats(userId) {
-            if (chatsUnsubscribe) chatsUnsubscribe();
-            const chatsCol = collection(db, 'users', userId, 'chats');
-            const q = query(chatsCol, orderBy('createdAt', 'desc'));
-            chatsUnsubscribe = onSnapshot(q, async (snapshot) => {
-                if (snapshot.empty) {
-                    await createNewChat(userId);
-                    return;
-                }
-                chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderChatsList(chatsListModal);
-                if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                    currentChatId = chats[0].id;
-                    appendToConsole(`[SYSTEM]: Active chat archive set to '${chats[0].name}'.`, 'system-message');
-                    // Immediately load messages for the initial chat
-                    subscribeToMessages(userId, currentChatId);
-                }
-            }, (error) => {
-                appendToConsole(`[ERROR]: Failed to fetch chat archives: ${error.message}`, 'error-message');
-                chatsListModal.innerHTML = `<span class="chat-status-message">[ERROR]: Failed to load chat logs.</span>`;
-            });
-        }
-
-        async function createNewChat(userId) {
-            if (!userId) userId = currentUser?.uid;
-            if (!userId) {
-                appendToConsole(`[ERROR]: User ID not available for chat creation.`, 'error-message');
-                return;
-            }
-            const chatsCol = collection(db, 'users', userId, 'chats');
-            try {
-                const newChatDoc = await addDoc(chatsCol, { name: "New Archive", createdAt: serverTimestamp() });
-                currentChatId = newChatDoc.id;
-                appendToConsole(`[SYSTEM]: New chat archive '${newChatDoc.id}' created.`, 'system-message');
-                subscribeToMessages(userId, currentChatId); // Subscribe to messages of the new chat
-            } catch (e) {
-                appendToConsole(`[ERROR]: Failed to create new chat archive: ${e.message}`, 'error-message');
-            }
-        }
-
-        function subscribeToMessages(userId, chatId) {
-            if (messagesUnsubscribe) messagesUnsubscribe();
-            if (!userId || !chatId) {
-                consoleOutput.innerHTML = ''; // Clear console if no chat selected
-                appendToConsole('[SYSTEM]: No chat archive selected. Use /new_chat or /load_chat <id>.', 'system-message');
-                return;
-            }
-            const messagesCol = collection(db, 'users', userId, 'chats', chatId, 'messages');
-            const q = query(messagesCol, orderBy('createdAt'));
-            messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-                currentMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderChatHistory(currentMessages); // Render all messages
-            }, (error) => {
-                appendToConsole(`[ERROR]: Failed to fetch messages for chat archive '${chatId}': ${error.message}`, 'error-message');
-            });
-        }
-
-        function renderChatHistory(messages = []) {
-            consoleOutput.innerHTML = ''; // Clear existing messages
-            appendToConsole(`[SYSTEM]: Displaying log for current chat archive.`, 'system-message');
-            messages.forEach((msg) => {
-                if (msg.role === 'user') {
-                    appendToConsole(`> ${msg.text || ''}`, 'user-input');
-                } else {
-                    const parsedContent = renderMarkdown(msg.text || '').html;
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = parsedContent;
-
-                    // Re-process for media links within the text content
-                    const mediaLinkRegex = /\[(IMAGE_OUTPUT|VIDEO_OUTPUT|AUDIO_OUTPUT|PDF_OUTPUT|LINK_OUTPUT): (.*?)\]\((.*?)\)/g;
-                    if (mediaLinkRegex.test(tempDiv.innerHTML)) {
-                        tempDiv.innerHTML = tempDiv.innerHTML.replace(mediaLinkRegex, (match, mediaType, displayName, url) => {
-                            return `<a href="#" data-media-type="${mediaType.toLowerCase()}" data-media-url="${url}">${displayName || `[${mediaType.toUpperCase()}]`}</a>`;
-                        });
-                        tempDiv.querySelectorAll('a[data-media-type]').forEach(link => {
-                            link.addEventListener('click', handleMediaLinkClick);
-                        });
-                    }
-
-                    // If it contains <pre> (code block), use appendRawHTMLToConsole
-                    if (tempDiv.querySelector('pre')) {
-                        appendRawHTMLToConsole(`[PHI_AI]: ${tempDiv.innerHTML}`, 'ai-output');
-                    } else {
-                        appendToConsole(`[PHI_AI]: ${tempDiv.textContent || tempDiv.innerText || ''}`, 'ai-output');
-                    }
-                }
-            });
-            consoleOutput.scrollTop = consoleOutput.scrollHeight;
-        }
-
-        function renderChatsList(element) {
-            if (!element) return;
-            element.innerHTML = '';
-            if (chats.length === 0) {
-                element.innerHTML = `<span class="chat-status-message">[SYSTEM]: No chat archives found.</span>`;
-                return;
-            }
-            chats.forEach((chat) => {
-                const div = document.createElement('div');
-                div.classList.add('chat-list-item-console');
-                if (chat.id === currentChatId) div.classList.add('active-chat');
-
-                const spanName = document.createElement('span');
-                spanName.classList.add('chat-name');
-                spanName.textContent = chat.name || 'Untitled Archive';
-                spanName.title = `ID: ${chat.id}`;
-                spanName.addEventListener('click', () => {
-                    if (currentChatId !== chat.id) {
-                        currentChatId = chat.id;
-                        subscribeToMessages(currentUser.uid, currentChatId);
-                        profileModal.classList.remove('active'); // Close modal after selection
-                    }
-                });
-
-                const btnRename = document.createElement('button');
-                btnRename.innerHTML = '<i class="fa-solid fa-pen"></i>';
-                btnRename.title = 'RENAME';
-                btnRename.addEventListener('click', async () => {
-                    const newName = prompt(`[SYSTEM]: Enter new name for '${chat.name}' (ID: ${chat.id}):`);
-                    if (newName && newName.trim()) {
-                        try {
-                            const chatDoc = doc(db, 'users', currentUser.uid, 'chats', chat.id);
-                            await setDoc(chatDoc, { name: newName.trim() }, { merge: true });
-                            appendToConsole(`[SYSTEM]: Archive '${chat.id}' renamed to '${newName}'.`, 'system-message');
-                        } catch (e) {
-                            appendToConsole(`[ERROR]: Failed to rename archive: ${e.message}`, 'error-message');
-                        }
-                    }
-                });
-
-                const btnDelete = document.createElement('button');
-                btnDelete.innerHTML = '<i class="fa-solid fa-trash"></i>';
-                btnDelete.title = 'DELETE';
-                btnDelete.addEventListener('click', async () => {
-                    if (confirm(`[WARNING]: Confirm deletion of archive '${chat.name}' (ID: ${chat.id}) and all contents?`)) {
-                        try {
-                            const messagesCol = collection(db, 'users', currentUser.uid, 'chats', chat.id, 'messages');
-                            const messagesSnap = await getDocs(messagesCol);
-                            const batch = writeBatch(db);
-                            messagesSnap.docs.forEach(d => batch.delete(d.ref));
-                            await batch.commit();
-                            await deleteDoc(doc(db, 'users', currentUser.uid, 'chats', chat.id));
-                            appendToConsole(`[SYSTEM]: Archive '${chat.id}' purged.`, 'system-message');
-                        } catch (e) {
-                            appendToConsole(`[ERROR]: Failed to purge archive: ${e.message}`, 'error-message');
-                        }
-                    }
-                });
-
-                div.appendChild(spanName);
-                div.appendChild(btnRename);
-                div.appendChild(btnDelete);
-                element.appendChild(div);
-            });
-        }
-
-        async function addMessageToChat(role, text, files = []) {
-            if (!currentChatId || !currentUser) {
-                console.error("No active chat ID or user for message logging.");
-                return;
-            }
-            const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
-            try {
-                await addDoc(messagesCol, { role, text, files, createdAt: serverTimestamp() });
-            } catch (e) {
-                console.error("Error adding message to Firestore: ", e);
-                appendToConsole(`[ERROR]: Failed to log message to archive: ${e.message}`, 'error-message');
-            }
-        }
-
-
-        // --- Theme Switching ---
-        const themes = {
-            'cyber-terminal': { /* defined in :root */ },
-            'monokai-theme': { /* defined as class */ },
-            'solarized-dark-theme': { /* defined as class */ }
-        };
-        let currentThemeIdx = 0;
-        const themeKeys = Object.keys(themes);
-
-        function applyTheme(themeName) {
-            document.body.className = '';
-            if (themeName !== 'cyber-terminal') {
-                document.body.classList.add(themeName);
-            }
-            localStorage.setItem('philadelphia-console-theme', themeName);
-        }
-
-        function cycleTheme() {
-            currentThemeIdx = (currentThemeIdx + 1) % themeKeys.length;
-            applyTheme(themeKeys[currentThemeIdx]);
-            appendToConsole(`[SYSTEM]: Theme set to '${themeKeys[currentThemeIdx]}'.`, 'system-message');
-        }
-
-        // Load saved theme or apply default
-        const savedTheme = localStorage.getItem('philadelphia-console-theme');
-        if (savedTheme && themes[savedTheme]) {
-            currentThemeIdx = themeKeys.indexOf(savedTheme);
-            applyTheme(savedTheme);
-        } else {
-            applyTheme('cyber-terminal');
-        }
-
-
-        // --- Media Viewer ---
-        function handleMediaLinkClick(e) {
-            e.preventDefault();
-            const link = e.target;
-            const mediaType = link.dataset.mediaType;
-            const mediaUrl = link.dataset.mediaUrl;
-            const displayName = link.textContent;
-
-            mediaArea.innerHTML = '';
-            mediaCaption.textContent = `[SYSTEM]: Displaying ${displayName}...`;
-
-            let mediaElement;
-            switch (mediaType) {
-                case 'image_output':
-                    mediaElement = document.createElement('img');
-                    mediaElement.src = mediaUrl;
-                    mediaElement.alt = displayName;
-                    break;
-                case 'video_output':
-                    mediaElement = document.createElement('video');
-                    mediaElement.src = mediaUrl;
-                    mediaElement.controls = true;
-                    break;
-                case 'audio_output':
-                    mediaElement = document.createElement('audio');
-                    mediaElement.src = mediaUrl;
-                    mediaElement.controls = true;
-                    break;
-                case 'pdf_output':
-                    mediaElement = document.createElement('iframe');
-                    mediaElement.src = mediaUrl;
-                    mediaElement.style.width = '80vw';
-                    mediaElement.style.height = '80vh';
-                    mediaElement.style.border = '1px solid var(--terminal-text)';
-                    mediaCaption.textContent = `[SYSTEM]: Opening PDF: ${displayName}`;
-                    break;
-                case 'link_output':
-                     // For regular links, just open in new tab
-                    window.open(mediaUrl, '_blank');
-                    mediaViewer.classList.remove('active');
-                    return;
-                default:
-                    mediaCaption.textContent = `[ERROR]: Unsupported media type: ${mediaType}`;
-                    return;
-            }
-
-            mediaArea.appendChild(mediaElement);
-            mediaViewer.classList.add('active');
-        }
-
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }
-
-
-        // --- Voice Call Functionality ---
-        let speechRecognition;
-        let isCallActive = false;
-        let callHistory = []; // Stores text of conversation
-        let botIsSpeaking = false;
-        let userSaidSomething = false; // Flag to check if user actually spoke something meaningful
-        let currentAudio = null;
-        let isMuted = false;
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            speechRecognition = new SpeechRecognition();
-            speechRecognition.continuous = true;
-            speechRecognition.interimResults = true;
-            speechRecognition.lang = 'en-US';
-
-            speechRecognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
-                userSaidSomething = true;
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                let userMsgEl = callConversation.querySelector('.call-log-line.user.interim');
-                if (!userMsgEl) {
-                    userMsgEl = document.createElement('span');
-                    userMsgEl.className = 'call-log-line user interim';
-                    callConversation.appendChild(userMsgEl);
-                }
-                userMsgEl.textContent = `[USER_TX]: ${finalTranscript || interimTranscript}`;
-                callConversation.scrollTop = callConversation.scrollHeight;
-
-                callStatusMessage.textContent = finalTranscript ? 'USER_TX_FINAL' : 'USER_TX_ACTIVE...';
-                tapToTalk.style.display = 'none';
-            };
-
-            speechRecognition.onspeechend = () => {
-                // When user stops speaking, ensure recognition stops and onend fires to process.
-                if (!botIsSpeaking) { // Only stop if bot isn't about to speak
-                    speechRecognition.stop();
-                }
-            };
-
-            speechRecognition.onend = () => {
-                if (!isCallActive) return;
-                if (isMuted) {
-                    callStatusMessage.textContent = 'MIC_MUTED.';
-                    tapToTalk.style.display = 'none';
-                    return;
-                }
-
-                let finalTranscript = '';
-                const userMsgEl = callConversation.querySelector('.call-log-line.user.interim');
-                if (userMsgEl) {
-                    finalTranscript = userMsgEl.textContent.replace('[USER_TX]:', '').trim();
-                    userMsgEl.classList.remove('interim'); // Mark as final message
-                }
-
-                if (botIsSpeaking) {
-                    // If bot is speaking, it will restart listening when it's done.
-                    // Just clean up any lingering interim message.
-                    if (userMsgEl && finalTranscript === '') {
-                        userMsgEl.remove();
-                    }
-                } else if (finalTranscript && userSaidSomething) {
-                    userSaidSomething = false; // Reset flag
-                    callHistory.push({ role: 'user', content: finalTranscript });
-                    handleCallBotResponse();
-                } else { // No significant speech detected
-                    if (isCallActive && !isMuted) {
-                        callStatusMessage.textContent = 'AWAITING_INPUT... (CLICK_TO_TRANSMIT)';
-                        tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically:", e);}
-                    }
-                }
-            };
-
-            speechRecognition.onerror = (event) => {
-                console.error('Speech recognition error', event.error);
-                if (event.error === 'no-speech' && isCallActive && !isMuted) {
-                    userSaidSomething = false;
-                    speechRecognition.stop();
-                } else if (event.error === 'network' && isCallActive) {
-                    callStatusMessage.textContent = '[ERROR]: NETWORK_DROPPED. ATTEMPTING_RECONNECT...';
-                    speechRecognition.stop();
-                } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                    callStatusMessage.textContent = '[ERROR]: MIC_ACCESS_DENIED. ALLOW_BROWSER_SETTINGS_FOR_COMMS.';
-                    endCall();
-                }
-            };
-        } else {
-            appendToConsole('[SYSTEM]: BROWSER_COMMS_LINK_UNSUPPORTED. VOICE_CALL_DISABLED.', 'system-message');
-        }
-
-        function appendCallLog(text, type = 'bot') {
-            const span = document.createElement('span');
-            span.classList.add('call-log-line', type);
-            if (type === 'user') span.textContent = `[USER_TX]: ${text}`;
-            else if (type === 'bot') span.textContent = `[PHI_AI]: ${text}`;
-            else if (type === 'status') span.textContent = `[SYSTEM]: ${text}`;
-            callConversation.appendChild(span);
-            callConversation.scrollTop = callConversation.scrollHeight;
-        }
-
-        async function handleCallBotResponse() {
-            if (!isCallActive) return;
-            callStatusMessage.textContent = 'PHI_AI_PROCESSING_INPUT...';
-            tapToTalk.style.display = 'none';
-
-            let userMessageContent = '';
-            if (callHistory.length > 0) {
-                const lastUserMessage = callHistory.slice().reverse().find(m => m.role === 'user');
-                if (lastUserMessage) {
-                    userMessageContent = lastUserMessage.content;
-                }
-            }
-
-            const historyForBotAPI = callHistory.filter(m => m.role !== 'status').map(m => ({
-                role: m.role,
-                content: m.content
-            }));
-
-            try {
-                speechRecognition.stop();
-
-                const res = await fetch(`${API_BASE_URL}/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: userMessageContent, history: historyForBotAPI.slice(0, -1), user_id: currentUser?.uid || "user" })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Server error.");
-
-                const botResponseFullText = data.response;
+    <script>
+        // --- 1. OTHERWORLDLY VISUALS ENGINE ---
+        const universe = document.getElementById('universe');
+
+        // Create Static Stars
+        function createStars() {
+            const starCount = 150;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const xy = Math.random() * 100;
+                const duration = Math.random() * 3 + 1; // 1s to 4s
+                const size = Math.random() * 2 + 1;
                 
-                // --- Blunt Bot Response Logic for Call UI (more terminal-like) ---
-                let botDisplayMessage = botResponseFullText;
-                if (botResponseFullText.startsWith('Tool execution:')) {
-                    const matchOutput = botResponseFullText.match(/"output":\s*"(.*?)"/);
-                    if (matchOutput && matchOutput[1]) {
-                        botDisplayMessage = `TOOL_EXEC: ${matchOutput[1].replace(/\\n/g, '. ')}`;
-                        if (botDisplayMessage.length > 80) botDisplayMessage = botDisplayMessage.substring(0, 77) + '...';
-                    } else {
-                        botDisplayMessage = "TOOL_EXEC_INITIATED. STANDBY.";
-                    }
-                } else if (botResponseFullText.includes("Tool use:")) {
-                    botDisplayMessage = "QUERYING_AI_PROTOCOLS.";
-                } else if (botResponseFullText.includes("generate an image")) {
-                    botDisplayMessage = "VISUAL_GEN_AVAILABLE. ACCESS_TOOLS_MAIN_INTERFACE.";
-                } else if (botResponseFullText.includes("Download PDF Report")) {
-                    botDisplayMessage = "REPORT_GENERATED. DOWNLOAD_VIA_MAIN_INTERFACE.";
-                } else if (botResponseFullText.includes("Website deployed successfully!")) {
-                    botDisplayMessage = "WEBSITE_DEPLOYED_SUCCESS. LINK_VIA_MAIN_INTERFACE.";
-                } else if (botResponseFullText.includes("<img") || botResponseFullText.includes("<audio") || botResponseFullText.includes("<video")) {
-                    botDisplayMessage = "MEDIA_CONTENT_GENERATED. VIEW_VIA_MAIN_INTERFACE.";
-                } else if (botResponseFullText.length > 120) { // Truncate longer text responses
-                    botDisplayMessage = botResponseFullText.substring(0, 117) + '...';
-                }
-                botDisplayMessage = botDisplayMessage.toUpperCase(); // Ensure all caps for terminal feel
-                // --- End Blunt Bot Response Logic ---
-
-                callHistory.push({ role: 'ai', content: botResponseFullText });
-                appendCallLog(botDisplayMessage, 'bot'); // Display blunt message in call UI
-                speakBotResponse(botResponseFullText); // Speak the full response
-            } catch (err) {
-                const errorMsg = `COMMS_ERROR: ${err.message}`.toUpperCase();
-                appendCallLog(errorMsg, 'status');
-                if (isCallActive && !isMuted) {
-                    callStatusMessage.textContent = 'AWAITING_INPUT... (CLICK_TO_TRANSMIT)';
-                    tapToTalk.style.display = 'block';
-                    try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
-                }
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--duration', `${duration}s`);
+                star.style.setProperty('--opacity', Math.random());
+                
+                universe.appendChild(star);
             }
         }
 
-        async function speakBotResponse(text) {
-            if (!isCallActive) return;
-            botIsSpeaking = true;
-            botImageContainer.classList.add('speaking');
-            callStatusMessage.textContent = 'PHI_AI_TRANSMITTING...';
-            try {
-                const res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ text: text, voice_id: 'elder' })
-                });
-                if (!res.ok) throw new Error(await res.text());
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                currentAudio = audio;
-                audio.onended = audio.onerror = () => {
-                    botIsSpeaking = false;
-                    botImageContainer.classList.remove('speaking');
-                    currentAudio = null;
-                    if (isCallActive && !isMuted) {
-                        callStatusMessage.textContent = 'AWAITING_INPUT... (CLICK_TO_TRANSMIT)';
-                        tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
-                    } else if (isMuted) {
-                        callStatusMessage.textContent = 'MIC_MUTED.';
-                        tapToTalk.style.display = 'none';
-                    }
-                };
-                audio.play();
-            } catch (err) {
-                console.error("Voice synthesis error:", err);
-                botIsSpeaking = false;
-                botImageContainer.classList.remove('speaking');
-                if (isCallActive && !isMuted) {
-                    callStatusMessage.textContent = 'AWAITING_INPUT (VOICE_SYSTEM_OFFLINE)...';
-                    tapToTalk.style.display = 'block';
-                    try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
-                } else if (isMuted) {
-                    callStatusMessage.textContent = 'MIC_MUTED.';
-                    tapToTalk.style.display = 'none';
-                }
-            }
-        }
-
-        function stopBotSpeakingAndStartListening() {
-            if (!isCallActive) return;
-            if (botIsSpeaking && currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-                currentAudio = null;
-                botIsSpeaking = false;
-                botImageContainer.classList.remove('speaking');
-            }
+        // Create Shooting Stars
+        function triggerShootingStar() {
+            const shootingStar = document.createElement('div');
+            shootingStar.className = 'shooting-star';
             
-            if (!isMuted) {
-                callStatusMessage.textContent = 'AWAITING_INPUT... (CLICK_TO_TRANSMIT)';
-                tapToTalk.style.display = 'block';
-                try {
-                    speechRecognition.stop();
-                    speechRecognition.start();
-                } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
-            } else {
-                callStatusMessage.textContent = 'MIC_MUTED.';
-                tapToTalk.style.display = 'none';
-            }
-            const userMsgEl = callConversation.querySelector('.call-log-line.user.interim');
-            if (userMsgEl) userMsgEl.remove(); // Remove interim element
-            userSaidSomething = false;
-        }
+            // Random start position (top right area usually looks best for falling stars)
+            const startX = Math.random() * window.innerWidth + 200;
+            const startY = Math.random() * -100;
+            
+            shootingStar.style.left = `${startX}px`;
+            shootingStar.style.top = `${startY}px`;
+            
+            universe.appendChild(shootingStar);
 
-        callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
-        callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
-
-        function initiateVoiceCall() {
-            if (!SpeechRecognition) {
-                appendToConsole('[ERROR]: BROWSER_COMMS_LINK_UNSUPPORTED. VOICE_CALL_DISABLED.', 'error-message');
-                return;
-            }
-            isCallActive = true;
-            isMuted = false;
-            muteCallBtn.classList.remove('muted');
-            muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> MUTE';
-            callModal.classList.add('active');
-            callConversation.innerHTML = '';
-            appendCallLog('ESTABLISHING SECURE CHANNEL...', 'status');
-            callStatusMessage.textContent = 'ESTABLISHING SECURE LINK...';
-            tapToTalk.style.display = 'none';
-            callHistory = [];
-            userSaidSomething = false;
+            // Cleanup after animation
             setTimeout(() => {
-                if (!isCallActive) return;
-                appendCallLog('SECURE CHANNEL ESTABLISHED. TRANSMIT WHEN READY.', 'status');
-                callStatusMessage.textContent = 'AWAITING_INPUT... (CLICK_TO_TRANSMIT)';
-                tapToTalk.style.display = 'block';
-                try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed", e); callStatusMessage.textContent = '[ERROR]: MIC_INIT_FAIL. CHECK_PERMISSIONS.'; }
-            }, 1500);
+                shootingStar.remove();
+            }, 3000);
         }
 
-        function endCall() {
-            isCallActive = false;
-            botIsSpeaking = false;
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-                currentAudio = null;
+        // Initialize Space
+        createStars();
+        // Randomly trigger shooting stars every 2-6 seconds
+        setInterval(() => {
+            if(Math.random() > 0.3) triggerShootingStar();
+        }, 2000);
+
+
+        // --- 2. CHAT FUNCTIONALITY ---
+        const chatWindow = document.getElementById('chat-window');
+        const userInput = document.getElementById('userInput');
+        const suggestionBox = document.getElementById('suggestions');
+
+        function sendSuggestion(text) {
+            userInput.value = text;
+            sendMessage();
+            // Optional: Hide suggestions after selection
+            // suggestionBox.style.display = 'none';
+        }
+
+        function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // 1. Add User Message
+            addMessage(text, 'user');
+            userInput.value = '';
+
+            // 2. Simulate AI Typing/Response
+            setTimeout(() => {
+                // Simple logic to mimic response
+                const responses = [
+                    "I'm processing that in the nebula... 🌌",
+                    "Generating something stellar for you! ⭐",
+                    "All circuits are go! Creating that now.",
+                    "That's an interesting request. Let me consult the star charts."
+                ];
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                addMessage(randomResponse, 'ai');
+            }, 1000);
+        }
+
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerText = text;
+            chatWindow.appendChild(div);
+            
+            // Auto scroll to bottom
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Allow 'Enter' key to send
+        userInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
             }
-            callModal.classList.remove('active');
-            try { speechRecognition.stop(); } catch(e) {}
-            botImageContainer.classList.remove('speaking');
-            tapToTalk.style.display = 'none';
-            callStatusMessage.textContent = 'COMMS_LINK_TERMINATED.';
-            appendToConsole('[SYSTEM]: Comms link terminated.', 'system-message');
-        }
-
-        endCallBtn.addEventListener('click', endCall);
-
-        if (muteCallBtn) {
-            muteCallBtn.addEventListener('click', () => {
-                isMuted = !isMuted;
-                if (isMuted) {
-                    muteCallBtn.classList.add('muted');
-                    muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> UNMUTE';
-                    speechRecognition.stop();
-                    callStatusMessage.textContent = 'MIC_MUTED.';
-                    tapToTalk.style.display = 'none';
-                } else {
-                    muteCallBtn.classList.remove('muted');
-                    muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> MUTE';
-                    if (isCallActive && !botIsSpeaking) {
-                        callStatusMessage.textContent = 'AWAITING_INPUT... (CLICK_TO_TRANSMIT)';
-                        tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
-                    } else if (isCallActive && botIsSpeaking) {
-                        callStatusMessage.textContent = 'PHI_AI_TRANSMITTING...';
-                        tapToTalk.style.display = 'none';
-                    }
-                }
-            });
-        }
+        });
     </script>
 </body>
 </html>
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
