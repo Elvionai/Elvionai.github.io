@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
     <style>
+        /* Define global CSS variables for theming */
         :root {
             /* Cosmic Plasma Theme (Enhanced) - Default */
             --neon-blue: #00f2ff;
@@ -46,10 +47,8 @@
         /* --- GLOBAL RESET & BASE STYLES --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        html { height: 100%; }
-
         body {
-            height: 100vh; /* Use 100vh for modern browsers */
+            height: 100vh;
             overflow: hidden; /* Prevent body scroll, custom scroll for chat */
             font-family: 'Segoe UI', 'Roboto', 'Inter', Helvetica, sans-serif;
             background-color: var(--body-base-bg); /* Use theme variable */
@@ -61,7 +60,8 @@
 
         /* --- COSMIC BACKGROUND ENGINE --- */
         #cosmos-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1; /* Behind UI */
             overflow: hidden;
             background-color: var(--body-base-bg); /* Ensure it matches body base */
@@ -182,7 +182,6 @@
             border-bottom: 1px solid var(--glass-border);
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
             position: sticky; top: 0; z-index: 100;
-            flex-shrink: 0;
         }
 
         .brand-plasma {
@@ -196,14 +195,34 @@
             text-shadow: var(--text-glow);
             white-space: nowrap;
             user-select: none;
+            flex-grow: 1; /* Allow it to take available space */
+            text-align: center; /* Center the title */
         }
         @keyframes plasmaFlow { to { background-position: 300% center; } }
 
-        .header-actions { display: flex; gap: 15px; font-size: 1.4rem; }
+        .header-actions { display: flex; gap: 15px; font-size: 1.4rem; flex-shrink: 0; } /* Prevent shrinking */
         .icon-btn { cursor: pointer; opacity: 0.7; transition: 0.3s; position: relative; color: var(--neon-blue); }
         .icon-btn:hover { opacity: 1; text-shadow: var(--text-glow); transform: scale(1.1); color: #fff; }
 
-        #profileAvatar.processing {
+        .header-welcome {
+            font-size: 0.8em;
+            color: var(--neon-green);
+            text-shadow: 0 0 5px var(--neon-green);
+            position: absolute;
+            top: 55px; /* Below the main header */
+            width: 100%;
+            text-align: center;
+            z-index: 99; /* Below header, above chat */
+            padding: 5px 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+            opacity: 0.9;
+            user-select: none;
+        }
+
+        #openProfileMenu.processing {
             animation: avatarProcessing 1.5s infinite ease-in-out;
             border-color: var(--neon-green);
             box-shadow: 0 0 15px var(--neon-green), 0 0 25px rgba(0,255,136,0.5);
@@ -251,6 +270,12 @@
         .ai .msg-bubble audio.chat-media-preview {
             max-width: 100%; border-radius: 12px; margin-top: 10px; border: 2px solid var(--neon-blue); box-shadow: var(--box-glow);
             display: block;
+            object-fit: contain; /* Ensure media scales properly */
+            max-height: 300px; /* Limit height for media previews */
+        }
+        /* Specific sizing for smaller inline images like comic panels */
+        .ai .msg-bubble img.chat-media-preview.small-inline-media {
+            max-width: 150px; max-height: 100px; display: inline-block; margin: 5px;
         }
 
 
@@ -318,20 +343,46 @@
             color: #fff;
             background: var(--plasma-gradient);
         }
-        .copy-btn { position: absolute; top: 10px; right: 10px; padding: 5px 10px; margin-top: 0; }
+
+        .holo-shimmer {
+            position: relative;
+            overflow: hidden;
+            background: var(--plasma-gradient);
+        }
+        .holo-shimmer::before {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: -100%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.1) 50%, transparent 60%);
+            transform: rotate(45deg);
+            animation: shimmer 1.5s infinite linear;
+            opacity: 0.7;
+        }
+        @keyframes shimmer {
+            0% { transform: translate(-100%, -100%) rotate(45deg); }
+            100% { transform: translate(100%, 100%) rotate(45deg); }
+        }
+
 
         /* Typing Status */
         #typing-status {
             display: none;
             max-width: 85%;
+            margin: 0 auto 10px 20px; /* Align with AI messages */
             padding: 0;
             width: 100%;
             box-sizing: border-box;
             flex-shrink: 0;
             min-height: 20px;
         }
-        #typing-status .msg-bubble {
-            padding: 10px 18px;
+        #typing-status .msg {
+            padding: 10px 18px; border-radius: 20px;
+            background: linear-gradient(135deg, rgba(30, 30, 60, 0.6), rgba(20, 20, 35, 0.8));
+            border: 1px solid var(--glass-border);
+            box-shadow: inset 0 0 10px rgba(0, 242, 255, 0.03);
             display: inline-flex; align-items: center;
         }
         .dot-anim {
@@ -360,7 +411,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Input Dock */
+        /* Input Capsule */
         .input-dock {
             padding: 20px 25px;
             background: var(--glass-bg-strong);
@@ -369,7 +420,6 @@
             border-top: 1px solid var(--glass-border);
             display: flex; gap: 15px; align-items: stretch;
             position: sticky; bottom: 0; z-index: 100;
-            flex-shrink: 0;
         }
 
         .capsule-input {
@@ -425,6 +475,10 @@
             flex-shrink: 0;
         }
         .thruster-btn:hover { transform: scale(1.05) rotate(-10deg); box-shadow: 0 0 30px rgba(189, 0, 255, 0.6); }
+
+        .input-dock #sendBtn, .input-dock #callBtn, .input-dock #stopBtn {
+            position: static;
+        }
 
         /* Side Panels (Profile, Links, Tools, Tool Form) */
         .panel-bg {
@@ -542,26 +596,50 @@
             color:#222;border:none;border-radius:8px;box-shadow:0 2px 7px var(--neon-blue);
             cursor:pointer;font-weight:bold;
         }
-
-        /* FIXED File Preview */
+        /* File preview bar - fixed to bottom, above input dock */
         #filePreview {
-            display: none;
+            display: none; /* Controlled by JS active class */
             position: fixed;
-            bottom: 110px;
+            bottom: var(--input-dock-height, 100px); /* Will be updated by JS */
             left: 50%;
             transform: translateX(-50%);
-            width: 90vw;
-            max-width: 400px;
+            width: calc(100% - 40px); /* Responsive width */
+            max-width: 500px; /* Max width for larger screens */
             padding: 10px;
             border-radius: 12px;
-            background: rgba(13, 20, 52, 0.95);
+            background: rgba(13, 20, 52, 0.86);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
-            z-index: 1210;
+            z-index: 1001; /* Above input dock, below panels */
             box-shadow: 0 2px 19px var(--neon-blue);
+            flex-direction: column; /* To stack multiple file previews */
+            gap: 5px; /* Space between file items */
+            max-height: 150px; /* Limit height of the file preview container */
+            overflow-y: auto; /* Allow scrolling if many files */
         }
-        #filePreview.active { display: block; }
+        #filePreview.active { display: flex; } /* Activate as flex container */
+        #filePreview::-webkit-scrollbar { display: none; }
+        #filePreview .file-preview-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(25, 36, 65, 0.9);
+            border-radius: 8px;
+            padding: 5px 8px;
+        }
+        #filePreview .file-preview-item img,
+        #filePreview .file-preview-item video,
+        #filePreview .file-preview-item audio {
+            max-width:58px; max-height:41px; vertical-align:middle; border-radius:8px; margin-right:6px;
+            object-fit: contain;
+        }
+        #filePreview .file-preview-item .remove-file-btn {
+            background:#d23; color:#fff; border-radius:50%; width:20px; height:20px; font-size:1em; display:flex; align-items:center; justify-content:center; margin-left:auto; cursor:pointer;
+            border: none;
+            flex-shrink: 0;
+        }
+
 
         /* Voice Call Interface */
         #callModal {
@@ -647,7 +725,7 @@
             display: flex;
             flex-direction: column;
             position: relative;
-            padding-bottom: 40px;
+            padding-bottom: 40px; /* Space for speech wave */
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
@@ -712,7 +790,7 @@
         #muteCallBtn.muted:hover { background: #777; box-shadow: none; color: #fff; }
 
         .chat-controls-menu {
-            position: absolute;
+            position: absolute; bottom: calc(var(--input-dock-height, 100px) + 10px); left: 10px;
             background: var(--panel-bg);
             border: 1px solid var(--glass-border);
             border-radius: 10px;
@@ -720,14 +798,14 @@
             box-shadow: var(--box-glow);
             z-index: 101;
             display: none;
-            flex-direction: row; /* Changed to row for horizontal emojis */
+            flex-direction: column;
             gap: 5px;
             min-width: 150px;
             max-height: 200px;
-            overflow-x: auto;
+            overflow-y: auto;
         }
         .chat-controls-menu.active { display: flex; }
-        .chat-controls-menu .emoji-pick {
+        .chat-controls-menu button, .chat-controls-menu .emoji-pick {
             background: none; border: none; color: var(--main-text-color);
             padding: 8px 10px; border-radius: 8px;
             text-align: left;
@@ -737,7 +815,7 @@
             font-size: 1.23em;
             text-align: center;
         }
-        .chat-controls-menu .emoji-pick:hover {
+        .chat-controls-menu button:hover, .chat-controls-menu .emoji-pick:hover {
             background: rgba(0, 242, 255, 0.1);
             color: var(--neon-blue);
         }
@@ -755,11 +833,12 @@
             .thruster-btn { width: 50px; height: 50px; }
             .side-panel { width: 100vw; border-radius: 0; left: -100vw; } /* Full width on mobile */
             .side-panel.active { left: 0; }
-            #filePreview { width: 95vw; bottom: 95px; }
-            #ai-image-preview { right: 10px; bottom: 90px; max-width: 250px; }
+            #filePreview { width: calc(100% - 20px); bottom: var(--input-dock-height, 90px); }
+            #ai-image-preview { right: 10px; bottom: var(--input-dock-height, 90px); max-width: 250px; }
             #ai-image-preview #ai-image-container img { max-width: 170px; max-height: 170px; }
-            .chat-controls-menu { left: 10px; bottom: 95px; width: calc(100% - 20px); max-height: 150px; }
+            .chat-controls-menu { left: 10px; bottom: calc(var(--input-dock-height, 90px) + 10px); width: calc(100% - 20px); max-height: 150px; }
             .message-group { max-width: 95%; }
+            .header-welcome { top: 50px; font-size: 0.75em; }
         }
 
     </style>
@@ -784,9 +863,15 @@
                 <div class="icon-btn" id="openLinksMenu" title="Links" role="button" aria-label="Open links menu"><i class="fa-solid fa-link"></i></div>
             </div>
         </header>
+        <div class="header-welcome" id="headerWelcome">Welcome, Traveler</div>
 
         <div id="chat-viewport">
-            <!-- Initial messages will be rendered by JS -->
+            <div class="message-group ai">
+                <div class="msg-bubble">
+                    Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
+                </div>
+            </div>
+            <div id="typing-status" class="message-group ai" style="display: none;"></div>
         </div>
 
         <div class="input-dock">
@@ -799,7 +884,7 @@
                     <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
                 </div>
             </div>
-            <button class="thruster-btn" id="sendBtn" title="Send message" aria-label="Send message">
+            <button class="thruster-btn holo-shimmer" id="sendBtn" onclick="sendMessage()" title="Send message" aria-label="Send message">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
             <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
@@ -808,7 +893,7 @@
     </div>
 
     <div id="emojiPanel" class="chat-controls-menu"></div>
-    <div id="filePreview"></div>
+    <div id="filePreview" class="file-preview-bar"></div> <!-- Changed to .file-preview-bar for custom styling -->
 
     <div class="panel-bg" id="profileMenuBg">
         <nav class="side-panel" id="profileMenu" role="menu" aria-label="Profile and Chat Menu">
@@ -963,13 +1048,14 @@
         let uploadedFiles = [];
         let currentUser = null;
         let currentController = null;
-        let fileObjectURLs = [];
+        let fileObjectURLs = []; // To store URLs created with URL.createObjectURL for cleanup
 
         let chatsUnsubscribe = null;
         let messagesUnsubscribe = null;
 
         const cosmos = $('cosmos-container');
 
+        // Cosmic background animations
         function igniteCosmos() {
             if (cosmos) cosmos.querySelectorAll('.star, .stardust').forEach(p => p.remove());
             for (let i = 0; i < 250; i++) createParticle('star', 150, 3);
@@ -1029,12 +1115,15 @@
             const toolsMenu = $('toolsMenu');
             const toolBtn = $('toolBtn');
             const logoutBtn = $('logoutBtn');
+            const headerWelcome = $('headerWelcome'); // Re-introduced
+            const openProfileMenuBtn = $('openProfileMenu'); // For processing animation
             const profileMenuUser = $('profileMenuUser');
             const profileMenuEmail = $('profileMenuEmail');
             const editName = $('edit-name');
             const editPhoto = $('edit-photo');
             const profilePicPreview = $('profilePicPreview');
             const profileForm = $('profileForm');
+            const profileStatusMsg = $('profileStatusMsg');
             const chatView = $('chat-viewport');
             const userInput = $('userInput');
             const sendBtn = $('sendBtn');
@@ -1064,29 +1153,44 @@
             const botImageContainer = $('botImageContainer');
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
+            const typingStatus = $('typing-status');
+            const capsuleInputContainer = $('capsuleInputContainer');
             const userSpeechWave = $('userSpeechWave');
+            const inputDock = document.querySelector('.input-dock');
 
-            const initialMessage = `<div class="message-group ai">
-                <div class="msg-bubble">
-                    Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
-                </div>
-            </div>
-            <div id="typing-status" class="message-group ai" style="display: none;"></div>`;
-            if (chatView) chatView.innerHTML = initialMessage;
+            if (!chatView || !userInput || !typingStatus || !headerWelcome || !inputDock) {
+                console.error("Essential UI elements are missing. App functionality will be limited.");
+                return;
+            }
 
+            // Update CSS variable for file preview positioning dynamically
+            const updateInputDockHeight = () => {
+                document.documentElement.style.setProperty('--input-dock-height', `${inputDock.offsetHeight + 10}px`);
+            };
+            new ResizeObserver(updateInputDockHeight).observe(inputDock);
+            updateInputDockHeight(); // Initial set
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
             if (emojiBtn && emojiPanel && userInput) {
                 emojiBtn.addEventListener('click', (e) => {
                     emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button">${em}</span>`).join('');
                     emojiPanel.classList.toggle('active');
-                    
-                    const inputDock = userInput.closest('.input-dock');
-                    const inputDockHeight = inputDock ? inputDock.offsetHeight : 80;
-                    emojiPanel.style.bottom = `${inputDockHeight + 10}px`;
+                    const rect = emojiBtn.getBoundingClientRect();
+                    const panelWidth = emojiPanel.offsetWidth || 150; // Use a fallback width
+
+                    let panelLeft = rect.left;
+                    if (panelLeft + panelWidth > window.innerWidth - 10) {
+                        panelLeft = window.innerWidth - panelWidth - 10; // Adjust if it overflows right
+                    }
+                    if (panelLeft < 10) {
+                        panelLeft = 10; // Adjust if it overflows left
+                    }
+
+                    emojiPanel.style.left = `${panelLeft}px`;
+                    // Bottom positioning is now handled by CSS variable --input-dock-height
                 });
                 document.addEventListener('click', e => {
-                    if (emojiPanel && !emojiPanel.contains(e.target) && !emojiBtn.contains(e.target)) {
+                    if (emojiPanel && emojiPanel.classList.contains('active') && !emojiPanel.contains(e.target) && e.target !== emojiBtn) {
                         emojiPanel.classList.remove('active');
                     }
                 });
@@ -1116,7 +1220,8 @@
                         e.preventDefault();
                         sendMessage();
                     } else if (e.key === 'Enter' && e.shiftKey) {
-                        e.preventDefault();
+                        // Default browser behavior for Shift+Enter is new line, we can allow it
+                        // Or prevent and manually insert if more control is needed
                         const start = userInput.selectionStart;
                         const end = userInput.selectionEnd;
                         userInput.value = userInput.value.substring(0, start) + "\n" + userInput.value.substring(end);
@@ -1129,6 +1234,7 @@
 
             if (chatFile) {
                 chatFile.addEventListener('change', function() {
+                    // Revoke previous object URLs to prevent memory leaks
                     fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
                     fileObjectURLs = [];
                     uploadedFiles = Array.from(this.files || []);
@@ -1164,15 +1270,15 @@
                 });
             }
 
+            // Side panel controls
             window.closeToolMenu = () => { if (toolsMenu) toolsMenu.classList.remove('active'); if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
             window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); };
             window.closeProfileMenu = () => { if (profileMenu) profileMenu.classList.remove('active'); if (profileMenuBg) profileMenuBg.classList.remove('active'); };
             window.closeLinksMenu = () => { if (linksMenu) linksMenu.classList.remove('active'); if (linksMenuBg) linksMenuBg.classList.remove('active'); };
 
             if (profileMenuBg) {
-                const openProfileBtn = $('openProfileMenu');
-                if (openProfileBtn) {
-                    openProfileBtn.addEventListener('click', () => {
+                if (openProfileMenuBtn) {
+                    openProfileMenuBtn.addEventListener('click', () => {
                         if (profileMenuBg) profileMenuBg.classList.add('active');
                         if (profileMenu) profileMenu.classList.add('active');
                     });
@@ -1198,10 +1304,11 @@
                     openToolMenu();
                 });
             }
-            if (toolFormModalBg) toolFormModalBg.addEventListener('click', e => { if (e.target === toolFormModalBg) { if(toolFormModal) toolFormModal.classList.remove('active'); if(toolFormModalBg) toolFormModalBg.classList.remove('active');} });
+            if (toolFormModalBg) toolFormModalBg.addEventListener('click', e => { if (e.target === toolFormModalBg) toolFormModalBg.classList.remove('active'); });
 
-            if (logoutBtn) logoutBtn.addEventListener('click', () => { auth.signOut().then(() => window.location.href = 'signup-login.html'); });
+            if (logoutBtn) logoutBtn.addEventListener('click', () => { auth.signOut(); window.location.href = 'signup-login.html'; });
 
+            // Firebase Authentication and Chat Loading
             onAuthStateChanged(auth, user => {
                 if (!user) {
                     try { window.location.href = "signup-login.html"; } catch (e) {}
@@ -1209,9 +1316,10 @@
                 }
                 currentUser = user;
                 const displayName = user.displayName || (user.email || '').split('@')[0];
+                if (headerWelcome) headerWelcome.textContent = `Welcome, ${displayName}`; // Re-introduced
                 if (profileMenuUser) profileMenuUser.textContent = displayName;
                 if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
-                if (editName) editName.value = user.displayName || "";
+                if (editName) editName.value = displayName;
                 if (editPhoto) editPhoto.value = user.photoURL || "";
                 if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
                 loadUserChats(user.uid);
@@ -1221,16 +1329,23 @@
                 profileForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     if (!currentUser) return;
-                    const status = $('profileStatusMsg');
-                    if (status) status.textContent = 'Saving...';
+                    if (profileStatusMsg) profileStatusMsg.textContent = 'Saving...';
+                    if (openProfileMenuBtn) openProfileMenuBtn.classList.add('processing'); // Profile processing animation
                     try {
                         await updateProfile(currentUser, { displayName: editName.value, photoURL: editPhoto.value });
-                        await auth.currentUser?.reload();
-                        if (status) { status.textContent = "Profile updated!"; status.style.color = "var(--neon-green)"; }
+                        // Firebase auth.currentUser is not automatically updated, reload it
+                        if (auth.currentUser) await auth.currentUser.reload();
+                        if (profileStatusMsg) { profileStatusMsg.textContent = "Profile updated!"; profileStatusMsg.style.color = "var(--neon-green)"; }
                         setTimeout(() => { closeProfileMenu(); }, 800);
+                        // Update UI with new data
+                        const displayName = auth.currentUser?.displayName || (auth.currentUser?.email || '').split('@')[0];
+                        if (headerWelcome) headerWelcome.textContent = `Welcome, ${displayName}`;
+                        if (profileMenuUser) profileMenuUser.textContent = displayName;
                         if (profilePicPreview) profilePicPreview.src = auth.currentUser?.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
                     } catch (err) {
-                        if (status) { status.textContent = err.message; status.style.color = "#ffd700"; }
+                        if (profileStatusMsg) { profileStatusMsg.textContent = err.message; profileStatusMsg.style.color = "#ffd700"; }
+                    } finally {
+                        if (openProfileMenuBtn) openProfileMenuBtn.classList.remove('processing'); // Stop animation
                     }
                 });
             }
@@ -1247,9 +1362,9 @@
                     chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatsListSidebar();
                     if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                        currentChatId = chats.length > 0 ? chats[0].id : null;
+                        currentChatId = chats[0].id;
                     }
-                    if (currentChatId) subscribeToMessages(userId, currentChatId);
+                    subscribeToMessages(userId, currentChatId);
                 }, (error) => {
                     console.error("Error fetching chats: ", error);
                     if (chatsListEl) chatsListEl.innerHTML = `<div class="message-group system" style="color: #f44;">Error loading chats.</div>`;
@@ -1261,9 +1376,8 @@
                 if (!userId) return;
                 const chatsCol = collection(db, 'users', userId, 'chats');
                 try {
-                    const newChatDocRef = await addDoc(chatsCol, { name: "New Chat", createdAt: serverTimestamp() });
-                    currentChatId = newChatDocRef.id;
-                    if(chatView) chatView.innerHTML = initialMessage; // Reset view for new chat
+                    const newChatDoc = await addDoc(chatsCol, { name: "New Chat", createdAt: serverTimestamp() });
+                    currentChatId = newChatDoc.id;
                 } catch (e) {
                     console.error("Error creating new chat: ", e);
                 }
@@ -1282,7 +1396,7 @@
                     renderChatBox(currentMessages);
                 }, (error) => {
                     console.error("Error fetching messages: ", error);
-                    if (chatView) chatView.innerHTML = `<div class="message-group system" style="color: #f44; margin-top: 20px;">Error loading messages.</div>`;
+                    if (chatView) chatView.innerHTML = `<div class="message-group system" style="color: #f44; margin-top: 20px;">Error loading messages for this chat.</div>`;
                 });
             }
 
@@ -1384,7 +1498,7 @@
                     html += inlineMarkdown(before);
                     const language = (lang || '').toLowerCase().trim();
                     const safeCode = escapeHTML(code);
-                    html += `<pre data-lang="${language || 'plaintext'}"><button class="copy-btn" title="Copy code"><i class="fa-solid fa-copy"></i></button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
+                    html += `<pre data-lang="${language || 'plaintext'}"><button type="button" class="copy-btn">Copy</button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
                     lastIndex = offset + match.length;
                     return match;
                 });
@@ -1402,30 +1516,29 @@
                     }
                     const btn = pre.querySelector('.copy-btn');
                     if (btn && codeEl) {
-                        btn.onclick = async () => {
+                        // Re-attach event listener to ensure it's fresh after re-rendering
+                        const oldBtn = btn.cloneNode(true);
+                        btn.parentNode.replaceChild(oldBtn, btn);
+                        const newBtn = pre.querySelector('.copy-btn');
+
+                        newBtn.addEventListener('click', async () => {
                             try {
                                 await navigator.clipboard.writeText(codeEl.innerText);
-                                const prev = btn.innerHTML;
-                                btn.innerHTML = "<i class='fa-solid fa-check'></i>";
-                                setTimeout(() => { if (btn) btn.innerHTML = prev; }, 1200);
+                                const prev = newBtn.innerHTML;
+                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+                                setTimeout(() => { if (newBtn) newBtn.innerHTML = prev; }, 950);
                             } catch (e) {
-                                btn.innerHTML = "<i class='fa-solid fa-xmark'></i>";
-                                setTimeout(() => { if (btn) btn.innerHTML = "<i class='fa-solid fa-copy'></i>"; }, 1200);
+                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Failed";
+                                setTimeout(() => { if (newBtn) newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
                             }
-                        };
+                        });
                     }
                 });
             }
 
             function renderChatBox(messages = []) {
                 if (!chatView) return;
-                const typingStatusEl = $('typing-status');
-                chatView.innerHTML = ''; 
-                if (messages.length === 0) {
-                     chatView.innerHTML = initialMessage;
-                     return;
-                }
-
+                chatView.innerHTML = ''; // Clear existing messages
                 (messages || []).forEach((msg) => {
                     const div = document.createElement('div');
                     div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
@@ -1455,7 +1568,7 @@
                     } else {
                         let content;
                         if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-                            content = msg.text;
+                            content = msg.text; // Assume HTML content for media
                         } else {
                             content = renderMarkdown(msg.text || '').html;
                         }
@@ -1470,10 +1583,13 @@
                     div.innerHTML = innerHtml;
                     chatView.appendChild(div);
                 });
-                chatView.appendChild(typingStatusEl); // Re-append typing status at the end
                 enhanceCodeBlocks(chatView);
                 hookAiMsgControls();
                 hookUserMsgControls();
+                // Ensure typing status is at the bottom
+                if (typingStatus && typingStatus.style.display === 'flex') {
+                    chatView.appendChild(typingStatus);
+                }
                 setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50);
             }
 
@@ -1499,7 +1615,6 @@
                 if (!chatView) return;
                 chatView.querySelectorAll('.message-group.ai').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
-                    if(!messageId) return;
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
 
@@ -1516,8 +1631,8 @@
                             tempDiv.innerHTML = msg.text;
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
 
@@ -1540,8 +1655,15 @@
                         if (userMsg.role !== 'user') return;
 
                         await deleteMessagesFrom(messageId);
-                        
-                        showTypingStatus('Re-generating response...');
+                        if (userInput) {
+                            userInput.value = userMsg.text;
+                            userInput.style.height = 'auto';
+                            userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+                            uploadedFiles = [];
+                            renderFilePreview();
+                        }
+
+                        showTypingStatus('Re-generating response...'); // Show specific typing status
 
                         const historyForRegen = currentMessages
                             .slice(0, msgIndex - 1)
@@ -1556,10 +1678,10 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || "Server error.");
                             removeTypingStatus();
-                            await startTypewriter(data.response, true);
+                            await startTypewriter(data.response, false);
                         } catch (err) {
                             removeTypingStatus();
-                            await startTypewriter(`❌ Regeneration error: ${err.message}`, true);
+                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
                         }
                     };
                 });
@@ -1569,7 +1691,6 @@
                 if (!chatView) return;
                 chatView.querySelectorAll('.message-group.user').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
-                    if(!messageId) return;
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
                     const controls = div.querySelector('.user-msg-controls');
@@ -1578,10 +1699,12 @@
                     const editBtn = controls.querySelector('.inline-edit-btn');
                     if (copyBtn) copyBtn.onclick = () => {
                         try {
-                            const textToCopy = msg.text || '';
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = msg.text;
+                            const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
                     if (editBtn) editBtn.onclick = async () => {
@@ -1590,7 +1713,7 @@
                             if (userInput) {
                                 userInput.value = msg.text;
                                 userInput.focus();
-                                userInput.dispatchEvent(new Event('input'));
+                                userInput.dispatchEvent(new Event('input')); // Trigger autoResize
                             }
                             await deleteMessagesFrom(messageId);
                         } catch (e) { console.warn('Edit failed:', e); }
@@ -1599,28 +1722,27 @@
             }
 
             function showTypingStatus(text = '') {
-                const typingStatusEl = $('typing-status');
-                if (!typingStatusEl || !chatView) return;
-                typingStatusEl.innerHTML = `<div class="msg-bubble">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span>`}</div>`;
-                typingStatusEl.style.display = 'flex';
+                if (!typingStatus || !chatView) return;
+                typingStatus.innerHTML = `<div class="msg">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>`}</div>`;
+                typingStatus.style.display = 'flex';
+                // Always ensure typing status is at the very bottom of the chat view
+                chatView.appendChild(typingStatus);
                 if (chatView) chatView.scrollTop = chatView.scrollHeight;
             }
 
             function removeTypingStatus() {
-                const typingStatusEl = $('typing-status');
-                if (!typingStatusEl) return;
-                typingStatusEl.style.display = 'none';
-                typingStatusEl.innerHTML = '';
+                if (!typingStatus) return;
+                typingStatus.style.display = 'none';
+                typingStatus.innerHTML = '';
             }
-            
-            async function startTypewriter(text, saveToDb = true) {
-                const typingStatusEl = $('typing-status');
 
+            async function startTypewriter(text, saveToDb = true) {
+                // If the message contains media (img, audio, video tags), just append directly
                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.className = "message-group ai";
-                    tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
-                    chatView.insertBefore(tempDiv, typingStatusEl);
+                    const div = document.createElement('div');
+                    div.className = "message-group ai";
+                    div.innerHTML = `<div class="msg-bubble">${text}</div>`;
+                    chatView.appendChild(div); // Append to the end
                     chatView.scrollTop = chatView.scrollHeight;
                     if (saveToDb && currentUser && currentChatId) {
                         try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
@@ -1634,22 +1756,31 @@
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                chatView.insertBefore(div, typingStatusEl);
+                // Insert new message before typing status if it's active, otherwise at the end
+                if (typingStatus && typingStatus.style.display === 'flex') {
+                    chatView.insertBefore(div, typingStatus);
+                } else {
+                    chatView.appendChild(div);
+                }
 
-                let sofar = '';
-                const words = text.split(/(\s+)/); 
-                for (const word of words) {
+                let currentContent = '';
+                const words = text.split(/(\s+)/); // Split by spaces, keeping them in the array
+                for (let i = 0; i < words.length; i++) {
                     if (currentController?.signal.aborted) {
-                        text = sofar; 
+                        text = currentContent; // Use the text that was typed so far
                         break;
                     }
-                    sofar += word;
-                    msgBubble.innerHTML = renderMarkdown(sofar).html;
-                    chatView.scrollTop = chatView.scrollHeight;
-                    const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30;
+                    currentContent += words[i];
+                    // Update innerHTML less frequently to improve performance for long texts
+                    if (i % 5 === 0 || words[i].match(/[\.\,\!\?]/) || i === words.length - 1) {
+                        msgBubble.innerHTML = renderMarkdown(currentContent).html;
+                        chatView.scrollTop = chatView.scrollHeight;
+                    }
+                    const delay = words[i].match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster delay for punctuation/spaces
                     await new Promise(res => setTimeout(res, delay));
                 }
-                
+
+                // Final render to ensure all markdown and highlighting is correct and complete
                 msgBubble.innerHTML = renderMarkdown(text).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
@@ -1657,16 +1788,12 @@
                         <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
                     </div>
                 `;
-                
-                const newDocRef = doc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'));
-                div.setAttribute('data-message-id', newDocRef.id);
-
                 enhanceCodeBlocks(msgBubble);
                 chatView.scrollTop = chatView.scrollHeight;
                 hookAiMsgControls();
 
                 if (saveToDb && currentUser && currentChatId) {
-                    try { await setDoc(newDocRef, { role: 'ai', text: text, createdAt: serverTimestamp() }); }
+                    try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
                     catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
@@ -1677,7 +1804,7 @@
                 if (!uploadedFiles.length) {
                     filePreview.classList.remove('active');
                     filePreview.innerHTML = '';
-                    fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
+                    fileObjectURLs.forEach(url => URL.revokeObjectURL(url)); // Clean up all URLs
                     fileObjectURLs = [];
                     return;
                 }
@@ -1687,11 +1814,14 @@
                     let objUrl = '';
                     try {
                         objUrl = URL.createObjectURL(file);
-                        fileObjectURLs.push(objUrl);
-                    } catch (e) { console.error("Error creating object URL:", e); objUrl = ''; }
+                        fileObjectURLs.push(objUrl); // Store URL for cleanup
+                    } catch (e) {
+                        console.error("Error creating object URL:", e);
+                        objUrl = '';
+                    }
 
                     if (file.type && file.type.startsWith('image/')) {
-                        preview = `<img src="${objUrl}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px; object-fit: cover;">`;
+                        preview = `<img src="${objUrl}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
                     } else if (file.type && file.type.startsWith('video/')) {
                         preview = `<video src="${objUrl}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
                     } else if (file.type && file.type.startsWith('audio/')) {
@@ -1702,28 +1832,30 @@
                         preview = `<span style="font-size:1.25em;margin-right:7px;">❓</span>`;
                     }
                     return `
-                        <div style="display:flex;align-items:center;gap:7px;margin-bottom:1px; background: rgba(25, 36, 65, 0.9); border-radius: 8px; padding: 5px 8px;">
+                        <div class="file-preview-item">
                             ${preview}
-                            <span style="color:var(--main-text-color);font-size:.9em; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(file.name || 'Unknown file')}</span>
-                            <button type="button" data-idx="${idx}" class="remove-file-btn" aria-label="Remove file" style="background:#d23; color:#fff; border-radius:50%; width:20px; height:20px; font-size:1em; display:flex; align-items:center; justify-content:center; margin-left:auto; cursor:pointer; border: none; flex-shrink: 0;">&times;</button>
+                            <span style="color:var(--main-text-color);font-size:.9em;">${escapeHTML(file.name || 'Unknown file')}</span>
+                            <button type="button" data-idx="${idx}" class="remove-file-btn" aria-label="Remove file">&times;</button>
                         </div>`;
                 }).join('');
 
                 filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const idx = parseInt(btn.getAttribute('data-idx'));
-                        if (uploadedFiles[idx] && fileObjectURLs[idx]) URL.revokeObjectURL(fileObjectURLs[idx]);
+                        if (uploadedFiles[idx] && fileObjectURLs[idx]) {
+                            URL.revokeObjectURL(fileObjectURLs[idx]); // Clean up specific URL
+                        }
                         uploadedFiles.splice(idx, 1);
-                        fileObjectURLs.splice(idx, 1);
-                        if (!uploadedFiles.length && chatFile) chatFile.value = '';
-                        renderFilePreview();
+                        fileObjectURLs.splice(idx, 1); // Remove from tracking array
+                        if (!uploadedFiles.length && chatFile) chatFile.value = ''; // Reset file input if no files left
+                        renderFilePreview(); // Re-render preview
                     });
                 });
             }
 
             function showAIImagePreview(base64, caption = '') {
                 if (!aiPrevBox || !aiPrevImgBox) return;
-                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
+                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;display:block;">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
             }
 
@@ -1760,7 +1892,11 @@
                         options = { method: 'POST', body: payload };
                     } else {
                         const finalPayload = { ...payload, ...commonPayload };
-                        options = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalPayload) };
+                        options = {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(finalPayload)
+                        };
                     }
 
                     const startRes = await fetch(API_BASE_URL + endpoint, options);
@@ -1827,7 +1963,7 @@
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
                             removeTypingStatus();
-                            await startTypewriter('✅ Image generated! Check the floating image box to view or download.');
+                            await addMessageToChat('ai', '✅ Image generated! Check the floating image box to view or download.');
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -1835,47 +1971,6 @@
                         }
                     }
                 },
-                 "comic": { // UPDATED COMIC TOOL
-                    title: "Create Comic",
-                    description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
-                    buildForm: () => `
-                        <label for="tool-provider">Generation Model</label>
-                        <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic...)</option></select>
-                        <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style">Comic Style</label><select id="tool-style" aria-label="Comic style"><option value="anime">Anime</option><option value="american">American Comic</option><option value="manga">Manga</option></select>
-                        <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
-                        <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
-                    handleSubmit: async (form) => {
-                        const story = form.querySelector('#tool-story')?.value;
-                        const style = form.querySelector('#tool-style')?.value;
-                        const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
-                        const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
-                        const providerName = use_minimax ? 'Version 2' : 'Version 1';
-                        
-                        if (!story) return "Please provide a comic story.";
-                        const payload = { story, style, panels, use_minimax, user: currentUser?.displayName || "User" };
-                        await addMessageToChat('user', `Comic creation request using ${providerName} model.`);
-                        showTypingStatus('Generating your comic panels...');
-                        try {
-                            const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
-                            });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || res.statusText);
-                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
-                            const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
-                            removeTypingStatus();
-                            await startTypewriter(comicMessage);
-                            return null;
-                        } catch (err) {
-                            removeTypingStatus();
-                            return `❌ Comic generation failed: ${err.message}`;
-                        }
-                    }
-                },
-                // All other tool definitions remain the same...
                 "edit-photo": {
                     title: "Edit Photo",
                     description: "Upload a photo and describe the changes you want to make.",
@@ -1900,7 +1995,7 @@
                             const base64String = await blobToBase64(blob);
                             const imgHtml = `✅ Photo edited successfully! <br><img src="${base64String}" alt="Edited Photo" class="chat-media-preview">`;
                             removeTypingStatus();
-                            await startTypewriter(imgHtml);
+                            await addMessageToChat('ai', imgHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -1928,11 +2023,52 @@
                             const url = URL.createObjectURL(blob);
                             const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview">`;
                             removeTypingStatus();
-                            await startTypewriter(imgHtml);
+                            await addMessageToChat('ai', imgHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
                             return `❌ Background removal failed: ${err.message}`;
+                        }
+                    }
+                },
+                "comic": {
+                    title: "Create Comic",
+                    description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
+                    buildForm: () => `
+                        <label for="tool-provider">Generation Model</label>
+                        <select id="tool-provider" aria-label="Comic generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
+                        <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
+                        <label for="tool-style">Comic Art Style</label><select id="tool-style" aria-label="Comic art style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
+                        <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
+                        <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
+                    handleSubmit: async (form) => {
+                        const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
+                        const providerName = use_minimax ? 'Version 2 (Creative)' : 'Version 1 (Stylized)';
+                        const story = form.querySelector('#tool-story')?.value;
+                        const style = form.querySelector('#tool-style')?.value;
+                        const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
+                        if (!story) return "Please provide a comic story.";
+                        if (isNaN(panels) || panels < 1 || panels > 6) return "Number of panels must be between 1 and 6.";
+
+                        const payload = { story, style, panels, user: currentUser?.displayName || "User", use_minimax }; // Added use_minimax
+                        await addMessageToChat('user', `Comic creation request with style: ${payload.style} (using ${providerName}).`);
+                        showTypingStatus('Generating your comic panels...');
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || res.statusText);
+                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview small-inline-media">`).join('');
+                            const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
+                            removeTypingStatus();
+                            await addMessageToChat('ai', comicMessage);
+                            return null;
+                        } catch (err) {
+                            removeTypingStatus();
+                            return `❌ Comic generation failed: ${err.message}`;
                         }
                     }
                 },
@@ -1956,7 +2092,7 @@
                             styleSelect.innerHTML = (voices[selectedProvider] || []).map(v => `<option value="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('');
                         };
                         providerSelect.addEventListener('change', updateStyles);
-                        updateStyles();
+                        updateStyles(); // Initialize styles on load
                     },
                     handleSubmit: async (form) => {
                         const provider = form.querySelector('#tool-provider')?.value;
@@ -1985,7 +2121,7 @@
                             const url = URL.createObjectURL(blob);
                             const audioHtml = `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             removeTypingStatus();
-                            await startTypewriter(audioHtml);
+                            await addMessageToChat('ai', audioHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2014,7 +2150,7 @@
                             const url = URL.createObjectURL(blob);
                             const narrationHtml = `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             removeTypingStatus();
-                            await startTypewriter(narrationHtml);
+                            await addMessageToChat('ai', narrationHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2036,7 +2172,7 @@
                         if (isNaN(duration) || duration < 2 || duration > 15) return "Duration must be between 2 and 15 seconds.";
                         const payload = { prompt, duration, resolution: "1080P" };
                         await addMessageToChat('user', `Text-to-Video request: "${payload.prompt}"`);
-                        handleVideoGeneration(payload);
+                        handleVideoGeneration(payload); // This function shows typing status internally
                         return null;
                     }
                 },
@@ -2056,7 +2192,7 @@
                         const fd = new FormData();
                         fd.append('prompt', prompt);
                         fd.append('file', file);
-                        handleVideoGeneration(fd, true);
+                        handleVideoGeneration(fd, true); // This function shows typing status internally
                         return null;
                     }
                 },
@@ -2098,7 +2234,7 @@
                             const url = URL.createObjectURL(blob);
                             const musicHtml = `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             removeTypingStatus();
-                            await startTypewriter(musicHtml);
+                            await addMessageToChat('ai', musicHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2126,7 +2262,7 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeTypingStatus();
-                            await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`);
+                            await addMessageToChat('ai', `🌐 Website deployed successfully! [View here](${data.url})`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2154,7 +2290,7 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeTypingStatus();
-                            await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`);
+                            await addMessageToChat('ai', `✏️ Website updated successfully! [View new version here](${data.url})`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2165,7 +2301,7 @@
                 "my-sites": {
                     isAction: true,
                     runAction: async () => {
-                        if (!currentUser) return "User not logged in.";
+                        if (!currentUser) { await startTypewriter("User not logged in."); return; }
                         await addMessageToChat('user', 'Show me a list of my websites.');
                         showTypingStatus('Fetching your website list...');
                         try {
@@ -2210,7 +2346,7 @@
                             const url = URL.createObjectURL(blob);
                             const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
                             removeTypingStatus();
-                            await startTypewriter(`✅ Research report on **${topic}** is ready! ${downloadLink}`);
+                            await addMessageToChat('ai', `✅ Research report on **${topic}** is ready! ${downloadLink}`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2219,7 +2355,6 @@
                     }
                 },
             };
-
 
             if (toolsMenu) {
                 toolsMenu.addEventListener('click', async (e) => {
@@ -2231,7 +2366,7 @@
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     closeToolMenu();
                     if (tool.isAction) {
-                        await tool.runAction();
+                        await tool.runAction(); // Action tools handle their own typing status
                     } else {
                         displayToolForm(toolKey);
                     }
@@ -2275,6 +2410,7 @@
                 const msgText = userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
 
+                // Toggle send/stop buttons
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
@@ -2283,23 +2419,28 @@
                 const signal = currentController.signal;
                 let finalResponse = '';
 
+                // Remove previous stop listener and add a new one
                 if (stopBtn) {
-                    stopBtn.onclick = () => { if (currentController) currentController.abort(); };
+                    const oldStopListener = stopBtn._stopListener;
+                    if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
+                    const newStopListener = () => { if (currentController) currentController.abort(); };
+                    stopBtn.addEventListener('click', newStopListener, { once: true });
+                    stopBtn._stopListener = newStopListener; // Store listener reference
                 }
 
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                 await addMessageToChat('user', msgText, filesForHistory);
-                const localUploadedFiles = [...uploadedFiles];
+                const localUploadedFiles = [...uploadedFiles]; // Clone for current request
 
                 userInput.value = '';
                 uploadedFiles = [];
-                renderFilePreview();
-                userInput.style.height = 'auto';
+                renderFilePreview(); // Clear file preview
+                userInput.style.height = 'auto'; // Reset textarea height
 
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const file = localUploadedFiles[0];
+                    const file = localUploadedFiles[0]; // Assuming only one file for analysis endpoint
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
@@ -2322,7 +2463,7 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus();
+                    showTypingStatus(); // Show "..." typing animation
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -2344,14 +2485,14 @@
                     await startTypewriter(finalResponse);
                 }
 
+                // Restore send/call buttons
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
                 currentController = null;
             }
-            if(sendBtn) sendBtn.addEventListener('click', sendMessage);
 
-
+            // Theme Switching
             const themes = {
                 cyber: {
                     '--neon-blue': '#00f2ff', '--neon-purple': '#bd00ff', '--neon-green': '#00ff88',
@@ -2369,7 +2510,46 @@
                     '--panel-border': 'var(--neon-purple)', '--panel-shadow': '0 0 40px rgba(189, 0, 255, 0.4)',
                     '--call-bot-speaking-glow': '0 0 25px var(--neon-green), 0 0 40px rgba(0, 255, 136, 0.6)',
                     '--current-bg-blend-mode': 'screen',
-                    '--body-base-bg': '#050714'
+                    '--body-base-bg': '#050714',
+                    '--call-bg-gradient': 'linear-gradient(180deg, #050714, #1a0a2e)'
+                },
+                celestial: {
+                    '--neon-blue': '#ff00ff', '--neon-purple': '#8a2be2', '--neon-green': '#00e0ff',
+                    '--plasma-gradient': 'linear-gradient(135deg, #ff00ff, #8a2be2, #00e0ff)',
+                    '--plasma-gradient-dark': 'linear-gradient(135deg, #ff00ff, #8a2be2)',
+                    '--glass-bg-strong': 'rgba(25, 0, 35, 0.7)', '--glass-bg-light': 'rgba(255, 255, 255, 0.1)',
+                    '--glass-border': 'rgba(255, 255, 255, 0.2)',
+                    '--text-glow': '0 0 10px var(--neon-blue), 0 0 20px var(--neon-purple)',
+                    '--box-glow': '0 0 20px rgba(255, 0, 255, 0.2)',
+                    '--user-bubble-glow': '0 0 15px var(--neon-blue), 0 0 25px var(--neon-purple)',
+                    '--ai-bubble-glow': '0 0 10px rgba(255,0,255,0.2), 0 0 20px rgba(0,224,255,0.1)',
+                    '--main-text-color': '#f0e6ff', '--input-focus-bg': 'rgba(255, 0, 255, 0.08)',
+                    '--code-bg': 'rgba(30, 0, 45, 0.9)', '--code-border': 'rgba(255, 0, 255, 0.4)',
+                    '--panel-bg': 'linear-gradient(118deg, rgba(30, 0, 45, 0.95), rgba(60, 0, 75, 0.95))',
+                    '--panel-border': 'var(--neon-purple)', '--panel-shadow': '0 0 40px rgba(255, 0, 255, 0.4)',
+                    '--call-bot-speaking-glow': '0 0 25px var(--neon-green), 0 0 40px rgba(0,224,255, 0.6)',
+                    '--current-bg-blend-mode': 'overlay',
+                    '--body-base-bg': '#1a0033',
+                    '--call-bg-gradient': 'linear-gradient(180deg, #1a0033, #3a005a)'
+                },
+                starlight: {
+                    '--neon-blue': '#a6faff', '--neon-purple': '#00c3ff', '--neon-green': '#00ffc3',
+                    '--plasma-gradient': 'linear-gradient(135deg, #a6faff, #00c3ff, #00ffc3)',
+                    '--plasma-gradient-dark': 'linear-gradient(135deg, #a6faff, #00c3ff)',
+                    '--glass-bg-strong': 'rgba(10, 12, 37, 0.7)', '--glass-bg-light': 'rgba(255, 255, 255, 0.07)',
+                    '--glass-border': 'rgba(255, 255, 255, 0.18)',
+                    '--text-glow': '0 0 10px var(--neon-blue), 0 0 20px var(--neon-purple)',
+                    '--box-glow': '0 0 20px rgba(166, 250, 255, 0.2)',
+                    '--user-bubble-glow': '0 0 15px var(--neon-blue), 0 0 25px var(--neon-purple)',
+                    '--ai-bubble-glow': '0 0 10px rgba(166,250,255,0.2), 0 0 20px rgba(0,255,195,0.1)',
+                    '--main-text-color': '#f0faff', '--input-focus-bg': 'rgba(166, 250, 255, 0.08)',
+                    '--code-bg': 'rgba(10, 12, 37, 0.9)', '--code-border': 'rgba(166, 250, 255, 0.4)',
+                    '--panel-bg': 'linear-gradient(118deg, rgba(10, 12, 37, 0.95), rgba(28, 21, 63, 0.95))',
+                    '--panel-border': 'var(--neon-purple)', '--panel-shadow': '0 0 40px rgba(166, 250, 255, 0.4)',
+                    '--call-bot-speaking-glow': '0 0 25px var(--neon-green), 0 0 40px rgba(0,255,195, 0.6)',
+                    '--current-bg-blend-mode': 'soft-light',
+                    '--body-base-bg': '#030010',
+                    '--call-bg-gradient': 'linear-gradient(180deg, #030010, #100c25)'
                 },
                 midnight: {
                     '--neon-blue': '#3391ff', '--neon-purple': '#007bff', '--neon-green': '#00cc88',
@@ -2387,7 +2567,8 @@
                     '--panel-border': 'var(--neon-purple)', '--panel-shadow': '0 0 30px rgba(0, 0, 0, 0.6)',
                     '--call-bot-speaking-glow': '0 0 25px var(--neon-green), 0 0 40px rgba(0,204,136, 0.6)',
                     '--current-bg-blend-mode': 'normal',
-                    '--body-base-bg': '#121212'
+                    '--body-base-bg': '#121212',
+                    '--call-bg-gradient': 'linear-gradient(180deg, #121212, #282828)'
                 },
                 forest: {
                     '--neon-blue': '#99cc99', '--neon-purple': '#669966', '--neon-green': '#ccffcc',
@@ -2405,7 +2586,8 @@
                     '--panel-border': 'var(--neon-purple)', '--panel-shadow': '0 0 30px rgba(153, 204, 153, 0.4)',
                     '--call-bot-speaking-glow': '0 0 25px var(--neon-green), 0 0 40px rgba(204,255,204, 0.6)',
                     '--current-bg-blend-mode': 'normal',
-                    '--body-base-bg': '#2a362a'
+                    '--body-base-bg': '#2a362a',
+                    '--call-bg-gradient': 'linear-gradient(180deg, #2a362a, #3a473a)'
                 },
                 volcano: {
                     '--neon-blue': '#ff7043', '--neon-purple': '#bf360c', '--neon-green': '#ffab40',
@@ -2423,7 +2605,8 @@
                     '--panel-border': 'var(--neon-purple)', '--panel-shadow': '0 0 30px rgba(255, 112, 67, 0.4)',
                     '--call-bot-speaking-glow': '0 0 25px var(--neon-green), 0 0 40px rgba(255,171,64, 0.6)',
                     '--current-bg-blend-mode': 'normal',
-                    '--body-base-bg': '#3e1a0b'
+                    '--body-base-bg': '#3e1a0b',
+                    '--call-bg-gradient': 'linear-gradient(180deg, #3e1a0b, #4e2211)'
                 }
             };
             let currentThemeIdx = 0;
@@ -2461,7 +2644,7 @@
             let isCallActive = false;
             let callHistory = [];
             let botIsSpeaking = false;
-            let userSaidSomething = false;
+            let userSaidSomething = false; // Flag to track if user has spoken something since last recognition start
             let currentAudio = null;
             let isMuted = false;
 
@@ -2477,49 +2660,61 @@
                     let interimTranscript = '';
                     let finalTranscript = '';
                     userSaidSomething = true;
-                    if (userSpeechWave) userSpeechWave.classList.add('active');
+                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Activate visual waveform
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-                        else interimTranscript += event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
                     }
+
                     let userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
                     if (!userMsgEl && callConversation && userSpeechWave) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
+                        // Insert before userSpeechWave to keep waveform at bottom
                         callConversation.insertBefore(userMsgEl, userSpeechWave);
                     }
                     if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
                     if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
-                    if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'Processing...' : 'User Speaking...';
+
+                    if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'User Speaking (Final)' : 'User Speaking...';
                     if (tapToTalk) tapToTalk.style.display = 'none';
                 };
 
-                speechRecognition.onspeechend = () => { if (userSpeechWave) userSpeechWave.classList.remove('active'); };
+                speechRecognition.onspeechend = () => {
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Deactivate visual waveform
+                };
 
                 speechRecognition.onend = () => {
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if (!isCallActive) return;
+                    if (!isCallActive) return; // Ensure call is still active
                     if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         if (tapToTalk) tapToTalk.style.display = 'none';
                         return;
                     }
+
                     let finalTranscript = '';
                     const userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
                     if (userMsgEl) {
                         finalTranscript = userMsgEl.textContent.trim();
-                        userMsgEl.classList.remove('interim');
+                        userMsgEl.classList.remove('interim'); // Remove interim class
                     }
-                    if (botIsSpeaking) { /* Wait for bot to finish */ }
-                    else if (finalTranscript && userSaidSomething) {
-                        userSaidSomething = false;
+
+                    if (botIsSpeaking) {
+                        // Bot is speaking, just wait for it to finish and restart listening (in speakBotResponse)
+                    } else if (finalTranscript && userSaidSomething) {
+                        userSaidSomething = false; // Reset flag
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else {
-                        if (isCallActive && !isMuted && speechRecognition) {
+                        // If no final transcript and bot isn't speaking, restart listening
+                        if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { speechRecognition.start(); } catch(e) { /* ignore already started error */ }
+                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically:", e);}
                         }
                     }
                 };
@@ -2527,17 +2722,20 @@
                 speechRecognition.onerror = (event) => {
                     console.error('Speech recognition error', event.error);
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if ((event.error === 'no-speech' || event.error === 'network') && isCallActive && !isMuted) {
-                        userSaidSomething = false;
-                        if (speechRecognition) speechRecognition.stop(); // This will trigger onend to restart
+                    if (event.error === 'no-speech' && isCallActive && !isMuted) {
+                        userSaidSomething = false; // Reset flag to allow restarting recognition
+                        if (speechRecognition) speechRecognition.stop(); // Stop and onend will trigger restart
+                    } else if (event.error === 'network' && isCallActive) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Network error. Attempting restart...';
+                        if (speechRecognition) speechRecognition.stop();
                     } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied.';
-                        endCall();
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
+                        endCall(); // End call if permission is denied
                     }
                 };
             } else {
                 if (callBtn) callBtn.style.display = 'none';
-                console.warn("Speech Recognition not supported in this browser.");
+                console.warn("Speech Recognition not supported in this browser. Voice call feature disabled.");
             }
 
             function addCallMessage(role, text) {
@@ -2545,6 +2743,7 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
+                // Insert before userSpeechWave to keep waveform at bottom
                 callConversation.insertBefore(msgEl, userSpeechWave);
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
@@ -2553,9 +2752,12 @@
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
+                // Stop speech recognition while bot is thinking/speaking
                 if (speechRecognition) speechRecognition.stop();
+
                 const historyForBot = callHistory.map(m => m);
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
+
                 try {
                     const res = await fetch(`${API_BASE_URL}/chat`, {
                         method: 'POST',
@@ -2571,6 +2773,7 @@
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
+                    // If an error occurs, restart listening if call is active and not muted
                     if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         if (tapToTalk) tapToTalk.style.display = 'block';
@@ -2598,7 +2801,8 @@
                     audio.onended = audio.onerror = () => {
                         botIsSpeaking = false;
                         if (botImageContainer) botImageContainer.classList.remove('speaking');
-                        currentAudio = null;
+                        currentAudio = null; // Clear audio reference
+                        // Once bot finishes speaking, restart listening if call is active and not muted
                         if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
@@ -2613,14 +2817,19 @@
                     console.error("Voice generation error:", err);
                     botIsSpeaking = false;
                     if (botImageContainer) botImageContainer.classList.remove('speaking');
-                     if (isCallActive && !isMuted) { // fallback to listening
+                    // If voice generation fails, try to restart listening
+                    if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { if (speechRecognition) speechRecognition.start(); } catch(e) {}
+                        try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
+                    } else if (isMuted) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
+                        if (tapToTalk) tapToTalk.style.display = 'none';
                     }
                 }
             }
 
+            // Function to stop bot speaking and immediately start listening (e.g., on user tap)
             function stopBotSpeakingAndStartListening() {
                 if (!isCallActive || !botIsSpeaking || !botImageContainer || !callStatusMessage || !tapToTalk) return;
                 if (currentAudio) {
@@ -2634,43 +2843,56 @@
                     callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                     tapToTalk.style.display = 'block';
                     try {
-                        if (speechRecognition) speechRecognition.stop();
+                        if (speechRecognition) speechRecognition.stop(); // Stop current recognition session
+                        if (speechRecognition) speechRecognition.start(); // Start a new one immediately
                     } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
                 } else {
                     callStatusMessage.textContent = 'Microphone Muted.';
                     tapToTalk.style.display = 'none';
                 }
                 const userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
-                if (userMsgEl) userMsgEl.textContent = '';
+                if (userMsgEl) userMsgEl.textContent = ''; // Clear interim message if any
             }
 
             if (callModal) {
-                callModal.addEventListener('click', stopBotSpeakingAndStartListening);
+                // Add event listeners for tap/click to interrupt bot and speak
+                callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
+                callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
             }
 
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
-                    if (!SpeechRecognition) return;
+                    if (!SpeechRecognition) {
+                        alert("Sorry, your browser doesn't support the Speech Recognition needed for this feature.");
+                        return;
+                    }
                     if (!callModal || !callConversation || !userSpeechWave || !callStatusMessage || !tapToTalk) return;
 
                     isCallActive = true;
                     isMuted = false;
                     if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute'; // Reset button text
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div id="userSpeechWave"></div>`;
+                    callConversation.innerHTML = `<div class="call-msg status">Connecting to Philadelphia AI...</div><div id="userSpeechWave"></div>`;
+                    // Initially hide speech wave
+                    userSpeechWave.classList.remove('active');
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
                     setTimeout(() => {
-                        if (!isCallActive) return;
+                        if (!isCallActive) return; // Check if call was ended during delay
                         addCallMessage('status', 'Call Connected. Speak when ready.');
                         callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         tapToTalk.style.display = 'block';
-                        try { if (speechRecognition) speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check permissions.'; }
+                        try {
+                            if (speechRecognition) {
+                                speechRecognition.start();
+                                userSaidSomething = false; // Reset flag for new call
+                            }
+                        } catch(e) { console.error("Speech recognition start failed", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check permissions.'; }
                     }, 1500);
                 });
             }
@@ -2685,10 +2907,10 @@
                     currentAudio = null;
                 }
                 callModal.classList.remove('active');
-                try { if (speechRecognition) speechRecognition.stop(); } catch(e) {}
+                try { if (speechRecognition) speechRecognition.stop(); } catch(e) {} // Stop recognition
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
-                userSpeechWave.classList.remove('active');
+                userSpeechWave.classList.remove('active'); // Ensure waveform is hidden
                 callStatusMessage.textContent = 'Call Ended.';
             }
 
@@ -2702,13 +2924,14 @@
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition) speechRecognition.stop();
+                        if (speechRecognition) speechRecognition.stop(); // Stop recognition when muted
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
-                        userSpeechWave.classList.remove('active');
+                        userSpeechWave.classList.remove('active'); // Hide waveform
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                        // Only restart listening if call is active and bot is not speaking
                         if (isCallActive && !botIsSpeaking) {
                             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             tapToTalk.style.display = 'block';
