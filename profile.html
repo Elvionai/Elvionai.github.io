@@ -47,8 +47,9 @@
         /* --- GLOBAL RESET & BASE STYLES --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
+        html, body {
             height: 100vh;
+            width: 100vw;
             overflow: hidden; /* Prevent body scroll, custom scroll for chat */
             font-family: 'Segoe UI', 'Roboto', 'Inter', Helvetica, sans-serif;
             background-color: var(--body-base-bg); /* Use theme variable */
@@ -167,7 +168,8 @@
         /* --- UI MAIN STRUCTURE --- */
         .ui-container {
             width: 100%; max-width: 600px;
-            height: 100%; display: flex; flex-direction: column;
+            height: 100vh; /* Use vh for full viewport height */
+            display: flex; flex-direction: column;
             position: relative; z-index: 10;
             background: rgba(5, 7, 20, 0.3);
         }
@@ -181,15 +183,7 @@
             -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--glass-border);
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            position: sticky; top: 0; z-index: 100;
-        }
-
-        .header-center { /* NEW: To group brand and welcome */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex-grow: 1;
+            flex-shrink: 0; /* Prevent header from shrinking */
         }
 
         .brand-plasma {
@@ -205,14 +199,6 @@
             user-select: none;
         }
         @keyframes plasmaFlow { to { background-position: 300% center; } }
-
-        .header-welcome { /* NEW: Styling for welcome message */
-            font-size: 0.8em;
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: 5px;
-            text-shadow: 0 0 5px var(--neon-blue);
-        }
-
 
         .header-actions { display: flex; gap: 15px; font-size: 1.4rem; }
         .icon-btn { cursor: pointer; opacity: 0.7; transition: 0.3s; position: relative; color: var(--neon-blue); }
@@ -318,6 +304,17 @@
             text-shadow: 0 0 2px rgba(0,242,255,0.5);
         }
 
+        .copy-btn {
+            position: absolute;
+            top: 10px; right: 13px; z-index: 3;
+            border-radius: 8px;
+            padding: 3px 15px;
+            font-size: .98em;
+            font-family: 'Inter';
+            font-weight: bold;
+            outline: none;
+        }
+
         .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
             padding: 8px 15px; border-radius: 10px; font-size: 0.85em; cursor: pointer;
             background: var(--plasma-gradient-dark); color: #000; font-weight: bold;
@@ -360,19 +357,11 @@
         /* Typing Status */
         #typing-status {
             display: none;
-            max-width: 85%;
-            margin: 0 auto 10px 20px; /* Align with AI messages */
-            padding: 0;
-            width: 100%;
-            box-sizing: border-box;
             flex-shrink: 0;
             min-height: 20px;
         }
-        #typing-status .msg {
-            padding: 10px 18px; border-radius: 20px;
-            background: linear-gradient(135deg, rgba(30, 30, 60, 0.6), rgba(20, 20, 35, 0.8));
-            border: 1px solid var(--glass-border);
-            box-shadow: inset 0 0 10px rgba(0, 242, 255, 0.03);
+        #typing-status .msg-bubble {
+            padding: 10px 18px;
             display: inline-flex; align-items: center;
         }
         .dot-anim {
@@ -409,7 +398,7 @@
             -webkit-backdrop-filter: blur(25px);
             border-top: 1px solid var(--glass-border);
             display: flex; gap: 15px; align-items: stretch;
-            position: sticky; bottom: 0; z-index: 100;
+            flex-shrink: 0; /* Prevent input dock from shrinking */
         }
 
         .capsule-input {
@@ -567,9 +556,10 @@
         }
         #ai-image-preview {
             display:none;
-            position:fixed; z-index:1210; right:22px; bottom:100px; max-width:320px;
+            position:fixed; z-index:1210; right:22px; bottom:110px; max-width:320px;
             background:rgba(25,26,38,0.95); padding:12px; border-radius:17px;
             box-shadow:0 2px 19px var(--neon-blue); border: 1px solid var(--neon-blue);
+            animation: popIn 0.3s ease-out;
         }
         #ai-image-preview.active { display:block; }
         #ai-image-preview #ai-image-close {
@@ -586,66 +576,40 @@
             color:#222;border:none;border-radius:8px;box-shadow:0 2px 7px var(--neon-blue);
             cursor:pointer;font-weight:bold;
         }
-        /* REFINED FILE PREVIEW STYLES (formerly .panel-bg for filePreview) */
-        #filePreview.file-preview-floating { /* Changed class name to distinguish from full-screen panel */
-            display: none;
-            position: fixed;
-            bottom: 110px; /* Above input dock */
-            left: 50%;
+
+        /* FIXED File Preview Styling */
+        #filePreview {
+            display:none;
+            position:fixed;
+            bottom: 110px; /* Adjust based on input dock height */
+            left:50%;
             transform: translateX(-50%);
-            max-width: 400px;
-            width: calc(100% - 40px); /* For responsiveness */
-            padding: 10px;
-            border-radius: 12px;
-            background: rgba(13, 20, 52, 0.9); /* Slightly more opaque */
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            z-index: 1210;
-            box-shadow: 0 2px 19px var(--neon-blue);
-            flex-direction: column; /* To stack file items */
-            gap: 5px;
-            overflow-y: auto; /* Allow scrolling if many files */
-            max-height: 200px; /* Limit height */
+            width: 90vw;
+            max-width:520px;
+            padding:10px 14px;
+            background: rgba(15,36,65,0.98);
+            border-radius:12px;
+            color:#c4f2ff;
+            font-size:.98em;
+            box-shadow:0 3px 15px #00aac0bb;
+            z-index: 1002;
+            border: 1.5px solid rgba(0, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
-        #filePreview.file-preview-floating.active { display: flex; }
-
-        /* Style for individual file items inside preview */
-        #filePreview.file-preview-floating > div {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            background: rgba(25, 36, 65, 0.9);
-            border-radius: 8px;
-            padding: 5px 8px;
-            border: 1px solid rgba(0, 242, 255, 0.2); /* Subtle border */
+        #filePreview.active { display:block; }
+        .file-preview-item {
+            display:flex;align-items:center;gap:7px;margin-bottom:1px;
+            background: rgba(25, 36, 65, 0.9); border-radius: 8px; padding: 5px 8px;
         }
-        #filePreview.file-preview-floating .remove-file-btn {
-            background:#d23; color:#fff; border-radius:50%; width:24px; height:24px; font-size:1em;
-            display:flex; align-items:center; justify-content:center; margin-left:auto; cursor:pointer;
-            flex-shrink: 0; /* Prevent shrinking */
-            transition: background 0.1s, transform 0.1s;
+        .file-preview-item img, .file-preview-item video { max-width:58px; max-height:41px; border-radius:6px; margin-right:6px; vertical-align: middle; }
+        .file-preview-item audio { width:52px; margin-right:7px; }
+        .file-preview-item .remove-file-btn {
+            background:#d23 !important; color:#fff !important; border-radius:50% !important;
+            width:20px; height:20px; font-size:1em; display:flex;
+            align-items:center; justify-content:center; margin-left:auto; cursor:pointer;
+            border: none;
         }
-        #filePreview.file-preview-floating .remove-file-btn:hover {
-            background: #ff4d4d;
-            transform: scale(1.1);
-        }
-        #filePreview.file-preview-floating img,
-        #filePreview.file-preview-floating video,
-        #filePreview.file-preview-floating audio {
-            max-width: 40px; /* Smaller previews */
-            max-height: 30px;
-            border-radius: 4px;
-            object-fit: cover;
-        }
-        #filePreview.file-preview-floating span {
-            flex-grow: 1; /* Allow filename to grow */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 0.9em;
-        }
-
 
         /* Voice Call Interface */
         #callModal {
@@ -768,7 +732,6 @@
             opacity: 0.7;
             display: none;
             will-change: transform, opacity;
-            pointer-events: none; /* Make sure it doesn't block clicks */
         }
         #userSpeechWave.active { display: block; }
         @keyframes speechWave {
@@ -786,6 +749,7 @@
             transition: background .1s, box-shadow .1s, color .1s;
             user-select: none;
         }
+        #endCallBtn { background: #d23; }
         #endCallBtn:hover { background: #ff7777; box-shadow: 0 0 15px #ff7777aa; color: #fff; }
         #muteCallBtn {
             box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
@@ -832,49 +796,19 @@
             header { padding: 15px 15px; }
             .brand-plasma { font-size: 1.2rem; }
             .header-actions { gap: 10px; font-size: 1.2rem; }
-            .header-welcome { font-size: 0.75em; margin-top: 3px; }
-
             #chat-viewport { padding: 15px; gap: 15px; }
-            .message-group { max-width: 95%; } /* More space for messages on small screens */
-            .msg-bubble { padding: 10px 15px; font-size: 0.95rem; }
-            pre { /* Smaller code blocks on mobile */
-                padding: 0.8em 1em;
-                font-size: 0.85em;
-            }
-            .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
-                padding: 6px 10px;
-                font-size: 0.75em;
-            }
-
+            .msg-bubble { padding: 12px 18px; font-size: 0.95rem; }
             .input-dock { padding: 15px 20px; gap: 10px; }
             .capsule-input { min-height: 50px; }
             .capsule-input textarea { font-size: 1rem; }
-            .capsule-input .input-action-buttons button,
-            .capsule-input .input-action-buttons label {
-                width: 30px; height: 30px; /* Slightly smaller buttons */
-                font-size: 1.1em;
-            }
-            .thruster-btn {
-                width: 45px; height: 45px; /* Smaller send button */
-            }
-            .thruster-btn svg {
-                width: 18px; height: 18px;
-            }
-
+            .thruster-btn { width: 50px; height: 50px; }
             .side-panel { width: 100vw; border-radius: 0; left: -100vw; } /* Full width on mobile */
             .side-panel.active { left: 0; }
-            #filePreview.file-preview-floating { width: calc(100% - 20px); bottom: 95px; } /* Adjust for smaller input dock */
+            #filePreview { width: 95vw; bottom: 95px; }
             #ai-image-preview { right: 10px; bottom: 90px; max-width: 250px; }
             #ai-image-preview #ai-image-container img { max-width: 170px; max-height: 170px; }
             .chat-controls-menu { left: 10px; bottom: 95px; width: calc(100% - 20px); max-height: 150px; }
-
-            /* Call Modal Adjustments for mobile */
-            #callHeader { font-size: 1.5em; }
-            #botImageContainer img { width: 120px; height: 120px; }
-            #botSpeakingIndicator { width: 130px; height: 130px; }
-            #callStatusMessage, #tapToTalk { font-size: 1em; }
-            #callControls button { font-size: 1em; padding: 8px 15px; }
-            #callConversation { padding: 10px; }
+            .message-group { max-width: 95%; }
         }
 
     </style>
@@ -894,22 +828,14 @@
                 <div class="icon-btn" id="openProfileMenu" title="Profile & Chats" role="button" aria-label="Open profile and chats menu"><i class="fa-solid fa-user"></i></div>
                 <div class="icon-btn" id="themeBtn" title="Change Theme" role="button" aria-label="Change theme"><i class="fa-solid fa-moon"></i></div>
             </div>
-            <div class="header-center"> <!-- NEW: Group for brand and welcome -->
-                <div class="brand-plasma">Philadelphia AI</div>
-                <div class="header-welcome" id="headerWelcome"></div> <!-- RE-ADDED: Welcome message -->
-            </div>
+            <div class="brand-plasma">Philadelphia AI</div>
             <div class="header-actions">
                 <div class="icon-btn" id="openLinksMenu" title="Links" role="button" aria-label="Open links menu"><i class="fa-solid fa-link"></i></div>
             </div>
         </header>
 
         <div id="chat-viewport">
-            <div class="message-group ai">
-                <div class="msg-bubble">
-                    Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
-                </div>
-            </div>
-            <div id="typing-status" class="message-group ai" style="display: none;"></div>
+            <!-- Initial messages will be rendered by JavaScript -->
         </div>
 
         <div class="input-dock">
@@ -922,16 +848,16 @@
                     <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
                 </div>
             </div>
-            <button class="thruster-btn holo-shimmer" id="sendBtn" onclick="sendMessage()" title="Send message" aria-label="Send message">
+            <button class="thruster-btn holo-shimmer" id="sendBtn" title="Send message" aria-label="Send message">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
-            <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
+            <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call" style="display: flex;"><i class="fa-solid fa-phone"></i></button>
             <button class="thruster-btn" id="stopBtn" title="Stop AI Response" style="background: #ff4d4d; display: none;" aria-label="Stop AI response"><i class="fa-solid fa-stop"></i></button>
         </div>
     </div>
 
     <div id="emojiPanel" class="chat-controls-menu"></div>
-    <div id="filePreview" class="file-preview-floating"></div> <!-- REFINED: Class for floating preview -->
+    <div id="filePreview"></div>
 
     <div class="panel-bg" id="profileMenuBg">
         <nav class="side-panel" id="profileMenu" role="menu" aria-label="Profile and Chat Menu">
@@ -1046,11 +972,11 @@
         <div id="tapToTalk">Tap Anywhere to Speak</div>
         <div id="callConversation">
             <div class="call-msg status">Waiting for connection...</div>
-            <div id="userSpeechWave"></div> <!-- NEW: User speech visualization -->
+            <div id="userSpeechWave"></div>
         </div>
         <div id="callControls">
-            <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button> <!-- Changed button text -->
-            <button type="button" id="endCallBtn" class="submit-btn" style="background: #d23;" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
+            <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button>
+            <button type="button" id="endCallBtn" class="submit-btn" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
         </div>
     </div>
 
@@ -1086,14 +1012,13 @@
         let uploadedFiles = [];
         let currentUser = null;
         let currentController = null;
-        let fileObjectURLs = []; // To manage created object URLs for file previews
+        let fileObjectURLs = [];
 
         let chatsUnsubscribe = null;
         let messagesUnsubscribe = null;
 
         const cosmos = $('cosmos-container');
 
-        // Cosmic background animations
         function igniteCosmos() {
             if (cosmos) cosmos.querySelectorAll('.star, .stardust').forEach(p => p.remove());
             for (let i = 0; i < 250; i++) createParticle('star', 150, 3);
@@ -1153,7 +1078,6 @@
             const toolsMenu = $('toolsMenu');
             const toolBtn = $('toolBtn');
             const logoutBtn = $('logoutBtn');
-            const headerWelcome = $('headerWelcome'); // RE-ADDED
             const profileMenuUser = $('profileMenuUser');
             const profileMenuEmail = $('profileMenuEmail');
             const editName = $('edit-name');
@@ -1189,14 +1113,25 @@
             const botImageContainer = $('botImageContainer');
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
-            const typingStatus = $('typing-status');
-            const capsuleInputContainer = $('capsuleInputContainer');
             const userSpeechWave = $('userSpeechWave');
 
-            if (!chatView || !userInput || !typingStatus) {
+            if (!chatView || !userInput) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
+            
+            // Add initial welcome message if chat is empty
+            const addWelcomeMessage = () => {
+                if (chatView && chatView.children.length === 0) {
+                    const welcomeMsg = {
+                        role: 'ai',
+                        text: "Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨",
+                        id: 'initial-welcome'
+                    };
+                    appendMessage(welcomeMsg);
+                }
+            };
+
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
             if (emojiBtn && emojiPanel && userInput) {
@@ -1206,9 +1141,8 @@
                     const rect = emojiBtn.getBoundingClientRect();
                     const inputDock = userInput.closest('.input-dock');
                     const inputDockHeight = inputDock ? inputDock.offsetHeight : 80;
-                    const panelWidth = emojiPanel.offsetWidth || 150; // Estimate or calculate if needed
+                    const panelWidth = emojiPanel.offsetWidth || 150;
 
-                    // Adjust position to ensure panel is visible on screen
                     let panelLeft = rect.left;
                     if (panelLeft + panelWidth > window.innerWidth - 10) {
                         panelLeft = window.innerWidth - panelWidth - 10;
@@ -1234,7 +1168,7 @@
                         userInput.focus();
                         userInput.selectionStart = userInput.selectionEnd = start + text.length;
                         emojiPanel.classList.remove('active');
-                        userInput.dispatchEvent(new Event('input')); // Trigger input event for auto-resize
+                        userInput.dispatchEvent(new Event('input'));
                     }
                 });
             }
@@ -1251,7 +1185,9 @@
                         e.preventDefault();
                         sendMessage();
                     } else if (e.key === 'Enter' && e.shiftKey) {
-                        // Allow shift+enter for new line, already handled in keydown
+                        // Default behavior of Shift+Enter is often newline, but we ensure it
+                        // by inserting it manually to avoid any form submission issues.
+                        e.preventDefault();
                         const start = userInput.selectionStart;
                         const end = userInput.selectionEnd;
                         userInput.value = userInput.value.substring(0, start) + "\n" + userInput.value.substring(end);
@@ -1262,9 +1198,10 @@
                 autoResize();
             }
 
+            if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+
             if (chatFile) {
                 chatFile.addEventListener('change', function() {
-                    // Revoke previous object URLs to prevent memory leaks
                     fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
                     fileObjectURLs = [];
                     uploadedFiles = Array.from(this.files || []);
@@ -1300,12 +1237,10 @@
                 });
             }
 
-            // Global functions for opening/closing side panels (called via onclick)
             window.closeToolMenu = () => { if (toolsMenu) toolsMenu.classList.remove('active'); if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
-            window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); }; // Made global for consistency, though currently triggered via addEventListener
+            window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); };
             window.closeProfileMenu = () => { if (profileMenu) profileMenu.classList.remove('active'); if (profileMenuBg) profileMenuBg.classList.remove('active'); };
             window.closeLinksMenu = () => { if (linksMenu) linksMenu.classList.remove('active'); if (linksMenuBg) linksMenuBg.classList.remove('active'); };
-
 
             if (profileMenuBg) {
                 const openProfileBtn = $('openProfileMenu');
@@ -1333,12 +1268,12 @@
                 toolFormBackBtn.addEventListener('click', () => {
                     if (toolFormModal) toolFormModal.classList.remove('active');
                     if (toolFormModalBg) toolFormModalBg.classList.remove('active');
-                    openToolMenu(); // Go back to the main tools menu
+                    openToolMenu();
                 });
             }
             if (toolFormModalBg) toolFormModalBg.addEventListener('click', e => { if (e.target === toolFormModalBg) toolFormModalBg.classList.remove('active'); });
 
-            if (logoutBtn) logoutBtn.addEventListener('click', () => { auth.signOut(); window.location.href = 'signup-login.html'; });
+            if (logoutBtn) logoutBtn.addEventListener('click', () => { auth.signOut().then(() => { window.location.href = 'signup-login.html'; }); });
 
             onAuthStateChanged(auth, user => {
                 if (!user) {
@@ -1352,7 +1287,6 @@
                 if (editName) editName.value = displayName;
                 if (editPhoto) editPhoto.value = user.photoURL || "";
                 if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-                if (headerWelcome) headerWelcome.textContent = `Welcome, ${displayName}`; // RE-ADDED welcome message
                 loadUserChats(user.uid);
             });
 
@@ -1364,12 +1298,10 @@
                     if (status) status.textContent = 'Saving...';
                     try {
                         await updateProfile(currentUser, { displayName: editName.value, photoURL: editPhoto.value });
-                        // Firebase caches auth state; reload ensures local object is updated instantly
                         if (auth.currentUser) await auth.currentUser.reload();
                         if (status) { status.textContent = "Profile updated!"; status.style.color = "var(--neon-green)"; }
                         setTimeout(() => { closeProfileMenu(); }, 800);
                         if (profilePicPreview) profilePicPreview.src = auth.currentUser?.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-                        if (headerWelcome) headerWelcome.textContent = `Welcome, ${auth.currentUser?.displayName || 'User'}`; // Update welcome after save
                     } catch (err) {
                         if (status) { status.textContent = err.message; status.style.color = "#ffd700"; }
                     }
@@ -1377,7 +1309,7 @@
             }
 
             async function loadUserChats(userId) {
-                if (chatsUnsubscribe) chatsUnsubscribe(); // Unsubscribe from previous listener if any
+                if (chatsUnsubscribe) chatsUnsubscribe();
                 const chatsCol = collection(db, 'users', userId, 'chats');
                 const q = query(chatsCol, orderBy('createdAt', 'desc'));
                 chatsUnsubscribe = onSnapshot(q, async (snapshot) => {
@@ -1388,9 +1320,11 @@
                     chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatsListSidebar();
                     if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                        currentChatId = chats[0].id; // Default to the latest chat
+                        currentChatId = chats.length > 0 ? chats[0].id : null;
                     }
-                    subscribeToMessages(userId, currentChatId);
+                    if (currentChatId) {
+                        subscribeToMessages(userId, currentChatId);
+                    }
                 }, (error) => {
                     console.error("Error fetching chats: ", error);
                     if (chatsListEl) chatsListEl.innerHTML = `<div class="message-group system" style="color: #f44;">Error loading chats.</div>`;
@@ -1398,19 +1332,20 @@
             }
 
             async function createNewChat(userId) {
-                if (!userId) userId = currentUser?.uid; // Fallback to current user if not provided
+                if (!userId) userId = currentUser?.uid;
                 if (!userId) return;
                 const chatsCol = collection(db, 'users', userId, 'chats');
                 try {
                     const newChatDoc = await addDoc(chatsCol, { name: "New Chat", createdAt: serverTimestamp() });
                     currentChatId = newChatDoc.id;
+                    // No need to call subscribeToMessages here, onSnapshot for chats will trigger it
                 } catch (e) {
                     console.error("Error creating new chat: ", e);
                 }
             }
 
             function subscribeToMessages(userId, chatId) {
-                if (messagesUnsubscribe) messagesUnsubscribe(); // Unsubscribe from previous listener if any
+                if (messagesUnsubscribe) messagesUnsubscribe();
                 if (!userId || !chatId) {
                     renderChatBox([]);
                     return;
@@ -1422,7 +1357,7 @@
                     renderChatBox(currentMessages);
                 }, (error) => {
                     console.error("Error fetching messages: ", error);
-                    if (chatView) chatView.innerHTML = `<div class="message-group system" style="color: #f44; margin-top: 20px;">Error loading messages for this chat.</div>`;
+                    if (chatView) chatView.innerHTML = `<div class="message-group system" style="color: #f44; margin-top: 20px;">Error loading messages.</div>`;
                 });
             }
 
@@ -1455,7 +1390,7 @@
                         currentChatId = chat.id;
                         if (currentUser) subscribeToMessages(currentUser.uid, currentChatId);
                         renderChatsListSidebar();
-                        closeProfileMenu(); // Close menu after selecting chat
+                        closeProfileMenu();
                     };
 
                     const renameBtn = document.createElement('button');
@@ -1463,7 +1398,7 @@
                     renameBtn.title = 'Rename Chat';
                     renameBtn.style.margin = '0 6px 0 8px';
                     renameBtn.onclick = async (e) => {
-                        e.stopPropagation(); // Prevent triggering chat selection
+                        e.stopPropagation();
                         const newName = prompt("Rename chat:", chat.name);
                         if (newName && newName.trim()) {
                             if (currentUser && chat.id) {
@@ -1478,23 +1413,21 @@
                     delBtn.title = 'Delete Chat';
                     delBtn.style.marginLeft = '6px';
                     delBtn.onclick = async (e) => {
-                        e.stopPropagation(); // Prevent triggering chat selection
+                        e.stopPropagation();
                         if (!confirm(`Delete "${chat.name}"? This will delete all messages.`)) return;
 
                         if (currentUser && chat.id) {
-                            // Delete all messages in the chat subcollection first
                             const messagesCol = collection(db, 'users', currentUser.uid, 'chats', chat.id, 'messages');
                             const messagesSnap = await getDocs(messagesCol);
                             const batch = writeBatch(db);
                             messagesSnap.docs.forEach(d => batch.delete(d.ref));
                             await batch.commit();
 
-                            // Then delete the chat document itself
                             const chatDoc = doc(db, 'users', currentUser.uid, 'chats', chat.id);
                             await deleteDoc(chatDoc);
 
                             if (currentChatId === chat.id) {
-                                currentChatId = null; // Clear current chat if deleted
+                                currentChatId = null;
                             }
                         }
                     };
@@ -1509,15 +1442,10 @@
             const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
             function inlineMarkdown(t = '') {
-                // Inline code: `code`
                 let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
-                // Bold: **text**
                 s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-                // Italic: *text* (word boundaries to avoid matching filenames like `my_file.txt`)
                 s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
-                // Links: [text](url)
                 s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-                // Newlines to <br>
                 return s.replace(/\n/g, '<br>');
             }
 
@@ -1528,14 +1456,14 @@
                 text = text || '';
                 text.replace(codeBlockRegex, (match, lang, code, offset) => {
                     const before = text.slice(lastIndex, offset);
-                    html += inlineMarkdown(before); // Process markdown before code block
+                    html += inlineMarkdown(before);
                     const language = (lang || '').toLowerCase().trim();
                     const safeCode = escapeHTML(code);
                     html += `<pre data-lang="${language || 'plaintext'}"><button class="copy-btn">Copy</button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
                     lastIndex = offset + match.length;
                     return match;
                 });
-                html += inlineMarkdown(text.slice(lastIndex)); // Process remaining markdown
+                html += inlineMarkdown(text.slice(lastIndex));
                 return { html };
             }
 
@@ -1545,83 +1473,94 @@
                     const codeEl = pre.querySelector('code');
                     if (window.hljs && codeEl && !pre.classList.contains('highlighted')) {
                         try { hljs.highlightElement(codeEl); } catch (e) { console.error("Highlight.js error:", e); }
-                        pre.classList.add('highlighted'); // Mark as highlighted to avoid re-processing
+                        pre.classList.add('highlighted');
                     }
                     const btn = pre.querySelector('.copy-btn');
                     if (btn && codeEl) {
-                        // Recreate button to ensure event listeners are unique and not duplicated
-                        const oldBtn = btn.cloneNode(true);
-                        btn.parentNode.replaceChild(oldBtn, btn);
-                        const newBtn = pre.querySelector('.copy-btn');
-
-                        newBtn.addEventListener('click', async () => {
+                         btn.onclick = async () => {
                             try {
                                 await navigator.clipboard.writeText(codeEl.innerText);
-                                const prev = newBtn.innerHTML;
-                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                                setTimeout(() => { if (newBtn) newBtn.innerHTML = prev; }, 950);
+                                const prev = btn.innerHTML;
+                                btn.textContent = "Copied!";
+                                setTimeout(() => { btn.textContent = "Copy"; }, 950);
                             } catch (e) {
-                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Failed";
-                                setTimeout(() => { newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                                btn.textContent = "Failed";
+                                setTimeout(() => { btn.textContent = "Copy"; }, 950);
                             }
-                        });
+                        };
                     }
                 });
+            }
+            
+            // PERFORMANCE: Append message instead of re-rendering all
+            function appendMessage(msg) {
+                if (!chatView) return;
+
+                // Remove initial welcome message if it exists and this is not it
+                if (msg.id !== 'initial-welcome') {
+                    const welcome = $('initial-welcome');
+                    if (welcome) welcome.remove();
+                }
+
+                const div = document.createElement('div');
+                div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
+                div.id = msg.id; // Use message ID for the element ID
+                let innerHtml = '';
+
+                if (msg.role === 'user') {
+                    const fileHtml = (msg.files || [])
+                        .map(file => {
+                            let icon = 'fa-file';
+                            if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
+                            else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
+                            else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
+                            else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
+                            return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
+                        })
+                        .join('');
+
+                    innerHtml = `<div class="msg-bubble">
+                        ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
+                        ${escapeHTML(msg.text || '')}
+                        <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                            <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                            <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
+                        </div>
+                    </div>`;
+                } else {
+                    let content;
+                    if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
+                        content = msg.text;
+                    } else {
+                        content = renderMarkdown(msg.text || '').html;
+                    }
+                    innerHtml = `<div class="msg-bubble">${content}
+                        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                            <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                            <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                            <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
+                        </div>
+                    </div>`;
+                }
+                div.innerHTML = innerHtml;
+                chatView.appendChild(div);
+
+                enhanceCodeBlocks(div);
+                hookAiMsgControls(div);
+                hookUserMsgControls(div);
+                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50);
             }
 
             function renderChatBox(messages = []) {
                 if (!chatView) return;
-                chatView.innerHTML = ''; // Clear existing messages
-                (messages || []).forEach((msg) => {
-                    const div = document.createElement('div');
-                    div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
-                    div.setAttribute('data-message-id', msg.id);
-                    let innerHtml = '';
-
-                    if (msg.role === 'user') {
-                        const fileHtml = (msg.files || [])
-                            .map(file => {
-                                let icon = 'fa-file';
-                                if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
-                                else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
-                                else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
-                                else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
-                                return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
-                            })
-                            .join('');
-
-                        innerHtml = `<div class="msg-bubble">
-                            ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
-                            ${escapeHTML(msg.text || '')}
-                            <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
-                            </div>
-                        </div>`;
-                    } else {
-                        let content;
-                        if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-                            content = msg.text; // Assume HTML is already formatted if these tags exist
-                        } else {
-                            content = renderMarkdown(msg.text || '').html;
-                        }
-                        innerHtml = `<div class="msg-bubble">${content}
-                            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
-                            </div>
-                        </div>`;
-                    }
-                    div.innerHTML = innerHtml;
-                    chatView.appendChild(div);
-                });
-                enhanceCodeBlocks(chatView);
-                hookAiMsgControls();
-                hookUserMsgControls();
-                // Ensure scroll to bottom after rendering
-                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50);
+                chatView.innerHTML = ''; // Clear only on full render
+                if (messages.length === 0) {
+                    addWelcomeMessage();
+                } else {
+                    messages.forEach(appendMessage);
+                }
             }
+
 
             async function deleteMessagesFrom(messageId) {
                 if (!currentChatId || !currentUser) return;
@@ -1629,9 +1568,12 @@
                 if (msgIndex === -1) return;
                 const batch = writeBatch(db);
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
-                // Delete the message itself and all subsequent messages
                 for (let i = msgIndex; i < currentMessages.length; i++) {
                     const msgToDel = currentMessages[i];
+                    // Delete from UI immediately for responsiveness
+                    const el = $(msgToDel.id);
+                    if(el) el.remove();
+                    // Add delete operation to batch
                     const docRef = doc(messagesCol, msgToDel.id);
                     batch.delete(docRef);
                 }
@@ -1642,15 +1584,16 @@
                 }
             }
 
-            function hookAiMsgControls() {
+            function hookAiMsgControls(container = document) {
                 if (!chatView) return;
-                chatView.querySelectorAll('.message-group.ai').forEach(div => {
-                    const messageId = div.getAttribute('data-message-id');
+                container.querySelectorAll('.message-group.ai').forEach(div => {
+                    const messageId = div.id;
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
 
                     const controls = div.querySelector('.ai-msg-controls');
-                    if (!controls) return;
+                    if (!controls || controls.dataset.hooked) return;
+                    controls.dataset.hooked = 'true';
 
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const shareBtn = controls.querySelector('.inline-share-btn');
@@ -1662,8 +1605,8 @@
                             tempDiv.innerHTML = msg.text;
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
 
@@ -1681,23 +1624,15 @@
 
                     if (regenBtn) regenBtn.onclick = async () => {
                         const msgIndex = currentMessages.findIndex(m => m.id === messageId);
-                        if (msgIndex < 1) return; // Can't regenerate first message or non-AI messages
-                        const userMsg = currentMessages[msgIndex - 1]; // Get the preceding user message
-                        if (userMsg.role !== 'user') return; // Ensure it's a user message
+                        if (msgIndex < 1) return;
+                        const userMsg = currentMessages[msgIndex - 1];
+                        if (userMsg.role !== 'user') return;
 
-                        await deleteMessagesFrom(messageId); // Delete AI response and subsequent messages
-                        if (userInput) {
-                            userInput.value = userMsg.text; // Populate input with user's last message
-                            userInput.focus();
-                            userInput.style.height = 'auto'; // Reset textarea height
-                            userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
-                            uploadedFiles = []; // Clear any existing files in input
-                            renderFilePreview();
-                        }
+                        const userPromptText = userMsg.text;
+                        await deleteMessagesFrom(messageId);
+                        
+                        showPreTypingIndicator('Regenerating response...');
 
-                        showTypingStatus('Re-generating response...'); // Show descriptive typing status
-
-                        // Build history for regeneration, excluding the current user message and the AI response being regenerated
                         const historyForRegen = currentMessages
                             .slice(0, msgIndex - 1)
                             .map(m => ({ role: m.role, content: m.text || '' }));
@@ -1706,29 +1641,30 @@
                             const res = await fetch(`${API_BASE_URL}/chat`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ message: userMsg.text, history: historyForRegen, user_id: currentUser?.uid || "user" }),
-                                signal: currentController?.signal // Use abort signal
+                                body: JSON.stringify({ message: userPromptText, history: historyForRegen, user_id: currentUser?.uid || "user" })
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || "Server error.");
                             removeTypingStatus();
-                            await startTypewriter(data.response, false); // No need to save to DB again, already handled
+                            await startTypewriter(data.response, true); // Save the new response
                         } catch (err) {
                             removeTypingStatus();
-                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
+                            await startTypewriter(`❌ Regeneration error: ${err.message}`, true);
                         }
                     };
                 });
             }
 
-            function hookUserMsgControls() {
+            function hookUserMsgControls(container = document) {
                 if (!chatView) return;
-                chatView.querySelectorAll('.message-group.user').forEach(div => {
-                    const messageId = div.getAttribute('data-message-id');
+                container.querySelectorAll('.message-group.user').forEach(div => {
+                    const messageId = div.id;
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
                     const controls = div.querySelector('.user-msg-controls');
-                    if (!controls) return;
+                    if (!controls || controls.dataset.hooked) return;
+                    controls.dataset.hooked = 'true';
+
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const editBtn = controls.querySelector('.inline-edit-btn');
                     if (copyBtn) copyBtn.onclick = () => {
@@ -1737,8 +1673,8 @@
                             tempDiv.innerHTML = msg.text;
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
                     if (editBtn) editBtn.onclick = async () => {
@@ -1747,69 +1683,71 @@
                             if (userInput) {
                                 userInput.value = msg.text;
                                 userInput.focus();
-                                userInput.dispatchEvent(new Event('input')); // Trigger auto-resize
+                                userInput.dispatchEvent(new Event('input'));
                             }
-                            await deleteMessagesFrom(messageId); // Delete user message and subsequent AI responses
+                            await deleteMessagesFrom(messageId);
                         } catch (e) { console.warn('Edit failed:', e); }
                     };
                 });
             }
 
-            // Centralized typing status display
+            function showPreTypingIndicator(text = '') {
+                showTypingStatus('...');
+                return new Promise(resolve => setTimeout(() => {
+                    showTypingStatus(text);
+                    resolve();
+                }, 750));
+            }
+
             function showTypingStatus(text = '') {
-                if (!typingStatus || !chatView) return;
-                typingStatus.innerHTML = `<div class="msg">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>`}</div>`;
-                typingStatus.style.display = 'flex';
-                // Always append to ensure it's at the bottom
-                chatView.appendChild(typingStatus);
-                if (chatView) chatView.scrollTop = chatView.scrollHeight; // Scroll to bottom
+                const typingEl = $('typing-status') || document.createElement('div');
+                typingEl.id = 'typing-status';
+                typingEl.className = 'message-group ai';
+                
+                typingEl.innerHTML = `<div class="msg-bubble">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>`}</div>`;
+                
+                if (!typingEl.parentElement) {
+                    chatView.appendChild(typingEl);
+                }
+                
+                typingEl.style.display = 'flex';
+                if (chatView) chatView.scrollTop = chatView.scrollHeight;
             }
 
             function removeTypingStatus() {
-                if (!typingStatus) return;
-                typingStatus.style.display = 'none';
-                typingStatus.innerHTML = '';
+                const typingEl = $('typing-status');
+                if (typingEl) typingEl.style.display = 'none';
             }
             
             async function startTypewriter(text, saveToDb = true) {
-                // If it's a media response (image, audio, video tags directly in text)
-                if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.className = "message-group ai";
-                    tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
-                    chatView.insertBefore(tempDiv, typingStatus.style.display === 'flex' ? typingStatus : null);
-                    chatView.scrollTop = chatView.scrollHeight;
-                    if (saveToDb && currentUser && currentChatId) {
-                        try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
-                        catch (e) { console.error("Error saving AI media message: ", e); }
-                    }
-                    return;
-                }
+                removeTypingStatus();
 
                 const div = document.createElement('div');
                 div.className = "message-group ai";
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                // Insert new message before typing status if it's visible, otherwise at the end
-                chatView.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
+                chatView.appendChild(div);
 
-                let sofar = '';
-                const words = text.split(/(\s+)/); // Split by spaces, keeping them in the array for accurate timing
-                for (const word of words) {
-                    if (currentController?.signal.aborted) {
-                        text = sofar; // Use the text that was typed so far if aborted
-                        break;
+                if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
+                    msgBubble.innerHTML = text; // Directly insert HTML content
+                } else {
+                    let sofar = '';
+                    const words = text.split(/(\s+)/); // Split by spaces, keeping them in the array
+                    for (const word of words) {
+                        if (currentController?.signal.aborted) {
+                            text = sofar; // Use the text that was typed so far
+                            break;
+                        }
+                        sofar += word;
+                        msgBubble.innerHTML = renderMarkdown(sofar).html;
+                        chatView.scrollTop = chatView.scrollHeight;
+                        const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster delay for punctuation/spaces
+                        await new Promise(res => setTimeout(res, delay));
                     }
-                    sofar += word;
-                    msgBubble.innerHTML = renderMarkdown(sofar).html;
-                    chatView.scrollTop = chatView.scrollHeight;
-                    const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster delay for punctuation/spaces
-                    await new Promise(res => setTimeout(res, delay));
                 }
                 
-                // Ensure final content is rendered correctly and controls are added
-                msgBubble.innerHTML = renderMarkdown(text).html + `
+                msgBubble.innerHTML = (msgBubble.innerHTML.includes('<') ? msgBubble.innerHTML : renderMarkdown(text).html) + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
                         <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
@@ -1818,51 +1756,53 @@
                 `;
                 enhanceCodeBlocks(msgBubble);
                 chatView.scrollTop = chatView.scrollHeight;
-                hookAiMsgControls(); // Re-hook controls for new message
-
+                
                 if (saveToDb && currentUser && currentChatId) {
-                    try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
+                    try { 
+                        const newDocRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() });
+                        div.id = newDocRef.id; // Assign the new ID to the element for future reference
+                        hookAiMsgControls(div); // Re-hook controls for the new element
+                    }
                     catch (e) { console.error("Error saving AI message: ", e); }
+                } else if (!saveToDb) {
+                    // This is for regenerated messages that don't need saving again, but we still need to hook controls
+                    hookAiMsgControls(div);
                 }
             }
 
 
             function renderFilePreview() {
                 if (!filePreview) return;
+                // Clean up old object URLs before creating new ones
+                fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
+                fileObjectURLs = [];
+
                 if (!uploadedFiles.length) {
                     filePreview.classList.remove('active');
                     filePreview.innerHTML = '';
-                    fileObjectURLs.forEach(url => URL.revokeObjectURL(url)); // Revoke all object URLs
-                    fileObjectURLs = [];
                     return;
                 }
                 filePreview.classList.add('active');
                 filePreview.innerHTML = uploadedFiles.map((file, idx) => {
                     let preview = '';
-                    let objUrl = '';
-                    try {
-                        objUrl = URL.createObjectURL(file);
-                        fileObjectURLs.push(objUrl); // Store for later revocation
-                    } catch (e) {
-                        console.error("Error creating object URL for file preview:", e);
-                        objUrl = ''; // Fallback if URL.createObjectURL fails
-                    }
+                    let objUrl = URL.createObjectURL(file);
+                    fileObjectURLs.push(objUrl);
 
-                    if (file.type && file.type.startsWith('image/')) {
-                        preview = `<img src="${objUrl}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
-                    } else if (file.type && file.type.startsWith('video/')) {
-                        preview = `<video src="${objUrl}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
-                    } else if (file.type && file.type.startsWith('audio/')) {
-                        preview = `<audio controls src="${objUrl}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
+                    if (file.type.startsWith('image/')) {
+                        preview = `<img src="${objUrl}" alt="Image preview">`;
+                    } else if (file.type.startsWith('video/')) {
+                        preview = `<video src="${objUrl}" controls></video>`;
+                    } else if (file.type.startsWith('audio/')) {
+                        preview = `<audio controls src="${objUrl}"></audio>`;
                     } else if (file.type === 'application/pdf') {
-                        preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
+                        preview = `<span style="font-size:2em;margin-right:7px;">📄</span>`;
                     } else {
-                        preview = `<span style="font-size:1.25em;margin-right:7px;">❓</span>`;
+                        preview = `<span style="font-size:2em;margin-right:7px;">❓</span>`;
                     }
                     return `
-                        <div> <!-- Individual file item container -->
+                        <div class="file-preview-item">
                             ${preview}
-                            <span>${escapeHTML(file.name || 'Unknown file')}</span>
+                            <span style="color:var(--main-text-color);font-size:.9em; word-break: break-all;">${escapeHTML(file.name)}</span>
                             <button type="button" data-idx="${idx}" class="remove-file-btn" aria-label="Remove file">&times;</button>
                         </div>`;
                 }).join('');
@@ -1870,20 +1810,18 @@
                 filePreview.querySelectorAll('.remove-file-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const idx = parseInt(btn.getAttribute('data-idx'));
-                        if (uploadedFiles[idx] && fileObjectURLs[idx]) {
-                            URL.revokeObjectURL(fileObjectURLs[idx]); // Revoke specific URL
-                        }
+                        // No need to revoke here, it's handled at the start of the function
                         uploadedFiles.splice(idx, 1);
-                        fileObjectURLs.splice(idx, 1); // Remove from tracking array
-                        if (!uploadedFiles.length && chatFile) chatFile.value = ''; // Reset file input if no files left
+                        if (!uploadedFiles.length && chatFile) chatFile.value = '';
                         renderFilePreview(); // Re-render the preview
                     });
                 });
             }
 
+
             function showAIImagePreview(base64, caption = '') {
                 if (!aiPrevBox || !aiPrevImgBox) return;
-                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;display:block;">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
+                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
             }
 
@@ -1900,14 +1838,14 @@
             function blobToBase64(blob) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]); // Return just the base64 part
                     reader.onerror = reject;
                     reader.readAsDataURL(blob);
                 });
             }
 
             async function handleVideoGeneration(payload, isImageToVideo = false) {
-                showTypingStatus('Submitting video generation job...');
+                await showPreTypingIndicator('Submitting video generation job...');
                 try {
                     const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
                     const commonPayload = { model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
@@ -1917,14 +1855,13 @@
                         payload.append('model', commonPayload.model);
                         payload.append('duration', commonPayload.duration);
                         payload.append('resolution', commonPayload.resolution);
-                        options = { method: 'POST', body: payload, signal: currentController?.signal };
+                        options = { method: 'POST', body: payload };
                     } else {
                         const finalPayload = { ...payload, ...commonPayload };
                         options = {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(finalPayload),
-                            signal: currentController?.signal
+                            body: JSON.stringify(finalPayload)
                         };
                     }
 
@@ -1938,13 +1875,7 @@
 
                     const pollInterval = setInterval(async () => {
                         try {
-                            // Check if currentController is aborted, stop polling
-                            if (currentController?.signal.aborted) {
-                                clearInterval(pollInterval);
-                                await startTypewriter(`❌ Video status polling stopped.`);
-                                return;
-                            }
-                            const statusRes = await fetch(`${API_BASE_URL}/api/tools/video-status?task_id=${startData.task_id}`, { signal: currentController?.signal });
+                            const statusRes = await fetch(`${API_BASE_URL}/api/tools/video-status?task_id=${startData.task_id}`);
                             const statusData = await statusRes.json();
 
                             if (statusRes.ok && statusData.url) {
@@ -1956,23 +1887,13 @@
                                 await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
                             }
                         } catch (pollErr) {
-                            if (pollErr.name === 'AbortError') {
-                                console.log("Video status polling aborted.");
-                                await startTypewriter(`❌ Video status polling stopped.`);
-                            } else {
-                                console.error("Error during video status polling:", pollErr);
-                                await startTypewriter(`❌ Error checking video status.`);
-                            }
                             clearInterval(pollInterval);
+                            await startTypewriter(`❌ Error checking video status.`);
                         }
-                    }, 20000); // Poll every 20 seconds
+                    }, 20000);
                 } catch (err) {
                     removeTypingStatus();
-                    if (err.name === 'AbortError') {
-                        await startTypewriter(`❌ Video generation request stopped.`);
-                    } else {
-                        await startTypewriter(`❌ Could not start video generation: ${err.message}`);
-                    }
+                    await startTypewriter(`❌ Could not start video generation: ${err.message}`);
                 }
             }
 
@@ -1997,23 +1918,21 @@
                         if (!prompt) return "Please provide an image prompt.";
                         const payload = { prompt: prompt, model: style, use_minimax };
                         await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
-                        showTypingStatus('Generating your image...');
+                        await showPreTypingIndicator('Generating your image...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/generate-image`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload),
-                                signal: currentController?.signal
+                                body: JSON.stringify(payload)
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
                             removeTypingStatus();
-                            await addMessageToChat('ai', '✅ Image generated! Check the floating image box to view or download.');
+                            await startTypewriter('✅ Image generated! Check the floating image box to view or download.');
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Image generation stopped.'; }
                             return `❌ Image generation failed: ${err.message}`;
                         }
                     }
@@ -2034,19 +1953,18 @@
                         fd.append('file', file);
                         fd.append('prompt', prompt);
                         await addMessageToChat('user', `Photo edit request for ${file.name}: "${prompt}"`, [{name: file.name, type: file.type}]);
-                        showTypingStatus('Editing your photo...');
+                        await showPreTypingIndicator('Editing your photo...');
                         try {
-                            const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd, signal: currentController?.signal });
+                            const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd });
                             if (!res.ok) throw new Error((await res.json())?.error || 'Failed to edit photo.');
                             const blob = await res.blob();
                             const base64String = await blobToBase64(blob);
-                            const imgHtml = `✅ Photo edited successfully! <br><img src="${base64String}" alt="Edited Photo" class="chat-media-preview">`;
+                            const imgHtml = `✅ Photo edited successfully! <br><img src="data:image/png;base64,${base64String}" alt="Edited Photo" class="chat-media-preview">`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', imgHtml);
+                            await startTypewriter(imgHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Photo edit stopped.'; }
                             return `❌ Photo edit failed: ${err.message}`;
                         }
                     }
@@ -2061,21 +1979,20 @@
                         const file = form.querySelector('#tool-file')?.files[0];
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
-                        showTypingStatus('Removing background...');
+                        await showPreTypingIndicator('Removing background...');
                         const fd = new FormData();
                         fd.append('file', file);
                         try {
-                            const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd, signal: currentController?.signal });
+                            const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd });
                             if (!res.ok) throw new Error(res.statusText);
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview">`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', imgHtml);
+                            await startTypewriter(imgHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Background removal stopped.'; }
                             return `❌ Background removal failed: ${err.message}`;
                         }
                     }
@@ -2084,6 +2001,8 @@
                     title: "Create Comic",
                     description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
+                        <label for="tool-provider">Generation Model</label>
+                        <select id="tool-provider" aria-label="Comic generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
                         <label for="tool-style">Comic Style</label><select id="tool-style" aria-label="Comic style"><option value="anime">Anime</option><option value="american">American Comic</option><option value="manga">Manga</option></select>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
@@ -2092,27 +2011,26 @@
                         const story = form.querySelector('#tool-story')?.value;
                         const style = form.querySelector('#tool-style')?.value;
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
+                        const provider = form.querySelector('#tool-provider')?.value;
                         if (!story) return "Please provide a comic story.";
-                        const payload = { story, style, panels, user: currentUser?.displayName || "User" };
-                        await addMessageToChat('user', `Comic creation request with style: ${payload.style}.`);
-                        showTypingStatus('Generating your comic panels...');
+                        const payload = { story, style, panels, provider, user: currentUser?.displayName || "User" };
+                        await addMessageToChat('user', `Comic creation request with style: ${payload.style} using model ${provider}.`);
+                        await showPreTypingIndicator('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload),
-                                signal: currentController?.signal
+                                body: JSON.stringify(payload)
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
                             const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', comicMessage);
+                            await startTypewriter(comicMessage);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Comic generation stopped.'; }
                             return `❌ Comic generation failed: ${err.message}`;
                         }
                     }
@@ -2137,7 +2055,7 @@
                             styleSelect.innerHTML = (voices[selectedProvider] || []).map(v => `<option value="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('');
                         };
                         providerSelect.addEventListener('change', updateStyles);
-                        updateStyles(); // Initialize styles on load
+                        updateStyles();
                     },
                     handleSubmit: async (form) => {
                         const provider = form.querySelector('#tool-provider')?.value;
@@ -2146,20 +2064,19 @@
                         if (!text) return "Please provide text to speak.";
                         const providerName = provider === 'minimax' ? 'Seraphina' : 'Philadelphia';
                         await addMessageToChat('user', `Voice generation request using ${providerName}.`);
-                        showTypingStatus('Generating your audio...');
+                        await showPreTypingIndicator('Generating your audio...');
                         try {
                             let res;
                             if (provider === 'gemini') {
                                 const fd = new FormData();
                                 fd.append('text', text);
                                 fd.append('style', style);
-                                res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd, signal: currentController?.signal });
+                                res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
                             } else {
                                 res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
                                     method: 'POST',
                                     headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({ text, voice_id: style }),
-                                    signal: currentController?.signal
+                                    body: JSON.stringify({ text, voice_id: style })
                                 });
                             }
                             if (!res.ok) throw new Error(await res.text());
@@ -2167,11 +2084,10 @@
                             const url = URL.createObjectURL(blob);
                             const audioHtml = `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', audioHtml);
+                            await startTypewriter(audioHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Voice generation stopped.'; }
                             return `❌ Voice generation failed: ${err.message}`;
                         }
                     }
@@ -2186,22 +2102,21 @@
                         const file = form.querySelector('#tool-file')?.files[0];
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
-                        showTypingStatus('Analyzing and narrating document...');
+                        await showPreTypingIndicator('Analyzing and narrating document...');
                         const fd = new FormData();
                         fd.append('file', file);
                         fd.append('style', 'podcast');
                         try {
-                            const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd, signal: currentController?.signal });
+                            const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd });
                             if (!res.ok) throw new Error(res.statusText);
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const narrationHtml = `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', narrationHtml);
+                            await startTypewriter(narrationHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Audio narration stopped.'; }
                             return `❌ Audio narration failed: ${err.message}`;
                         }
                     }
@@ -2220,7 +2135,7 @@
                         if (isNaN(duration) || duration < 2 || duration > 15) return "Duration must be between 2 and 15 seconds.";
                         const payload = { prompt, duration, resolution: "1080P" };
                         await addMessageToChat('user', `Text-to-Video request: "${payload.prompt}"`);
-                        handleVideoGeneration(payload); // handleVideoGeneration uses currentController?.signal
+                        handleVideoGeneration(payload);
                         return null;
                     }
                 },
@@ -2240,7 +2155,7 @@
                         const fd = new FormData();
                         fd.append('prompt', prompt);
                         fd.append('file', file);
-                        handleVideoGeneration(fd, true); // handleVideoGeneration uses currentController?.signal
+                        handleVideoGeneration(fd, true);
                         return null;
                     }
                 },
@@ -2259,14 +2174,13 @@
                         if (!prompt) return "Please provide a music prompt.";
                         const payload = { prompt, lyrics, model: 'music-1.5' };
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
-                        showTypingStatus('Composing your music...');
+                        await showPreTypingIndicator('Composing your music...');
                         try {
                             if (refFile) {
                                 showTypingStatus('Uploading reference audio first...');
                                 const fd = new FormData();
                                 fd.append('file', refFile);
-                                // Ensure signal is passed to upload fetch
-                                const uploadRes = await fetch(`${API_BASE_URL}/api/tools/upload-music`, { method: 'POST', body: fd, signal: currentController?.signal });
+                                const uploadRes = await fetch(`${API_BASE_URL}/api/tools/upload-music`, { method: 'POST', body: fd });
                                 const uploadData = await uploadRes.json();
                                 if (!uploadRes.ok) throw new Error(uploadData.error || "Reference upload failed.");
                                 if (uploadData.instrumental_id) payload.instrumental_id = uploadData.instrumental_id;
@@ -2276,19 +2190,17 @@
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-music`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload),
-                                signal: currentController?.signal
+                                body: JSON.stringify(payload)
                             });
                             if (!res.ok) throw new Error((await res.json())?.detail || 'API request failed.');
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const musicHtml = `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', musicHtml);
+                            await startTypewriter(musicHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Music generation stopped.'; }
                             return `❌ Music generation failed: ${err.message}`;
                         }
                     }
@@ -2303,22 +2215,20 @@
                         const prompt = form.querySelector('#website-prompt')?.value;
                         if (!prompt) return "Please provide a website description.";
                         await addMessageToChat('user', `Website creation request: "${prompt.substring(0, 50)}..."`);
-                        showTypingStatus('Building and deploying your website...');
+                        await showPreTypingIndicator('Building and deploying your website...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/create-website`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ prompt, user_id: currentUser?.uid }),
-                                signal: currentController?.signal
+                                body: JSON.stringify({ prompt, user_id: currentUser.uid })
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeTypingStatus();
-                            await addMessageToChat('ai', `🌐 Website deployed successfully! [View here](${data.url})`);
+                            await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Website creation stopped.'; }
                             return `❌ Website creation failed: ${err.message}`;
                         }
                     }
@@ -2333,22 +2243,20 @@
                         const instruction = form.querySelector('#edit-instruction')?.value;
                         if (!instruction) return "Please provide an edit instruction.";
                         await addMessageToChat('user', `Website edit request: "${instruction.substring(0, 50)}..."`);
-                        showTypingStatus('Editing and redeploying your website...');
+                        await showPreTypingIndicator('Editing and redeploying your website...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/edit-website`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ instruction, user_id: currentUser?.uid }),
-                                signal: currentController?.signal
+                                body: JSON.stringify({ instruction, user_id: currentUser.uid })
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeTypingStatus();
-                            await addMessageToChat('ai', `✏️ Website updated successfully! [View new version here](${data.url})`);
+                            await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Website edit stopped.'; }
                             return `❌ Website edit failed: ${err.message}`;
                         }
                     }
@@ -2356,27 +2264,23 @@
                 "my-sites": {
                     isAction: true,
                     runAction: async () => {
-                        if (!currentUser) { await startTypewriter("User not logged in."); return; }
+                        if (!currentUser) return "User not logged in.";
                         await addMessageToChat('user', 'Show me a list of my websites.');
-                        showTypingStatus('Fetching your website list...');
+                        await showPreTypingIndicator('Fetching your website list...');
                         try {
-                            const res = await fetch(`${API_BASE_URL}/api/tools/my-sites/${currentUser.uid}`, { signal: currentController?.signal });
+                            const res = await fetch(`${API_BASE_URL}/api/tools/my-sites/${currentUser.uid}`);
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
-                            if (!data.sites || data.sites.length === 0) {
-                                removeTypingStatus();
-                                await startTypewriter("You haven't created any websites yet.");
-                                return;
-                            }
-                            const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
                             removeTypingStatus();
-                            await startTypewriter(`Here are the websites you've created:\n${siteList}`);
-                            return;
+                            if (!data.sites || data.sites.length === 0) {
+                                await startTypewriter("You haven't created any websites yet.");
+                            } else {
+                                const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
+                                await startTypewriter(`Here are the websites you've created:\n${siteList}`);
+                            }
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { await startTypewriter(`❌ Website list fetching stopped.`); return; }
                             await startTypewriter(`❌ Error fetching websites: ${err.message}`);
-                            return;
                         }
                     }
                 },
@@ -2390,24 +2294,22 @@
                         const topic = form.querySelector('#research-topic')?.value;
                         if (!topic) return "Please provide a research topic.";
                         await addMessageToChat('user', `Research report request on: "${topic}"`);
-                        showTypingStatus('Conducting research and compiling report...');
+                        await showPreTypingIndicator('Conducting research and compiling report...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/research`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ topic }),
-                                signal: currentController?.signal
+                                body: JSON.stringify({ topic })
                             });
                             if (!res.ok) throw new Error(res.statusText);
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', `✅ Research report on **${topic}** is ready! ${downloadLink}`);
+                            await startTypewriter(`✅ Research report on **${topic}** is ready! ${downloadLink}`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Research report generation stopped.'; }
                             return `❌ Research report failed: ${err.message}`;
                         }
                     }
@@ -2422,36 +2324,12 @@
                     const toolKey = toolLink.getAttribute('data-tool');
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
-                    
-                    // Create a new AbortController for tool actions, distinct from chat messages
-                    currentController = new AbortController(); 
-                    const signal = currentController.signal;
-
-                    // Set up stop button for tool actions
-                    if (sendBtn) sendBtn.style.display = 'none';
-                    if (callBtn) callBtn.style.display = 'none';
-                    if (stopBtn) {
-                        stopBtn.style.display = 'flex';
-                        const oldStopListener = stopBtn._toolStopListener;
-                        if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
-                        const newStopListener = () => { if (currentController) currentController.abort(); };
-                        stopBtn.addEventListener('click', newStopListener, { once: true });
-                        stopBtn._toolStopListener = newStopListener; // Store listener to remove later
-                    }
-
-                    closeToolMenu(); // Close the tools menu immediately
+                    closeToolMenu();
                     if (tool.isAction) {
                         await tool.runAction();
                     } else {
                         displayToolForm(toolKey);
                     }
-
-                    // Reset buttons after tool action/form submission (unless it's a polling action like video gen)
-                    // For polling actions, their handlers must manage the stopBtn state.
-                    if (sendBtn) sendBtn.style.display = 'flex';
-                    if (callBtn) callBtn.style.display = 'flex';
-                    if (stopBtn) stopBtn.style.display = 'none';
-                    currentController = null; // Clear controller
                 });
             }
 
@@ -2473,28 +2351,20 @@
                     }
                     if (toolFormModal) toolFormModal.classList.remove('active');
                     if (toolFormModalBg) toolFormModalBg.classList.remove('active');
-                    
                     const resultText = await tool.handleSubmit(toolForm);
-                    
                     if (resultText) {
-                        removeTypingStatus(); // Ensure typing indicator is gone
+                        removeTypingStatus();
                         await startTypewriter(resultText);
                     }
                     if (submitButton) {
                         submitButton.innerHTML = originalButtonContent;
                         submitButton.disabled = false;
                     }
-                    // Reset stop button state if it was handled by the tool form submission itself
-                    if (sendBtn) sendBtn.style.display = 'flex';
-                    if (callBtn) callBtn.style.display = 'flex';
-                    if (stopBtn) stopBtn.style.display = 'none';
-                    currentController = null;
                 };
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
-            // Centralized sendMessage function
             window.sendMessage = async function() {
                 if (!currentChatId || !userInput) return;
                 const msgText = userInput.value.trim();
@@ -2504,34 +2374,25 @@
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
 
-                currentController = new AbortController(); // New controller for each message
+                currentController = new AbortController();
                 const signal = currentController.signal;
                 let finalResponse = '';
 
-                // Add event listener for the stop button, ensuring it's for this specific controller
                 if (stopBtn) {
-                    const oldStopListener = stopBtn._chatStopListener;
-                    if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
-                    const newStopListener = () => {
-                        if (currentController) currentController.abort();
-                        // Immediate visual feedback that it's stopped
-                        removeTypingStatus();
-                        if (sendBtn) sendBtn.style.display = 'flex';
-                        if (stopBtn) stopBtn.style.display = 'none';
-                        if (callBtn) callBtn.style.display = 'flex';
-                        currentController = null; // Clear controller once aborted
-                    };
-                    stopBtn.addEventListener('click', newStopListener, { once: true });
-                    stopBtn._chatStopListener = newStopListener; // Store listener to remove later
+                    const stopAction = () => { if (currentController) currentController.abort(); };
+                    stopBtn.addEventListener('click', stopAction, { once: true });
                 }
 
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                 await addMessageToChat('user', msgText, filesForHistory);
-                const localUploadedFiles = [...uploadedFiles]; // Copy files for this message
+                const localUploadedFiles = [...uploadedFiles];
+
                 userInput.value = '';
                 uploadedFiles = [];
-                renderFilePreview(); // Clear file preview
-                userInput.style.height = 'auto'; // Reset textarea height
+                renderFilePreview();
+                userInput.style.height = 'auto';
+
+                await showPreTypingIndicator();
 
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
@@ -2542,7 +2403,6 @@
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
                     else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
                     else {
-                        removeTypingStatus();
                         finalResponse = "Sorry, I can't analyze that file type.";
                     }
                     try {
@@ -2559,14 +2419,14 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus(); // Show "..." typing animation
+                    showTypingStatus();
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ message: msgText, history, user_id: currentUser?.uid || "user" }),
-                            signal // Pass abort signal
+                            signal
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Server error.");
@@ -2576,16 +2436,15 @@
                     }
                 }
 
-                removeTypingStatus();
                 if (finalResponse) {
                     await startTypewriter(finalResponse);
                 }
+                removeTypingStatus();
 
-                // Reset buttons and controller after response is fully handled
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
-                currentController = null; // Clear controller
+                currentController = null;
             }
 
             const themes = {
@@ -2718,30 +2577,30 @@
                 currentThemeIdx = themeKeys.indexOf(savedTheme);
                 applyTheme(savedTheme);
             } else {
-                applyTheme('cyber'); // Default theme
+                applyTheme('cyber');
             }
 
             let speechRecognition;
             let isCallActive = false;
             let callHistory = [];
             let botIsSpeaking = false;
-            let userSaidSomething = false; // Tracks if user actually spoke in a recognition session
+            let userSaidSomething = false;
             let currentAudio = null;
             let isMuted = false;
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
                 speechRecognition = new SpeechRecognition();
-                speechRecognition.continuous = true; // Keep listening
-                speechRecognition.interimResults = true; // Get results as user speaks
+                speechRecognition.continuous = true;
+                speechRecognition.interimResults = true;
                 speechRecognition.lang = 'en-US';
 
                 speechRecognition.onresult = (event) => {
-                    if (!isCallActive) return; // Only process if call is active
+                    if (!isCallActive) return;
                     let interimTranscript = '';
                     let finalTranscript = '';
-                    userSaidSomething = true; // User is speaking
-                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Show speech wave
+                    userSaidSomething = true;
+                    if (userSpeechWave) userSpeechWave.classList.add('active');
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
                         else interimTranscript += event.results[i][0].transcript;
@@ -2750,79 +2609,60 @@
                     if (!userMsgEl && callConversation && userSpeechWave) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
-                        callConversation.insertBefore(userMsgEl, userSpeechWave); // Insert before wave
+                        callConversation.insertBefore(userMsgEl, userSpeechWave);
                     }
                     if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
                     if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
-                    if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'User Speaking (Final)' : 'User Speaking...';
-                    if (tapToTalk) tapToTalk.style.display = 'none'; // Hide tap instruction while speaking
+                    if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'Processing...' : 'Listening...';
+                    if (tapToTalk) tapToTalk.style.display = 'none';
                 };
 
-                speechRecognition.onspeechend = () => {
-                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide speech wave
-                    console.log("Speech recognition detected speech end.");
-                };
+                speechRecognition.onspeechend = () => { if (userSpeechWave) userSpeechWave.classList.remove('active'); };
 
                 speechRecognition.onend = () => {
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
-                    console.log("Speech recognition session ended. Bot speaking:", botIsSpeaking, "Muted:", isMuted, "User said something in this session:", userSaidSomething);
-                    
-                    if (isMuted) { // If muted, don't restart listening
+                    if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         if (tapToTalk) tapToTalk.style.display = 'none';
                         return;
                     }
-                    
                     let finalTranscript = '';
                     const userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
                     if (userMsgEl) {
                         finalTranscript = userMsgEl.textContent.trim();
-                        userMsgEl.classList.remove('interim'); // Make it a final message
-                        if (finalTranscript === '') userMsgEl.remove(); // Remove empty interim messages
+                        userMsgEl.classList.remove('interim');
                     }
-
-                    if (botIsSpeaking) {
-                        // If bot is speaking, we wait for it to finish.
-                        // Speech recognition will be restarted in speakBotResponse.
-                        console.log("Bot is speaking, delaying user input handling.");
-                    } else if (finalTranscript && userSaidSomething) {
-                        userSaidSomething = false; // Reset for next session
+                    if (botIsSpeaking) { /* Wait for bot to finish */ }
+                    else if (finalTranscript && userSaidSomething) {
+                        userSaidSomething = false;
                         callHistory.push({ role: 'user', content: finalTranscript });
-                        console.log("User finished speaking, handling bot response.");
                         handleCallBotResponse();
-                    } else { // No significant speech detected
-                        if (isCallActive && !isMuted) {
+                    } else {
+                        if (isCallActive && !isMuted && speechRecognition) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            console.log("Speech recognition auto-restarting (no speech or empty final transcript).");
-                            try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically (onend):", e);}
+                            try { speechRecognition.start(); } catch(e) {/* Already started or ending, ignore */}
                         }
                     }
                 };
 
                 speechRecognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error, event.message);
+                    console.error('Speech recognition error', event.error);
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if (!isCallActive) return;
-
                     if (event.error === 'no-speech' && isCallActive && !isMuted) {
                         userSaidSomething = false;
-                        if (speechRecognition) speechRecognition.stop(); // Manually stop and let onend handle restart
+                        if (speechRecognition) speechRecognition.stop(); // This will trigger onend to restart
                     } else if (event.error === 'network' && isCallActive) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Network error. Attempting restart...';
                         if (speechRecognition) speechRecognition.stop();
                     } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
-                        endCall(); // End call if no mic permission
-                    } else if (isCallActive && !isMuted) { // For other errors, try to restart if active and not muted
-                        if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { if (speechRecognition) speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied.';
+                        endCall();
                     }
                 };
             } else {
-                if (callBtn) callBtn.style.display = 'none'; // Hide call button if not supported
+                if (callBtn) callBtn.style.display = 'none';
                 console.warn("Speech Recognition not supported in this browser.");
             }
 
@@ -2831,7 +2671,7 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                callConversation.insertBefore(msgEl, userSpeechWave); // Always insert before the wave
+                callConversation.insertBefore(msgEl, userSpeechWave);
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
@@ -2839,12 +2679,9 @@
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
-                if (speechRecognition) {
-                    try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
-                }
-                const historyForBot = callHistory.map(m => m);
+                if (speechRecognition) speechRecognition.stop();
+                const historyForBot = callHistory.slice();
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
-                
                 try {
                     const res = await fetch(`${API_BASE_URL}/chat`, {
                         method: 'POST',
@@ -2871,35 +2708,32 @@
             async function speakBotResponse(text) {
                 if (!isCallActive || !botImageContainer || !callStatusMessage) return;
                 botIsSpeaking = true;
-                botImageContainer.classList.add('speaking'); // Trigger bot speaking animation
+                botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                 try {
                     const res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ text: text, voice_id: 'elder' }) // Fixed voice_id, ensure backend supports
+                        body: JSON.stringify({ text: text, voice_id: 'elder' })
                     });
                     if (!res.ok) throw new Error(await res.text());
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
-                    const audio = new Audio(url);
-                    currentAudio = audio; // Keep reference to current audio for stopping
-                    audio.onended = audio.onerror = () => {
+                    currentAudio = new Audio(url);
+                    currentAudio.onended = currentAudio.onerror = () => {
                         botIsSpeaking = false;
                         if (botImageContainer) botImageContainer.classList.remove('speaking');
                         currentAudio = null;
-                        URL.revokeObjectURL(url); // Clean up audio object URL
                         if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            console.log("Bot finished speaking, auto-restarting speech recognition.");
                             try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
                         } else if (isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                             if (tapToTalk) tapToTalk.style.display = 'none';
                         }
                     };
-                    audio.play();
+                    currentAudio.play();
                 } catch (err) {
                     console.error("Voice generation error:", err);
                     botIsSpeaking = false;
@@ -2907,7 +2741,6 @@
                     if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        console.log("Voice generation failed, auto-restarting speech recognition.");
                         try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
                     } else if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
@@ -2917,48 +2750,25 @@
             }
 
             function stopBotSpeakingAndStartListening() {
-                if (!isCallActive || !botIsSpeaking || !botImageContainer || !callStatusMessage || !tapToTalk) return;
+                if (!isCallActive || !botIsSpeaking || !botImageContainer || !callStatusMessage || !tapToTalk || !speechRecognition) return;
                 if (currentAudio) {
                     currentAudio.pause();
-                    currentAudio.currentTime = 0;
-                    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src); // Clean up
+                    currentAudio.onended = null; // Prevent onended from firing
                     currentAudio = null;
                 }
                 botIsSpeaking = false;
                 botImageContainer.classList.remove('speaking');
-                // Hide any existing interim user message to prevent stale text
-                const userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
-                if (userMsgEl) userMsgEl.textContent = ''; // Clear content immediately
-
-                if (!isMuted) {
-                    callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                    tapToTalk.style.display = 'block';
-                    try {
-                        if (speechRecognition) {
-                            speechRecognition.stop(); // Stop current session if any
-                            speechRecognition.start(); // Start a new one
-                            console.log("Speech recognition restarted manually by user tap.");
-                        }
-                    } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
-                } else {
-                    callStatusMessage.textContent = 'Microphone Muted.';
-                    tapToTalk.style.display = 'none';
-                }
+                speechRecognition.stop(); // This will trigger onend to restart listening
             }
 
             if (callModal) {
-                // Add event listeners for tap-to-speak functionality
                 callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
                 callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
             }
 
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
-                    if (!SpeechRecognition) {
-                        alert("Sorry, your browser doesn't support the Speech Recognition needed for this feature.");
-                        return;
-                    }
-                    if (!callModal || !callConversation || !userSpeechWave || !callStatusMessage || !tapToTalk) return;
+                    if (!SpeechRecognition || !callModal || !callConversation || !userSpeechWave || !callStatusMessage || !tapToTalk) return;
 
                     isCallActive = true;
                     isMuted = false;
@@ -2967,26 +2777,18 @@
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    // Clear previous conversation and add initial status messages
-                    callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div><div id="userSpeechWave"></div>`;
+                    callConversation.innerHTML = `<div id="userSpeechWave"></div>`;
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
-                    callHistory = []; // Reset call history
-
+                    callHistory = [];
                     setTimeout(() => {
-                        if (!isCallActive) return; // Check if call was ended during delay
+                        if (!isCallActive) return;
                         addCallMessage('status', 'Call Connected. Speak when ready.');
                         callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         tapToTalk.style.display = 'block';
-                        console.log("Attempting to start speech recognition after initial call delay.");
-                        try {
-                            if (speechRecognition) speechRecognition.start();
-                        } catch(e) {
-                            console.error("Speech recognition start failed in callBtn click:", e);
-                            if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.';
-                        }
-                    }, 1500); // Small delay to simulate connection
+                        try { if (speechRecognition) speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error.'; }
+                    }, 1500);
                 });
             }
 
@@ -2994,56 +2796,49 @@
                 if (!callModal || !botImageContainer || !tapToTalk || !userSpeechWave || !callStatusMessage) return;
                 isCallActive = false;
                 botIsSpeaking = false;
-                if (currentAudio) { // Stop any playing bot audio
+                if (currentAudio) {
                     currentAudio.pause();
-                    currentAudio.currentTime = 0;
-                    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src);
+                    currentAudio.onended = null;
                     currentAudio = null;
                 }
-                callModal.classList.remove('active'); // Hide call modal
-                try { if (speechRecognition) speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on call end:", e); }
-                botImageContainer.classList.remove('speaking'); // Reset bot image animation
-                tapToTalk.style.display = 'none'; // Hide tap instruction
-                userSpeechWave.classList.remove('active'); // Hide speech wave
-                callStatusMessage.textContent = 'Call Ended.'; // Update status
-                console.log("Call ended.");
+                callModal.classList.remove('active');
+                try { if (speechRecognition) speechRecognition.stop(); } catch(e) {}
+                botImageContainer.classList.remove('speaking');
+                tapToTalk.style.display = 'none';
+                userSpeechWave.classList.remove('active');
+                callStatusMessage.textContent = 'Call Ended.';
             }
 
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
 
             if (muteCallBtn) {
                 muteCallBtn.addEventListener('click', () => {
-                    if (!callStatusMessage || !tapToTalk || !userSpeechWave || !botImageContainer) return;
+                    if (!callStatusMessage || !tapToTalk || !userSpeechWave || !botImageContainer || !speechRecognition) return;
 
                     isMuted = !isMuted;
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition) {
-                            try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
-                        }
+                        speechRecognition.stop();
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
                         userSpeechWave.classList.remove('active');
-                        console.log("Microphone muted.");
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                         if (isCallActive && !botIsSpeaking) {
                             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             tapToTalk.style.display = 'block';
-                            console.log("Microphone unmuted, attempting to restart speech recognition.");
-                            try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
+                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
                         } else if (isCallActive && botIsSpeaking) {
                             callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                             tapToTalk.style.display = 'none';
                         }
-                        console.log("Microphone unmuted.");
                     }
                 });
             }
 
-            if(userInput) userInput.focus(); // Focus on input field on page load
+            if(userInput) userInput.focus();
         });
     </script>
 </body>
