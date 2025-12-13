@@ -42,6 +42,9 @@
             /* Theming specific dynamic values */
             --current-bg-blend-mode: screen; /* Default to screen for vibrant nebulae */
             --body-base-bg: #050714; /* Base background for the body */
+
+            /* Dynamic height for input dock controlled by JS */
+            --input-dock-height: 100px;
         }
 
         /* --- GLOBAL RESET & BASE STYLES --- */
@@ -1771,11 +1774,20 @@
                         break;
                     }
                     currentContent += words[i];
-                    // Update innerHTML less frequently to improve performance for long texts
-                    if (i % 5 === 0 || words[i].match(/[\.\,\!\?]/) || i === words.length - 1) {
-                        msgBubble.innerHTML = renderMarkdown(currentContent).html;
-                        chatView.scrollTop = chatView.scrollHeight;
+                    // Optimized update logic:
+                    // Update if a new line, code block start/end, or sentence-ending punctuation is found
+                    // Or if a significant chunk of plain text has accumulated (e.g., every 8 words)
+                    const isSpecialChar = words[i].match(/[\n`\.\,\!\?]/);
+                    const isEndOfChunk = (i % 8 === 0 && i !== 0 && !isSpecialChar);
+
+                    if (isSpecialChar || isEndOfChunk || i === words.length - 1) {
+                         // Only re-render if there's new content since last render
+                        if (msgBubble.innerHTML !== renderMarkdown(currentContent).html) {
+                            msgBubble.innerHTML = renderMarkdown(currentContent).html;
+                            chatView.scrollTop = chatView.scrollHeight;
+                        }
                     }
+
                     const delay = words[i].match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster delay for punctuation/spaces
                     await new Promise(res => setTimeout(res, delay));
                 }
@@ -2035,12 +2047,34 @@
                     title: "Create Comic",
                     description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
-                        <label for="tool-provider">Generation Model</label>
-                        <select id="tool-provider" aria-label="Comic generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
+                        <label for="tool-provider">Image Generation Model</label>
+                        <select id="tool-provider" aria-label="Comic image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style">Comic Art Style</label><select id="tool-style" aria-label="Comic art style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
+                        <label for="tool-style" id="tool-style-label">Comic Art Style (for Version 1)</label>
+                        <select id="tool-style" aria-label="Comic art style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
+                    onFormReady: () => {
+                        const providerSelect = $('tool-provider');
+                        const styleSelect = $('tool-style');
+                        const styleLabel = $('tool-style-label');
+
+                        const toggleStyleVisibility = () => {
+                            if (providerSelect.value === 'minimax') {
+                                styleSelect.disabled = true;
+                                styleSelect.style.opacity = '0.5';
+                                styleLabel.style.opacity = '0.5';
+                            } else {
+                                styleSelect.disabled = false;
+                                styleSelect.style.opacity = '1';
+                                styleLabel.style.opacity = '1';
+                            }
+                        };
+                        if (providerSelect && styleSelect && styleLabel) {
+                            providerSelect.addEventListener('change', toggleStyleVisibility);
+                            toggleStyleVisibility(); // Set initial state
+                        }
+                    },
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
                         const providerName = use_minimax ? 'Version 2 (Creative)' : 'Version 1 (Stylized)';
@@ -2050,8 +2084,12 @@
                         if (!story) return "Please provide a comic story.";
                         if (isNaN(panels) || panels < 1 || panels > 6) return "Number of panels must be between 1 and 6.";
 
-                        const payload = { story, style, panels, user: currentUser?.displayName || "User", use_minimax }; // Added use_minimax
-                        await addMessageToChat('user', `Comic creation request with style: ${payload.style} (using ${providerName}).`);
+                        const payload = { story, panels, user: currentUser?.displayName || "User", use_minimax };
+                        if (!use_minimax) { // Only send style if using Thena model
+                            payload.style = style;
+                        }
+
+                        await addMessageToChat('user', `Comic creation request with style: ${style} (using ${providerName}).`);
                         showTypingStatus('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
@@ -2949,6 +2987,7 @@
     </script>
 </body>
 </html>
+
 
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
