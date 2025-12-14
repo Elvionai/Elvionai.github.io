@@ -302,7 +302,7 @@
             user-select: none;
         }
         .copy-btn:hover, .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover {
-            transform: translateY(-2px) scale(1.05);
+            transform: translateY(-2px) scale(1.02);
             box-shadow: 0 0 20px var(--neon-blue);
             color: #fff;
             background: var(--plasma-gradient);
@@ -1094,7 +1094,6 @@
             const profilePicPreview = $('profilePicPreview');
             const profileForm = $('profileForm');
             const chatViewport = $('chat-viewport'); // Renamed from chatBox
-            const chatForm = $('chatForm');
             const chatInput = $('chatInput');
             const sendBtn = $('sendBtn');
             const stopBtn = $('stopBtn'); // Get stopBtn directly
@@ -1129,7 +1128,7 @@
             const tapToTalk = $('tapToTalk');
             const typingStatus = $('typing-status');
 
-            if (!chatForm || !chatViewport || !toolsMenu || !typingStatus) {
+            if (!chatInput || !chatViewport || !toolsMenu || !typingStatus) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
@@ -1188,7 +1187,7 @@
                 chatInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        chatForm.requestSubmit(); // Submit form directly
+                        sendMessage(); // Call sendMessage directly
                     } else if (e.key === 'Enter' && e.shiftKey) {
                         const start = chatInput.selectionStart;
                         const end = chatInput.selectionEnd;
@@ -1226,7 +1225,7 @@
 
             if (chatViewport) {
                 chatViewport.addEventListener('click', e => {
-                    if (e.target.tagName === 'IMG' && e.target.closest('.chat-message.ai .msg')) {
+                    if (e.target.tagName === 'IMG' && e.target.closest('.message-group.ai .msg')) {
                         e.preventDefault();
                         const lbImg = lightbox.querySelector('img');
                         if (lbImg) {
@@ -1303,7 +1302,7 @@
                     return;
                 }
                 currentUser = user;
-                if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@'));
+                if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]);
                 if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
                 if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
                 if (editName) editName.value = user.displayName || "";
@@ -1350,7 +1349,7 @@
                     chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatsListSidebar();
                     if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                        currentChatId = chats.id;
+                        currentChatId = chats[0].id;
                     }
                     subscribeToMessages(userId, currentChatId);
                 }, (error) => {
@@ -1485,8 +1484,8 @@
                     const before = text.slice(lastIndex, offset);
                     html += inlineMarkdown(before);
                     const language = (lang || '').toLowerCase().trim();
-                    const safe = escapeHTML(code);
-                    html += `<pre><button class="copy-btn">Copy</button><code class="language-${language || 'plaintext'}">${safe}</code></pre>`;
+                    const safeCode = escapeHTML(code);
+                    html += `<pre data-lang="${language || 'plaintext'}"><button class="copy-btn"><i class='fa-solid fa-copy'></i> Copy</button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
                     lastIndex = offset + match.length;
                     return match;
                 });
@@ -1498,24 +1497,25 @@
                 if (!container) return;
                 container.querySelectorAll('pre').forEach(pre => {
                     const codeEl = pre.querySelector('code');
-                    if (window.hljs && codeEl) {
+                    if (window.hljs && codeEl && !pre.classList.contains('highlighted')) {
                         try { hljs.highlightElement(codeEl); } catch (e) { console.error("Highlight.js error:", e); }
+                        pre.classList.add('highlighted');
                     }
                     const btn = pre.querySelector('.copy-btn');
                     if (btn && codeEl) {
-                        // Ensure unique listeners by cloning and replacing, or by checking for existing listener if simple
-                        const newBtn = btn.cloneNode(true);
-                        btn.parentNode.replaceChild(newBtn, btn);
+                        // IMPORTANT: Remove and re-add button to clear old event listeners
+                        const oldBtn = btn.cloneNode(true);
+                        btn.parentNode.replaceChild(oldBtn, btn);
+                        const newBtn = pre.querySelector('.copy-btn');
 
                         newBtn.addEventListener('click', async () => {
                             try {
                                 await navigator.clipboard.writeText(codeEl.innerText);
-                                const prev = newBtn.textContent;
-                                newBtn.textContent = 'Copied!';
-                                setTimeout(() => newBtn.textContent = prev, 800);
+                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
+                                setTimeout(() => { if (newBtn) newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
                             } catch (e) {
-                                newBtn.textContent = 'Failed';
-                                setTimeout(() => newBtn.textContent = 'Copy', 800);
+                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Failed";
+                                setTimeout(() => { newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
                             }
                         });
                     }
@@ -1527,7 +1527,7 @@
                 chatViewport.innerHTML = '';
                 (messages || []).forEach((msg) => {
                     const div = document.createElement('div');
-                    div.className = 'chat-message ' + (msg.role === 'user' ? 'user' : 'ai');
+                    div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
                     div.setAttribute('data-message-id', msg.id);
                     let innerHtml = '';
 
@@ -1543,49 +1543,26 @@
                             })
                             .join('');
 
-                        innerHtml = `<div class="msg">
+                        innerHtml = `<div class="msg-bubble">
                             ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
                             ${escapeHTML(msg.text || '')}
                             <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <button class="inline-edit-btn" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                                <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+                                <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
                             </div>
                         </div>`;
                     } else {
                         let content;
-                        // Handle base64 image data for comics, convert to Blob URL if possible
-                        if (msg.text && msg.text.includes('<img src="data:image/png;base64,')) {
-                            let processedText = msg.text;
-                            const base64ImageMatches = processedText.matchAll(/<img src="data:image\/png;base64,([^"]+)"/g);
-                            for (const match of base64ImageMatches) {
-                                const base64Data = match[1];
-                                try {
-                                    const byteCharacters = atob(base64Data);
-                                    const byteNumbers = new Array(byteCharacters.length);
-                                    for (let i = 0; i < byteCharacters.length; i++) {
-                                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                                    }
-                                    const byteArray = new Uint8Array(byteNumbers);
-                                    const blob = new Blob([byteArray], { type: 'image/png' });
-                                    const objUrl = URL.createObjectURL(blob);
-                                    fileObjectURLs.push(objUrl); // Store for cleanup
-                                    processedText = processedText.replace(match[0], `<img src="${objUrl}" class="chat-media-preview"`);
-                                } catch (e) {
-                                    console.error("Error converting base64 to Blob URL for comic image:", e);
-                                    // Fallback to original base64 if conversion fails
-                                }
-                            }
-                            content = processedText;
-                        } else if (msg.text && (msg.text.includes('<audio') || msg.text.includes('<video'))) {
+                        if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
                             content = msg.text;
                         } else {
                             content = renderMarkdown(msg.text || '').html;
                         }
-                        innerHtml = `<div class="msg">${content}
+                        innerHtml = `<div class="msg-bubble">${content}
                             <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-                                <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-                                <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
                             </div>
                         </div>`;
                     }
@@ -1595,9 +1572,7 @@
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                setTimeout(() => {
-                    chatViewport.scrollTop = chatViewport.scrollHeight;
-                }, 50);
+                setTimeout(() => { if (chatViewport) chatViewport.scrollTop = chatViewport.scrollHeight; }, 50);
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -1608,33 +1583,6 @@
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 for (let i = msgIndex; i < currentMessages.length; i++) {
                     const msgToDel = currentMessages[i];
-                    
-                    // Clean up object URLs associated with comic images if present
-                    if (msgToDel.role === 'ai' && msgToDel.text && msgToDel.text.includes('<img src="data:image/png;base64,')) {
-                        const base64ImageMatches = msgToDel.text.matchAll(/<img src="data:image\/png;base64,([^"]+)"/g);
-                        for (const match of base64ImageMatches) {
-                            const base64Data = match[1];
-                            // Recreate blob URL to find and revoke it
-                            try {
-                                const byteCharacters = atob(base64Data);
-                                const byteNumbers = new Array(byteCharacters.length);
-                                for (let j = 0; j < byteCharacters.length; j++) {
-                                    byteNumbers[j] = byteCharacters.charCodeAt(j);
-                                }
-                                const byteArray = new Uint8Array(byteNumbers);
-                                const blob = new Blob([byteArray], { type: 'image/png' });
-                                const objUrl = URL.createObjectURL(blob);
-                                const indexToRemove = fileObjectURLs.indexOf(objUrl);
-                                if (indexToRemove > -1) {
-                                    URL.revokeObjectURL(fileObjectURLs[indexToRemove]);
-                                    fileObjectURLs.splice(indexToRemove, 1);
-                                }
-                            } catch (e) {
-                                console.error("Error revoking comic image Blob URL:", e);
-                            }
-                        }
-                    }
-
                     const docRef = doc(messagesCol, msgToDel.id);
                     batch.delete(docRef);
                 }
@@ -1647,7 +1595,7 @@
 
             function hookAiMsgControls() {
                 if (!chatViewport) return;
-                chatViewport.querySelectorAll('.chat-message.ai').forEach(div => {
+                chatViewport.querySelectorAll('.message-group.ai').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
@@ -1666,10 +1614,8 @@
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
                             copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                            setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
-                        } catch (e) {
-                            console.warn('copy failed', e);
-                        }
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                        } catch (e) { console.warn('Copy failed:', e); }
                     };
 
                     if (shareBtn) shareBtn.onclick = () => {
@@ -1681,9 +1627,7 @@
                             const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
                             if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
                             else prompt("Copy and share manually:", shareText);
-                        } catch (e) {
-                            console.warn('share failed', e);
-                        }
+                        } catch (e) { console.warn('Share failed:', e); }
                     };
 
                     if (regenBtn) regenBtn.onclick = async () => {
@@ -1693,27 +1637,30 @@
                         if (userMsg.role !== 'user') return;
 
                         await deleteMessagesFrom(messageId);
-                        chatInput.value = userMsg.text;
-                        chatInput.style.height = 'auto';
-                        chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
-                        uploadedFiles = [];
-                        renderFilePreview();
+                        if (userInput) {
+                            userInput.value = userMsg.text;
+                            userInput.focus();
+                            userInput.style.height = 'auto';
+                            userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+                            uploadedFiles = [];
+                            renderFilePreview();
+                        }
 
-                        showTypingStatus(); // Show typing animation
+                        showTypingStatus('Re-generating response...');
 
                         const historyForRegen = currentMessages
                             .slice(0, msgIndex - 1)
                             .map(m => ({ role: m.role, content: m.text || '' }));
 
-                        currentController = new AbortController(); // New controller for regen
+                        currentController = new AbortController();
                         const signal = currentController.signal;
 
-                        // Manage stop button for regeneration
                         sendBtn.style.display = 'none';
                         callBtn.style.display = 'none';
                         stopBtn.style.display = 'flex';
+                        // Store current listener on stopBtn to remove it later cleanly
                         const regenStopListener = () => { if (currentController) currentController.abort(); };
-                        stopBtn.removeEventListener('click', stopBtn._currentStopListener); // Remove previous listener
+                        if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                         stopBtn.addEventListener('click', regenStopListener, { once: true });
                         stopBtn._currentStopListener = regenStopListener;
 
@@ -1730,16 +1677,16 @@
                             await startTypewriter(data.response, false);
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') {
-                                await startTypewriter('❌ Regeneration stopped.', false);
-                            } else {
-                                await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
-                            }
+                            if (err.name === 'AbortError') { return '❌ Regeneration stopped.'; }
+                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
                         } finally {
                             sendBtn.style.display = 'flex';
                             callBtn.style.display = 'flex';
                             stopBtn.style.display = 'none';
-                            stopBtn.removeEventListener('click', stopBtn._currentStopListener); // Clean up after
+                            if (stopBtn._currentStopListener) { // Ensure listener is cleaned if not already
+                                stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                                stopBtn._currentStopListener = null;
+                            }
                             currentController = null;
                         }
                     };
@@ -1748,17 +1695,14 @@
 
             function hookUserMsgControls() {
                 if (!chatViewport) return;
-                chatViewport.querySelectorAll('.chat-message.user').forEach(div => {
+                chatViewport.querySelectorAll('.message-group.user').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
-
                     const controls = div.querySelector('.user-msg-controls');
                     if (!controls) return;
-
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const editBtn = controls.querySelector('.inline-edit-btn');
-
                     if (copyBtn) copyBtn.onclick = () => {
                         try {
                             const tempDiv = document.createElement('div');
@@ -1766,22 +1710,19 @@
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
                             copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                            setTimeout(() => copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>", 950);
-                        } catch (e) {
-                            console.warn('copy failed', e);
-                        }
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                        } catch (e) { console.warn('Copy failed:', e); }
                     };
-
                     if (editBtn) editBtn.onclick = async () => {
                         try {
                             if (!msg.text) return;
-                            chatInput.value = msg.text;
-                            chatInput.focus();
-                            chatInput.dispatchEvent(new Event('input')); // Trigger auto-resize
+                            if (userInput) {
+                                userInput.value = msg.text;
+                                userInput.focus();
+                                userInput.dispatchEvent(new Event('input'));
+                            }
                             await deleteMessagesFrom(messageId);
-                        } catch (e) {
-                            console.warn('edit failed', e);
-                        }
+                        } catch (e) { console.warn('Edit failed:', e); }
                     };
                 });
             }
@@ -1789,7 +1730,7 @@
             function showTypingStatus(text = '') {
                 if (!typingStatus || !chatViewport) return;
                 if (text) {
-                    typingStatus.innerHTML = `<div class="msg" style="display:flex;align-items:center;"><span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text); font-style:italic;">${text}</span></div>`;
+                    typingStatus.innerHTML = `<div class="msg" style="display:flex;align-items:center;"><span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span></div>`;
                 } else {
                     typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
                 }
@@ -1803,38 +1744,13 @@
                 typingStatus.style.display = 'none';
                 typingStatus.innerHTML = '';
             }
-
+            
             async function startTypewriter(text, saveToDb = true) {
-                if (!chatViewport) return;
-
-                // Handle already complete media messages (e.g., if a comic was already rendered fully)
                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
-                    let processedText = text;
-                    // Check if it's a base64 image (specifically for comics) and convert to Blob URL
-                    const base64ImageMatches = processedText.matchAll(/<img src="data:image\/png;base64,([^"]+)"/g);
-                    for (const match of base64ImageMatches) {
-                        const base64Data = match[1];
-                        try {
-                            const byteCharacters = atob(base64Data);
-                            const byteNumbers = new Array(byteCharacters.length);
-                            for (let i = 0; i < byteCharacters.length; i++) {
-                                byteNumbers[i] = byteCharacters.charCodeAt(i);
-                            }
-                            const byteArray = new Uint8Array(byteNumbers);
-                            const blob = new Blob([byteArray], { type: 'image/png' });
-                            const objUrl = URL.createObjectURL(blob);
-                            fileObjectURLs.push(objUrl); // Store for cleanup
-                            processedText = processedText.replace(match[0], `<img src="${objUrl}" class="chat-media-preview"`);
-                        } catch (e) {
-                            console.error("Error converting base64 to Blob URL for comic image:", e);
-                            // Fallback to original base64 if conversion fails
-                        }
-                    }
-
                     const tempDiv = document.createElement('div');
-                    tempDiv.className = "chat-message ai";
-                    tempDiv.innerHTML = `<div class="msg">${processedText}</div>`;
-                    chatViewport.appendChild(tempDiv);
+                    tempDiv.className = "message-group ai";
+                    tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
+                    chatViewport.insertBefore(tempDiv, typingStatus.style.display === 'flex' ? typingStatus : null);
                     chatViewport.scrollTop = chatViewport.scrollHeight;
                     if (saveToDb && currentUser && currentChatId) {
                         try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
@@ -1844,11 +1760,11 @@
                 }
 
                 const div = document.createElement('div');
-                div.className = "chat-message ai";
-                const msgdiv = document.createElement('div');
-                msgdiv.className = 'msg';
-                div.appendChild(msgdiv);
-                chatViewport.appendChild(div);
+                div.className = "message-group ai";
+                const msgBubble = document.createElement('div');
+                msgBubble.className = 'msg-bubble';
+                div.appendChild(msgBubble);
+                chatViewport.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let sofar = '';
                 const words = text.split(/(\s+)/);
@@ -1873,21 +1789,21 @@
                         }
                     }
 
-                    msgdiv.innerHTML = renderMarkdown(contentToRender).html;
+                    msgBubble.innerHTML = renderMarkdown(contentToRender).html;
                     chatViewport.scrollTop = chatViewport.scrollHeight;
                     const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30;
                     await new Promise(res => setTimeout(res, delay));
                 }
                 
-                // Final render to ensure proper highlighting and controls are added
-                msgdiv.innerHTML = renderMarkdown(text).html + `
+                // Final render to ensure proper markdown, highlighting, and controls are added
+                msgBubble.innerHTML = renderMarkdown(text).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                        <button class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
-                        <button class="inline-share-btn" title="Share"><i class="fa-solid fa-share"></i></button>
-                        <button class="regen-btn" title="Regenerate"><i class="fa-solid fa-rotate-right"></i></button>
+                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                        <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
                     </div>
                 `;
-                enhanceCodeBlocks(msgdiv);
+                enhanceCodeBlocks(msgBubble);
                 chatViewport.scrollTop = chatViewport.scrollHeight;
                 hookAiMsgControls();
 
@@ -1896,6 +1812,7 @@
                     catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
+
 
             function renderFilePreview() {
                 if (!filePreview) return;
@@ -2520,7 +2437,7 @@
                         if (tool.isAction) {
                             result = await tool.runAction();
                         } else {
-                            // For form-based tools, handleSubmit will handle its own UI reset in its finally block
+                            // For form-based tools, handleSubmit will handle UI reset in its finally block
                             displayToolForm(toolKey);
                             return; 
                         }
@@ -2624,7 +2541,7 @@
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const file = localUploadedFiles; // Correctly get the first file object
+                    const file = localUploadedFiles;
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
@@ -2723,15 +2640,13 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
                 speechRecognition = new SpeechRecognition();
-                speechRecognition.continuous = false; // Set to false to ensure onend fires reliably after user stops speaking
+                speechRecognition.continuous = true;
                 speechRecognition.interimResults = true;
                 speechRecognition.lang = 'en-US';
 
                 speechRecognition.onstart = () => {
                     isRecognizing = true;
                     console.log("Speech recognition started.");
-                    if (callStatusMessage && !botIsSpeaking && !isMuted) callStatusMessage.textContent = 'Listening...';
-                    // if (userSpeechWave) userSpeechWave.classList.add('active'); // Removed: wave should only be active if speech is detected
                 };
 
                 speechRecognition.onresult = (event) => {
@@ -2739,29 +2654,34 @@
                     let interimTranscript = '';
                     let finalTranscript = '';
                     userSaidSomething = true;
-                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Activate wave only when result comes
+                    // if (userSpeechWave) userSpeechWave.classList.add('active'); // Removed this, handled below more robustly
+
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
                         else interimTranscript += event.results[i].transcript;
                     }
-                    let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                    if (!userMsgEl) {
+                    let userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
+                    if (!userMsgEl && callConversation) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
-                        callConversation.appendChild(userMsgEl); // Append for interim, it will be replaced/removed by onend
+                        callConversation.appendChild(userMsgEl); // Append directly, no userSpeechWave element anymore
                     }
-                    userMsgEl.textContent = finalTranscript || interimTranscript;
+                    if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
                     if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
                     if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'User Speaking (Final)' : 'User Speaking...';
                     if (tapToTalk) tapToTalk.style.display = 'none';
+
+                    // Activate userSpeechWave more consistently
+                    if (userSpeechWave && (finalTranscript || interimTranscript)) {
+                        userSpeechWave.classList.add('active');
+                    } else if (userSpeechWave) {
+                        userSpeechWave.classList.remove('active');
+                    }
                 };
 
                 speechRecognition.onspeechend = () => {
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    console.log("Speech ended. Stopping recognition to process.");
-                    if (isRecognizing) { // Ensure it's active before trying to stop
-                        try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition on speech end:", e); }
-                    }
+                    console.log("Speech ended.");
                 };
 
                 speechRecognition.onend = () => {
@@ -2777,38 +2697,28 @@
                     }
                     
                     let finalTranscript = '';
-                    const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                    const userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
                     if (userMsgEl) {
                         finalTranscript = userMsgEl.textContent.trim();
                         userMsgEl.classList.remove('interim');
-                        if (finalTranscript === '') {
-                            userMsgEl.remove(); // Remove empty interim message
-                        } else {
-                             // If it's a final transcript, replace the interim one with a new final one
-                            // and ensure it's properly positioned at the bottom
-                            userMsgEl.remove(); // Remove interim element
-                            const finalUserMsgDiv = document.createElement('div');
-                            finalUserMsgDiv.className = 'call-msg user';
-                            finalUserMsgDiv.textContent = finalTranscript;
-                            callConversation.appendChild(finalUserMsgDiv); // Add final message
-                        }
+                        if (finalTranscript === '') userMsgEl.remove();
                     }
 
                     if (botIsSpeaking) {
-                        // Bot is speaking, its onended will handle restarting recognition.
+                        // Bot is speaking, its onended will restart recognition (in speakBotResponse's finally block)
                     } else if (finalTranscript && userSaidSomething) {
                         userSaidSomething = false; // Reset for next user turn
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else {
-                        // No valid speech was captured or userSaidSomething is false, just restart listening
-                        if (isCallActive && !isMuted && !isRecognizing) {
+                        // If no speech, or only interim and not final, restart listening
+                        // Check isRecognizing again to prevent double-starts if other logic also calls start()
+                        if (isCallActive && !isMuted && !isRecognizing) { 
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically (onend):", e);}
                         }
                     }
-                    if (callConversation) callConversation.scrollTop = callConversation.scrollHeight; // Ensure scroll
                 };
 
                 speechRecognition.onerror = (event) => {
@@ -2817,32 +2727,20 @@
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
 
-                    const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                    if (userMsgEl) userMsgEl.remove(); // Clear any leftover interim text
-
                     if (event.error === 'no-speech' && isCallActive && !isMuted) {
                         userSaidSomething = false;
-                        if (!botIsSpeaking && !isRecognizing) { // Restart if call active, bot not speaking, and not already recognizing
-                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (No speech detected, tap to speak)';
-                            if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to restart after no-speech error:", e);}
-                        }
+                        if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition on no-speech error:", e); } }
                     } else if (event.error === 'network' && isCallActive) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Network error. Attempting restart...';
-                        setTimeout(() => { // Short delay before restart on network error
-                            if (isCallActive && !isMuted && !isRecognizing) {
-                                try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to restart after network error:", e);}
-                            }
-                        }, 2000);
+                        if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition on network error:", e); } }
                     } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
-                        endCall(); // End call if permission is denied
-                    } else if (isCallActive && !isMuted && !isRecognizing) { // General error, try to restart
+                        endCall();
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
                         try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
                     }
-                    if (callConversation) callConversation.scrollTop = callConversation.scrollHeight; // Ensure scroll
                 };
             } else {
                 if (callBtn) callBtn.style.display = 'none';
@@ -2850,11 +2748,16 @@
             }
 
             function addCallMessage(role, text) {
-                if (!callConversation) return; // Removed userSpeechWave dependency here
+                if (!callConversation) return;
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                callConversation.appendChild(msgEl);
+                // Append the message before the userSpeechWave for correct order
+                if (callConversation.lastElementChild === userSpeechWave) {
+                    callConversation.insertBefore(msgEl, userSpeechWave);
+                } else {
+                    callConversation.appendChild(msgEl);
+                }
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
@@ -2937,7 +2840,6 @@
                             if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                             if (tapToTalk) tapToTalk.style.display = 'none';
                         }
-                        if (callConversation) callConversation.scrollTop = callConversation.scrollHeight; // Ensure scroll
                     };
                     audio.play();
                 } catch (err) {
@@ -2952,14 +2854,11 @@
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         if (tapToTalk) tapToTalk.style.display = 'none';
                     }
-                    if (callConversation) callConversation.scrollTop = callConversation.scrollHeight; // Ensure scroll
                 }
             }
 
             function stopBotSpeakingAndStartListening() {
                 if (!isCallActive || !botImageContainer || !callStatusMessage || !tapToTalk) return;
-                
-                // Stop any current bot audio playback
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
@@ -2968,29 +2867,27 @@
                 }
                 botIsSpeaking = false;
                 botImageContainer.classList.remove('speaking');
-                
-                // Remove any interim user speech element
                 const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                if (userMsgEl) userMsgEl.remove(); 
+                if (userMsgEl) userMsgEl.remove(); // Remove interim user speech element
 
-                // Always stop speech recognition first if it's currently running
-                if (speechRecognition && isRecognizing) {
-                    try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition immediately on tap:", e); }
-                }
+                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide user speech wave
 
                 if (!isMuted) {
                     callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                     tapToTalk.style.display = 'block';
-                    // Restart speech recognition only if not already recognizing and call is active
-                    if (speechRecognition && !isRecognizing && isCallActive) {
-                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart speech recognition immediately on tap:", e); }
+                    if (speechRecognition && isRecognizing) { // Only stop if it's currently running
+                        try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition immediately:", e); }
+                    }
+                    if (speechRecognition && !isRecognizing) { // Start if not already running
+                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
                     }
                 } else {
                     callStatusMessage.textContent = 'Microphone Muted.';
                     tapToTalk.style.display = 'none';
+                    if (speechRecognition && isRecognizing) { // Stop if muted
+                        try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition when muted:", e); }
+                    }
                 }
-                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide wave on tap/stop
-                if (callConversation) callConversation.scrollTop = callConversation.scrollHeight; // Ensure scroll
             }
 
             if (callModal) {
@@ -3015,16 +2912,20 @@
                     isRecognizing = false; // Reset recognizing state
                     if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute Microphone';
                     }
                     callModal.classList.add('active');
                     callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div>`; // Clear previous call messages
+                    // The userSpeechWave element needs to be appended directly *after* clearing content
+                    const initialUserSpeechWave = document.createElement('div');
+                    initialUserSpeechWave.id = 'userSpeechWave';
+                    callConversation.appendChild(initialUserSpeechWave);
+
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
                     userSaidSomething = false;
-                    // if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide wave initially
 
                     setTimeout(() => {
                         if (!isCallActive) return; // Check if call was ended during timeout
@@ -3055,8 +2956,8 @@
                 }
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
-                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide wave on call end
                 callStatusMessage.textContent = 'Call Ended.';
+                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Ensure wave is hidden on call end
             }
 
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
@@ -3068,16 +2969,16 @@
                     isMuted = !isMuted;
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute Microphone';
                         if (speechRecognition && isRecognizing) { // Only stop if it's running
                             try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
                         }
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
-                        if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide wave on mute
+                        if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide user speech wave when muted
                     } else {
                         muteCallBtn.classList.remove('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute Microphone';
                         if (isCallActive && !botIsSpeaking && !isRecognizing) { // Start if active, not speaking, and not already recognizing
                             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             tapToTalk.style.display = 'block';
@@ -3090,7 +2991,7 @@
                 });
             }
 
-            if(userInput) userInput.focus();
+            if(chatInput) chatInput.focus();
         });
     </script>
 </body>
