@@ -212,7 +212,7 @@
             scrollbar-width: none; /* Firefox */
             -ms-overflow-style: none;  /* IE and Edge */
             position: relative;
-            /* dynamic padding-bottom handled by JS */
+            padding-bottom: 150px; /* Default for input dock, adjusted by JS */
         }
         #chat-viewport::-webkit-scrollbar { display: none; } /* Chrome, Safari, Opera */
 
@@ -361,17 +361,14 @@
             -webkit-backdrop-filter: blur(25px);
             border-top: 1px solid var(--glass-border);
             display: flex; gap: 15px; align-items: stretch;
-            position: fixed; bottom: 0; left:0; width:100%; z-index: 100; /* Changed to fixed full width */
-            justify-content: center; /* Center content horizontally */
-        }
-        .input-dock > div { /* Wrapper for inner content to constrain max-width */
-            display: flex;
-            gap: 15px;
-            align-items: stretch;
+            position: fixed; /* Changed to fixed for dynamic padding calculation */
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
             width: 100%;
-            max-width: 600px; /* Same as ui-container for alignment */
+            max-width: 600px;
+            z-index: 100;
         }
-
 
         .capsule-input {
             flex: 1; position: relative; min-height: 55px; max-height: 150px;
@@ -549,10 +546,10 @@
             cursor:pointer;font-weight:bold;
         }
         /* REFINED FILE PREVIEW STYLES */
-        #filePreview.file-preview-floating {
+        #filePreview { /* Changed class to ID to match JS */
             display: none;
             position: fixed;
-            /* bottom: 110px;  Dynamic positioning by JS */
+            /* bottom: 110px; Dynamically set by JS */
             left: 50%;
             transform: translateX(-50%);
             max-width: 400px;
@@ -563,17 +560,17 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid var(--glass-border);
-            z-index: 1210;
+            z-index: 101; /* Lower than input dock but above chat */
             box-shadow: 0 2px 19px var(--neon-blue);
             flex-direction: column;
             gap: 5px;
             overflow-y: auto;
             max-height: 200px;
         }
-        #filePreview.file-preview-floating.active { display: flex; }
+        #filePreview.active { display: flex; }
 
         /* Style for individual file items inside preview */
-        #filePreview.file-preview-floating > div {
+        #filePreview > div {
             display: flex;
             align-items: center;
             gap: 7px;
@@ -582,25 +579,25 @@
             padding: 5px 8px;
             border: 1px solid rgba(0, 242, 255, 0.2);
         }
-        #filePreview.file-preview-floating .remove-file-btn {
+        #filePreview .remove-file-btn {
             background:#d23; color:#fff; border-radius:50%; width:24px; height:24px; font-size:1em;
             display:flex; align-items:center; justify-content:center; margin-left:auto; cursor:pointer;
             flex-shrink: 0;
             transition: background 0.1s, transform 0.1s;
         }
-        #filePreview.file-preview-floating .remove-file-btn:hover {
+        #filePreview .remove-file-btn:hover {
             background: #ff4d4d;
             transform: scale(1.1);
         }
-        #filePreview.file-preview-floating img,
-        #filePreview.file-preview-floating video,
-        #filePreview.file-preview-floating audio {
+        #filePreview img,
+        #filePreview video,
+        #filePreview audio {
             max-width: 40px;
             max-height: 30px;
             border-radius: 4px;
             object-fit: cover;
         }
-        #filePreview.file-preview-floating span {
+        #filePreview span {
             flex-grow: 1;
             white-space: nowrap;
             overflow: hidden;
@@ -853,7 +850,7 @@
 
             .side-panel { width: 100vw; border-radius: 0; left: -100vw; }
             .side-panel.active { left: 0; }
-            #filePreview.file-preview-floating { width: calc(100% - 20px); /* bottom is dynamic */ }
+            #filePreview { width: calc(100% - 20px); } /* Bottom handled by JS */
             #ai-image-preview { right: 10px; bottom: 90px; max-width: 250px; }
             #ai-image-preview #ai-image-container img { max-width: 170px; max-height: 170px; }
             .chat-controls-menu { left: 10px; bottom: 95px; width: calc(100% - 20px); max-height: 150px; }
@@ -902,28 +899,26 @@
             <div id="typing-status" class="message-group ai" style="display: none;"></div>
         </div>
 
-        <div class="input-dock" id="chatInputRow"> <!-- Added ID for easier JS reference -->
-            <div> <!-- Wrapper for max-width and centering -->
-                <div class="capsule-input" id="capsuleInputContainer">
-                    <textarea id="userInput" placeholder="Broadcast your message..." autocomplete="off" aria-label="Chat input"></textarea>
-                    <div class="input-action-buttons">
-                        <label for="chatFile" class="file-upload-btn" title="Attach file" aria-label="Attach file"><i class="fa-solid fa-paperclip"></i></label>
-                        <input type="file" id="chatFile" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
-                        <button type="button" id="emojiBtn" title="Emoji" aria-label="Open emoji panel"><i class="fa-regular fa-face-smile"></i></button>
-                        <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
-                    </div>
+        <div class="input-dock" id="chatInputRow">
+            <div class="capsule-input" id="capsuleInputContainer">
+                <textarea id="userInput" placeholder="Broadcast your message..." autocomplete="off" aria-label="Chat input"></textarea>
+                <div class="input-action-buttons">
+                    <label for="chatFile" class="file-upload-btn" title="Attach file" aria-label="Attach file"><i class="fa-solid fa-paperclip"></i></label>
+                    <input type="file" id="chatFile" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
+                    <button type="button" id="emojiBtn" title="Emoji" aria-label="Open emoji panel"><i class="fa-regular fa-face-smile"></i></button>
+                    <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
                 </div>
-                <button class="thruster-btn" id="sendBtn" onclick="sendMessage()" title="Send message" aria-label="Send message">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                </button>
-                <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
-                <button class="thruster-btn" id="stopBtn" title="Stop AI Response" style="background: #ff4d4d; display: none;" aria-label="Stop AI response"><i class="fa-solid fa-stop"></i></button>
             </div>
+            <button class="thruster-btn" id="sendBtn" title="Send message" aria-label="Send message">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+            <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
+            <button class="thruster-btn" id="stopBtn" title="Stop AI Response" style="background: #ff4d4d; display: none;" aria-label="Stop AI response"><i class="fa-solid fa-stop"></i></button>
         </div>
     </div>
 
     <div id="emojiPanel" class="chat-controls-menu"></div>
-    <div id="filePreview" class="file-preview-floating"></div>
+    <div id="filePreview" class="file-preview"></div>
 
     <div class="panel-bg" id="profileMenuBg">
         <nav class="side-panel" id="profileMenu" role="menu" aria-label="Profile and Chat Menu">
@@ -1051,7 +1046,7 @@
         </div>
         <div id="callControls">
             <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button>
-            <button type="button" id="endCallBtn" class="submit-btn" style="background: #ff4d4d;" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
+            <button type="button" id="endCallBtn" class="submit-btn" style="background: #d23;" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
         </div>
     </div>
 
@@ -1149,7 +1144,7 @@
 
         // Function to update chat-viewport padding based on dynamic input/file preview height
         function updateChatViewportPadding() {
-            const chatInputRow = $('chatInputRow'); // Changed from chatForm to chatInputRow ID
+            const chatInputRow = $('chatInputRow');
             const filePreviewEl = $('filePreview');
             const chatViewport = $('chat-viewport');
 
@@ -1158,10 +1153,12 @@
             let dynamicBottomHeight = chatInputRow.offsetHeight; // Height of the input bar
 
             // If file preview is active, it sits directly above the input bar
-            if (filePreviewEl && filePreviewEl.classList.contains('active')) { // Check for active class
+            if (filePreviewEl && filePreviewEl.classList.contains('active')) {
                 // Adjust filePreview's bottom property dynamically
                 filePreviewEl.style.bottom = `${dynamicBottomHeight + 10}px`; // 10px buffer
                 dynamicBottomHeight += filePreviewEl.offsetHeight + 10; // Add its height + buffer
+            } else {
+                filePreviewEl.style.bottom = `-9999px`; // Hide it completely when not active
             }
 
             chatViewport.style.paddingBottom = `${dynamicBottomHeight + 20}px`; // Add extra 20px for clear view
@@ -1169,6 +1166,16 @@
             // Ensure scroll to bottom after padding adjustment
             chatViewport.scrollTop = chatViewport.scrollHeight;
         }
+
+        // --- ResizeObserver for input area to update chat padding dynamically ---
+        const chatInputRowObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if (entry.target.id === 'chatInputRow') {
+                    updateChatViewportPadding();
+                }
+            }
+        });
+
 
         window.addEventListener('DOMContentLoaded', () => {
             const profileMenuBg = $('profileMenuBg');
@@ -1219,20 +1226,16 @@
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
             const typingStatus = $('typing-status');
-            const chatInputRow = $('chatInputRow'); // Get the main input dock
+            const chatInputRow = $('chatInputRow'); // Get the input dock
 
-            if (!chatViewport || !userInput || !typingStatus || !chatInputRow) {
+            if (!chatInputRow || !chatViewport || !typingStatus) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
 
-            // Observe the input row for height changes and update chat padding
-            const resizeObserver = new ResizeObserver(() => {
-                updateChatViewportPadding();
-            });
-            resizeObserver.observe(chatInputRow);
-            // Initial padding update
-            updateChatViewportPadding();
+            // Start observing the chat input row for size changes
+            chatInputRowObserver.observe(chatInputRow);
+            updateChatViewportPadding(); // Initial padding setup
 
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
@@ -1241,8 +1244,8 @@
                     emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button">${em}</span>`).join('');
                     emojiPanel.classList.toggle('active');
                     const rect = emojiBtn.getBoundingClientRect();
-                    // Positioning relative to the input dock, adjusted dynamically by updateChatViewportPadding
-                    const inputDockHeight = chatInputRow ? chatInputRow.offsetHeight : 80;
+                    const inputDock = userInput.closest('.input-dock');
+                    const inputDockHeight = inputDock ? inputDock.offsetHeight : 80;
                     const panelWidth = emojiPanel.offsetWidth || 150;
 
                     let panelLeft = rect.left;
@@ -1254,7 +1257,6 @@
                     }
 
                     emojiPanel.style.left = `${panelLeft}px`;
-                    // Position above the input dock, considering dynamic padding
                     emojiPanel.style.bottom = `${inputDockHeight + 10}px`;
                 });
                 document.addEventListener('click', e => {
@@ -1281,7 +1283,7 @@
                     if (!userInput) return;
                     userInput.style.height = 'auto';
                     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
-                    updateChatViewportPadding(); // Keep padding updated
+                    updateChatViewportPadding(); // Update padding on input resize
                 };
                 userInput.addEventListener('input', autoResize);
                 userInput.addEventListener('keydown', e => {
@@ -1305,7 +1307,7 @@
                     fileObjectURLs = [];
                     uploadedFiles = Array.from(this.files || []);
                     renderFilePreview();
-                    updateChatViewportPadding(); // Update padding when files are added/removed
+                    updateChatViewportPadding(); // Update padding on file change
                 });
             }
 
@@ -1647,7 +1649,7 @@
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                // Removed redundant scrollTop call here, as updateChatViewportPadding handles final scroll
+                updateChatViewportPadding(); // Ensure latest content is visible after rendering
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -1752,8 +1754,8 @@
                             await startTypewriter(data.response, false);
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { await startTypewriter('❌ Regeneration stopped.', false); }
-                            else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
+                            if (err.name === 'AbortError') { return '❌ Regeneration stopped.'; }
+                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
                         } finally {
                             sendBtn.style.display = 'flex';
                             callBtn.style.display = 'flex';
@@ -1763,7 +1765,7 @@
                                 stopBtn._currentStopListener = null;
                             }
                             currentController = null;
-                            updateChatViewportPadding(); // Ensure padding is correct
+                            updateChatViewportPadding(); // Ensure padding is correct after response
                         }
                     };
                 });
@@ -1811,26 +1813,23 @@
                     typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
                 }
                 typingStatus.style.display = 'flex';
-                // Only scroll to bottom, padding update handled by observer
-                chatViewport.scrollTop = chatViewport.scrollHeight;
+                updateChatViewportPadding(); // Ensure visibility of typing status
             }
 
             function removeTypingStatus() {
                 if (!typingStatus) return;
                 typingStatus.style.display = 'none';
                 typingStatus.innerHTML = '';
+                updateChatViewportPadding(); // Recalculate padding after removing typing status
             }
             
             async function startTypewriter(text, saveToDb = true) {
-                if (!chatViewport) return;
-
-                // Handle direct media messages (images, audio, video)
                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = "message-group ai";
                     tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
                     chatViewport.insertBefore(tempDiv, typingStatus.style.display === 'flex' ? typingStatus : null);
-                    updateChatViewportPadding(); // Ensure scroll to bottom
+                    updateChatViewportPadding(); // Update padding after adding media
                     if (saveToDb && currentUser && currentChatId) {
                         try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
                         catch (e) { console.error("Error saving AI media message: ", e); }
@@ -1846,11 +1845,10 @@
                 chatViewport.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let sofar = '';
-                const words = text.split(/(\s+)/); // Split by words and keep spaces
-                let currentRenderingText = ''; 
-                
-                const baseDelay = 1; // Ultra fast
-                const punctuationDelay = 5; // Slightly longer for punctuation
+                const words = text.split(/(\s+)/);
+                let currentRenderingText = '';
+                const baseDelay = 0.5; // milliseconds per character/word fragment for ultra-fast typing
+                const punctuationDelay = 3; // Slightly longer for punctuation
 
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
@@ -1860,18 +1858,16 @@
                     currentRenderingText += word;
                     
                     let contentToRender = currentRenderingText;
-                    // Heuristic to try and keep markdown code blocks looking semi-coherent during typing
-                    if (contentToRender.includes('```')) {
-                        const codeBlockCount = (contentToRender.match(/```/g) || []).length;
-                        if (codeBlockCount % 2 !== 0) { // If an odd number of ` (unclosed code block)
-                            contentToRender += '```'; // Temporarily close it for rendering
-                        }
+                    // Simplified heuristic: if a code block starts, make sure it appears closed
+                    const codeBlockCount = (contentToRender.match(/```/g) || []).length;
+                    if (codeBlockCount % 2 !== 0) {
+                        contentToRender += '```';
                     }
 
                     msgBubble.innerHTML = renderMarkdown(contentToRender).html;
-                    updateChatViewportPadding(); // Scroll to bottom after every word
+                    updateChatViewportPadding(); // Call padding update here for continuous scrolling
 
-                    // Apply delay, slightly longer for punctuation
+                    // Determine delay based on content
                     const delay = word.match(/[\.\,\!\?]/) ? punctuationDelay : baseDelay;
                     await new Promise(res => setTimeout(res, delay));
                 }
@@ -1885,7 +1881,7 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                updateChatViewportPadding(); // Final scroll and padding adjustment
+                updateChatViewportPadding(); // Final padding update after full message is rendered
                 hookAiMsgControls();
 
                 if (saveToDb && currentUser && currentChatId) {
@@ -1902,7 +1898,6 @@
                     filePreview.innerHTML = '';
                     fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
                     fileObjectURLs = [];
-                    updateChatViewportPadding(); // Recalculate padding when preview closes
                     return;
                 }
                 filePreview.classList.add('active');
@@ -1946,10 +1941,9 @@
                         fileObjectURLs.splice(idx, 1);
                         if (!uploadedFiles.length && chatFile) chatFile.value = '';
                         renderFilePreview();
-                        updateChatViewportPadding(); // Recalculate padding after file removal
+                        updateChatViewportPadding(); // Update padding after file removal
                     });
                 });
-                updateChatViewportPadding(); // Ensure padding is correct when preview opens
             }
 
             function showAIImagePreview(base64, caption = '') {
@@ -1985,7 +1979,7 @@
                     let options;
 
                     if (isImageToVideo) {
-                        // For FormData, append individual fields
+                        // For FormData, the 'file' is already appended in handleSubmit. Add other params.
                         payload.append('model', commonPayload.model);
                         payload.append('duration', commonPayload.duration);
                         payload.append('resolution', commonPayload.resolution);
@@ -2099,8 +2093,7 @@
                         <label for="tool-file">Image to Edit</label><input type="file" id="tool-file" accept="image/*" required aria-label="Image to edit">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Apply Edit</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#tool-file');
-                        const file = fileInput?.files?.; // Get the first file
+                        const file = form.querySelector('#tool-file')?.files[0]; // Get the first file
                         const prompt = form.querySelector('#tool-prompt')?.value;
                         if (!file) return "Please select a file to edit.";
                         if (!prompt) return "Please provide an edit instruction.";
@@ -2132,8 +2125,7 @@
                         <label for="tool-file">Select Image File</label><input type="file" id="tool-file" accept="image/*" required style="display:block;margin-top:10px;" aria-label="Image file for background removal">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-scissors"></i> Remove Background</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#tool-file');
-                        const file = fileInput?.files?.; // Get the first file
+                        const file = form.querySelector('#tool-file')?.files[0]; // Get the first file
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Removing background...');
@@ -2189,7 +2181,7 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base66,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
+                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
                             const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                             removeTypingStatus();
                             await addMessageToChat('ai', comicMessage);
@@ -2267,8 +2259,7 @@
                         <label for="tool-file">Select File for Narration</label><input type="file" id="tool-file" accept="application/pdf, text/plain" required style="display:block;margin-top:10px;" aria-label="File for narration">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#tool-file');
-                        const file = fileInput?.files?.; // Get the first file
+                        const file = form.querySelector('#tool-file')?.files[0]; // Get the first file
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Analyzing and narrating document...');
@@ -2317,8 +2308,7 @@
                         <label for="video-image-file">Starting Image</label><input type="file" id="video-image-file" accept="image/*" required aria-label="Starting image for video"></input>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-play"></i> Start Generation</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#video-image-file');
-                        const file = fileInput?.files?.; // Get the first file
+                        const file = form.querySelector('#video-image-file')?.files[0]; // Get the first file
                         const prompt = form.querySelector('#video-image-prompt')?.value;
                         if (!file) return "Please select an image.";
                         if (!prompt) return "Please provide an animation prompt.";
@@ -2341,8 +2331,7 @@
                     handleSubmit: async (form) => {
                         const prompt = form.querySelector('#music-prompt')?.value;
                         const lyrics = form.querySelector('#music-lyrics')?.value;
-                        const refFileInput = form.querySelector('#music-ref');
-                        const refFile = refFileInput?.files?.; // Get the first file
+                        const refFile = form.querySelector('#music-ref')?.files[0]; // Get the first file
                         if (!prompt) return "Please provide a music prompt.";
                         const payload = { prompt, lyrics, model: 'music-1.5' };
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
@@ -2547,7 +2536,7 @@
                             stopBtn._currentStopListener = null;
                         }
                         currentController = null;
-                        updateChatViewportPadding(); // Ensure padding is correct
+                        updateChatViewportPadding(); // Ensure padding is correct after tool completion
                     }
                 });
             }
@@ -2594,13 +2583,14 @@
                             stopBtn._currentStopListener = null;
                         }
                         currentController = null;
-                        updateChatViewportPadding(); // Ensure padding is correct
+                        updateChatViewportPadding(); // Ensure padding is correct after tool form submission
                     }
                 };
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
+            // Moved sendMessage to global scope as it's called from onclick
             window.sendMessage = async function() {
                 if (!currentChatId || !userInput) return;
                 const msgText = userInput.value.trim();
@@ -2630,25 +2620,25 @@
                 uploadedFiles = [];
                 renderFilePreview();
                 userInput.style.height = 'auto'; // Reset input height
-                updateChatViewportPadding(); // Ensure padding is correct after user message
+                updateChatViewportPadding(); // Update padding immediately after user message
 
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const fileToUpload = localUploadedFiles; // **FIXED: Use the first file for FormData**
-                    if (fileToUpload.type && fileToUpload.type.startsWith('image/')) endpoint = '/understand-image';
-                    else if (fileToUpload.type === 'application/pdf') endpoint = '/understand-pdf';
-                    else if (fileToUpload.type && fileToUpload.type.startsWith('audio/')) endpoint = '/understand-audio';
-                    else if (fileToUpload.type && fileToUpload.type.startsWith('video/')) endpoint = '/understand-video';
+                    const fileToUpload = localUploadedFiles[0]; // Get the first file to upload
+                    if (fileToUpload && fileToUpload.type && fileToUpload.type.startsWith('image/')) endpoint = '/understand-image';
+                    else if (fileToUpload && fileToUpload.type === 'application/pdf') endpoint = '/understand-pdf';
+                    else if (fileToUpload && fileToUpload.type && fileToUpload.type.startsWith('audio/')) endpoint = '/understand-audio';
+                    else if (fileToUpload && fileToUpload.type && fileToUpload.type.startsWith('video/')) endpoint = '/understand-video';
                     else {
                         removeTypingStatus();
                         finalResponse = "Sorry, I can't analyze that file type.";
                     }
                     try {
-                        if(endpoint) {
+                        if(endpoint && fileToUpload) {
                             const fd = new FormData();
                             fd.append('prompt', msgText || `Describe this ${fileToUpload.type?.split('/')[0] || 'file'}`);
-                            fd.append('file', fileToUpload); // **FIXED: Append the specific File object**
+                            fd.append('file', fileToUpload); // Append the actual File object
                             const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || "Analysis failed.");
@@ -2658,7 +2648,7 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus(); // Show "..." typing animation
+                    showTypingStatus();
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -2688,7 +2678,7 @@
                     stopBtn._currentStopListener = null;
                 }
                 currentController = null;
-                updateChatViewportPadding(); // Final padding update
+                updateChatViewportPadding(); // Final padding update after AI response
             }
 
             // Call Modal Voice Model Selection Logic
@@ -2735,15 +2725,14 @@
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
                 speechRecognition = new SpeechRecognition();
-                speechRecognition.continuous = true;
+                speechRecognition.continuous = false; // Set to false to better control start/stop cycles
                 speechRecognition.interimResults = true;
                 speechRecognition.lang = 'en-US';
 
                 speechRecognition.onstart = () => {
                     isRecognizing = true;
                     console.log("Speech recognition started.");
-                    if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
-                    if (tapToTalk) tapToTalk.style.display = 'none';
+                    if (userSpeechWave) userSpeechWave.classList.add('active');
                 };
 
                 speechRecognition.onresult = (event) => {
@@ -2751,27 +2740,36 @@
                     let interimTranscript = '';
                     let finalTranscript = '';
                     userSaidSomething = true;
-                    if (userSpeechWave) userSpeechWave.classList.add('active');
+                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Keep wave active during speech
+
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
                         else interimTranscript += event.results[i].transcript;
                     }
+
                     let userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
                     if (!userMsgEl && callConversation) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
                         callConversation.appendChild(userMsgEl);
-                        if (userSpeechWave) callConversation.appendChild(userSpeechWave); // Ensure wave is at the bottom
                     }
                     if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
                     if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
                     if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'User Speaking (Final)' : 'User Speaking...';
                     if (tapToTalk) tapToTalk.style.display = 'none';
+
+                    if (event.results[event.results.length - 1].isFinal) {
+                         // A final result has been received, stop recognition to process it
+                         // The onend event will then handle processing and restarting if needed
+                         try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition after final result:", e); }
+                    }
                 };
 
                 speechRecognition.onspeechend = () => {
+                    // This event fires when speech stops being detected.
+                    // The onend event will fire shortly after, which is where we'll handle actual processing.
+                    console.log("Speech ended detected.");
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    console.log("Speech ended.");
                 };
 
                 speechRecognition.onend = () => {
@@ -2782,6 +2780,7 @@
                     
                     if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
+                        if (tapToTalk) tapToTalk.style.display = 'none';
                         return;
                     }
                     
@@ -2791,17 +2790,19 @@
                         finalTranscript = userMsgEl.textContent.trim();
                         userMsgEl.classList.remove('interim');
                         if (finalTranscript === '') userMsgEl.remove();
+                        else userMsgEl.textContent = finalTranscript; // Ensure final text is set for non-empty message
                     }
 
                     if (botIsSpeaking) {
                         // Bot is speaking, its onended will restart recognition (in speakBotResponse's finally block)
-                        // Do nothing here to avoid conflicts.
+                        console.log("Bot is speaking, deferring user speech handling.");
                     } else if (finalTranscript && userSaidSomething) {
                         userSaidSomething = false; // Reset for next user turn
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else {
-                        // No speech or no final transcript, just restart listening if active and not muted
+                        // No speech or empty transcript, restart listening if conditions allow
+                        console.log("No meaningful user speech, restarting recognition.");
                         if (isCallActive && !isMuted && !isRecognizing) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
@@ -2816,20 +2817,23 @@
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
 
-                    if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
-                        endCall(); // End the call if permission is denied
-                    } else if (event.error === 'no-speech' && isCallActive && !isMuted) {
+                    if (event.error === 'no-speech' && isCallActive && !isMuted) {
                         userSaidSomething = false; // Ensure flag is reset even if no speech
-                        if (speechRecognition && isRecognizing) {
-                            try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition on no-speech error:", e); }
+                        if (callStatusMessage) callStatusMessage.textContent = 'No speech detected. Listening... (Tap to Speak)';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        if (speechRecognition && !isRecognizing) { // Restart only if not already recognizing
+                            try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after 'no-speech' error:", e); }
                         }
                     } else if (event.error === 'network' && isCallActive) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Network error. Attempting restart...';
-                        if (speechRecognition && isRecognizing) {
-                            try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition on network error:", e); }
+                        if (callStatusMessage) callStatusMessage.textContent = 'Network error. Retrying...';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        if (speechRecognition && !isRecognizing) {
+                            try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after network error:", e); }
                         }
-                    } else if (isCallActive && !isMuted && !isRecognizing) { // Only restart if not already recognizing and call is active/not muted
+                    } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
+                        endCall(); // End the call if permission is denied
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
                         try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
@@ -2845,8 +2849,8 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                callConversation.appendChild(msgEl);
-                callConversation.scrollTop = callConversation.scrollHeight;
+                callConversation.appendChild(msgEl); // Append, then scroll
+                if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
@@ -2859,6 +2863,7 @@
                     try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
                 }
 
+                // Ensure callHistory is clean and contains only 'role' and 'content' for the API
                 const historyForBot = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
                 
@@ -2868,7 +2873,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             message: userMessage,
-                            history: historyForBot.slice(0, -1), // Exclude the latest user message as 'message' parameter
+                            history: historyForBot.slice(0, -1), // Send all but the latest user message as history
                             user_id: currentUser?.uid || "user",
                             call_context: true // Signal to backend for blunt responses
                         })
@@ -2896,11 +2901,6 @@
                 botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                 try {
-                    // Stop speech recognition while bot is speaking
-                    if (speechRecognition && isRecognizing) {
-                        try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot speaks:", e); }
-                    }
-
                     let res;
                     if (selectedCallVoiceProvider === 'gemini') {
                         const fd = new FormData();
@@ -2924,9 +2924,8 @@
                         botIsSpeaking = false;
                         if (botImageContainer) botImageContainer.classList.remove('speaking');
                         currentAudio = null;
-                        URL.revokeObjectURL(url); // Clean up audio object URL
-
-                        if (isCallActive && !isMuted && !isRecognizing) { // Restart recognition after bot speaks
+                        URL.revokeObjectURL(url);
+                        if (isCallActive && !isMuted && !isRecognizing) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
@@ -2940,7 +2939,7 @@
                     console.error("Voice generation error:", err);
                     botIsSpeaking = false;
                     if (botImageContainer) botImageContainer.classList.remove('speaking');
-                    if (isCallActive && !isMuted && !isRecognizing) { // Restart recognition after voice error
+                    if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
                         try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
@@ -2956,7 +2955,7 @@
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
-                    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src); // Clean up audio object URL
+                    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src);
                     currentAudio = null;
                 }
                 botIsSpeaking = false;
@@ -3014,29 +3013,19 @@
                     callHistory = [];
                     userSaidSomething = false;
 
-                    // Attempt to start recognition immediately to trigger permission prompt
+                    // Immediately try to start recognition to prompt for permission
                     if (!isRecognizing) {
-                        try { 
-                            speechRecognition.start(); 
-                        } catch(e) { 
-                            console.error("Speech recognition start failed on callBtn click (initial):", e); 
-                            if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.'; 
-                            // Don't proceed with the call connection if initial start fails critically
-                            isCallActive = false;
-                            callModal.classList.remove('active');
-                            return;
-                        }
+                        try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed on callBtn click (initial):", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.'; }
                     }
 
                     setTimeout(() => {
-                        if (!isCallActive) return; // Check if call was ended during timeout (e.g. by permission denial)
+                        if (!isCallActive) return; // Check if call was ended during timeout
                         addCallMessage('status', 'Call Connected. Speak when ready.');
-                        // Status and tapToTalk will be updated by onstart/onend handlers if recognition is active
-                        if (isRecognizing) { // If it started successfully
-                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                            if (tapToTalk) tapToTalk.style.display = 'block';
-                        } else { // If for some reason it's not recognizing despite trying, try again or show error
-                             if (callStatusMessage) callStatusMessage.textContent = 'Could not start microphone. Check permissions.';
+                        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        // if speechRecognition is already recognizing (due to initial start), no need to restart
+                        if (!isRecognizing && !isMuted) { 
+                             try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to start after connection message:", e); }
                         }
                     }, 1500);
                 });
@@ -3057,6 +3046,7 @@
                 if (speechRecognition) {
                     try { speechRecognition.abort(); } catch(e) { console.warn("Failed to abort speech recognition on call end:", e); }
                 }
+                if (userSpeechWave) userSpeechWave.classList.remove('active');
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
                 callStatusMessage.textContent = 'Call Ended.';
@@ -3093,7 +3083,6 @@
             }
 
             if(userInput) userInput.focus();
-            updateChatViewportPadding(); // Final initial padding adjustment after all DOM is ready
         });
     </script>
 </body>
