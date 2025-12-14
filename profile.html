@@ -684,6 +684,7 @@
         #callSettings label {
             color: var(--main-text-color);
             font-size: 0.9em;
+            white-space: nowrap;
         }
         #callSettings select {
             background: rgba(10, 10, 20, 0.7);
@@ -1531,7 +1532,6 @@
                     }
                     const btn = pre.querySelector('.copy-btn');
                     if (btn && codeEl) {
-                        // IMPORTANT: Remove and re-add button to clear old event listeners
                         const oldBtn = btn.cloneNode(true);
                         btn.parentNode.replaceChild(oldBtn, btn);
                         const newBtn = pre.querySelector('.copy-btn');
@@ -1600,7 +1600,7 @@
                 enhanceCodeBlocks(chatView);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50);
+                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 100); // Small delay for rendering
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -1738,8 +1738,8 @@
                 if (!typingStatus || !chatView) return;
                 typingStatus.innerHTML = `<div class="msg">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>`}</div>`;
                 typingStatus.style.display = 'flex';
-                chatView.appendChild(typingStatus);
-                if (chatView) chatView.scrollTop = chatView.scrollHeight;
+                chatView.appendChild(typingStatus); // Ensure typing status is at the very bottom
+                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50); // Auto-scroll to typing
             }
 
             function removeTypingStatus() {
@@ -1749,12 +1749,13 @@
             }
             
             async function startTypewriter(text, saveToDb = true) {
+                // Handle direct media responses (img, audio, video tags)
                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = "message-group ai";
                     tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
                     chatView.insertBefore(tempDiv, typingStatus.style.display === 'flex' ? typingStatus : null);
-                    chatView.scrollTop = chatView.scrollHeight;
+                    setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 100);
                     if (saveToDb && currentUser && currentChatId) {
                         try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
                         catch (e) { console.error("Error saving AI media message: ", e); }
@@ -1762,6 +1763,7 @@
                     return;
                 }
 
+                // For text-based responses, do typewriter effect
                 const div = document.createElement('div');
                 div.className = "message-group ai";
                 const msgBubble = document.createElement('div');
@@ -1770,19 +1772,20 @@
                 chatView.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let sofar = '';
-                const words = text.split(/(\s+)/);
+                const words = text.split(/(\s+)/); // Split by spaces, keeping them
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
-                        text = sofar;
+                        text = sofar; // Use the text typed so far if aborted
                         break;
                     }
                     sofar += word;
                     msgBubble.innerHTML = renderMarkdown(sofar).html;
-                    chatView.scrollTop = chatView.scrollHeight;
-                    const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30;
+                    setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50); // Scroll while typing
+                    const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster for punctuation/spaces
                     await new Promise(res => setTimeout(res, delay));
                 }
                 
+                // Final render with full markdown and controls
                 msgBubble.innerHTML = renderMarkdown(text).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
@@ -1791,8 +1794,8 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                chatView.scrollTop = chatView.scrollHeight;
-                hookAiMsgControls();
+                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 100); // Final scroll to ensure controls visible
+                hookAiMsgControls(); // Re-hook controls for the new message
 
                 if (saveToDb && currentUser && currentChatId) {
                     try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
@@ -2402,17 +2405,28 @@
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     
+                    // New AbortController for each tool action
                     currentController = new AbortController(); 
 
+                    // Show stop button for tool actions
                     if (sendBtn) sendBtn.style.display = 'none';
                     if (callBtn) callBtn.style.display = 'none';
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
-                        const oldStopListener = stopBtn._toolStopListener;
-                        if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
-                        const newStopListener = () => { if (currentController) currentController.abort(); };
-                        stopBtn.addEventListener('click', newStopListener, { once: true });
-                        stopBtn._toolStopListener = newStopListener;
+                        // Ensure only one listener for tool stop button at a time
+                        const oldToolStopListener = stopBtn._toolStopListener;
+                        if (oldToolStopListener) stopBtn.removeEventListener('click', oldToolStopListener);
+                        const newToolStopListener = () => { 
+                            if (currentController) currentController.abort(); 
+                            // Visual reset for stop button state immediately
+                            if (sendBtn) sendBtn.style.display = 'flex';
+                            if (callBtn) callBtn.style.display = 'flex';
+                            if (stopBtn) stopBtn.style.display = 'none';
+                            currentController = null; // Clear controller
+                            removeTypingStatus(); // Also hide typing status
+                        };
+                        stopBtn.addEventListener('click', newToolStopListener, { once: true });
+                        stopBtn._toolStopListener = newToolStopListener; // Store the listener reference
                     }
 
                     closeToolMenu();
@@ -2422,10 +2436,15 @@
                         displayToolForm(toolKey);
                     }
 
-                    if (sendBtn) sendBtn.style.display = 'flex';
-                    if (callBtn) callBtn.style.display = 'flex';
-                    if (stopBtn) stopBtn.style.display = 'none';
-                    currentController = null;
+                    // Reset buttons and controller after tool action/form submission
+                    // Note: For polling actions like video gen, their handlers need to manage stopBtn state
+                    // The generic reset here covers non-polling or immediate actions
+                    if (!currentController || currentController.signal.aborted) { // Only reset if not still active (e.g., polling)
+                         if (sendBtn) sendBtn.style.display = 'flex';
+                         if (callBtn) callBtn.style.display = 'flex';
+                         if (stopBtn) stopBtn.style.display = 'none';
+                         currentController = null;
+                    }
                 });
             }
 
@@ -2458,10 +2477,13 @@
                         submitButton.innerHTML = originalButtonContent;
                         submitButton.disabled = false;
                     }
-                    if (sendBtn) sendBtn.style.display = 'flex';
-                    if (callBtn) callBtn.style.display = 'flex';
-                    if (stopBtn) stopBtn.style.display = 'none';
-                    currentController = null;
+                    // Reset buttons and controller after tool form submission
+                    if (!currentController || currentController.signal.aborted) {
+                        if (sendBtn) sendBtn.style.display = 'flex';
+                        if (callBtn) callBtn.style.display = 'flex';
+                        if (stopBtn) stopBtn.style.display = 'none';
+                        currentController = null;
+                    }
                 };
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
@@ -2481,9 +2503,11 @@
                 let finalResponse = '';
 
                 if (stopBtn) {
-                    const oldStopListener = stopBtn._chatStopListener;
-                    if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
-                    const newStopListener = () => {
+                    // Remove previous chat stop listener if exists
+                    const oldChatStopListener = stopBtn._chatStopListener;
+                    if (oldChatStopListener) stopBtn.removeEventListener('click', oldChatStopListener);
+
+                    const newChatStopListener = () => {
                         if (currentController) currentController.abort();
                         removeTypingStatus();
                         if (sendBtn) sendBtn.style.display = 'flex';
@@ -2491,8 +2515,8 @@
                         if (callBtn) callBtn.style.display = 'flex';
                         currentController = null;
                     };
-                    stopBtn.addEventListener('click', newStopListener, { once: true });
-                    stopBtn._chatStopListener = newStopListener;
+                    stopBtn.addEventListener('click', newChatStopListener, { once: true });
+                    stopBtn._chatStopListener = newChatStopListener; // Store reference
                 }
 
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
@@ -2529,7 +2553,7 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus();
+                    showTypingStatus(); // Show "..." typing animation
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
