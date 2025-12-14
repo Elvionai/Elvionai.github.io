@@ -684,7 +684,6 @@
         #callSettings label {
             color: var(--main-text-color);
             font-size: 0.9em;
-            white-space: nowrap;
         }
         #callSettings select {
             background: rgba(10, 10, 20, 0.7);
@@ -1532,6 +1531,7 @@
                     }
                     const btn = pre.querySelector('.copy-btn');
                     if (btn && codeEl) {
+                        // IMPORTANT: Remove and re-add button to clear old event listeners
                         const oldBtn = btn.cloneNode(true);
                         btn.parentNode.replaceChild(oldBtn, btn);
                         const newBtn = pre.querySelector('.copy-btn');
@@ -1600,7 +1600,7 @@
                 enhanceCodeBlocks(chatView);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 100); // Small delay for rendering
+                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50);
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -1738,8 +1738,9 @@
                 if (!typingStatus || !chatView) return;
                 typingStatus.innerHTML = `<div class="msg">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>`}</div>`;
                 typingStatus.style.display = 'flex';
-                chatView.appendChild(typingStatus); // Ensure typing status is at the very bottom
-                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50); // Auto-scroll to typing
+                // Always append and scroll to ensure visibility
+                chatView.appendChild(typingStatus);
+                if (chatView) chatView.scrollTop = chatView.scrollHeight;
             }
 
             function removeTypingStatus() {
@@ -1749,13 +1750,12 @@
             }
             
             async function startTypewriter(text, saveToDb = true) {
-                // Handle direct media responses (img, audio, video tags)
                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = "message-group ai";
                     tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
                     chatView.insertBefore(tempDiv, typingStatus.style.display === 'flex' ? typingStatus : null);
-                    setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 100);
+                    chatView.scrollTop = chatView.scrollHeight;
                     if (saveToDb && currentUser && currentChatId) {
                         try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
                         catch (e) { console.error("Error saving AI media message: ", e); }
@@ -1763,7 +1763,6 @@
                     return;
                 }
 
-                // For text-based responses, do typewriter effect
                 const div = document.createElement('div');
                 div.className = "message-group ai";
                 const msgBubble = document.createElement('div');
@@ -1772,20 +1771,19 @@
                 chatView.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let sofar = '';
-                const words = text.split(/(\s+)/); // Split by spaces, keeping them
+                const words = text.split(/(\s+)/);
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
-                        text = sofar; // Use the text typed so far if aborted
+                        text = sofar;
                         break;
                     }
                     sofar += word;
                     msgBubble.innerHTML = renderMarkdown(sofar).html;
-                    setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50); // Scroll while typing
-                    const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster for punctuation/spaces
+                    chatView.scrollTop = chatView.scrollHeight;
+                    const delay = word.match(/[\s\.\,\!\?]/) ? 10 : 30;
                     await new Promise(res => setTimeout(res, delay));
                 }
                 
-                // Final render with full markdown and controls
                 msgBubble.innerHTML = renderMarkdown(text).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
@@ -1794,8 +1792,8 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 100); // Final scroll to ensure controls visible
-                hookAiMsgControls(); // Re-hook controls for the new message
+                chatView.scrollTop = chatView.scrollHeight;
+                hookAiMsgControls();
 
                 if (saveToDb && currentUser && currentChatId) {
                     try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
@@ -1854,6 +1852,7 @@
                         fileObjectURLs.splice(idx, 1);
                         if (!uploadedFiles.length && chatFile) chatFile.value = '';
                         renderFilePreview();
+                        if (chatView) chatView.scrollTop = chatView.scrollHeight; // Scroll to ensure preview changes are visible
                     });
                 });
             }
@@ -2060,15 +2059,38 @@
                 },
                 "comic": {
                     title: "Create Comic",
-                    description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
+                    description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story. Version 1 uses different image generation models per panel. Version 2 (MiniMax) generates the whole strip.",
                     buildForm: () => `
                         <label for="comic-model">Generation Model</label>
-                        <select id="comic-model" aria-label="Comic generation model"><option value="thena">Version 1 (Themed Styles)</option><option value="minimax">Version 2 (Creative/Realistic)</option></select>
+                        <select id="comic-model" aria-label="Comic generation model">
+                            <option value="thena">Version 1 (Themed Styles, panel by panel)</option>
+                            <option value="minimax">Version 2 (Creative/Realistic, full strip)</option>
+                        </select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style">Comic Style (for Version1 only)</label>
+                        <label for="tool-style" id="comicStyleLabel">Comic Style (for Version 1 only)</label>
                         <select id="tool-style" aria-label="Comic style">${comicStyles.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
+                    onFormReady: () => {
+                        const comicModelSelect = $('comic-model');
+                        const comicStyleSelect = $('tool-style');
+                        const comicStyleLabel = $('comicStyleLabel');
+                        const panelsInput = $('tool-panels');
+
+                        const toggleStyleVisibility = () => {
+                            const isThena = comicModelSelect.value === 'thena';
+                            comicStyleSelect.style.display = isThena ? 'block' : 'none';
+                            comicStyleLabel.style.display = isThena ? 'block' : 'none';
+                            panelsInput.max = isThena ? "6" : "1"; // MiniMax comic is usually one large image. If it supports more, adjust this.
+                            panelsInput.value = Math.min(parseInt(panelsInput.value), parseInt(panelsInput.max));
+                            panelsInput.disabled = !isThena; // Disable panels for MiniMax if it's one large image
+                        };
+
+                        if (comicModelSelect) {
+                            comicModelSelect.addEventListener('change', toggleStyleVisibility);
+                            toggleStyleVisibility(); // Set initial state
+                        }
+                    },
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#comic-model')?.value === 'minimax';
                         const modelName = use_minimax ? 'Version 2 (Creative/Realistic)' : 'Version 1 (Themed Styles)';
@@ -2076,19 +2098,45 @@
                         const style = form.querySelector('#tool-style')?.value;
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
                         if (!story) return "Please provide a comic story.";
-                        const payload = { story, style, panels, user: currentUser?.displayName || "User", use_minimax };
+
                         await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (using ${modelName})`);
                         showTypingStatus('Generating your comic panels...');
+
                         try {
-                            const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload),
-                                signal: currentController?.signal
-                            });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || res.statusText);
-                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
+                            let imagesHtml = '';
+                            if (use_minimax) {
+                                // Use the dedicated /api/tools/generate-comic endpoint for MiniMax
+                                const payload = { story, use_minimax: true };
+                                const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(payload),
+                                    signal: currentController?.signal
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error || res.statusText);
+                                imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
+                            } else {
+                                // For Thena (Version 1), generate image for each panel
+                                const generatedImages = [];
+                                for (let i = 0; i < panels; i++) {
+                                    if (currentController?.signal.aborted) throw new Error("Comic generation stopped.");
+                                    showTypingStatus(`Generating panel ${i + 1} of ${panels}...`);
+                                    const panelPrompt = `${story} (Panel ${i + 1} of ${panels} in ${style} comic style)`;
+                                    const payload = { prompt: panelPrompt, model: style, use_minimax: false };
+                                    const res = await fetch(`${API_BASE_URL}/generate-image`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(payload),
+                                        signal: currentController?.signal
+                                    });
+                                    const data = await res.json();
+                                    if (!res.ok) throw new Error(data.error || `Failed to generate panel ${i+1}.`);
+                                    generatedImages.push(data.image_b64);
+                                }
+                                imagesHtml = generatedImages.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
+                            }
+                            
                             const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                             removeTypingStatus();
                             await addMessageToChat('ai', comicMessage);
@@ -2405,28 +2453,17 @@
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     
-                    // New AbortController for each tool action
                     currentController = new AbortController(); 
 
-                    // Show stop button for tool actions
                     if (sendBtn) sendBtn.style.display = 'none';
                     if (callBtn) callBtn.style.display = 'none';
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
-                        // Ensure only one listener for tool stop button at a time
-                        const oldToolStopListener = stopBtn._toolStopListener;
-                        if (oldToolStopListener) stopBtn.removeEventListener('click', oldToolStopListener);
-                        const newToolStopListener = () => { 
-                            if (currentController) currentController.abort(); 
-                            // Visual reset for stop button state immediately
-                            if (sendBtn) sendBtn.style.display = 'flex';
-                            if (callBtn) callBtn.style.display = 'flex';
-                            if (stopBtn) stopBtn.style.display = 'none';
-                            currentController = null; // Clear controller
-                            removeTypingStatus(); // Also hide typing status
-                        };
-                        stopBtn.addEventListener('click', newToolStopListener, { once: true });
-                        stopBtn._toolStopListener = newToolStopListener; // Store the listener reference
+                        const oldStopListener = stopBtn._toolStopListener;
+                        if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
+                        const newStopListener = () => { if (currentController) currentController.abort(); };
+                        stopBtn.addEventListener('click', newStopListener, { once: true });
+                        stopBtn._toolStopListener = newStopListener;
                     }
 
                     closeToolMenu();
@@ -2436,15 +2473,10 @@
                         displayToolForm(toolKey);
                     }
 
-                    // Reset buttons and controller after tool action/form submission
-                    // Note: For polling actions like video gen, their handlers need to manage stopBtn state
-                    // The generic reset here covers non-polling or immediate actions
-                    if (!currentController || currentController.signal.aborted) { // Only reset if not still active (e.g., polling)
-                         if (sendBtn) sendBtn.style.display = 'flex';
-                         if (callBtn) callBtn.style.display = 'flex';
-                         if (stopBtn) stopBtn.style.display = 'none';
-                         currentController = null;
-                    }
+                    if (sendBtn) sendBtn.style.display = 'flex';
+                    if (callBtn) callBtn.style.display = 'flex';
+                    if (stopBtn) stopBtn.style.display = 'none';
+                    currentController = null;
                 });
             }
 
@@ -2477,13 +2509,10 @@
                         submitButton.innerHTML = originalButtonContent;
                         submitButton.disabled = false;
                     }
-                    // Reset buttons and controller after tool form submission
-                    if (!currentController || currentController.signal.aborted) {
-                        if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex';
-                        if (stopBtn) stopBtn.style.display = 'none';
-                        currentController = null;
-                    }
+                    if (sendBtn) sendBtn.style.display = 'flex';
+                    if (callBtn) callBtn.style.display = 'flex';
+                    if (stopBtn) stopBtn.style.display = 'none';
+                    currentController = null;
                 };
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
@@ -2503,11 +2532,9 @@
                 let finalResponse = '';
 
                 if (stopBtn) {
-                    // Remove previous chat stop listener if exists
-                    const oldChatStopListener = stopBtn._chatStopListener;
-                    if (oldChatStopListener) stopBtn.removeEventListener('click', oldChatStopListener);
-
-                    const newChatStopListener = () => {
+                    const oldStopListener = stopBtn._chatStopListener;
+                    if (oldStopListener) stopBtn.removeEventListener('click', oldStopListener);
+                    const newStopListener = () => {
                         if (currentController) currentController.abort();
                         removeTypingStatus();
                         if (sendBtn) sendBtn.style.display = 'flex';
@@ -2515,8 +2542,8 @@
                         if (callBtn) callBtn.style.display = 'flex';
                         currentController = null;
                     };
-                    stopBtn.addEventListener('click', newChatStopListener, { once: true });
-                    stopBtn._chatStopListener = newChatStopListener; // Store reference
+                    stopBtn.addEventListener('click', newStopListener, { once: true });
+                    stopBtn._chatStopListener = newStopListener;
                 }
 
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
@@ -2553,7 +2580,7 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus(); // Show "..." typing animation
+                    showTypingStatus();
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
