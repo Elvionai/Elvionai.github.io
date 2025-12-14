@@ -43,8 +43,7 @@
             --current-bg-blend-mode: screen; /* Default to screen for vibrant nebulae */
             --body-base-bg: #050714; /* Base background for the body */
 
-            /* Dynamic height for elements positioned above the input dock */
-            --input-dock-height: 100px; /* Default, will be updated by JS */
+            --input-dock-height: 100px; /* Default, overridden by JS */
         }
 
         /* --- GLOBAL RESET & BASE STYLES --- */
@@ -708,6 +707,26 @@
             text-shadow: 0 0 8px var(--neon-blue);
             user-select: none;
         }
+        #callBotVoiceSelection {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #callBotVoiceSelection label {
+            color: var(--main-text-color);
+            font-size: 0.95em;
+        }
+        #callBotVoiceSelection select {
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--neon-blue);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--main-text-color);
+            font-size: 0.9em;
+            outline: none;
+        }
+
 
         #tapToTalk {
             color: var(--neon-purple); font-size: 1.2em; margin-top: 5px;
@@ -836,10 +855,10 @@
             .thruster-btn { width: 50px; height: 50px; }
             .side-panel { width: 100vw; border-radius: 0; left: -100vw; } /* Full width on mobile */
             .side-panel.active { left: 0; }
-            #filePreview { width: calc(100% - 20px); } /* bottom property handled by JS */
+            #filePreview { width: calc(100% - 20px); bottom: var(--input-dock-height); }
             #ai-image-preview { right: 10px; bottom: var(--input-dock-height); max-width: 250px; }
             #ai-image-preview #ai-image-container img { max-width: 170px; max-height: 170px; }
-            .chat-controls-menu { left: 10px; width: calc(100% - 20px); max-height: 150px; } /* bottom property handled by JS */
+            .chat-controls-menu { left: 10px; bottom: calc(var(--input-dock-height) + 10px); width: calc(100% - 20px); max-height: 150px; }
             .message-group { max-width: 95%; }
             .header-welcome { top: 50px; font-size: 0.75em; }
         }
@@ -896,7 +915,7 @@
     </div>
 
     <div id="emojiPanel" class="chat-controls-menu"></div>
-    <div id="filePreview" class="file-preview-bar"></div> <!-- Changed to .file-preview-bar for custom styling -->
+    <div id="filePreview" class="file-preview-bar"></div>
 
     <div class="panel-bg" id="profileMenuBg">
         <nav class="side-panel" id="profileMenu" role="menu" aria-label="Profile and Chat Menu">
@@ -1008,6 +1027,10 @@
             <div id="botSpeakingIndicator"></div>
         </div>
         <div id="callStatusMessage">Connecting...</div>
+        <div id="callBotVoiceSelection">
+            <label for="callBotVoiceSelect">Bot Voice:</label>
+            <select id="callBotVoiceSelect" aria-label="Select bot voice"></select>
+        </div>
         <div id="tapToTalk">Tap Anywhere to Speak</div>
         <div id="callConversation">
             <div class="call-msg status">Waiting for connection...</div>
@@ -1150,6 +1173,7 @@
             const lightbox = $('lightbox');
             const callBtn = $('callBtn');
             const callModal = $('callModal');
+            const callBotVoiceSelect = $('callBotVoiceSelect');
             const endCallBtn = $('endCallBtn');
             const muteCallBtn = $('muteCallBtn');
             const callConversation = $('callConversation');
@@ -1161,24 +1185,16 @@
             const userSpeechWave = $('userSpeechWave');
             const inputDock = document.querySelector('.input-dock');
 
-            if (!chatView || !userInput || !typingStatus || !headerWelcome || !inputDock || !filePreview || !emojiPanel) {
+            if (!chatView || !userInput || !typingStatus || !headerWelcome || !inputDock) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
-                // alert("Essential UI elements are missing. Please ensure all IDs are correct in the HTML.");
                 return;
             }
 
-            // Update CSS variable for file preview and emoji panel positioning dynamically
+            // Update CSS variable for file preview positioning dynamically
             const updateInputDockHeight = () => {
-                if (inputDock) {
-                    document.documentElement.style.setProperty('--input-dock-height', `${inputDock.offsetHeight + 10}px`);
-                }
+                document.documentElement.style.setProperty('--input-dock-height', `${inputDock.offsetHeight + 10}px`);
             };
-            // Use MutationObserver to detect changes in input-dock content (like textarea resizing)
-            const inputDockObserver = new MutationObserver(updateInputDockHeight);
-            if (inputDock) {
-                inputDockObserver.observe(inputDock, { childList: true, subtree: true, attributes: true });
-                new ResizeObserver(updateInputDockHeight).observe(inputDock); // Also observe direct resize
-            }
+            new ResizeObserver(updateInputDockHeight).observe(inputDock);
             updateInputDockHeight(); // Initial set
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
@@ -1224,7 +1240,6 @@
                     if (!userInput) return;
                     userInput.style.height = 'auto';
                     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
-                    updateInputDockHeight(); // Ensure dock height updates with textarea
                 };
                 userInput.addEventListener('input', autoResize);
                 userInput.addEventListener('keydown', e => {
@@ -1233,6 +1248,7 @@
                         sendMessage();
                     } else if (e.key === 'Enter' && e.shiftKey) {
                         // Default browser behavior for Shift+Enter is new line, we can allow it
+                        // Or prevent and manually insert if more control is needed
                         const start = userInput.selectionStart;
                         const end = userInput.selectionEnd;
                         userInput.value = userInput.value.substring(0, start) + "\n" + userInput.value.substring(end);
@@ -1417,7 +1433,7 @@
 
             function renderChatsListSidebar() {
                 if (!chatsListEl) return;
-                chatsListEl.innerHTML = ''; // Clear existing messages
+                chatsListEl.innerHTML = '';
                 if (chats.length === 0) {
                     chatsListEl.innerHTML = `<div class="message-group system" style="padding: 10px;">No chats yet.</div>`;
                     return;
@@ -1530,8 +1546,8 @@
                     if (btn && codeEl) {
                         // Re-attach event listener to ensure it's fresh after re-rendering
                         const oldBtn = btn.cloneNode(true); // Clone to remove old listeners
-                        btn.parentNode.replaceChild(oldBtn, btn); // Replace with new button
-                        const newBtn = pre.querySelector('.copy-btn'); // Get reference to the new button
+                        btn.parentNode.replaceChild(oldBtn, btn);
+                        const newBtn = pre.querySelector('.copy-btn');
 
                         newBtn.addEventListener('click', async () => {
                             try {
@@ -1598,7 +1614,7 @@
                 enhanceCodeBlocks(chatView);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                // Ensure typing status is at the bottom if it was active before re-render
+                // Ensure typing status is at the bottom if it was active
                 if (typingStatus && typingStatus.style.display === 'flex') {
                     chatView.appendChild(typingStatus);
                 }
@@ -1776,46 +1792,74 @@
                 }
 
                 let currentContent = '';
-                const words = text.split(/(\s+)/); // Split by spaces, keeping them in the array
-                const updateThreshold = 7; // Update DOM every X words or on punctuation/newline
-                let wordCount = 0;
+                // Split by spaces, keeping them, and also split by newlines for better rendering control
+                const tokens = text.split(/(\s+|\n|```)/g).filter(Boolean); // Filter out empty strings
+                let inCodeBlock = false;
+                let buffer = '';
+                const bufferThreshold = 20; // Update DOM every X characters
 
-                for (let i = 0; i < words.length; i++) {
+                for (let i = 0; i < tokens.length; i++) {
                     if (currentController?.signal.aborted) {
-                        text = currentContent; // Use the text that was typed so far
+                        currentContent = buffer; // Use whatever is in the buffer when aborted
                         break;
                     }
-                    currentContent += words[i];
-                    wordCount++;
 
-                    const isPunctuation = words[i].match(/[\.\,\!\?\n]/);
-                    const isCodeBlockDelimiter = words[i].includes('```'); // Basic check for code blocks
+                    const token = tokens[i];
+                    buffer += token;
 
-                    if (isPunctuation || isCodeBlockDelimiter || wordCount >= updateThreshold || i === words.length - 1) {
-                        msgBubble.innerHTML = renderMarkdown(currentContent).html;
-                        enhanceCodeBlocks(msgBubble); // Re-enhance for new content
+                    if (token.includes('```')) {
+                        inCodeBlock = !inCodeBlock;
+                        // Force update when entering/exiting code blocks
+                        msgBubble.innerHTML = renderMarkdown(currentContent + buffer).html;
+                        enhanceCodeBlocks(msgBubble); // Re-highlight if needed
                         chatView.scrollTop = chatView.scrollHeight;
-                        wordCount = 0; // Reset word count after update
+                        currentContent += buffer;
+                        buffer = '';
+                        await new Promise(res => setTimeout(res, 50)); // Small pause for visual transition
+                        continue;
                     }
 
-                    const delay = words[i].match(/[\s\.\,\!\?]/) ? 10 : 30; // Faster delay for punctuation/spaces
-                    await new Promise(res => setTimeout(res, delay));
+                    // Update condition: buffer size, punctuation, newline, or end of text
+                    const shouldUpdate = buffer.length >= bufferThreshold ||
+                                         token.match(/[\.\,\!\?]/) ||
+                                         token === '\n' ||
+                                         i === tokens.length - 1;
+
+                    if (shouldUpdate && !inCodeBlock) { // Don't update in-progress code blocks incrementally with Markdown
+                        msgBubble.innerHTML = renderMarkdown(currentContent + buffer).html;
+                        chatView.scrollTop = chatView.scrollHeight;
+                        currentContent += buffer;
+                        buffer = '';
+                        await new Promise(res => setTimeout(res, 10)); // Slightly faster update
+                    } else if (shouldUpdate && inCodeBlock) {
+                        // For code blocks, just append raw text to avoid re-highlighting issues until the block is done
+                        // or a full buffer update is needed. The final render will fix it.
+                        currentContent += buffer;
+                        buffer = '';
+                        msgBubble.innerHTML = renderMarkdown(currentContent).html;
+                        chatView.scrollTop = chatView.scrollHeight;
+                        await new Promise(res => setTimeout(res, 10));
+                    }
+                    else if (!shouldUpdate) {
+                         await new Promise(res => setTimeout(res, 5)); // Base delay
+                    }
                 }
 
                 // Final render to ensure all markdown and highlighting is correct and complete
-                msgBubble.innerHTML = renderMarkdown(text).html + `
+                const finalRenderedText = text; // Use original full text for final render
+                msgBubble.innerHTML = renderMarkdown(finalRenderedText).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
                         <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
                         <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
                     </div>
                 `;
-                enhanceCodeBlocks(msgBubble); // Final enhancement
+                enhanceCodeBlocks(msgBubble);
                 chatView.scrollTop = chatView.scrollHeight;
                 hookAiMsgControls();
 
                 if (saveToDb && currentUser && currentChatId) {
-                    try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
+                    try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: finalRenderedText, createdAt: serverTimestamp() }); }
                     catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
@@ -2001,7 +2045,7 @@
                         <label for="tool-file">Image to Edit</label><input type="file" id="tool-file" accept="image/*" required aria-label="Image to edit">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Apply Edit</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#tool-file')?.files;
+                        const file = form.querySelector('#tool-file')?.files[0];
                         const prompt = form.querySelector('#tool-prompt')?.value;
                         if (!file) return "Please select a file to edit.";
                         if (!prompt) return "Please provide an edit instruction.";
@@ -2032,7 +2076,7 @@
                         <label for="tool-file">Select Image File</label><input type="file" id="tool-file" accept="image/*" required style="display:block;margin-top:10px;" aria-label="Image file for background removal">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-scissors"></i> Remove Background</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#tool-file')?.files;
+                        const file = form.querySelector('#tool-file')?.files[0];
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Removing background...');
@@ -2057,45 +2101,44 @@
                     title: "Create Comic",
                     description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
-                        <label for="tool-provider">Generation Model</label>
-                        <select id="tool-provider" aria-label="Comic generation model">
-                            <option value="thena">Version 1 (Stylized, Fast & Recommended)</option>
-                            <option value="minimax">Version 2 (Creative, Realistic)</option>
-                        </select>
+                        <label for="comic-provider">Generation Model</label>
+                        <select id="comic-provider" aria-label="Comic image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style">Comic Art Style (for Version 1 only)</label>
-                        <select id="tool-style" aria-label="Comic art style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
+                        <label for="comic-style">Comic Art Style (for Version 1 only)</label>
+                        <select id="comic-style" aria-label="Comic art style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
                     onFormReady: () => {
-                        const providerSelect = $('tool-provider');
-                        const styleSelect = $('tool-style');
+                        const providerSelect = $('comic-provider');
+                        const styleSelect = $('comic-style');
                         if (!providerSelect || !styleSelect) return;
 
-                        const updateStyleSelectState = () => {
-                            if (providerSelect.value === 'thena') {
-                                styleSelect.disabled = false;
-                                styleSelect.innerHTML = thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('');
-                            } else {
-                                styleSelect.disabled = true;
-                                styleSelect.innerHTML = `<option value="">N/A (Style handled by AI)</option>`;
-                            }
+                        const updateStyleVisibility = () => {
+                            const isThena = providerSelect.value === 'thena';
+                            styleSelect.disabled = !isThena;
+                            styleSelect.closest('label').style.opacity = isThena ? '1' : '0.5'; // Visually indicate disabled
                         };
-                        providerSelect.addEventListener('change', updateStyleSelectState);
-                        updateStyleSelectState(); // Initial state setup
+                        providerSelect.addEventListener('change', updateStyleVisibility);
+                        updateStyleVisibility(); // Set initial state
                     },
                     handleSubmit: async (form) => {
-                        const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
+                        const use_minimax = form.querySelector('#comic-provider')?.value === 'minimax';
                         const providerName = use_minimax ? 'Version 2 (Creative)' : 'Version 1 (Stylized)';
                         const story = form.querySelector('#tool-story')?.value;
-                        const style = use_minimax ? '' : form.querySelector('#tool-style')?.value; // Only send style if using Thena
+                        const style = form.querySelector('#comic-style')?.value; // Get style for Thena
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
                         if (!story) return "Please provide a comic story.";
                         if (isNaN(panels) || panels < 1 || panels > 6) return "Number of panels must be between 1 and 6.";
 
-                        const payload = { story, style, panels, user: currentUser?.displayName || "User", use_minimax }; // Added use_minimax
-                        await addMessageToChat('user', `Comic creation request with style: ${style || 'auto'} (using ${providerName}).`);
-                        showTypingStatus('Generating comic panels...');
+                        const payload = { 
+                            story, 
+                            style: use_minimax ? null : style, // Only send style if Thena
+                            panels, 
+                            user: currentUser?.displayName || "User", 
+                            use_minimax 
+                        }; 
+                        await addMessageToChat('user', `Comic creation request with style: ${payload.style || 'default'} (using ${providerName}).`);
+                        showTypingStatus('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
                                 method: 'POST',
@@ -2179,7 +2222,7 @@
                         <label for="tool-file">Select File for Narration</label><input type="file" id="tool-file" accept="application/pdf, text/plain" required style="display:block;margin-top:10px;" aria-label="File for narration">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#tool-file')?.files;
+                        const file = form.querySelector('#tool-file')?.files[0];
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Analyzing and narrating document...');
@@ -2227,7 +2270,7 @@
                         <label for="video-image-file">Starting Image</label><input type="file" id="video-image-file" accept="image/*" required aria-label="Starting image for video"></input>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-play"></i> Start Generation</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#video-image-file')?.files;
+                        const file = form.querySelector('#video-image-file')?.files[0];
                         const prompt = form.querySelector('#video-image-prompt')?.value;
                         if (!file) return "Please select an image.";
                         if (!prompt) return "Please provide an animation prompt.";
@@ -2250,7 +2293,7 @@
                     handleSubmit: async (form) => {
                         const prompt = form.querySelector('#music-prompt')?.value;
                         const lyrics = form.querySelector('#music-lyrics')?.value;
-                        const refFile = form.querySelector('#music-ref')?.files;
+                        const refFile = form.querySelector('#music-ref')?.files[0];
                         if (!prompt) return "Please provide a music prompt.";
                         const payload = { prompt, lyrics, model: 'music-1.5' };
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
@@ -2418,7 +2461,7 @@
 
             function displayToolForm(toolKey) {
                 const tool = toolDefinitions[toolKey];
-                if (!tool || !toolFormModalBg || !toolFormTitle || !toolForm || !toolFormModal) return;
+                if (!tool || !toolFormModalBg || !toolFormTitle || !toolForm) return;
                 toolFormTitle.textContent = tool.title;
                 const descriptionHtml = tool.description ? `<div style="color:rgba(168, 234, 255, 0.8);font-size:.9em;margin-bottom:12px;">${tool.description}</div>` : '';
                 toolForm.innerHTML = descriptionHtml + tool.buildForm();
@@ -2479,12 +2522,11 @@
                 uploadedFiles = [];
                 renderFilePreview(); // Clear file preview
                 userInput.style.height = 'auto'; // Reset textarea height
-                updateInputDockHeight(); // Ensure dock height updates after textarea reset
 
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const file = localUploadedFiles; // Assuming only one file for analysis endpoint
+                    const file = localUploadedFiles[0]; // Assuming only one file for analysis endpoint
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
@@ -2707,9 +2749,9 @@
                     if (userSpeechWave) userSpeechWave.classList.add('active'); // Activate visual waveform
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            finalTranscript += event.results[i].transcript;
+                            finalTranscript += event.results[i][0].transcript;
                         } else {
-                            interimTranscript += event.results[i].transcript;
+                            interimTranscript += event.results[i][0].transcript;
                         }
                     }
 
@@ -2801,6 +2843,7 @@
 
                 const historyForBot = callHistory.map(m => m);
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
+                const selectedVoiceId = callBotVoiceSelect ? callBotVoiceSelect.value : 'elder'; // Get selected voice
 
                 try {
                     const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -2813,7 +2856,7 @@
                     const botResponse = data.response;
                     callHistory.push({ role: 'ai', content: botResponse });
                     addCallMessage('bot', botResponse);
-                    speakBotResponse(botResponse);
+                    speakBotResponse(botResponse, selectedVoiceId); // Pass selected voice
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
@@ -2826,7 +2869,7 @@
                 }
             }
 
-            async function speakBotResponse(text) {
+            async function speakBotResponse(text, voiceId = 'elder') { // Default to elder if not provided
                 if (!isCallActive || !botImageContainer || !callStatusMessage) return;
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
@@ -2835,7 +2878,7 @@
                     const res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ text: text, voice_id: 'elder' })
+                        body: JSON.stringify({ text: text, voice_id: voiceId }) // Use selected voiceId
                     });
                     if (!res.ok) throw new Error(await res.text());
                     const blob = await res.blob();
@@ -2904,10 +2947,17 @@
                 callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
             }
 
+            // Populate call bot voice select dropdown
+            const callVoices = ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"];
+            if (callBotVoiceSelect) {
+                callBotVoiceSelect.innerHTML = callVoices.map(v => `<option value="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('');
+                callBotVoiceSelect.value = 'elder'; // Default selection
+            }
+
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
                     if (!SpeechRecognition) {
-                        alert("Sorry, your browser doesn't support the Speech Recognition needed for this feature. Voice call disabled.");
+                        alert("Sorry, your browser doesn't support the Speech Recognition needed for this feature.");
                         return;
                     }
                     if (!callModal || !callConversation || !userSpeechWave || !callStatusMessage || !tapToTalk) return;
