@@ -1035,14 +1035,19 @@
         </div>
         <div id="callConversation">
             <div class="call-msg status">Waiting for connection...</div>
+            <div id="userSpeechWave"></div>
         </div>
         <div id="callControls">
-            <button id="muteCallBtn" class="submit-btn"><i class="fa-solid fa-microphone"></i> Mute Microphone</button>
-            <button id="endCallBtn" class="submit-btn" style="background: #d23;"><i class="fa-solid fa-phone-slash"></i> End Call</button>
+            <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button>
+            <button type="button" id="endCallBtn" class="submit-btn" style="background: #d23;" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
         import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -1056,7 +1061,6 @@
             messagingSenderId: "161078300830",
             appId: "1:161078300830:web:f460df8591704eb0e96b8f"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -1070,18 +1074,72 @@
         let currentMessages = [];
         let uploadedFiles = [];
         let currentUser = null;
-        let currentController = null;
+        let currentController = null; // Used for aborting fetch requests
         let fileObjectURLs = []; // To manage created object URLs for file previews
 
         let chatsUnsubscribe = null;
         let messagesUnsubscribe = null;
 
+        const cosmos = $('cosmos-container');
+
+        // Cosmic background animations
+        function igniteCosmos() {
+            if (cosmos) {
+                // Remove existing particles to prevent duplicates on re-init
+                cosmos.querySelectorAll('.star').forEach(p => p.remove());
+                for (let i = 0; i < 200; i++) createParticle('star', 150, 3); // Reduced star count
+            }
+        }
+
+        function createParticle(type, spread, maxDuration) {
+            if (!cosmos) return;
+            const particle = document.createElement('div');
+            particle.className = type;
+            const size = Math.random() * (type === 'star' ? 2 : 1.5) + 0.5;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.left = `${Math.random() * spread - (spread - 100) / 2}%`;
+            particle.style.top = `${Math.random() * spread - (spread - 100) / 2}%`;
+            particle.style.setProperty('--duration', `${Math.random() * maxDuration + 5}s`);
+            if(type === 'star') particle.style.opacity = Math.random();
+            cosmos.appendChild(particle);
+        }
+
+        function launchShootingStar() {
+            if (!cosmos) return;
+            const star = document.createElement('div');
+            star.className = 'shooting-star';
+            const startX = Math.random() * window.innerWidth * 2 - window.innerWidth / 2;
+            const startY = Math.random() * window.innerHeight / 2 - window.innerHeight / 4;
+            const travelX = -Math.random() * 800 - 400;
+            const travelY = Math.random() * 600 + 300;
+            const duration = Math.random() * 3 + 2.5;
+            const initialWidth = Math.random() * 80 + 20;
+
+            star.style.setProperty('--startX', `${startX}px`);
+            star.style.setProperty('--startY', `${startY}px`);
+            star.style.setProperty('--travelX', `${travelX}px`);
+            star.style.setProperty('--travelY', `${travelY}px`);
+            star.style.setProperty('--duration', `${duration}s`);
+            star.style.setProperty('--initialWidth', `${initialWidth}px`);
+
+            cosmos.appendChild(star);
+            setTimeout(() => star.remove(), duration * 1000);
+        }
+
+        igniteCosmos();
+
+        const randomLaunch = () => {
+            if (Math.random() < 0.3) launchShootingStar(); // Less frequent shooting stars
+            setTimeout(randomLaunch, Math.random() * 5000 + 3000); // Longer interval
+        }
+        setTimeout(randomLaunch, 1000);
+
         window.addEventListener('DOMContentLoaded', () => {
-            const starsContainer = $('stars-container');
             const profileMenuBg = $('profileMenuBg');
             const profileMenu = $('profileMenu');
-            const linkMenuBg = $('linkMenuBg');
-            const linkMenu = $('linkMenu');
+            const linksMenuBg = $('linksMenuBg');
+            const linksMenu = $('linksMenu');
             const toolsMenuBg = $('toolsMenuBg');
             const toolsMenu = $('toolsMenu');
             const toolBtn = $('toolBtn');
@@ -1093,10 +1151,10 @@
             const editPhoto = $('edit-photo');
             const profilePicPreview = $('profilePicPreview');
             const profileForm = $('profileForm');
-            const chatViewport = $('chat-viewport'); // Renamed from chatBox
-            const chatInput = $('chatInput');
+            const chatViewport = $('chat-viewport');
+            const userInput = $('userInput');
             const sendBtn = $('sendBtn');
-            const stopBtn = $('stopBtn'); // Get stopBtn directly
+            const stopBtn = $('stopBtn');
             const chatFile = $('chatFile');
             const filePreview = $('filePreview');
             const newChatBtn = $('newChatBtn');
@@ -1104,7 +1162,7 @@
             const emojiPanel = $('emojiPanel');
             const emojiBtn = $('emojiBtn');
             const toolFormModalBg = $('toolFormModalBg');
-            const toolFormModal = $('toolFormModal'); // Get toolFormModal directly
+            const toolFormModal = $('toolFormModal');
             const toolForm = $('toolForm');
             const toolFormTitle = $('toolFormTitle');
             const toolFormBackBtn = $('toolFormBackBtn');
@@ -1112,87 +1170,83 @@
             const aiPrevClose = $('ai-image-close');
             const aiPrevDLBtn = $('ai-image-dl');
             const aiPrevImgBox = $('ai-image-container');
-            const themeBtn = $('themeBtn');
             const lightbox = $('lightbox');
             const callBtn = $('callBtn');
             const callModal = $('callModal');
             const endCallBtn = $('endCallBtn');
             const muteCallBtn = $('muteCallBtn');
-            const callSettings = $('callSettings'); // New
-            const callVoiceModel = $('callVoiceModel'); // New
-            const callVoiceStyle = $('callVoiceStyle'); // New
-            const callVoiceStyleLabel = $('callVoiceStyleLabel'); // New
+            const callSettings = $('callSettings');
+            const callVoiceModel = $('callVoiceModel');
+            const callVoiceStyle = $('callVoiceStyle');
+            const callVoiceStyleLabel = $('callVoiceStyleLabel');
             const callConversation = $('callConversation');
             const botImageContainer = $('botImageContainer');
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
             const typingStatus = $('typing-status');
 
-            if (!chatInput || !chatViewport || !toolsMenu || !typingStatus) {
+
+            if (!chatViewport || !userInput || !typingStatus) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
 
-            if (starsContainer) {
-                starsContainer.innerHTML = '';
-                for (let i = 0; i < 34; i++) {
-                    const s = document.createElement('div');
-                    s.className = 'star';
-                    const z = Math.random() * 2.1 + 1;
-                    s.style.width = z + 'px';
-                    s.style.height = z + 'px';
-                    s.style.left = Math.random() * 100 + '%';
-                    s.style.top = Math.random() * 100 + '%';
-                    s.style.animationDelay = (Math.random() * 3.69) + 's';
-                    s.style.animationDuration = (2.2 + Math.random() * 1.1) + 's';
-                    starsContainer.appendChild(s);
-                }
-            }
-
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
-            if (emojiBtn && emojiPanel && chatInput) {
+            if (emojiBtn && emojiPanel && userInput) {
                 emojiBtn.addEventListener('click', (e) => {
                     emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button">${em}</span>`).join('');
-                    emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block';
-                    try {
-                        const rect = emojiBtn.getBoundingClientRect();
-                        emojiPanel.style.left = `${Math.max(8, rect.left)}px`;
-                    } catch (e) { /* ignore positioning errors */ }
-                    emojiPanel.querySelectorAll('.emoji-pick').forEach(span => {
-                        span.addEventListener('click', function () {
-                            const text = this.textContent || '';
-                            const start = chatInput.selectionStart || 0;
-                            const end = chatInput.selectionEnd || 0;
-                            chatInput.value = chatInput.value.slice(0, start) + text + chatInput.value.slice(end);
-                            chatInput.focus();
-                            chatInput.selectionStart = chatInput.selectionEnd = start + text.length;
-                            emojiPanel.style.display = 'none';
-                            chatInput.dispatchEvent(new Event('input'));
-                        });
-                    });
+                    emojiPanel.classList.toggle('active');
+                    const rect = emojiBtn.getBoundingClientRect();
+                    const inputDock = userInput.closest('.input-dock');
+                    const inputDockHeight = inputDock ? inputDock.offsetHeight : 80;
+                    const panelWidth = emojiPanel.offsetWidth || 150;
+
+                    let panelLeft = rect.left;
+                    if (panelLeft + panelWidth > window.innerWidth - 10) {
+                        panelLeft = window.innerWidth - panelWidth - 10;
+                    }
+                    if (panelLeft < 10) {
+                        panelLeft = 10;
+                    }
+
+                    emojiPanel.style.left = `${panelLeft}px`;
+                    emojiPanel.style.bottom = `${inputDockHeight + 10}px`;
                 });
                 document.addEventListener('click', e => {
                     if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== emojiBtn) {
-                        emojiPanel.style.display = 'none';
+                        emojiPanel.classList.remove('active');
+                    }
+                });
+                emojiPanel.addEventListener('click', function(e) {
+                    if (e.target && e.target.classList.contains('emoji-pick')) {
+                        const text = e.target.textContent || '';
+                        const start = userInput.selectionStart || 0;
+                        const end = userInput.selectionEnd || 0;
+                        userInput.value = userInput.value.slice(0, start) + text + userInput.value.slice(end);
+                        userInput.focus();
+                        userInput.selectionStart = userInput.selectionEnd = start + text.length;
+                        emojiPanel.classList.remove('active');
+                        userInput.dispatchEvent(new Event('input')); // Trigger input event for auto-resize
                     }
                 });
             }
 
-            if (chatInput) {
+            if (userInput) {
                 const autoResize = () => {
-                    chatInput.style.height = 'auto';
-                    chatInput.style.height = Math.min(chatInput.scrollHeight, 168) + 'px';
+                    if (!userInput) return;
+                    userInput.style.height = 'auto';
+                    userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
                 };
-                chatInput.addEventListener('input', autoResize);
-                chatInput.addEventListener('keydown', e => {
+                userInput.addEventListener('input', autoResize);
+                userInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        sendMessage(); // Call sendMessage directly
+                        sendMessage();
                     } else if (e.key === 'Enter' && e.shiftKey) {
-                        const start = chatInput.selectionStart;
-                        const end = chatInput.selectionEnd;
-                        chatInput.value = chatInput.value.substring(0, start) + "\n" + chatInput.value.substring(end);
-                        chatInput.selectionStart = chatInput.selectionEnd = start + 1;
+                        const start = userInput.selectionStart;
+                        const end = userInput.selectionEnd;
+                        userInput.value = userInput.value.substring(0, start) + "\n" + userInput.value.substring(end);
+                        userInput.selectionStart = userInput.selectionEnd = start + 1;
                         autoResize();
                     }
                 });
@@ -1201,15 +1255,16 @@
 
             if (chatFile) {
                 chatFile.addEventListener('change', function() {
-                    fileObjectURLs.forEach(url => URL.revokeObjectURL(url)); // Clean up old URLs
+                    fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
                     fileObjectURLs = [];
                     uploadedFiles = Array.from(this.files || []);
                     renderFilePreview();
                 });
             }
 
-            if (aiPrevClose) aiPrevClose.addEventListener('click', () => { aiPrevBox.style.display = 'none'; });
+            if (aiPrevClose) aiPrevClose.addEventListener('click', () => { if (aiPrevBox) aiPrevBox.classList.remove('active'); });
             if (aiPrevDLBtn) aiPrevDLBtn.addEventListener('click', () => {
+                if (!aiPrevImgBox) return;
                 const img = aiPrevImgBox.querySelector('img');
                 if (img) {
                     const a = document.createElement('a');
@@ -1222,10 +1277,9 @@
             if (lightbox) {
                 lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
             }
-
             if (chatViewport) {
                 chatViewport.addEventListener('click', e => {
-                    if (e.target.tagName === 'IMG' && e.target.closest('.message-group.ai .msg')) {
+                    if (e.target && e.target.tagName === 'IMG' && e.target.closest('.message-group.ai .msg-bubble')) {
                         e.preventDefault();
                         const lbImg = lightbox.querySelector('img');
                         if (lbImg) {
@@ -1236,78 +1290,58 @@
                 });
             }
 
-            window.closeToolMenu = () => {
-                if (toolsMenuBg) toolsMenuBg.classList.remove('active');
-            };
-            window.openToolMenu = () => {
-                if (toolsMenuBg) toolsMenuBg.classList.add('active');
-            };
+            window.closeToolMenu = () => { if (toolsMenu) toolsMenu.classList.remove('active'); if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
+            window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); };
+            window.closeProfileMenu = () => { if (profileMenu) profileMenu.classList.remove('active'); if (profileMenuBg) profileMenuBg.classList.remove('active'); };
+            window.closeLinksMenu = () => { if (linksMenu) linksMenu.classList.remove('active'); if (linksMenuBg) linksMenuBg.classList.remove('active'); };
+
 
             if (profileMenuBg) {
-                $('openProfileMenu').addEventListener('click', () => {
-                    profileMenuBg.classList.add('active');
-                    setTimeout(() => profileMenu.classList.add('active'), 10);
-                });
-                profileMenuBg.addEventListener('click', e => {
-                    if (e.target === profileMenuBg) {
-                        profileMenu.classList.remove('active');
-                        setTimeout(() => profileMenuBg.classList.remove('active'), 110);
-                    }
-                });
+                const openProfileBtn = $('openProfileMenu');
+                if (openProfileBtn) {
+                    openProfileBtn.addEventListener('click', () => {
+                        if (profileMenuBg) profileMenuBg.classList.add('active');
+                        if (profileMenu) profileMenu.classList.add('active');
+                    });
+                }
+                profileMenuBg.addEventListener('click', e => { if (e.target === profileMenuBg) { closeProfileMenu(); } });
             }
 
-            if (linkMenuBg) {
-                $('openLinksMenu').addEventListener('click', () => {
-                    linkMenuBg.classList.add('active');
-                    setTimeout(() => linkMenu.classList.add('active'), 10);
-                });
-                linkMenuBg.addEventListener('click', e => {
-                    if (e.target === linkMenuBg) {
-                        linkMenu.classList.remove('active');
-                        setTimeout(() => linkMenuBg.classList.remove('active'), 110);
-                    }
-                });
+            if (linksMenuBg) {
+                const openLinksBtn = $('openLinksMenu');
+                if (openLinksBtn) {
+                    openLinksBtn.addEventListener('click', () => { if (linksMenuBg) linksMenuBg.classList.add('active'); if (linksMenu) linksMenu.classList.add('active'); });
+                }
+                linksMenuBg.addEventListener('click', e => { if (e.target === linksMenuBg) { closeLinksMenu(); } });
             }
 
             if (toolBtn) toolBtn.addEventListener('click', openToolMenu);
-            if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => {
-                if (e.target === toolsMenuBg) closeToolMenu();
-            });
+            if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => { if (e.target === toolsMenuBg) closeToolMenu(); });
 
             if (toolFormBackBtn) {
                 toolFormBackBtn.addEventListener('click', () => {
-                    if (toolFormModalBg) toolFormModalBg.classList.remove('active');
                     if (toolFormModal) toolFormModal.classList.remove('active');
+                    if (toolFormModalBg) toolFormModalBg.classList.remove('active');
                     openToolMenu();
                 });
             }
+            if (toolFormModalBg) toolFormModalBg.addEventListener('click', e => { if (e.target === toolFormModalBg) toolFormModalBg.classList.remove('active'); });
 
-            if (toolFormModalBg) toolFormModalBg.addEventListener('click', e => {
-                if (e.target === toolFormModalBg) {
-                    toolFormModalBg.classList.remove('active');
-                    toolFormModal.classList.remove('active');
-                }
-            });
-
-            if (logoutBtn) logoutBtn.addEventListener('click', () => {
-                auth.signOut();
-                window.location.href = 'signup-login.html';
-            });
+            if (logoutBtn) logoutBtn.addEventListener('click', () => { auth.signOut(); window.location.href = 'signup-login.html'; });
 
             onAuthStateChanged(auth, user => {
                 if (!user) {
-                    try {
-                        window.location.href = "signup-login.html";
-                    } catch (e) {}
+                    try { window.location.href = "signup-login.html"; } catch (e) {}
                     return;
                 }
                 currentUser = user;
-                if (headerWelcome) headerWelcome.textContent = "Welcome, " + (user.displayName || (user.email || '').split('@')[0]);
-                if (profileMenuUser) profileMenuUser.textContent = user.displayName || "User";
+                const displayName = user.displayName || (user.email || '').split('@')[0];
+                if (profileMenuUser) profileMenuUser.textContent = displayName;
                 if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
-                if (editName) editName.value = user.displayName || "";
+                if (editName) editName.value = displayName;
                 if (editPhoto) editPhoto.value = user.photoURL || "";
                 if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
+                if (headerWelcome) headerWelcome.textContent = `Welcome, ${displayName}`;
                 loadUserChats(user.uid);
             });
 
@@ -1320,19 +1354,12 @@
                     try {
                         await updateProfile(currentUser, { displayName: editName.value, photoURL: editPhoto.value });
                         if (auth.currentUser) await auth.currentUser.reload();
-                        if (status) {
-                            status.textContent = "Profile updated!";
-                            status.style.color = "#00ffff";
-                        }
-                        setTimeout(() => {
-                            profileMenuBg?.classList.remove('active');
-                        }, 800);
-                        if (headerWelcome) headerWelcome.textContent = "Welcome, " + (auth.currentUser?.displayName || 'User');
+                        if (status) { status.textContent = "Profile updated!"; status.style.color = "var(--neon-green)"; }
+                        setTimeout(() => { closeProfileMenu(); }, 800);
+                        if (profilePicPreview) profilePicPreview.src = auth.currentUser?.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
+                        if (headerWelcome) headerWelcome.textContent = `Welcome, ${auth.currentUser?.displayName || 'User'}`;
                     } catch (err) {
-                        if (status) {
-                            status.textContent = err.message;
-                            status.style.color = "#ffd700";
-                        }
+                        if (status) { status.textContent = err.message; status.style.color = "#ffd700"; }
                     }
                 });
             }
@@ -1354,7 +1381,7 @@
                     subscribeToMessages(userId, currentChatId);
                 }, (error) => {
                     console.error("Error fetching chats: ", error);
-                    if (chatsListEl) chatsListEl.innerHTML = `<div style="color: #f44;">Error loading chats.</div>`;
+                    if (chatsListEl) chatsListEl.innerHTML = `<div class="message-group system" style="color: #f44;">Error loading chats.</div>`;
                 });
             }
 
@@ -1383,7 +1410,7 @@
                     renderChatBox(currentMessages);
                 }, (error) => {
                     console.error("Error fetching messages: ", error);
-                    if (chatViewport) chatViewport.innerHTML = `<div style="color: #f44; text-align: center; margin-top: 20px;">Error loading messages for this chat.</div>`;
+                    if (chatViewport) chatViewport.innerHTML = `<div class="message-group system" style="color: #f44; margin-top: 20px;">Error loading messages for this chat.</div>`;
                 });
             }
 
@@ -1395,7 +1422,7 @@
                 if (!chatsListEl) return;
                 chatsListEl.innerHTML = '';
                 if (chats.length === 0) {
-                    chatsListEl.innerHTML = `<div style="padding: 10px; color: #a8eaff;">No chats yet.</div>`;
+                    chatsListEl.innerHTML = `<div class="message-group system" style="padding: 10px;">No chats yet.</div>`;
                     return;
                 }
                 chats.forEach((chat) => {
@@ -1411,17 +1438,17 @@
                     titleSpan.style.flex = '1';
                     titleSpan.style.cursor = 'pointer';
                     titleSpan.style.padding = '8px 5px';
+                    titleSpan.style.color = 'var(--main-text-color)';
                     titleSpan.onclick = () => {
                         currentChatId = chat.id;
                         if (currentUser) subscribeToMessages(currentUser.uid, currentChatId);
                         renderChatsListSidebar();
-                        profileMenu?.classList.remove('active');
-                        profileMenuBg?.classList.remove('active');
+                        closeProfileMenu();
                     };
 
                     const renameBtn = document.createElement('button');
                     renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-                    renameBtn.title = 'Rename';
+                    renameBtn.title = 'Rename Chat';
                     renameBtn.style.margin = '0 6px 0 8px';
                     renameBtn.onclick = async (e) => {
                         e.stopPropagation();
@@ -1436,7 +1463,7 @@
 
                     const delBtn = document.createElement('button');
                     delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-                    delBtn.title = 'Delete';
+                    delBtn.title = 'Delete Chat';
                     delBtn.style.marginLeft = '6px';
                     delBtn.onclick = async (e) => {
                         e.stopPropagation();
@@ -2426,6 +2453,7 @@
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
                         const toolStopListener = () => { if (currentController) currentController.abort(); };
+                        // Store current listener on stopBtn to remove it later cleanly
                         if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                         stopBtn.addEventListener('click', toolStopListener, { once: true });
                         stopBtn._currentStopListener = toolStopListener;
@@ -2451,7 +2479,7 @@
                         if (sendBtn) sendBtn.style.display = 'flex';
                         if (callBtn) callBtn.style.display = 'flex';
                         if (stopBtn) stopBtn.style.display = 'none';
-                        if (stopBtn._currentStopListener) { 
+                        if (stopBtn._currentStopListener) { // Ensure listener is cleaned if not handled by form submission
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                             stopBtn._currentStopListener = null;
                         }
@@ -2541,7 +2569,7 @@
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const file = localUploadedFiles;
+                    const file = localUploadedFiles; // Use first file from localUploadedFiles
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
@@ -2654,29 +2682,22 @@
                     let interimTranscript = '';
                     let finalTranscript = '';
                     userSaidSomething = true;
-                    // if (userSpeechWave) userSpeechWave.classList.add('active'); // Removed this, handled below more robustly
-
+                    if (userSpeechWave) userSpeechWave.classList.add('active');
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
                         else interimTranscript += event.results[i].transcript;
                     }
                     let userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
-                    if (!userMsgEl && callConversation) {
+                    if (!userMsgEl && callConversation) { // Changed to check only callConversation for existence
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
-                        callConversation.appendChild(userMsgEl); // Append directly, no userSpeechWave element anymore
+                        callConversation.appendChild(userMsgEl); // Append to the end, then scroll
+                        if (userSpeechWave) callConversation.appendChild(userSpeechWave); // Ensure wave is at the bottom
                     }
                     if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
                     if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
                     if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'User Speaking (Final)' : 'User Speaking...';
                     if (tapToTalk) tapToTalk.style.display = 'none';
-
-                    // Activate userSpeechWave more consistently
-                    if (userSpeechWave && (finalTranscript || interimTranscript)) {
-                        userSpeechWave.classList.add('active');
-                    } else if (userSpeechWave) {
-                        userSpeechWave.classList.remove('active');
-                    }
                 };
 
                 speechRecognition.onspeechend = () => {
@@ -2711,9 +2732,7 @@
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else {
-                        // If no speech, or only interim and not final, restart listening
-                        // Check isRecognizing again to prevent double-starts if other logic also calls start()
-                        if (isCallActive && !isMuted && !isRecognizing) { 
+                        if (isCallActive && !isMuted && !isRecognizing) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically (onend):", e);}
@@ -2752,13 +2771,8 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                // Append the message before the userSpeechWave for correct order
-                if (callConversation.lastElementChild === userSpeechWave) {
-                    callConversation.insertBefore(msgEl, userSpeechWave);
-                } else {
-                    callConversation.appendChild(msgEl);
-                }
-                callConversation.scrollTop = callConversation.scrollHeight;
+                callConversation.appendChild(msgEl); // Append, then scroll
+                if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
@@ -2870,8 +2884,6 @@
                 const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                 if (userMsgEl) userMsgEl.remove(); // Remove interim user speech element
 
-                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide user speech wave
-
                 if (!isMuted) {
                     callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                     tapToTalk.style.display = 'block';
@@ -2912,15 +2924,10 @@
                     isRecognizing = false; // Reset recognizing state
                     if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute Microphone';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div>`; // Clear previous call messages
-                    // The userSpeechWave element needs to be appended directly *after* clearing content
-                    const initialUserSpeechWave = document.createElement('div');
-                    initialUserSpeechWave.id = 'userSpeechWave';
-                    callConversation.appendChild(initialUserSpeechWave);
-
+                    callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div><div id="userSpeechWave"></div>`; // Clear previous call messages
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
@@ -2957,7 +2964,6 @@
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
                 callStatusMessage.textContent = 'Call Ended.';
-                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Ensure wave is hidden on call end
             }
 
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
@@ -2969,16 +2975,15 @@
                     isMuted = !isMuted;
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute Microphone';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
                         if (speechRecognition && isRecognizing) { // Only stop if it's running
                             try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
                         }
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
-                        if (userSpeechWave) userSpeechWave.classList.remove('active'); // Hide user speech wave when muted
                     } else {
                         muteCallBtn.classList.remove('muted');
-                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute Microphone';
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                         if (isCallActive && !botIsSpeaking && !isRecognizing) { // Start if active, not speaking, and not already recognizing
                             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             tapToTalk.style.display = 'block';
@@ -2991,7 +2996,7 @@
                 });
             }
 
-            if(chatInput) chatInput.focus();
+            if(userInput) userInput.focus();
         });
     </script>
 </body>
