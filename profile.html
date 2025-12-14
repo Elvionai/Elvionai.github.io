@@ -1335,7 +1335,7 @@
                     return;
                 }
                 currentUser = user;
-                const displayName = user.displayName || (user.email || '').split('@')[0];
+                const displayName = user.displayName || (user.email || '').split('@');
                 if (profileMenuUser) profileMenuUser.textContent = displayName;
                 if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
                 if (editName) editName.value = displayName;
@@ -1376,7 +1376,7 @@
                     chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatsListSidebar();
                     if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                        currentChatId = chats[0].id;
+                        currentChatId = chats.id;
                     }
                     subscribeToMessages(userId, currentChatId);
                 }, (error) => {
@@ -2079,6 +2079,11 @@
                     title: "Create Comic",
                     description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
+                        <label for="tool-model-provider">Generation Model</label>
+                        <select id="tool-model-provider" aria-label="Comic generation model">
+                            <option value="minimax">Minimax (Creative, Detailed & Recommended)</option>
+                            <option value="thena">Thena (Stylized, Fast)</option>
+                        </select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
                         <label for="tool-style">Comic Style</label>
                         <select id="tool-style" aria-label="Comic style">
@@ -2087,12 +2092,13 @@
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
                     handleSubmit: async (form) => {
+                        const modelProvider = form.querySelector('#tool-model-provider')?.value;
                         const story = form.querySelector('#tool-story')?.value;
                         const style = form.querySelector('#tool-style')?.value;
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
                         if (!story) return "Please provide a comic story.";
-                        const payload = { story, style, panels, user: currentUser?.displayName || "User" };
-                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Style: ${style})`);
+                        const payload = { story, style, panels, user: currentUser?.displayName || "User", model_provider: modelProvider };
+                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Provider: ${modelProvider}, Style: ${style})`);
                         showTypingStatus('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
