@@ -236,12 +236,34 @@
             border-bottom-left-radius: 4px;
             box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.05);
         }
-        .ai .msg-bubble img.chat-media-preview,
-        .ai .msg-bubble video.chat-media-preview,
-        .ai .msg-bubble audio.chat-media-preview {
+        /* AI Media Container for better styling of generated images/videos/audio */
+        .ai .msg-bubble .ai-media-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        .ai .msg-bubble .ai-media-container img.chat-media-preview,
+        .ai .msg-bubble .ai-media-container video.chat-media-preview,
+        .ai .msg-bubble .ai-media-container audio.chat-media-preview {
+            max-width: 160px; /* Adjust as needed for comic panels */
+            max-height: 160px; /* Ensure proportional scaling */
+            border-radius: 8px;
+            margin: 0; /* Managed by gap in flexbox */
+            border: 2px solid var(--neon-green);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+            object-fit: contain;
+            display: block;
+        }
+        /* General chat media preview (for single images/videos/audio) */
+        .ai .msg-bubble > img.chat-media-preview,
+        .ai .msg-bubble > video.chat-media-preview,
+        .ai .msg-bubble > audio.chat-media-preview {
             max-width: 100%; border-radius: 12px; margin-top: 10px; border: 2px solid var(--neon-blue); box-shadow: var(--box-glow);
             display: block;
         }
+
 
         .user .msg-bubble {
             background: linear-gradient(135deg, rgba(0, 242, 255, 0.3), rgba(189, 0, 255, 0.3));
@@ -746,7 +768,7 @@
             border-radius: 10px;
             animation: speechWave 0.8s infinite alternate;
             opacity: 0.7;
-            display: none;
+            display: none; /* Controlled by JS .active class */
             will-change: transform, opacity;
             pointer-events: none; /* Make sure it doesn't block clicks */
         }
@@ -1035,7 +1057,7 @@
         </div>
         <div id="callConversation">
             <div class="call-msg status">Waiting for connection...</div>
-            <div id="userSpeechWave"></div>
+            <div id="userSpeechWave"></div> <!-- Ensure this is a single, persistent element -->
         </div>
         <div id="callControls">
             <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button>
@@ -1184,7 +1206,7 @@
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
             const typingStatus = $('typing-status');
-
+            const userSpeechWave = $('userSpeechWave'); // Get the userSpeechWave element
 
             if (!chatViewport || !userInput || !typingStatus) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
@@ -1580,6 +1602,7 @@
                         </div>`;
                     } else {
                         let content;
+                        // Check if msg.text contains HTML for media (handled by specific tool outputs)
                         if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
                             content = msg.text;
                         } else {
@@ -1704,8 +1727,8 @@
                             await startTypewriter(data.response, false);
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Regeneration stopped.'; }
-                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
+                            if (err.name === 'AbortError') { await startTypewriter('❌ Regeneration stopped.', false); }
+                            else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
                         } finally {
                             sendBtn.style.display = 'flex';
                             callBtn.style.display = 'flex';
@@ -2043,12 +2066,12 @@
                     handleSubmit: async (form) => {
                         const file = form.querySelector('#tool-file')?.files;
                         const prompt = form.querySelector('#tool-prompt')?.value;
-                        if (!file) return "Please select a file to edit.";
+                        if (!file || file.length === 0) return "Please select a file to edit.";
                         if (!prompt) return "Please provide an edit instruction.";
                         const fd = new FormData();
                         fd.append('file', file);
                         fd.append('prompt', prompt);
-                        await addMessageToChat('user', `Photo edit request for ${file.name}: "${prompt}"`, [{name: file.name, type: file.type}]);
+                        await addMessageToChat('user', `Photo edit request for ${file[0].name}: "${prompt}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Editing your photo...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd, signal: currentController?.signal });
@@ -2074,8 +2097,8 @@
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-scissors"></i> Remove Background</button>`,
                     handleSubmit: async (form) => {
                         const file = form.querySelector('#tool-file')?.files;
-                        if (!file) return "Please select a file.";
-                        await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
+                        if (!file || file.length === 0) return "Please select a file.";
+                        await addMessageToChat('user', `Background removal request for: "${file[0].name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Removing background...');
                         const fd = new FormData();
                         fd.append('file', file);
@@ -2129,8 +2152,9 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
-                            const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
+                            // Wrap images in the new ai-media-container for consistent styling
+                            const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview">`).join('');
+                            const comicMessage = `🖼️ Comic successfully created! <br><div class="ai-media-container">${imagesHtml}</div>`;
                             removeTypingStatus();
                             await addMessageToChat('ai', comicMessage);
                             return null;
@@ -2208,8 +2232,8 @@
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>`,
                     handleSubmit: async (form) => {
                         const file = form.querySelector('#tool-file')?.files;
-                        if (!file) return "Please select a file.";
-                        await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
+                        if (!file || file.length === 0) return "Please select a file.";
+                        await addMessageToChat('user', `Audio narration request for: "${file[0].name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Analyzing and narrating document...');
                         const fd = new FormData();
                         fd.append('file', file);
@@ -2258,9 +2282,9 @@
                     handleSubmit: async (form) => {
                         const file = form.querySelector('#video-image-file')?.files;
                         const prompt = form.querySelector('#video-image-prompt')?.value;
-                        if (!file) return "Please select an image.";
+                        if (!file || file.length === 0) return "Please select an image.";
                         if (!prompt) return "Please provide an animation prompt.";
-                        await addMessageToChat('user', `Image-to-Video request for: ${file.name}`, [{name: file.name, type: file.type}]);
+                        await addMessageToChat('user', `Image-to-Video request for: ${file[0].name}`, [{name: file.name, type: file.type}]);
                         const fd = new FormData();
                         fd.append('prompt', prompt);
                         fd.append('file', file);
@@ -2285,7 +2309,7 @@
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
                         showTypingStatus('Composing your music...');
                         try {
-                            if (refFile) {
+                            if (refFile && refFile.length > 0) {
                                 showTypingStatus('Uploading reference audio first...');
                                 const fd = new FormData();
                                 fd.append('file', refFile);
@@ -2569,8 +2593,11 @@
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const file = localUploadedFiles; // Use first file from localUploadedFiles
-                    if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
+                    const file = localUploadedFiles; // Access the first file
+                    if (!file) { // No file to process
+                         removeTypingStatus();
+                         finalResponse = "No valid file selected for analysis.";
+                    } else if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
                     else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
@@ -2682,17 +2709,16 @@
                     let interimTranscript = '';
                     let finalTranscript = '';
                     userSaidSomething = true;
-                    if (userSpeechWave) userSpeechWave.classList.add('active');
+                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Activate visual indicator
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
                         else interimTranscript += event.results[i].transcript;
                     }
                     let userMsgEl = callConversation ? callConversation.querySelector('.call-msg.user.interim') : null;
-                    if (!userMsgEl && callConversation) { // Changed to check only callConversation for existence
+                    if (!userMsgEl && callConversation) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
-                        callConversation.appendChild(userMsgEl); // Append to the end, then scroll
-                        if (userSpeechWave) callConversation.appendChild(userSpeechWave); // Ensure wave is at the bottom
+                        callConversation.appendChild(userMsgEl);
                     }
                     if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
                     if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
@@ -2701,14 +2727,14 @@
                 };
 
                 speechRecognition.onspeechend = () => {
-                    if (userSpeechWave) userSpeechWave.classList.remove('active');
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Deactivate visual indicator
                     console.log("Speech ended.");
                 };
 
                 speechRecognition.onend = () => {
                     isRecognizing = false;
                     console.log("Speech recognition ended.");
-                    if (userSpeechWave) userSpeechWave.classList.remove('active');
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Deactivate visual indicator
                     if (!isCallActive) return;
                     
                     if (isMuted) {
@@ -2743,11 +2769,11 @@
                 speechRecognition.onerror = (event) => {
                     isRecognizing = false;
                     console.error('Speech recognition error:', event.error, event.message);
-                    if (userSpeechWave) userSpeechWave.classList.remove('active');
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Deactivate visual indicator
                     if (!isCallActive) return;
 
                     if (event.error === 'no-speech' && isCallActive && !isMuted) {
-                        userSaidSomething = false;
+                        userSaidSomething = false; // Reset flag on no speech
                         if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop recognition on no-speech error:", e); } }
                     } else if (event.error === 'network' && isCallActive) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Network error. Attempting restart...';
@@ -2771,7 +2797,7 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                callConversation.appendChild(msgEl); // Append, then scroll
+                callConversation.insertBefore(msgEl, userSpeechWave); // Insert before userSpeechWave
                 if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
             }
 
@@ -2807,7 +2833,7 @@
                     speakBotResponse(botResponse);
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
-                    addCallMessage('bot', errorMsg);
+                    addCallMessage('bot', errorMsg); // Fixed: Use addCallMessage for errors in call modal
                     if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         if (tapToTalk) tapToTalk.style.display = 'block';
@@ -2882,7 +2908,7 @@
                 botIsSpeaking = false;
                 botImageContainer.classList.remove('speaking');
                 const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                if (userMsgEl) userMsgEl.remove(); // Remove interim user speech element
+                if (userMsgEl) userMsgEl.textContent = ''; // Fixed: Clear interim text instead of always removing element
 
                 if (!isMuted) {
                     callStatusMessage.textContent = 'Listening... (Tap to Speak)';
@@ -2927,7 +2953,10 @@
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div><div id="userSpeechWave"></div>`; // Clear previous call messages
+                    // Clear previous call messages, ensuring userSpeechWave is preserved
+                    callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div><div id="userSpeechWave" class="userSpeechWave"></div>`;
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Ensure initial state is inactive
+
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
