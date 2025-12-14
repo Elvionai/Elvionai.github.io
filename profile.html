@@ -1600,7 +1600,7 @@
                 enhanceCodeBlocks(chatView);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50);
+                setTimeout(() => { if (chatView) chatView.scrollTop = chatView.scrollHeight; }, 50); // Ensure autoscroll
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -1674,7 +1674,7 @@
                             renderFilePreview();
                         }
 
-                        showTypingStatus('Re-generating response...');
+                        showTypingStatus('Re-generating response...'); // Show typing status for regeneration
 
                         const historyForRegen = currentMessages
                             .slice(0, msgIndex - 1)
@@ -1738,9 +1738,9 @@
                 if (!typingStatus || !chatView) return;
                 typingStatus.innerHTML = `<div class="msg">${text ? `<span class="spinner"></span> <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>` : `<span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>`}</div>`;
                 typingStatus.style.display = 'flex';
-                // Always append and scroll to ensure visibility
+                // Append to ensure it's at the end
                 chatView.appendChild(typingStatus);
-                if (chatView) chatView.scrollTop = chatView.scrollHeight;
+                chatView.scrollTop = chatView.scrollHeight; // Ensure autoscroll
             }
 
             function removeTypingStatus() {
@@ -1852,7 +1852,6 @@
                         fileObjectURLs.splice(idx, 1);
                         if (!uploadedFiles.length && chatFile) chatFile.value = '';
                         renderFilePreview();
-                        if (chatView) chatView.scrollTop = chatView.scrollHeight; // Scroll to ensure preview changes are visible
                     });
                 });
             }
@@ -1952,7 +1951,7 @@
             }
 
             const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-            const comicStyles = ["anime", "american", "manga"]; // Defined available comic styles
+            // const comicStyles = ["anime", "american", "manga"]; // Defined available comic styles - replaced by thenaModels for comic style options
 
             const toolDefinitions = {
                 "image": {
@@ -2059,38 +2058,15 @@
                 },
                 "comic": {
                     title: "Create Comic",
-                    description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story. Version 1 uses different image generation models per panel. Version 2 (MiniMax) generates the whole strip.",
+                    description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
                         <label for="comic-model">Generation Model</label>
-                        <select id="comic-model" aria-label="Comic generation model">
-                            <option value="thena">Version 1 (Themed Styles, panel by panel)</option>
-                            <option value="minimax">Version 2 (Creative/Realistic, full strip)</option>
-                        </select>
+                        <select id="comic-model" aria-label="Comic generation model"><option value="thena">Version 1 (Themed Styles)</option><option value="minimax">Version 2 (Creative/Realistic)</option></select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style" id="comicStyleLabel">Comic Style (for Version 1 only)</label>
-                        <select id="tool-style" aria-label="Comic style">${comicStyles.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
+                        <label for="tool-style">Comic Style (for Version1 only)</label>
+                        <select id="tool-style" aria-label="Comic style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
-                    onFormReady: () => {
-                        const comicModelSelect = $('comic-model');
-                        const comicStyleSelect = $('tool-style');
-                        const comicStyleLabel = $('comicStyleLabel');
-                        const panelsInput = $('tool-panels');
-
-                        const toggleStyleVisibility = () => {
-                            const isThena = comicModelSelect.value === 'thena';
-                            comicStyleSelect.style.display = isThena ? 'block' : 'none';
-                            comicStyleLabel.style.display = isThena ? 'block' : 'none';
-                            panelsInput.max = isThena ? "6" : "1"; // MiniMax comic is usually one large image. If it supports more, adjust this.
-                            panelsInput.value = Math.min(parseInt(panelsInput.value), parseInt(panelsInput.max));
-                            panelsInput.disabled = !isThena; // Disable panels for MiniMax if it's one large image
-                        };
-
-                        if (comicModelSelect) {
-                            comicModelSelect.addEventListener('change', toggleStyleVisibility);
-                            toggleStyleVisibility(); // Set initial state
-                        }
-                    },
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#comic-model')?.value === 'minimax';
                         const modelName = use_minimax ? 'Version 2 (Creative/Realistic)' : 'Version 1 (Themed Styles)';
@@ -2098,45 +2074,39 @@
                         const style = form.querySelector('#tool-style')?.value;
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
                         if (!story) return "Please provide a comic story.";
+                        if (isNaN(panels) || panels < 1 || panels > 6) return "Number of panels must be between 1 and 6.";
+
+                        const payload = {
+                            story: story,
+                            panels: panels,
+                            user_id: currentUser?.uid || "user",
+                            use_minimax: use_minimax
+                        };
+
+                        if (!use_minimax && style) {
+                            payload.style = style;
+                        }
 
                         await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (using ${modelName})`);
                         showTypingStatus('Generating your comic panels...');
-
                         try {
-                            let imagesHtml = '';
-                            if (use_minimax) {
-                                // Use the dedicated /api/tools/generate-comic endpoint for MiniMax
-                                const payload = { story, use_minimax: true };
-                                const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(payload),
-                                    signal: currentController?.signal
-                                });
-                                const data = await res.json();
-                                if (!res.ok) throw new Error(data.error || res.statusText);
-                                imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
-                            } else {
-                                // For Thena (Version 1), generate image for each panel
-                                const generatedImages = [];
-                                for (let i = 0; i < panels; i++) {
-                                    if (currentController?.signal.aborted) throw new Error("Comic generation stopped.");
-                                    showTypingStatus(`Generating panel ${i + 1} of ${panels}...`);
-                                    const panelPrompt = `${story} (Panel ${i + 1} of ${panels} in ${style} comic style)`;
-                                    const payload = { prompt: panelPrompt, model: style, use_minimax: false };
-                                    const res = await fetch(`${API_BASE_URL}/generate-image`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(payload),
-                                        signal: currentController?.signal
-                                    });
-                                    const data = await res.json();
-                                    if (!res.ok) throw new Error(data.error || `Failed to generate panel ${i+1}.`);
-                                    generatedImages.push(data.image_b64);
-                                }
-                                imagesHtml = generatedImages.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
-                            }
+                            const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload),
+                                signal: currentController?.signal
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || res.statusText);
                             
+                            if (!data.images || data.images.length === 0) {
+                                throw new Error("No images were returned for the comic.");
+                            }
+
+                            const imagesHtml = data.images.map((imgBase64, idx) => {
+                                const src = imgBase64.startsWith('http') ? imgBase64 : `data:image/png;base64,${imgBase64}`;
+                                return `<img src="${src}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`;
+                            }).join('');
                             const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                             removeTypingStatus();
                             await addMessageToChat('ai', comicMessage);
@@ -2473,10 +2443,11 @@
                         displayToolForm(toolKey);
                     }
 
+                    // Reset buttons after tool execution or abort
                     if (sendBtn) sendBtn.style.display = 'flex';
                     if (callBtn) callBtn.style.display = 'flex';
                     if (stopBtn) stopBtn.style.display = 'none';
-                    currentController = null;
+                    currentController = null; // Reset controller here too
                 });
             }
 
@@ -2509,10 +2480,11 @@
                         submitButton.innerHTML = originalButtonContent;
                         submitButton.disabled = false;
                     }
+                    // Reset buttons after form submission or abort
                     if (sendBtn) sendBtn.style.display = 'flex';
                     if (callBtn) callBtn.style.display = 'flex';
                     if (stopBtn) stopBtn.style.display = 'none';
-                    currentController = null;
+                    currentController = null; // Reset controller here too
                 };
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
@@ -2580,7 +2552,7 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus();
+                    showTypingStatus(); // Will display the default '...' animation
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -2602,6 +2574,7 @@
                     await startTypewriter(finalResponse);
                 }
 
+                // Ensure cleanup happens after all awaits
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
@@ -2642,6 +2615,7 @@
             let isMuted = false;
             let selectedCallVoiceId = 'elder'; // Default for minimax
             let selectedCallVoiceProvider = 'minimax'; // Default provider
+            let isRecognizing = false; // New flag for speech recognition state
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
@@ -2649,6 +2623,15 @@
                 speechRecognition.continuous = true;
                 speechRecognition.interimResults = true;
                 speechRecognition.lang = 'en-US';
+
+                speechRecognition.onstart = () => {
+                    isRecognizing = true;
+                    console.log("Speech recognition started.");
+                    if (!botIsSpeaking && !isMuted) {
+                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                         if (tapToTalk) tapToTalk.style.display = 'block';
+                    }
+                };
 
                 speechRecognition.onresult = (event) => {
                     if (!isCallActive) return;
@@ -2677,6 +2660,8 @@
                 };
 
                 speechRecognition.onend = () => {
+                    isRecognizing = false;
+                    console.log("Speech recognition ended.");
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
                     
@@ -2701,32 +2686,34 @@
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else {
+                        // Restart if active and not muted, and nothing else is happening
                         if (isCallActive && !isMuted) {
-                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                            if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start automatically (onend):", e);}
+                            try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to start automatically (onend):", e);}
                         }
                     }
                 };
 
                 speechRecognition.onerror = (event) => {
                     console.error('Speech recognition error:', event.error, event.message);
+                    isRecognizing = false; // Reset flag on error
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
 
                     if (event.error === 'no-speech' && isCallActive && !isMuted) {
                         userSaidSomething = false;
-                        if (speechRecognition) speechRecognition.stop();
+                        if (speechRecognition) speechRecognition.stop(); // Stop, onend will handle restart
                     } else if (event.error === 'network' && isCallActive) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Network error. Attempting restart...';
-                        if (speechRecognition) speechRecognition.stop();
+                        if (speechRecognition) speechRecognition.stop(); // Stop, onend will handle restart
                     } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied. Please allow in browser settings.';
                         endCall();
                     } else if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { if (speechRecognition) speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
+                        if (!isRecognizing) { // Only start if not already recognizing
+                            try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
+                        }
                     }
                 };
             } else {
@@ -2740,14 +2727,14 @@
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
                 callConversation.insertBefore(msgEl, userSpeechWave);
-                callConversation.scrollTop = callConversation.scrollHeight;
+                callConversation.scrollTop = callConversation.scrollHeight; // Ensure autoscroll
             }
 
             async function handleCallBotResponse() {
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
-                if (speechRecognition) {
+                if (isRecognizing) { // Check flag before stopping
                     try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
                 }
                 const historyForBot = callHistory.map(m => m);
@@ -2757,7 +2744,12 @@
                     const res = await fetch(`${API_BASE_URL}/chat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: userMessage, history: historyForBot.slice(0, -1), user_id: currentUser?.uid || "user" })
+                        body: JSON.stringify({
+                            message: userMessage,
+                            history: historyForBot.slice(0, -1), // Current history before user's message
+                            user_id: currentUser?.uid || "user",
+                            call_context: true // Added for potential backend persona adjustment
+                        })
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "Server error.");
@@ -2771,7 +2763,9 @@
                     if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
+                        if (!isRecognizing) { // Check flag before starting
+                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
+                        }
                     }
                 }
             }
@@ -2783,16 +2777,21 @@
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                 try {
                     let res;
+                    // Default endpoint and payload for minimax-like behavior
+                    const voiceEndpoint = `${API_BASE_URL}/api/tools/text-to-speech`;
+                    const payload = { text: text };
+
                     if (selectedCallVoiceProvider === 'gemini') {
                         const fd = new FormData();
                         fd.append('text', text);
-                        fd.append('style', selectedCallVoiceId);
+                        fd.append('style', selectedCallVoiceId); // Use selectedCallVoiceId for Gemini style
                         res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
-                    } else { // minimax
-                        res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
+                    } else { // minimax or other future providers
+                        payload.voice_id = selectedCallVoiceId; // Use selectedCallVoiceId for MiniMax voice_id
+                        res = await fetch(voiceEndpoint, {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
+                            body: JSON.stringify(payload)
                         });
                     }
 
@@ -2809,7 +2808,9 @@
                         if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
+                            if (!isRecognizing) { // Check flag before starting
+                                try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
+                            }
                         } else if (isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                             if (tapToTalk) tapToTalk.style.display = 'none';
@@ -2823,7 +2824,9 @@
                     if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
+                        if (!isRecognizing) { // Check flag before starting
+                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
+                        }
                     } else if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         if (tapToTalk) tapToTalk.style.display = 'none';
@@ -2832,7 +2835,7 @@
             }
 
             function stopBotSpeakingAndStartListening() {
-                if (!isCallActive || !botIsSpeaking || !botImageContainer || !callStatusMessage || !tapToTalk) return;
+                if (!isCallActive || !botImageContainer || !callStatusMessage || !tapToTalk) return; // Removed !userSpeechWave
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
@@ -2847,12 +2850,12 @@
                 if (!isMuted) {
                     callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                     tapToTalk.style.display = 'block';
-                    try {
-                        if (speechRecognition) {
-                            speechRecognition.stop();
-                            speechRecognition.start();
+                    if (speechRecognition) {
+                        if (isRecognizing) { speechRecognition.stop(); } // Stop if running
+                        if (!isRecognizing) { // Start only if not already recognizing after potential stop
+                            try { speechRecognition.start(); } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
                         }
-                    } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
+                    }
                 } else {
                     callStatusMessage.textContent = 'Microphone Muted.';
                     tapToTalk.style.display = 'none';
@@ -2888,18 +2891,15 @@
                     tapToTalk.style.display = 'none';
                     callHistory = [];
 
-                    setTimeout(() => {
+                    setTimeout(() => { // Keep a short timeout for initial setup to stabilize.
                         if (!isCallActive) return;
                         addCallMessage('status', 'Call Connected. Speak when ready.');
                         callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         tapToTalk.style.display = 'block';
-                        try {
-                            if (speechRecognition) speechRecognition.start();
-                        } catch(e) {
-                            console.error("Speech recognition start failed in callBtn click:", e);
-                            if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.';
+                        if (!isRecognizing) { // Check here
+                            try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition start failed in callBtn click:", e); }
                         }
-                    }, 1500);
+                    }, 1000); // Reduced timeout
                 });
             }
 
@@ -2914,7 +2914,8 @@
                     currentAudio = null;
                 }
                 callModal.classList.remove('active');
-                try { if (speechRecognition) speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on call end:", e); }
+                try { if (speechRecognition) speechRecognition.abort(); } catch(e) { console.warn("Failed to abort speech recognition on call end:", e); }
+                isRecognizing = false; // Reset flag
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
                 userSpeechWave.classList.remove('active');
@@ -2931,9 +2932,7 @@
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition) {
-                            try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
-                        }
+                        if (isRecognizing) { speechRecognition.stop(); } // Stop if running
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
                         userSpeechWave.classList.remove('active');
@@ -2943,7 +2942,9 @@
                         if (isCallActive && !botIsSpeaking) {
                             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             tapToTalk.style.display = 'block';
-                            try { if (speechRecognition) speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
+                            if (!isRecognizing) { // Check flag before starting
+                                try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
+                            }
                         } else if (isCallActive && botIsSpeaking) {
                             callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                             tapToTalk.style.display = 'none';
