@@ -95,14 +95,6 @@
             animation: drift 90s infinite linear;
             mix-blend-mode: soft-light;
         }
-        /* New nebula layer for added depth */
-        .nebula-layer:nth-child(4) {
-            background: radial-gradient(circle at 10% 40%, rgba(0, 255, 136, 0.05), transparent 70%),
-                        radial-gradient(circle at 60% 85%, rgba(189, 0, 255, 0.05), transparent 65%);
-            animation: drift 110s infinite linear alternate-reverse;
-            mix-blend-mode: lighten;
-        }
-
 
         @keyframes drift {
             0% { transform: translate(0, 0) rotate(0deg); }
@@ -113,10 +105,9 @@
             position: absolute;
             pointer-events: none;
             border-radius: 50%;
-            background: white;
+            background: var(--neon-blue); /* More integrated color */
             animation: twinkle var(--duration) infinite ease-in-out alternate;
-            /* Enhanced box-shadow for otherworldly glow */
-            box-shadow: 0 0 3px rgba(255,255,255,0.5), 0 0 7px var(--neon-blue);
+            box-shadow: 0 0 3px rgba(0, 242, 255, 0.5), 0 0 8px rgba(0, 242, 255, 0.3); /* Subtle glow */
             will-change: transform, opacity;
         }
         @keyframes twinkle {
@@ -127,7 +118,7 @@
         .shooting-star {
             position: absolute;
             height: 2px;
-            background: linear-gradient(-90deg, white, transparent);
+            background: linear-gradient(-90deg, var(--neon-blue), transparent); /* Use neon blue for shooting stars */
             filter: drop-shadow(0 0 6px var(--neon-blue));
             animation: shoot var(--duration) ease-out forwards;
             opacity: 0;
@@ -883,7 +874,6 @@
         <div class="nebula-layer"></div>
         <div class="nebula-layer"></div>
         <div class="nebula-layer"></div>
-        <div class="nebula-layer"></div> <!-- Added for more depth -->
         <img class="cosmic-eagle" src="https://i.imgur.com/gK6w74X.png" alt="Cosmic Eagle">
     </div>
 
@@ -1097,27 +1087,36 @@
 
         const cosmos = $('cosmos-container');
 
+        // Call-related state variables
+        let speechRecognition;
+        let isCallActive = false;
+        let callHistory = [];
+        let botIsSpeaking = false;
+        let userSaidSomething = false;
+        let currentAudio = null;
+        let isMuted = false;
+        let isRecognizing = false;
+        let selectedCallVoiceId = 'elder'; // Default for minimax (Seraphina)
+        let selectedCallVoiceProvider = 'minimax'; // Default provider
+
         // Cosmic background animations
         function igniteCosmos() {
             if (cosmos) {
-                cosmos.querySelectorAll('.star, .shooting-star').forEach(p => p.remove());
-                // Increased star count for a denser field
-                for (let i = 0; i < 500; i++) createParticle('star', 150, 3);
+                // Keep the nebulas as they are
+                cosmos.querySelectorAll('.star').forEach(p => p.remove()); // Remove existing stars
+                for (let i = 0; i < 200; i++) { // Increased number of stars for more depth
+                    const particle = document.createElement('div');
+                    particle.className = 'star';
+                    const size = Math.random() * 2 + 0.5; // Slightly larger stars
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.left = `${Math.random() * 100}%`;
+                    particle.style.top = `${Math.random() * 100}%`;
+                    particle.style.setProperty('--duration', `${Math.random() * 5 + 3}s`); // Varied twinkle duration
+                    particle.style.opacity = Math.random() * 0.7 + 0.3; // Varied initial opacity
+                    cosmos.appendChild(particle);
+                }
             }
-        }
-
-        function createParticle(type, spread, maxDuration) {
-            if (!cosmos) return;
-            const particle = document.createElement('div');
-            particle.className = type;
-            const size = Math.random() * (type === 'star' ? 2 : 1.5) + 0.5;
-            particle.style.width = `${size}px`;
-            particle.style.height = `${size}px`;
-            particle.style.left = `${Math.random() * spread - (spread - 100) / 2}%`;
-            particle.style.top = `${Math.random() * spread - (spread - 100) / 2}%`;
-            particle.style.setProperty('--duration', `${Math.random() * maxDuration + 5}s`);
-            if(type === 'star') particle.style.opacity = Math.random();
-            cosmos.appendChild(particle);
         }
 
         function launchShootingStar() {
@@ -1143,9 +1142,10 @@
         }
 
         igniteCosmos();
+        // Adjust interval for shooting stars - more subtle but still present
         setInterval(() => {
-             if (Math.random() < 0.3) launchShootingStar();
-        }, 4000);
+             if (Math.random() < 0.2) launchShootingStar(); // Less frequent shooting stars
+        }, 5000);
 
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1712,7 +1712,7 @@
                         const signal = currentController.signal;
 
                         sendBtn.style.display = 'none';
-                        callBtn.style.display = 'none';
+                        callBtn.style.display = 'none'; // Hide call button during regeneration
                         stopBtn.style.display = 'flex';
                         const regenStopListener = () => { if (currentController) currentController.abort(); };
                         if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -1736,7 +1736,7 @@
                             await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
                         } finally {
                             sendBtn.style.display = 'flex';
-                            callBtn.style.display = 'flex';
+                            callBtn.style.display = 'flex'; // Show call button after regeneration
                             stopBtn.style.display = 'none';
                             if (stopBtn._currentStopListener) {
                                 stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -2496,7 +2496,7 @@
                     currentController = new AbortController(); 
 
                     if (sendBtn) sendBtn.style.display = 'none';
-                    if (callBtn) callBtn.style.display = 'none';
+                    if (callBtn) callBtn.style.display = 'none'; // Hide call button during tool action
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
                         const toolStopListener = () => { if (currentController) currentController.abort(); };
@@ -2522,7 +2522,7 @@
                             await startTypewriter(result);
                         }
                         if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex';
+                        if (callBtn) callBtn.style.display = 'flex'; // Show call button after tool action
                         if (stopBtn) stopBtn.style.display = 'none';
                         if (stopBtn._currentStopListener) {
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -2567,7 +2567,7 @@
                             submitButton.disabled = false;
                         }
                         if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex';
+                        if (callBtn) callBtn.style.display = 'flex'; // Show call button after tool submission
                         if (stopBtn) stopBtn.style.display = 'none';
                         if (stopBtn._currentStopListener) {
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -2587,7 +2587,7 @@
 
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
-                if (callBtn) callBtn.style.display = 'none';
+                if (callBtn) callBtn.style.display = 'none'; // Hide call button when sending message
 
                 currentController = new AbortController();
                 const signal = currentController.signal;
@@ -2660,7 +2660,7 @@
 
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
-                if (callBtn) callBtn.style.display = 'flex';
+                if (callBtn) callBtn.style.display = 'flex'; // Show call button after message sent
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                     stopBtn._currentStopListener = null;
@@ -2693,19 +2693,8 @@
             if (callVoiceModel) {
                 callVoiceModel.addEventListener('change', updateCallVoiceStyles);
                 callVoiceStyle.addEventListener('change', () => { selectedCallVoiceId = callVoiceStyle.value; });
-                updateCallVoiceStyles();
+                updateCallVoiceStyles(); // Initialize on load
             }
-
-            let speechRecognition;
-            let isCallActive = false;
-            let callHistory = [];
-            let botIsSpeaking = false;
-            let userSaidSomething = false;
-            let currentAudio = null;
-            let isMuted = false;
-            let isRecognizing = false;
-            let selectedCallVoiceId = 'elder';
-            let selectedCallVoiceProvider = 'minimax';
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
@@ -2718,7 +2707,9 @@
                 speechRecognition.onresult = (event) => {
                     if (!isCallActive) return;
                     userSaidSomething = true;
+                    const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.add('active');
+
                     let finalTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
@@ -2736,7 +2727,9 @@
                 };
                 speechRecognition.onend = () => {
                     isRecognizing = false;
+                    const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
+
                     if (!isCallActive) return;
                     let finalTranscript = '';
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
@@ -2751,18 +2744,27 @@
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else if (isCallActive && !isMuted && !isRecognizing) {
-                        try { speechRecognition.start(); } catch (e) {}
+                        try { speechRecognition.start(); } catch (e) { console.warn("Speech recognition failed to start (onend):", e); }
                     }
                 };
                 speechRecognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
                     isRecognizing = false;
+                    console.error('Speech recognition error:', event.error, event.message);
+                    const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if(event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                        callStatusMessage.textContent = 'Microphone access denied.';
+
+                    if(event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'permission-denied') {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone access denied. Please allow in browser settings.';
                         setTimeout(endCall, 2000);
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
                     }
                 };
+            } else {
+                if (callBtn) callBtn.style.display = 'none'; // Hide call button if speech recognition is not supported
+                console.warn("Speech Recognition not supported in this browser.");
             }
 
             function addCallMessage(role, text) {
@@ -2770,16 +2772,21 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                const wave = callConversation.querySelector('#userSpeechWave');
-                if (wave) callConversation.insertBefore(msgEl, wave);
+                const userSpeechWave = $('userSpeechWave');
+                if (userSpeechWave && role !== 'status') callConversation.insertBefore(msgEl, userSpeechWave); // Insert above the wave
                 else callConversation.appendChild(msgEl);
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
-                if (!isCallActive) return;
+                if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
-                if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch (e) {} }
+                tapToTalk.style.display = 'none';
+                userSaidSomething = false;
+
+                if (speechRecognition && isRecognizing) {
+                    try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
+                }
 
                 const historyForBot = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
@@ -2795,87 +2802,150 @@
                     const botResponse = data.response;
                     callHistory.push({ role: 'ai', content: botResponse });
                     addCallMessage('bot', botResponse);
-                    await speakBotResponse(botResponse);
+                    speakBotResponse(botResponse);
                 } catch (err) {
-                    addCallMessage('bot', `❌ Call error: ${err.message}`);
-                    if (isCallActive && !isMuted && !isRecognizing) { try { speechRecognition.start(); } catch (e) {} }
+                    const errorMsg = `❌ Call error: ${err.message}`;
+                    addCallMessage('bot', errorMsg);
+                    if (isCallActive && !isMuted && !isRecognizing) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
+                    }
                 }
             }
 
             async function speakBotResponse(text) {
-                return new Promise(async (resolve, reject) => {
-                    if (!isCallActive) return reject();
-                    botIsSpeaking = true;
-                    botImageContainer.classList.add('speaking');
-                    callStatusMessage.textContent = 'Philadelphia AI is speaking...';
-                    try {
-                        let res;
-                        if (selectedCallVoiceProvider === 'gemini') {
-                            const fd = new FormData();
-                            fd.append('text', text);
-                            fd.append('style', selectedCallVoiceId);
-                            res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
-                        } else {
-                            res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
-                            });
-                        }
-                        if (!res.ok) throw new Error(await res.text());
-                        const blob = await res.blob();
-                        const url = URL.createObjectURL(blob);
-                        if (currentAudio) currentAudio.src = '';
-                        currentAudio = new Audio(url);
-                        currentAudio.onended = currentAudio.onerror = () => {
-                            botIsSpeaking = false;
-                            botImageContainer.classList.remove('speaking');
-                            URL.revokeObjectURL(url);
-                            if (isCallActive && !isMuted && !isRecognizing) {
-                                callStatusMessage.textContent = 'Listening...';
-                                try { speechRecognition.start(); } catch(e) {}
-                            }
-                            resolve();
-                        };
-                        currentAudio.play();
-                    } catch (err) {
-                        botIsSpeaking = false;
-                        botImageContainer.classList.remove('speaking');
-                        if (isCallActive && !isMuted && !isRecognizing) {
-                            callStatusMessage.textContent = 'Listening (Voice Failed)...';
-                            try { speechRecognition.start(); } catch(e) {}
-                        }
-                        reject(err);
+                if (!isCallActive || !botImageContainer || !callStatusMessage) return;
+                botIsSpeaking = true;
+                botImageContainer.classList.add('speaking');
+                callStatusMessage.textContent = 'Philadelphia AI is speaking...';
+                try {
+                    let res;
+                    if (selectedCallVoiceProvider === 'gemini') {
+                        const fd = new FormData();
+                        fd.append('text', text);
+                        fd.append('style', selectedCallVoiceId);
+                        res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
+                    } else {
+                        res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
+                        });
                     }
-                });
+                    if (!res.ok) throw new Error(await res.text());
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const audio = new Audio(url);
+                    currentAudio = audio;
+                    audio.onended = audio.onerror = () => {
+                        botIsSpeaking = false;
+                        if (botImageContainer) botImageContainer.classList.remove('speaking');
+                        currentAudio = null;
+                        URL.revokeObjectURL(url);
+
+                        if (isCallActive && !isMuted && !isRecognizing) {
+                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                            if (tapToTalk) tapToTalk.style.display = 'block';
+                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
+                        } else if (isMuted) {
+                            if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
+                            if (tapToTalk) tapToTalk.style.display = 'none';
+                        }
+                    };
+                    audio.play();
+                } catch (err) {
+                    console.error("Voice generation error:", err);
+                    botIsSpeaking = false;
+                    if (botImageContainer) botImageContainer.classList.remove('speaking');
+                    if (isCallActive && !isMuted && !isRecognizing) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
+                    } else if (isMuted) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
+                        if (tapToTalk) tapToTalk.style.display = 'none';
+                    }
+                }
             }
 
             function endCall() {
+                if (!callModal || !botImageContainer || !tapToTalk || !callStatusMessage) return;
                 isCallActive = false;
                 botIsSpeaking = false;
                 isRecognizing = false;
-                if (currentAudio) currentAudio.pause();
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src);
+                    currentAudio = null;
+                }
                 callModal.classList.remove('active');
-                if (speechRecognition) { try { speechRecognition.abort(); } catch(e) {} }
+                if (speechRecognition) {
+                    try { speechRecognition.abort(); } catch(e) { console.warn("Failed to abort speech recognition on call end:", e); }
+                }
                 botImageContainer.classList.remove('speaking');
+                tapToTalk.style.display = 'none';
                 callStatusMessage.textContent = 'Call Ended.';
+            }
+
+            function stopBotSpeakingAndStartListening() {
+                if (!isCallActive || !botImageContainer || !callStatusMessage || !tapToTalk) return;
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                    if (currentAudio.src) URL.revokeObjectURL(currentAudio.src);
+                    currentAudio = null;
+                }
+                botIsSpeaking = false;
+                botImageContainer.classList.remove('speaking');
+                const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                if (userMsgEl) userMsgEl.textContent = ''; // Clear any interim user speech
+
+                if (!isMuted) {
+                    callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                    tapToTalk.style.display = 'block';
+                    if (speechRecognition && isRecognizing) { // Only stop if it's currently running
+                        try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition immediately:", e); }
+                    }
+                    if (speechRecognition && !isRecognizing) { // Start if not already running
+                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
+                    }
+                } else {
+                    callStatusMessage.textContent = 'Microphone Muted.';
+                    tapToTalk.style.display = 'none';
+                    if (speechRecognition && isRecognizing) { // Stop if muted
+                        try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition when muted:", e); }
+                    }
+                }
+            }
+
+            if (callModal) {
+                callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
+                callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
             }
 
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
                     if (!SpeechRecognition) {
-                        alert("Voice calls are not supported on this browser.");
+                        alert("Sorry, your browser doesn't support the Speech Recognition needed for this feature.");
                         return;
                     }
+                    if (!callModal || !callConversation || !callStatusMessage || !tapToTalk) return;
+
+                    // Update selected voice from UI before starting call
+                    selectedCallVoiceProvider = callVoiceModel?.value || 'minimax';
+                    selectedCallVoiceId = callVoiceStyle?.value || 'elder';
+
                     isCallActive = true;
                     isMuted = false;
-                    isRecognizing = false;
-                    if(muteCallBtn) {
+                    isRecognizing = false; // Reset recognizing state
+                    if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div id="userSpeechWave"></div>`;
+                    callConversation.innerHTML = `<div class="call-msg status">Waiting for connection...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
@@ -2883,35 +2953,42 @@
                     userSaidSomething = false;
 
                     setTimeout(() => {
-                        if (!isCallActive) return;
+                        if (!isCallActive) return; // Check if call was ended during timeout
                         addCallMessage('status', 'Call Connected. Speak when ready.');
                         callStatusMessage.textContent = 'Listening...';
                         tapToTalk.style.display = 'block';
-                        if (!isRecognizing) {
-                            try { speechRecognition.start(); } catch(e) { 
-                                callStatusMessage.textContent = 'Microphone error.';
-                                console.error(e);
-                            }
+                        if (!isRecognizing) { // Only start if not already recognizing
+                            try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed in callBtn click:", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.'; }
                         }
                     }, 1500);
                 });
             }
+
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
+
             if (muteCallBtn) {
                 muteCallBtn.addEventListener('click', () => {
+                    if (!callStatusMessage || !tapToTalk || !botImageContainer) return;
+
                     isMuted = !isMuted;
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) {} }
+                        if (speechRecognition && isRecognizing) { // Only stop if it's running
+                            try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
+                        }
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
-                        if (isCallActive && !botIsSpeaking && !isRecognizing) {
+                        if (isCallActive && !botIsSpeaking && !isRecognizing) { // Start if active, not speaking, and not already recognizing
                             callStatusMessage.textContent = 'Listening...';
-                            try { speechRecognition.start(); } catch(e) {}
+                            tapToTalk.style.display = 'block';
+                            try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
+                        } else if (isCallActive && botIsSpeaking) {
+                            callStatusMessage.textContent = 'Philadelphia AI is speaking...';
+                            tapToTalk.style.display = 'none';
                         }
                     }
                 });
