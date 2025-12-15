@@ -49,6 +49,10 @@
         /* --- GLOBAL RESET & BASE STYLES --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        html {
+            -webkit-tap-highlight-color: transparent; /* Disable tap highlight on mobile */
+        }
+        
         body {
             height: 100vh;
             overflow: hidden; /* Prevent body scroll, custom scroll for chat */
@@ -93,10 +97,11 @@
         }
 
         @keyframes drift {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(-75%, -75%); }
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-75%, -75%) rotate(15deg); }
         }
-        .star { 
+
+        .star {
             position: absolute;
             pointer-events: none;
             border-radius: 50%;
@@ -373,7 +378,7 @@
         }
         .capsule-input:focus-within {
             border-color: var(--neon-blue);
-            box-shadow: var(--box-glow), inset 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 0 25px rgba(0, 242, 255, 0.35), inset 0 2px 10px rgba(0,0,0,0.2);
             background: var(--input-focus-bg);
         }
 
@@ -408,7 +413,7 @@
             width: 55px; height: 55px; border-radius: 50%; border: none; cursor: pointer;
             background: var(--plasma-gradient);
             display: flex; align-items: center; justify-content: center;
-            box-shadow: var(--box-glow); transition: 0.3s transform, 0.3s box-shadow;
+            box-shadow: var(--box-glow); transition: 0.3s transform, 0.3s box-shadow, 0.3s background;
             color: #000;
             position: relative; z-index: 1;
             user-select: none;
@@ -426,8 +431,10 @@
             background: rgba(13, 20, 52, 0.86); z-index: 1200;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
         }
-        .panel-bg.active { display: block; }
+        .panel-bg.active { display: block; opacity: 1; }
 
         .side-panel {
             position: fixed; top: 0; left: -350px; /* Hidden off-screen to the left */
@@ -439,7 +446,7 @@
             padding: 18px 16px 20px 15px;
             overflow-y: auto;
             border-radius: 0 24px 32px 0;
-            transition: left 0.3s ease-out; /* Only left for slide animation */
+            transition: left 0.3s cubic-bezier(0.25, 1, 0.5, 1); /* Only left for slide animation */
         }
         .side-panel.active { left: 0; } /* Slides in from the left */
 
@@ -603,8 +610,10 @@
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--call-bg-gradient); z-index: 4000;
             flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
         }
-        #callModal.active { display: flex; }
+        #callModal.active { display: flex; opacity: 1; }
 
         #callHeader {
             color: var(--neon-blue); font-family: 'Orbitron', sans-serif;
@@ -628,7 +637,7 @@
             transform: scale(1.05);
             animation: head-nod 1.2s infinite ease-in-out;
         }
-        @keyframes head-nod { 0% { transform: translateY(0); } 50% { transform: translateY(-3px); } 100% { transform: translateY(0); } }
+        @keyframes head-nod { 0% { transform: translateY(0) scale(1.05); } 50% { transform: translateY(-3px) scale(1.05); } 100% { transform: translateY(0) scale(1.05); } }
 
         #botSpeakingIndicator {
             position: absolute; top: -5px; left: -5px;
@@ -883,13 +892,10 @@
         </header>
 
         <div id="chat-viewport">
-            <div class="message-group ai">
-                <div class="msg-bubble">
-                    Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
-                </div>
-            </div>
-            <div id="typing-status" class="message-group ai" style="display: none;"></div>
+            <!-- Initial welcome message can be dynamically added by JS if preferred -->
         </div>
+
+        <div id="typing-status" class="message-group ai" style="display: none;"></div>
 
         <div class="input-dock">
             <div class="capsule-input" id="capsuleInputContainer">
@@ -901,7 +907,7 @@
                     <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
                 </div>
             </div>
-            <button class="thruster-btn" id="sendBtn" title="Send message" aria-label="Send message">
+            <button class="thruster-btn" id="sendBtn" onclick="sendMessage()" title="Send message" aria-label="Send message">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
             <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
@@ -1084,8 +1090,7 @@
         // Cosmic background animations
         function igniteCosmos() {
             if (cosmos) {
-                // Remove existing particles to prevent duplicates on re-init
-                cosmos.querySelectorAll('.star').forEach(p => p.remove());
+                cosmos.querySelectorAll('.star, .shooting-star').forEach(p => p.remove());
                 for (let i = 0; i < 200; i++) createParticle('star', 150, 3);
             }
         }
@@ -1127,12 +1132,10 @@
         }
 
         igniteCosmos();
+        setInterval(launchShootingStar, () => {
+             if (Math.random() < 0.3) launchShootingStar();
+        }, 4000);
 
-        const randomLaunch = () => {
-            if (Math.random() < 0.3) launchShootingStar();
-            setTimeout(randomLaunch, Math.random() * 5000 + 3000);
-        }
-        setTimeout(randomLaunch, 1000);
 
         window.addEventListener('DOMContentLoaded', () => {
             const profileMenuBg = $('profileMenuBg');
@@ -1174,6 +1177,7 @@
             const callModal = $('callModal');
             const endCallBtn = $('endCallBtn');
             const muteCallBtn = $('muteCallBtn');
+            const callSettings = $('callSettings');
             const callVoiceModel = $('callVoiceModel');
             const callVoiceStyle = $('callVoiceStyle');
             const callVoiceStyleLabel = $('callVoiceStyleLabel');
@@ -1188,6 +1192,20 @@
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
+            
+            // Add initial welcome message if chat is empty
+            const addWelcomeMessage = () => {
+                const welcomeMsg = `<div class="message-group ai">
+                    <div class="msg-bubble">
+                        Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
+                    </div>
+                </div>`;
+                if(chatViewport.innerHTML.trim() === '') {
+                    chatViewport.innerHTML = welcomeMsg;
+                }
+            };
+            addWelcomeMessage();
+
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
             if (emojiBtn && emojiPanel && userInput) {
@@ -1236,7 +1254,6 @@
                     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
                 };
                 userInput.addEventListener('input', autoResize);
-                sendBtn.addEventListener('click', sendMessage);
                 userInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1289,7 +1306,7 @@
                 });
             }
 
-            window.closeToolMenu = () => { if (toolsMenu) toolsMenu.parentElement.classList.remove('active'); };
+            window.closeToolMenu = () => { if (toolsMenu) toolsMenu.classList.remove('active'); if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
             window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); };
             window.closeProfileMenu = () => { if (profileMenu) profileMenu.classList.remove('active'); if (profileMenuBg) profileMenuBg.classList.remove('active'); };
             window.closeLinksMenu = () => { if (linksMenu) linksMenu.classList.remove('active'); if (linksMenuBg) linksMenuBg.classList.remove('active'); };
@@ -1549,50 +1566,54 @@
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 chatViewport.innerHTML = '';
-                (messages || []).forEach((msg) => {
-                    const div = document.createElement('div');
-                    div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
-                    div.setAttribute('data-message-id', msg.id);
-                    let innerHtml = '';
+                if(messages.length === 0) {
+                    addWelcomeMessage();
+                } else {
+                    (messages || []).forEach((msg) => {
+                        const div = document.createElement('div');
+                        div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
+                        div.setAttribute('data-message-id', msg.id);
+                        let innerHtml = '';
 
-                    if (msg.role === 'user') {
-                        const fileHtml = (msg.files || [])
-                            .map(file => {
-                                let icon = 'fa-file';
-                                if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
-                                else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
-                                else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
-                                else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
-                                return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
-                            })
-                            .join('');
+                        if (msg.role === 'user') {
+                            const fileHtml = (msg.files || [])
+                                .map(file => {
+                                    let icon = 'fa-file';
+                                    if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
+                                    else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
+                                    else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
+                                    else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
+                                    return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
+                                })
+                                .join('');
 
-                        innerHtml = `<div class="msg-bubble">
-                            ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
-                            ${escapeHTML(msg.text || '')}
-                            <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
-                            </div>
-                        </div>`;
-                    } else {
-                        let content;
-                        if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-                            content = msg.text;
+                            innerHtml = `<div class="msg-bubble">
+                                ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
+                                ${escapeHTML(msg.text || '')}
+                                <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                                    <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
+                                </div>
+                            </div>`;
                         } else {
-                            content = renderMarkdown(msg.text || '').html;
+                            let content;
+                            if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
+                                content = msg.text;
+                            } else {
+                                content = renderMarkdown(msg.text || '').html;
+                            }
+                            innerHtml = `<div class="msg-bubble">${content}
+                                <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                                    <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                                    <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                                    <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
+                                </div>
+                            </div>`;
                         }
-                        innerHtml = `<div class="msg-bubble">${content}
-                            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
-                            </div>
-                        </div>`;
-                    }
-                    div.innerHTML = innerHtml;
-                    chatViewport.appendChild(div);
-                });
+                        div.innerHTML = innerHtml;
+                        chatViewport.appendChild(div);
+                    });
+                }
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
@@ -1700,8 +1721,8 @@
                             await startTypewriter(data.response, false);
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { await startTypewriter(`❌ Regeneration stopped.`, false); }
-                            else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
+                            if (err.name === 'AbortError') { return '❌ Regeneration stopped.'; }
+                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
                         } finally {
                             sendBtn.style.display = 'flex';
                             callBtn.style.display = 'flex';
@@ -1758,7 +1779,7 @@
                     typingStatus.innerHTML = `<div class="msg"><span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span></div>`;
                 }
                 typingStatus.style.display = 'flex';
-                chatViewport.appendChild(typingStatus);
+                chatViewport.appendChild(typingStatus); // Ensure typing status is always at the bottom
                 chatViewport.scrollTop = chatViewport.scrollHeight;
             }
 
@@ -1769,18 +1790,36 @@
             }
             
             async function startTypewriter(text, saveToDb = true) {
-                if (!chatViewport) return;
-                const typingStatusParent = typingStatus.parentElement;
-                
-                if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.className = "message-group ai";
-                    tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
-                    typingStatusParent.insertBefore(tempDiv, typingStatus);
+                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
+                    // For media content, render immediately without typewriter
+                    const div = document.createElement('div');
+                    div.className = "message-group ai";
+                    const msgBubble = document.createElement('div');
+                    msgBubble.className = 'msg-bubble';
+                    div.appendChild(msgBubble);
+                    
+                    msgBubble.innerHTML = text + `
+                        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                            <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                            <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                            <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
+                        </div>
+                    `;
+
+                    chatViewport.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
                     chatViewport.scrollTop = chatViewport.scrollHeight;
+
                     if (saveToDb && currentUser && currentChatId) {
-                        try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
-                        catch (e) { console.error("Error saving AI media message: ", e); }
+                        const newMsg = { role: 'ai', text: text, createdAt: serverTimestamp() };
+                        div.setAttribute('data-message-id', 'temp-id'); // Temp id for hooking controls
+                        currentMessages.push({id: 'temp-id', ...newMsg});
+                        hookAiMsgControls(); // Hook controls immediately
+                        try {
+                            const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
+                            div.setAttribute('data-message-id', docRef.id); // Update with real ID
+                            const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
+                            if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
+                        } catch (e) { console.error("Error saving AI media message: ", e); }
                     }
                     return;
                 }
@@ -1790,7 +1829,7 @@
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                typingStatusParent.insertBefore(div, typingStatus);
+                chatViewport.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let currentRenderingText = '';
                 const words = text.split(/(\s+)/);
@@ -1803,18 +1842,14 @@
                     currentRenderingText += word;
                     
                     let contentToRender = currentRenderingText;
-                    if (contentToRender.includes('```')) {
-                        const codeBlockCount = (contentToRender.match(/```/g) || []).length;
-                        if (codeBlockCount % 2 !== 0) {
-                            contentToRender += '\n```';
-                        }
+                    const codeBlockCount = (contentToRender.match(/```/g) || []).length;
+                    if (codeBlockCount % 2 !== 0) {
+                        contentToRender += '\n```';
                     }
 
                     msgBubble.innerHTML = renderMarkdown(contentToRender).html;
                     chatViewport.scrollTop = chatViewport.scrollHeight;
-                    // SUPER-DUPER FAST TYPING DELAY
-                    const delay = word.match(/[\s\.\,\!\?]/) ? 2 : 10;
-                    await new Promise(res => setTimeout(res, delay));
+                    await new Promise(res => setTimeout(res, 1)); // Super fast delay
                 }
                 
                 msgBubble.innerHTML = renderMarkdown(text).html + `
@@ -1826,11 +1861,18 @@
                 `;
                 enhanceCodeBlocks(msgBubble);
                 chatViewport.scrollTop = chatViewport.scrollHeight;
-                hookAiMsgControls();
-
+                
                 if (saveToDb && currentUser && currentChatId) {
-                    try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
-                    catch (e) { console.error("Error saving AI message: ", e); }
+                    const newMsg = { role: 'ai', text: text, createdAt: serverTimestamp() };
+                    div.setAttribute('data-message-id', 'temp-id'); // Temp id for hooking controls
+                    currentMessages.push({id: 'temp-id', ...newMsg});
+                    hookAiMsgControls(); // Re-hook controls after final render
+                    try {
+                        const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
+                        div.setAttribute('data-message-id', docRef.id); // Update with real ID
+                        const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
+                        if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
+                    } catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
 
@@ -1857,15 +1899,15 @@
                     }
 
                     if (file.type && file.type.startsWith('image/')) {
-                        preview = `<img src="${objUrl}">`;
+                        preview = `<img src="${objUrl}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
                     } else if (file.type && file.type.startsWith('video/')) {
-                        preview = `<video src="${objUrl}" controls></video>`;
+                        preview = `<video src="${objUrl}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
                     } else if (file.type && file.type.startsWith('audio/')) {
-                        preview = `<audio controls src="${objUrl}"></audio>`;
+                        preview = `<audio controls src="${objUrl}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
                     } else if (file.type === 'application/pdf') {
-                        preview = `<i class="fa-solid fa-file-pdf" style="font-size: 2em; color: var(--neon-blue);"></i>`;
+                        preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
                     } else {
-                        preview = `<i class="fa-solid fa-file" style="font-size: 2em; color: var(--neon-blue);"></i>`;
+                        preview = `<span style="font-size:1.25em;margin-right:7px;">❓</span>`;
                     }
                     return `
                         <div>
@@ -1891,7 +1933,7 @@
 
             function showAIImagePreview(base64, caption = '') {
                 if (!aiPrevBox || !aiPrevImgBox) return;
-                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
+                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image" style="max-width:210px;max-height:210px;border-radius:12px;display:block;">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
             }
 
@@ -1918,15 +1960,16 @@
                 showTypingStatus('Submitting video generation job...');
                 try {
                     const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
+                    const commonPayload = { model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
                     let options;
 
                     if (isImageToVideo) {
-                        payload.append('model', "MiniMax-Hailuo-02");
-                        payload.append('duration', payload.duration || 6);
-                        payload.append('resolution', payload.resolution || "1080P");
+                        payload.append('model', commonPayload.model);
+                        payload.append('duration', commonPayload.duration);
+                        payload.append('resolution', commonPayload.resolution);
                         options = { method: 'POST', body: payload, signal: currentController?.signal };
                     } else {
-                        const finalPayload = { ...payload, model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
+                        const finalPayload = { ...payload, ...commonPayload };
                         options = {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1962,7 +2005,10 @@
                                 await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
                             }
                         } catch (pollErr) {
-                            if (pollErr.name !== 'AbortError') {
+                            if (pollErr.name === 'AbortError') {
+                                console.log("Video status polling aborted.");
+                                await startTypewriter(`❌ Video status polling stopped.`);
+                            } else {
                                 console.error("Error during video status polling:", pollErr);
                                 await startTypewriter(`❌ Error checking video status.`);
                             }
@@ -1971,13 +2017,16 @@
                     }, 20000);
                 } catch (err) {
                     removeTypingStatus();
-                    if (err.name === 'AbortError') { await startTypewriter(`❌ Video generation request stopped.`); }
-                    else { await startTypewriter(`❌ Could not start video generation: ${err.message}`); }
+                    if (err.name === 'AbortError') {
+                        await startTypewriter(`❌ Video generation request stopped.`);
+                    } else {
+                        await startTypewriter(`❌ Could not start video generation: ${err.message}`);
+                    }
                 }
             }
 
             const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-            const comicStyles = ["anime", "american", "manga"];
+            const comicStyles = ["anime", "american", "manga"]; // Defined available comic styles
 
             const toolDefinitions = {
                 "image": {
@@ -2028,7 +2077,7 @@
                         <label for="tool-file">Image to Edit</label><input type="file" id="tool-file" accept="image/*" required aria-label="Image to edit">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Apply Edit</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#tool-file')?.files;
+                        const file = form.querySelector('#tool-file')?.files[0];
                         const prompt = form.querySelector('#tool-prompt')?.value;
                         if (!file) return "Please select a file to edit.";
                         if (!prompt) return "Please provide an edit instruction.";
@@ -2060,7 +2109,7 @@
                         <label for="tool-file">Select Image File</label><input type="file" id="tool-file" accept="image/*" required style="display:block;margin-top:10px;" aria-label="Image file for background removal">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-scissors"></i> Remove Background</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#tool-file')?.files;
+                        const file = form.querySelector('#tool-file')?.files[0];
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Removing background...');
@@ -2194,7 +2243,7 @@
                         <label for="tool-file">Select File for Narration</label><input type="file" id="tool-file" accept="application/pdf, text/plain" required style="display:block;margin-top:10px;" aria-label="File for narration">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#tool-file')?.files;
+                        const file = form.querySelector('#tool-file')?.files[0];
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Analyzing and narrating document...');
@@ -2243,7 +2292,7 @@
                         <label for="video-image-file">Starting Image</label><input type="file" id="video-image-file" accept="image/*" required aria-label="Starting image for video"></input>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-play"></i> Start Generation</button>`,
                     handleSubmit: async (form) => {
-                        const file = form.querySelector('#video-image-file')?.files;
+                        const file = form.querySelector('#video-image-file')?.files[0];
                         const prompt = form.querySelector('#video-image-prompt')?.value;
                         if (!file) return "Please select an image.";
                         if (!prompt) return "Please provide an animation prompt.";
@@ -2266,7 +2315,7 @@
                     handleSubmit: async (form) => {
                         const prompt = form.querySelector('#music-prompt')?.value;
                         const lyrics = form.querySelector('#music-lyrics')?.value;
-                        const refFile = form.querySelector('#music-ref')?.files;
+                        const refFile = form.querySelector('#music-ref')?.files[0];
                         if (!prompt) return "Please provide a music prompt.";
                         const payload = { prompt, lyrics, model: 'music-1.5' };
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
@@ -2435,31 +2484,40 @@
                     
                     currentController = new AbortController(); 
 
-                    sendBtn.style.display = 'none';
-                    callBtn.style.display = 'none';
-                    stopBtn.style.display = 'flex';
-                    const toolStopListener = () => { if (currentController) currentController.abort(); };
-                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                    stopBtn.addEventListener('click', toolStopListener, { once: true });
-                    stopBtn._currentStopListener = toolStopListener;
+                    if (sendBtn) sendBtn.style.display = 'none';
+                    if (callBtn) callBtn.style.display = 'none';
+                    if (stopBtn) {
+                        stopBtn.style.display = 'flex';
+                        const toolStopListener = () => { if (currentController) currentController.abort(); };
+                        if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                        stopBtn.addEventListener('click', toolStopListener, { once: true });
+                        stopBtn._currentStopListener = toolStopListener;
+                    }
 
                     closeToolMenu();
                     let result = null;
-                    if (tool.isAction) {
-                        try {
-                             result = await tool.runAction();
-                        } catch(err) {
-                             result = `❌ Tool execution error: ${err.message}`;
-                        } finally {
-                             if(result) await startTypewriter(result);
-                             sendBtn.style.display = 'flex';
-                             callBtn.style.display = 'flex';
-                             stopBtn.style.display = 'none';
-                             if(stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                             currentController = null;
+                    try {
+                        if (tool.isAction) {
+                            result = await tool.runAction();
+                        } else {
+                            displayToolForm(toolKey);
+                            return; 
                         }
-                    } else {
-                        displayToolForm(toolKey);
+                    } catch (err) {
+                        result = `❌ Tool execution error: ${err.message}`;
+                    } finally {
+                        if (result) {
+                            removeTypingStatus();
+                            await startTypewriter(result);
+                        }
+                        if (sendBtn) sendBtn.style.display = 'flex';
+                        if (callBtn) callBtn.style.display = 'flex';
+                        if (stopBtn) stopBtn.style.display = 'none';
+                        if (stopBtn._currentStopListener) {
+                            stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                            stopBtn._currentStopListener = null;
+                        }
+                        currentController = null;
                     }
                 });
             }
@@ -2497,9 +2555,9 @@
                             submitButton.innerHTML = originalButtonContent;
                             submitButton.disabled = false;
                         }
-                        sendBtn.style.display = 'flex';
-                        callBtn.style.display = 'flex';
-                        stopBtn.style.display = 'none';
+                        if (sendBtn) sendBtn.style.display = 'flex';
+                        if (callBtn) callBtn.style.display = 'flex';
+                        if (stopBtn) stopBtn.style.display = 'none';
                         if (stopBtn._currentStopListener) {
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                             stopBtn._currentStopListener = null;
@@ -2511,23 +2569,27 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
-            async function sendMessage() {
+            window.sendMessage = async function() {
                 if (!currentChatId || !userInput) return;
                 const msgText = userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
 
-                sendBtn.style.display = 'none';
-                stopBtn.style.display = 'flex';
-                callBtn.style.display = 'none';
+                if (sendBtn) sendBtn.style.display = 'none';
+                if (stopBtn) stopBtn.style.display = 'flex';
+                if (callBtn) callBtn.style.display = 'none';
 
                 currentController = new AbortController();
                 const signal = currentController.signal;
                 let finalResponse = '';
 
-                const chatStopListener = () => { if (currentController) currentController.abort(); };
-                if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                stopBtn.addEventListener('click', chatStopListener, { once: true });
-                stopBtn._currentStopListener = chatStopListener;
+                if (stopBtn) {
+                    const chatStopListener = () => {
+                        if (currentController) currentController.abort();
+                    };
+                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                    stopBtn.addEventListener('click', chatStopListener, { once: true });
+                    stopBtn._currentStopListener = chatStopListener;
+                }
 
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                 await addMessageToChat('user', msgText, filesForHistory);
@@ -2539,15 +2601,26 @@
 
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
-                    const fd = new FormData();
-                    fd.append('prompt', msgText || `Describe this content.`);
-                    localUploadedFiles.forEach(file => fd.append('files', file));
-                    
+                    let endpoint = '';
+                    const file = localUploadedFiles[0]; // Process first file
+                    if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
+                    else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
+                    else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
+                    else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
+                    else {
+                        removeTypingStatus();
+                        finalResponse = "Sorry, I can't analyze that file type.";
+                    }
                     try {
-                        const res = await fetch(API_BASE_URL + '/understand-files', { method: 'POST', body: fd, signal });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Analysis failed.");
-                        finalResponse = data.response;
+                        if(endpoint) {
+                            const fd = new FormData();
+                            fd.append('prompt', msgText || `Describe this ${file.type?.split('/')[0] || 'file'}`);
+                            fd.append('file', file);
+                            const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || "Analysis failed.");
+                            finalResponse = data.response;
+                        }
                     } catch (err) {
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
@@ -2574,9 +2647,9 @@
                     await startTypewriter(finalResponse);
                 }
 
-                sendBtn.style.display = 'flex';
-                stopBtn.style.display = 'none';
-                callBtn.style.display = 'flex';
+                if (sendBtn) sendBtn.style.display = 'flex';
+                if (stopBtn) stopBtn.style.display = 'none';
+                if (callBtn) callBtn.style.display = 'flex';
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                     stopBtn._currentStopListener = null;
@@ -2584,9 +2657,16 @@
                 currentController = null;
             }
 
+            // --- REFACTORED VOICE CALL LOGIC ---
             const callVoices = {
-                gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
-                minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
+                gemini: {
+                    label: "Philadelphia (Styles)",
+                    styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"]
+                },
+                minimax: {
+                    label: "Seraphina (Characters)",
+                    styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
+                }
             };
 
             function updateCallVoiceStyles() {
@@ -2613,7 +2693,6 @@
             let currentAudio = null;
             let isMuted = false;
             let isRecognizing = false;
-
             let selectedCallVoiceId = 'elder';
             let selectedCallVoiceProvider = 'minimax';
 
@@ -2624,34 +2703,30 @@
                 speechRecognition.interimResults = true;
                 speechRecognition.lang = 'en-US';
 
-                speechRecognition.onstart = () => { isRecognizing = true; console.log("Speech recognition started."); };
+                speechRecognition.onstart = () => { isRecognizing = true; };
                 speechRecognition.onresult = (event) => {
                     if (!isCallActive) return;
-                    let interimTranscript = '', finalTranscript = '';
                     userSaidSomething = true;
                     if (userSpeechWave) userSpeechWave.classList.add('active');
+                    let finalTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
-                        else interimTranscript += event.results[i].transcript;
                     }
-                    let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                    if (!userMsgEl) {
-                        userMsgEl = document.createElement('div');
-                        userMsgEl.className = 'call-msg user interim';
-                        callConversation.appendChild(userMsgEl);
-                        if (userSpeechWave) callConversation.appendChild(userSpeechWave);
+                    if(finalTranscript) {
+                        let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                        if (!userMsgEl) {
+                            userMsgEl = document.createElement('div');
+                            userMsgEl.className = 'call-msg user interim';
+                            callConversation.appendChild(userMsgEl);
+                        }
+                        userMsgEl.textContent = finalTranscript;
+                        callConversation.scrollTop = callConversation.scrollHeight;
                     }
-                    if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
-                    if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
-                    if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'Processing...' : 'Listening...';
-                    if (tapToTalk) tapToTalk.style.display = 'none';
                 };
-                speechRecognition.onspeechend = () => { if (userSpeechWave) userSpeechWave.classList.remove('active'); };
                 speechRecognition.onend = () => {
                     isRecognizing = false;
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
-                    
                     let finalTranscript = '';
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (userMsgEl) {
@@ -2659,36 +2734,24 @@
                         userMsgEl.classList.remove('interim');
                         if (finalTranscript === '') userMsgEl.remove();
                     }
-
                     if (botIsSpeaking) return;
-                    
                     if (finalTranscript && userSaidSomething) {
                         userSaidSomething = false;
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart recognition onend:", e); }
+                        try { speechRecognition.start(); } catch (e) {}
                     }
                 };
                 speechRecognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
                     isRecognizing = false;
-                    console.error('Speech recognition error:', event.error, event.message);
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if (!isCallActive) return;
-
-                    if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied.';
-                        endCall();
-                    } else if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Error. Tap to retry.';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
+                    if(event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        callStatusMessage.textContent = 'Microphone access denied.';
+                        setTimeout(endCall, 2000);
                     }
                 };
-            } else {
-                if (callBtn) callBtn.style.display = 'none';
-                console.warn("Speech Recognition not supported in this browser.");
             }
 
             function addCallMessage(role, text) {
@@ -2696,18 +2759,16 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                callConversation.appendChild(msgEl);
-                if (userSpeechWave && role !== 'status') {
-                    callConversation.appendChild(userSpeechWave);
-                }
+                const wave = callConversation.querySelector('#userSpeechWave');
+                if (wave) callConversation.insertBefore(msgEl, wave);
+                else callConversation.appendChild(msgEl);
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
-                if (!isCallActive || !callStatusMessage || !tapToTalk) return;
+                if (!isCallActive) return;
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
-                tapToTalk.style.display = 'none';
-                if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) {} }
+                if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch (e) {} }
 
                 const historyForBot = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
@@ -2723,112 +2784,87 @@
                     const botResponse = data.response;
                     callHistory.push({ role: 'ai', content: botResponse });
                     addCallMessage('bot', botResponse);
-                    speakBotResponse(botResponse);
+                    await speakBotResponse(botResponse);
                 } catch (err) {
                     addCallMessage('bot', `❌ Call error: ${err.message}`);
-                    if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {}
-                    }
+                    if (isCallActive && !isMuted && !isRecognizing) { try { speechRecognition.start(); } catch (e) {} }
                 }
             }
 
             async function speakBotResponse(text) {
-                if (!isCallActive || !botImageContainer || !callStatusMessage) return;
-                botIsSpeaking = true;
-                botImageContainer.classList.add('speaking');
-                callStatusMessage.textContent = 'Philadelphia AI is speaking...';
-                try {
-                    let res;
-                    if (selectedCallVoiceProvider === 'gemini') {
-                        const fd = new FormData();
-                        fd.append('text', text);
-                        fd.append('style', selectedCallVoiceId);
-                        res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
-                    } else {
-                        res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
-                        });
-                    }
-
-                    if (!res.ok) throw new Error(await res.text());
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    currentAudio = new Audio(url);
-                    currentAudio.onended = currentAudio.onerror = () => {
-                        botIsSpeaking = false;
-                        if (botImageContainer) botImageContainer.classList.remove('speaking');
-                        currentAudio = null;
-                        URL.revokeObjectURL(url);
-                        if (isCallActive && !isMuted && !isRecognizing) {
-                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                            if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { speechRecognition.start(); } catch(e) {}
-                        } else if (isMuted) {
-                            if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
+                return new Promise(async (resolve, reject) => {
+                    if (!isCallActive) return reject();
+                    botIsSpeaking = true;
+                    botImageContainer.classList.add('speaking');
+                    callStatusMessage.textContent = 'Philadelphia AI is speaking...';
+                    try {
+                        let res;
+                        if (selectedCallVoiceProvider === 'gemini') {
+                            const fd = new FormData();
+                            fd.append('text', text);
+                            fd.append('style', selectedCallVoiceId);
+                            res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
+                        } else {
+                            res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
+                            });
                         }
-                    };
-                    currentAudio.play();
-                } catch (err) {
-                    console.error("Voice generation error:", err);
-                    botIsSpeaking = false;
-                    if (botImageContainer) botImageContainer.classList.remove('speaking');
-                    if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {}
+                        if (!res.ok) throw new Error(await res.text());
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        if (currentAudio) currentAudio.src = '';
+                        currentAudio = new Audio(url);
+                        currentAudio.onended = currentAudio.onerror = () => {
+                            botIsSpeaking = false;
+                            botImageContainer.classList.remove('speaking');
+                            URL.revokeObjectURL(url);
+                            if (isCallActive && !isMuted && !isRecognizing) {
+                                callStatusMessage.textContent = 'Listening...';
+                                try { speechRecognition.start(); } catch(e) {}
+                            }
+                            resolve();
+                        };
+                        currentAudio.play();
+                    } catch (err) {
+                        botIsSpeaking = false;
+                        botImageContainer.classList.remove('speaking');
+                        if (isCallActive && !isMuted && !isRecognizing) {
+                            callStatusMessage.textContent = 'Listening (Voice Failed)...';
+                            try { speechRecognition.start(); } catch(e) {}
+                        }
+                        reject(err);
                     }
-                }
+                });
             }
 
-            function stopBotSpeakingAndStartListening() {
-                if (!isCallActive) return;
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio.onended = null;
-                    if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
-                    currentAudio = null;
-                }
+            function endCall() {
+                isCallActive = false;
                 botIsSpeaking = false;
-                if (botImageContainer) botImageContainer.classList.remove('speaking');
-                const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                if (userMsgEl) userMsgEl.remove();
-
-                if (!isMuted) {
-                    if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                    if (tapToTalk) tapToTalk.style.display = 'block';
-                    if (speechRecognition && !isRecognizing) {
-                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart recognition on interruption:", e); }
-                    }
-                }
-            }
-
-            if (callModal) {
-                callModal.addEventListener('click', stopBotSpeakingAndStartListening);
+                isRecognizing = false;
+                if (currentAudio) currentAudio.pause();
+                callModal.classList.remove('active');
+                if (speechRecognition) { try { speechRecognition.abort(); } catch(e) {} }
+                botImageContainer.classList.remove('speaking');
+                callStatusMessage.textContent = 'Call Ended.';
             }
 
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
                     if (!SpeechRecognition) {
-                        alert("Your browser doesn't support the Speech Recognition needed for this feature.");
+                        alert("Voice calls are not supported on this browser.");
                         return;
                     }
-
-                    selectedCallVoiceProvider = callVoiceModel?.value || 'minimax';
-                    selectedCallVoiceId = callVoiceStyle?.value || 'elder';
-
                     isCallActive = true;
                     isMuted = false;
                     isRecognizing = false;
-                    if (muteCallBtn) {
+                    if(muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = '';
+                    callConversation.innerHTML = `<div id="userSpeechWave"></div>`;
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
@@ -2838,54 +2874,32 @@
                     setTimeout(() => {
                         if (!isCallActive) return;
                         addCallMessage('status', 'Call Connected. Speak when ready.');
-                        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        callStatusMessage.textContent = 'Listening...';
                         tapToTalk.style.display = 'block';
                         if (!isRecognizing) {
-                            try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed:", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error.'; }
+                            try { speechRecognition.start(); } catch(e) { 
+                                callStatusMessage.textContent = 'Microphone error.';
+                                console.error(e);
+                            }
                         }
                     }, 1500);
                 });
             }
-
-            function endCall() {
-                if (!callModal) return;
-                isCallActive = false;
-                botIsSpeaking = false;
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio.onended = null;
-                    if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
-                    currentAudio = null;
-                }
-                callModal.classList.remove('active');
-                if (speechRecognition) {
-                    try { speechRecognition.abort(); } catch(e) {}
-                }
-                if (botImageContainer) botImageContainer.classList.remove('speaking');
-                if (tapToTalk) tapToTalk.style.display = 'none';
-                if (callStatusMessage) callStatusMessage.textContent = 'Call Ended.';
-            }
-
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
-
             if (muteCallBtn) {
-                muteCallBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent modal click from firing
+                muteCallBtn.addEventListener('click', () => {
                     isMuted = !isMuted;
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition && isRecognizing) {
-                            try { speechRecognition.stop(); } catch(e) {}
-                        }
+                        if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) {} }
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                         if (isCallActive && !botIsSpeaking && !isRecognizing) {
-                            callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                            tapToTalk.style.display = 'block';
+                            callStatusMessage.textContent = 'Listening...';
                             try { speechRecognition.start(); } catch(e) {}
                         }
                     }
