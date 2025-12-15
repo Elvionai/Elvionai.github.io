@@ -96,8 +96,7 @@
             0% { transform: translate(0, 0); }
             100% { transform: translate(-75%, -75%); }
         }
-
-        .star {
+        .star { 
             position: absolute;
             pointer-events: none;
             border-radius: 50%;
@@ -889,9 +888,8 @@
                     Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
                 </div>
             </div>
+            <div id="typing-status" class="message-group ai" style="display: none;"></div>
         </div>
-        
-        <div id="typing-status" class="message-group ai" style="display: none;"></div>
 
         <div class="input-dock">
             <div class="capsule-input" id="capsuleInputContainer">
@@ -903,7 +901,7 @@
                     <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
                 </div>
             </div>
-            <button class="thruster-btn" id="sendBtn" onclick="sendMessage()" title="Send message" aria-label="Send message">
+            <button class="thruster-btn" id="sendBtn" title="Send message" aria-label="Send message">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
             <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
@@ -1036,6 +1034,7 @@
         </div>
         <div id="callConversation">
             <div class="call-msg status">Waiting for connection...</div>
+            <div id="userSpeechWave"></div>
         </div>
         <div id="callControls">
             <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button>
@@ -1087,7 +1086,7 @@
             if (cosmos) {
                 // Remove existing particles to prevent duplicates on re-init
                 cosmos.querySelectorAll('.star').forEach(p => p.remove());
-                for (let i = 0; i < 200; i++) createParticle('star', 150, 3); // Reduced star count
+                for (let i = 0; i < 200; i++) createParticle('star', 150, 3);
             }
         }
 
@@ -1130,8 +1129,8 @@
         igniteCosmos();
 
         const randomLaunch = () => {
-            if (Math.random() < 0.3) launchShootingStar(); // Less frequent shooting stars
-            setTimeout(randomLaunch, Math.random() * 5000 + 3000); // Longer interval
+            if (Math.random() < 0.3) launchShootingStar();
+            setTimeout(randomLaunch, Math.random() * 5000 + 3000);
         }
         setTimeout(randomLaunch, 1000);
 
@@ -1237,6 +1236,7 @@
                     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
                 };
                 userInput.addEventListener('input', autoResize);
+                sendBtn.addEventListener('click', sendMessage);
                 userInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1289,7 +1289,7 @@
                 });
             }
 
-            window.closeToolMenu = () => { if (toolsMenu) toolsMenu.classList.remove('active'); if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
+            window.closeToolMenu = () => { if (toolsMenu) toolsMenu.parentElement.classList.remove('active'); };
             window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); };
             window.closeProfileMenu = () => { if (profileMenu) profileMenu.classList.remove('active'); if (profileMenuBg) profileMenuBg.classList.remove('active'); };
             window.closeLinksMenu = () => { if (linksMenu) linksMenu.classList.remove('active'); if (linksMenuBg) linksMenuBg.classList.remove('active'); };
@@ -1593,12 +1593,6 @@
                     div.innerHTML = innerHtml;
                     chatViewport.appendChild(div);
                 });
-
-                // Move typing status to the end if it's visible
-                if (typingStatus.style.display !== 'none') {
-                    chatViewport.appendChild(typingStatus);
-                }
-                
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
@@ -1706,8 +1700,8 @@
                             await startTypewriter(data.response, false);
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Regeneration stopped.'; }
-                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
+                            if (err.name === 'AbortError') { await startTypewriter(`❌ Regeneration stopped.`, false); }
+                            else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
                         } finally {
                             sendBtn.style.display = 'flex';
                             callBtn.style.display = 'flex';
@@ -1775,14 +1769,17 @@
             }
             
             async function startTypewriter(text, saveToDb = true) {
+                if (!chatViewport) return;
+                const typingStatusParent = typingStatus.parentElement;
+                
                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
                     const tempDiv = document.createElement('div');
                     tempDiv.className = "message-group ai";
                     tempDiv.innerHTML = `<div class="msg-bubble">${text}</div>`;
-                    chatViewport.insertBefore(tempDiv, typingStatus);
+                    typingStatusParent.insertBefore(tempDiv, typingStatus);
                     chatViewport.scrollTop = chatViewport.scrollHeight;
                     if (saveToDb && currentUser && currentChatId) {
-                        try { await addMessageToChat('ai', text); }
+                        try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
                         catch (e) { console.error("Error saving AI media message: ", e); }
                     }
                     return;
@@ -1793,10 +1790,10 @@
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                chatViewport.insertBefore(div, typingStatus);
+                typingStatusParent.insertBefore(div, typingStatus);
 
-                const words = text.split(/(\s+)/);
                 let currentRenderingText = '';
+                const words = text.split(/(\s+)/);
                 
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
@@ -1806,14 +1803,17 @@
                     currentRenderingText += word;
                     
                     let contentToRender = currentRenderingText;
-                    const codeBlockCount = (contentToRender.match(/```/g) || []).length;
-                    if (codeBlockCount % 2 !== 0) {
-                        contentToRender += '\n```';
+                    if (contentToRender.includes('```')) {
+                        const codeBlockCount = (contentToRender.match(/```/g) || []).length;
+                        if (codeBlockCount % 2 !== 0) {
+                            contentToRender += '\n```';
+                        }
                     }
 
                     msgBubble.innerHTML = renderMarkdown(contentToRender).html;
-                    chatViewport.scrollTop = chatViewport.scrollHeight; // REVAMP: Scroll inside the loop
-                    const delay = word.match(/[\s\.\,\!\?]/) ? 5 : 1; // REVAMP: Ultra-fast typing
+                    chatViewport.scrollTop = chatViewport.scrollHeight;
+                    // SUPER-DUPER FAST TYPING DELAY
+                    const delay = word.match(/[\s\.\,\!\?]/) ? 2 : 10;
                     await new Promise(res => setTimeout(res, delay));
                 }
                 
@@ -1829,7 +1829,7 @@
                 hookAiMsgControls();
 
                 if (saveToDb && currentUser && currentChatId) {
-                    try { await addMessageToChat('ai', text); }
+                    try { await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), { role: 'ai', text: text, createdAt: serverTimestamp() }); }
                     catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
@@ -1863,9 +1863,9 @@
                     } else if (file.type && file.type.startsWith('audio/')) {
                         preview = `<audio controls src="${objUrl}"></audio>`;
                     } else if (file.type === 'application/pdf') {
-                        preview = `<span style="font-size:1.8em;margin-right:7px;">📄</span>`;
+                        preview = `<i class="fa-solid fa-file-pdf" style="font-size: 2em; color: var(--neon-blue);"></i>`;
                     } else {
-                        preview = `<span style="font-size:1.8em;margin-right:7px;">❓</span>`;
+                        preview = `<i class="fa-solid fa-file" style="font-size: 2em; color: var(--neon-blue);"></i>`;
                     }
                     return `
                         <div>
@@ -1891,7 +1891,7 @@
 
             function showAIImagePreview(base64, caption = '') {
                 if (!aiPrevBox || !aiPrevImgBox) return;
-                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image"><div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
+                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
             }
 
@@ -1918,16 +1918,15 @@
                 showTypingStatus('Submitting video generation job...');
                 try {
                     const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
-                    const commonPayload = { model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
                     let options;
 
                     if (isImageToVideo) {
-                        payload.append('model', commonPayload.model);
-                        payload.append('duration', commonPayload.duration);
-                        payload.append('resolution', commonPayload.resolution);
+                        payload.append('model', "MiniMax-Hailuo-02");
+                        payload.append('duration', payload.duration || 6);
+                        payload.append('resolution', payload.resolution || "1080P");
                         options = { method: 'POST', body: payload, signal: currentController?.signal };
                     } else {
-                        const finalPayload = { ...payload, ...commonPayload };
+                        const finalPayload = { ...payload, model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
                         options = {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1963,10 +1962,7 @@
                                 await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
                             }
                         } catch (pollErr) {
-                            if (pollErr.name === 'AbortError') {
-                                console.log("Video status polling aborted.");
-                                await startTypewriter(`❌ Video status polling stopped.`);
-                            } else {
+                            if (pollErr.name !== 'AbortError') {
                                 console.error("Error during video status polling:", pollErr);
                                 await startTypewriter(`❌ Error checking video status.`);
                             }
@@ -1975,11 +1971,8 @@
                     }, 20000);
                 } catch (err) {
                     removeTypingStatus();
-                    if (err.name === 'AbortError') {
-                        await startTypewriter(`❌ Video generation request stopped.`);
-                    } else {
-                        await startTypewriter(`❌ Could not start video generation: ${err.message}`);
-                    }
+                    if (err.name === 'AbortError') { await startTypewriter(`❌ Video generation request stopped.`); }
+                    else { await startTypewriter(`❌ Could not start video generation: ${err.message}`); }
                 }
             }
 
@@ -2035,8 +2028,7 @@
                         <label for="tool-file">Image to Edit</label><input type="file" id="tool-file" accept="image/*" required aria-label="Image to edit">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Apply Edit</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#tool-file');
-                        const file = fileInput?.files[0];
+                        const file = form.querySelector('#tool-file')?.files;
                         const prompt = form.querySelector('#tool-prompt')?.value;
                         if (!file) return "Please select a file to edit.";
                         if (!prompt) return "Please provide an edit instruction.";
@@ -2052,7 +2044,7 @@
                             const base64String = await blobToBase64(blob);
                             const imgHtml = `✅ Photo edited successfully! <br><img src="${base64String}" alt="Edited Photo" class="chat-media-preview">`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', imgHtml); // REVAMP: Save full HTML to DB
+                            await addMessageToChat('ai', imgHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2068,8 +2060,7 @@
                         <label for="tool-file">Select Image File</label><input type="file" id="tool-file" accept="image/*" required style="display:block;margin-top:10px;" aria-label="Image file for background removal">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-scissors"></i> Remove Background</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#tool-file');
-                        const file = fileInput?.files[0];
+                        const file = form.querySelector('#tool-file')?.files;
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Removing background...');
@@ -2079,10 +2070,10 @@
                             const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd, signal: currentController?.signal });
                             if (!res.ok) throw new Error(res.statusText);
                             const blob = await res.blob();
-                            const base64String = await blobToBase64(blob);
-                            const imgHtml = `✅ Background removed! <br><img src="${base64String}" alt="Image with background removed" class="chat-media-preview">`;
+                            const url = URL.createObjectURL(blob);
+                            const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview">`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', imgHtml); // REVAMP: Save full HTML to DB
+                            await addMessageToChat('ai', imgHtml);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2128,7 +2119,7 @@
                             const imagesHtml = data.images.map((img, idx) => `<img src="data:image/png;base64,${img}" alt="Comic Panel ${idx+1}" class="chat-media-preview" style="max-width: 150px; display: inline-block; margin: 5px;">`).join('');
                             const comicMessage = `🖼️ Comic successfully created! <br><div class="file-attachments" style="justify-content:center;">${imagesHtml}</div>`;
                             removeTypingStatus();
-                            await addMessageToChat('ai', comicMessage); // REVAMP: Save full HTML with base64 images to DB
+                            await addMessageToChat('ai', comicMessage);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2203,8 +2194,7 @@
                         <label for="tool-file">Select File for Narration</label><input type="file" id="tool-file" accept="application/pdf, text/plain" required style="display:block;margin-top:10px;" aria-label="File for narration">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-file-audio"></i> Generate Narration</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#tool-file');
-                        const file = fileInput?.files[0];
+                        const file = form.querySelector('#tool-file')?.files;
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Analyzing and narrating document...');
@@ -2253,8 +2243,7 @@
                         <label for="video-image-file">Starting Image</label><input type="file" id="video-image-file" accept="image/*" required aria-label="Starting image for video"></input>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-play"></i> Start Generation</button>`,
                     handleSubmit: async (form) => {
-                        const fileInput = form.querySelector('#video-image-file');
-                        const file = fileInput?.files[0];
+                        const file = form.querySelector('#video-image-file')?.files;
                         const prompt = form.querySelector('#video-image-prompt')?.value;
                         if (!file) return "Please select an image.";
                         if (!prompt) return "Please provide an animation prompt.";
@@ -2277,8 +2266,7 @@
                     handleSubmit: async (form) => {
                         const prompt = form.querySelector('#music-prompt')?.value;
                         const lyrics = form.querySelector('#music-lyrics')?.value;
-                        const refFileInput = form.querySelector('#music-ref');
-                        const refFile = refFileInput?.files[0];
+                        const refFile = form.querySelector('#music-ref')?.files;
                         if (!prompt) return "Please provide a music prompt.";
                         const payload = { prompt, lyrics, model: 'music-1.5' };
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
@@ -2447,40 +2435,31 @@
                     
                     currentController = new AbortController(); 
 
-                    if (sendBtn) sendBtn.style.display = 'none';
-                    if (callBtn) callBtn.style.display = 'none';
-                    if (stopBtn) {
-                        stopBtn.style.display = 'flex';
-                        const toolStopListener = () => { if (currentController) currentController.abort(); };
-                        if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                        stopBtn.addEventListener('click', toolStopListener, { once: true });
-                        stopBtn._currentStopListener = toolStopListener;
-                    }
+                    sendBtn.style.display = 'none';
+                    callBtn.style.display = 'none';
+                    stopBtn.style.display = 'flex';
+                    const toolStopListener = () => { if (currentController) currentController.abort(); };
+                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                    stopBtn.addEventListener('click', toolStopListener, { once: true });
+                    stopBtn._currentStopListener = toolStopListener;
 
                     closeToolMenu();
                     let result = null;
-                    try {
-                        if (tool.isAction) {
-                            result = await tool.runAction();
-                        } else {
-                            displayToolForm(toolKey);
-                            return; 
+                    if (tool.isAction) {
+                        try {
+                             result = await tool.runAction();
+                        } catch(err) {
+                             result = `❌ Tool execution error: ${err.message}`;
+                        } finally {
+                             if(result) await startTypewriter(result);
+                             sendBtn.style.display = 'flex';
+                             callBtn.style.display = 'flex';
+                             stopBtn.style.display = 'none';
+                             if(stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                             currentController = null;
                         }
-                    } catch (err) {
-                        result = `❌ Tool execution error: ${err.message}`;
-                    } finally {
-                        if (result) {
-                            removeTypingStatus();
-                            await startTypewriter(result);
-                        }
-                        if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex';
-                        if (stopBtn) stopBtn.style.display = 'none';
-                        if (stopBtn._currentStopListener) {
-                            stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                            stopBtn._currentStopListener = null;
-                        }
-                        currentController = null;
+                    } else {
+                        displayToolForm(toolKey);
                     }
                 });
             }
@@ -2518,9 +2497,9 @@
                             submitButton.innerHTML = originalButtonContent;
                             submitButton.disabled = false;
                         }
-                        if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex';
-                        if (stopBtn) stopBtn.style.display = 'none';
+                        sendBtn.style.display = 'flex';
+                        callBtn.style.display = 'flex';
+                        stopBtn.style.display = 'none';
                         if (stopBtn._currentStopListener) {
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                             stopBtn._currentStopListener = null;
@@ -2532,27 +2511,23 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
-            window.sendMessage = async function() {
+            async function sendMessage() {
                 if (!currentChatId || !userInput) return;
                 const msgText = userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
 
-                if (sendBtn) sendBtn.style.display = 'none';
-                if (stopBtn) stopBtn.style.display = 'flex';
-                if (callBtn) callBtn.style.display = 'none';
+                sendBtn.style.display = 'none';
+                stopBtn.style.display = 'flex';
+                callBtn.style.display = 'none';
 
                 currentController = new AbortController();
                 const signal = currentController.signal;
                 let finalResponse = '';
 
-                if (stopBtn) {
-                    const chatStopListener = () => {
-                        if (currentController) currentController.abort();
-                    };
-                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                    stopBtn.addEventListener('click', chatStopListener, { once: true });
-                    stopBtn._currentStopListener = chatStopListener;
-                }
+                const chatStopListener = () => { if (currentController) currentController.abort(); };
+                if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                stopBtn.addEventListener('click', chatStopListener, { once: true });
+                stopBtn._currentStopListener = chatStopListener;
 
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                 await addMessageToChat('user', msgText, filesForHistory);
@@ -2561,34 +2536,23 @@
                 uploadedFiles = [];
                 renderFilePreview();
                 userInput.style.height = 'auto';
-                
-                showTypingStatus(); // Call typing status here for all messages
 
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
-                    let endpoint = '';
-                    const file = localUploadedFiles[0]; // Use first file
-                    if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
-                    else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
-                    else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
-                    else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
-                    else {
-                        finalResponse = "Sorry, I can't analyze that file type.";
-                    }
+                    const fd = new FormData();
+                    fd.append('prompt', msgText || `Describe this content.`);
+                    localUploadedFiles.forEach(file => fd.append('files', file));
+                    
                     try {
-                        if(endpoint) {
-                            const fd = new FormData();
-                            fd.append('prompt', msgText || `Describe this ${file.type?.split('/')[0] || 'file'}`);
-                            fd.append('file', file);
-                            const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "Analysis failed.");
-                            finalResponse = data.response;
-                        }
+                        const res = await fetch(API_BASE_URL + '/understand-files', { method: 'POST', body: fd, signal });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Analysis failed.");
+                        finalResponse = data.response;
                     } catch (err) {
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
+                    showTypingStatus();
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -2610,9 +2574,9 @@
                     await startTypewriter(finalResponse);
                 }
 
-                if (sendBtn) sendBtn.style.display = 'flex';
-                if (stopBtn) stopBtn.style.display = 'none';
-                if (callBtn) callBtn.style.display = 'flex';
+                sendBtn.style.display = 'flex';
+                stopBtn.style.display = 'none';
+                callBtn.style.display = 'flex';
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                     stopBtn._currentStopListener = null;
@@ -2620,7 +2584,6 @@
                 currentController = null;
             }
 
-            // REVAMPED CALL LOGIC
             const callVoices = {
                 gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
                 minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
@@ -2643,9 +2606,16 @@
             }
 
             let speechRecognition;
-            let isCallActive = false, callHistory = [], botIsSpeaking = false, userSaidSomething = false;
-            let currentAudio = null, isMuted = false, isRecognizing = false;
-            let selectedCallVoiceId = 'elder', selectedCallVoiceProvider = 'minimax';
+            let isCallActive = false;
+            let callHistory = [];
+            let botIsSpeaking = false;
+            let userSaidSomething = false;
+            let currentAudio = null;
+            let isMuted = false;
+            let isRecognizing = false;
+
+            let selectedCallVoiceId = 'elder';
+            let selectedCallVoiceProvider = 'minimax';
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
@@ -2654,32 +2624,32 @@
                 speechRecognition.interimResults = true;
                 speechRecognition.lang = 'en-US';
 
-                speechRecognition.onstart = () => { isRecognizing = true; console.log("SR Start"); };
+                speechRecognition.onstart = () => { isRecognizing = true; console.log("Speech recognition started."); };
                 speechRecognition.onresult = (event) => {
                     if (!isCallActive) return;
-                    let interim = '', final = '';
+                    let interimTranscript = '', finalTranscript = '';
                     userSaidSomething = true;
                     if (userSpeechWave) userSpeechWave.classList.add('active');
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) final += event.results[i].transcript;
-                        else interim += event.results[i].transcript;
+                        if (event.results[i].isFinal) finalTranscript += event.results[i].transcript;
+                        else interimTranscript += event.results[i].transcript;
                     }
                     let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (!userMsgEl) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
                         callConversation.appendChild(userMsgEl);
+                        if (userSpeechWave) callConversation.appendChild(userSpeechWave);
                     }
-                    userMsgEl.textContent = final || interim;
-                    callConversation.scrollTop = callConversation.scrollHeight;
-                    if (callStatusMessage) callStatusMessage.textContent = 'User Speaking...';
+                    if (userMsgEl) userMsgEl.textContent = finalTranscript || interimTranscript;
+                    if (callConversation) callConversation.scrollTop = callConversation.scrollHeight;
+                    if (callStatusMessage) callStatusMessage.textContent = finalTranscript ? 'Processing...' : 'Listening...';
                     if (tapToTalk) tapToTalk.style.display = 'none';
                 };
-                
+                speechRecognition.onspeechend = () => { if (userSpeechWave) userSpeechWave.classList.remove('active'); };
                 speechRecognition.onend = () => {
                     isRecognizing = false;
-                    console.log("SR End");
-                    if(userSpeechWave) userSpeechWave.classList.remove('active');
+                    if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
                     
                     let finalTranscript = '';
@@ -2690,31 +2660,35 @@
                         if (finalTranscript === '') userMsgEl.remove();
                     }
 
-                    if (botIsSpeaking) return; // Bot is speaking, its audio end will restart SR
+                    if (botIsSpeaking) return;
                     
                     if (finalTranscript && userSaidSomething) {
                         userSaidSomething = false;
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
-                    } else if (isCallActive && !isMuted) {
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { if (!isRecognizing) speechRecognition.start(); } catch(e) { console.warn("SR restart failed (onend):", e); }
+                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart recognition onend:", e); }
                     }
                 };
-                
                 speechRecognition.onerror = (event) => {
                     isRecognizing = false;
-                    console.error('SR error:', event.error);
+                    console.error('Speech recognition error:', event.error, event.message);
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
-                    if (event.error === 'not-allowed') {
-                        callStatusMessage.textContent = 'Microphone permission denied.';
+
+                    if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone permission denied.';
                         endCall();
-                    } else if (isCallActive && !isMuted) {
-                        try { if (!isRecognizing) speechRecognition.start(); } catch(e) { console.warn("SR restart failed (onerror):", e); }
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Error. Tap to retry.';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
                     }
                 };
+            } else {
+                if (callBtn) callBtn.style.display = 'none';
+                console.warn("Speech Recognition not supported in this browser.");
             }
 
             function addCallMessage(role, text) {
@@ -2723,50 +2697,63 @@
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
                 callConversation.appendChild(msgEl);
-                if (role !== 'status' && userSpeechWave) callConversation.appendChild(userSpeechWave);
+                if (userSpeechWave && role !== 'status') {
+                    callConversation.appendChild(userSpeechWave);
+                }
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
-                if (!isCallActive) return;
+                if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
-                if (isRecognizing) speechRecognition.stop();
+                if (speechRecognition && isRecognizing) { try { speechRecognition.stop(); } catch(e) {} }
 
+                const historyForBot = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
+                const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
+                
                 try {
                     const res = await fetch(`${API_BASE_URL}/chat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: callHistory.slice(-1)[0].content, history: callHistory.slice(0, -1), user_id: currentUser?.uid, call_context: true })
+                        body: JSON.stringify({ message: userMessage, history: historyForBot.slice(0, -1), user_id: currentUser?.uid || "user", call_context: true })
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "Server error.");
-                    callHistory.push({ role: 'ai', content: data.response });
-                    addCallMessage('bot', data.response);
-                    speakBotResponse(data.response);
+                    const botResponse = data.response;
+                    callHistory.push({ role: 'ai', content: botResponse });
+                    addCallMessage('bot', botResponse);
+                    speakBotResponse(botResponse);
                 } catch (err) {
                     addCallMessage('bot', `❌ Call error: ${err.message}`);
                     if (isCallActive && !isMuted && !isRecognizing) {
-                        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                        tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {console.warn("SR restart failed after error:", e);}
+                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        try { speechRecognition.start(); } catch(e) {}
                     }
                 }
             }
-            
+
             async function speakBotResponse(text) {
-                if (!isCallActive) return;
+                if (!isCallActive || !botImageContainer || !callStatusMessage) return;
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                 try {
                     let res;
                     if (selectedCallVoiceProvider === 'gemini') {
-                        const fd = new FormData(); fd.append('text', text); fd.append('style', selectedCallVoiceId);
+                        const fd = new FormData();
+                        fd.append('text', text);
+                        fd.append('style', selectedCallVoiceId);
                         res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
                     } else {
-                        res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ text, voice_id: selectedCallVoiceId }) });
+                        res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
+                        });
                     }
+
                     if (!res.ok) throw new Error(await res.text());
                     const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
@@ -2777,88 +2764,125 @@
                         currentAudio = null;
                         URL.revokeObjectURL(url);
                         if (isCallActive && !isMuted && !isRecognizing) {
-                            callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                            tapToTalk.style.display = 'block';
-                            try { speechRecognition.start(); } catch(e) {console.warn("SR restart failed after speaking:", e);}
+                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                            if (tapToTalk) tapToTalk.style.display = 'block';
+                            try { speechRecognition.start(); } catch(e) {}
+                        } else if (isMuted) {
+                            if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         }
                     };
                     currentAudio.play();
                 } catch (err) {
-                    console.error("Voice gen error:", err);
+                    console.error("Voice generation error:", err);
                     botIsSpeaking = false;
                     if (botImageContainer) botImageContainer.classList.remove('speaking');
                     if (isCallActive && !isMuted && !isRecognizing) {
-                        callStatusMessage.textContent = 'Listening (Voice Failed)...';
-                        tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {console.warn("SR restart failed after voice error:", e);}
+                        if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        try { speechRecognition.start(); } catch(e) {}
                     }
                 }
             }
 
             function stopBotSpeakingAndStartListening() {
                 if (!isCallActive) return;
-                if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; if (currentAudio.src) URL.revokeObjectURL(currentAudio.src); currentAudio = null; }
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.onended = null;
+                    if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
+                    currentAudio = null;
+                }
                 botIsSpeaking = false;
-                botImageContainer.classList.remove('speaking');
+                if (botImageContainer) botImageContainer.classList.remove('speaking');
                 const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                 if (userMsgEl) userMsgEl.remove();
 
                 if (!isMuted) {
-                    callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                    tapToTalk.style.display = 'block';
-                    if (isRecognizing) speechRecognition.stop(); else if (!isRecognizing) try { speechRecognition.start(); } catch(e){}
-                } else {
-                    if (isRecognizing) speechRecognition.stop();
+                    if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                    if (tapToTalk) tapToTalk.style.display = 'block';
+                    if (speechRecognition && !isRecognizing) {
+                        try { speechRecognition.start(); } catch(e) { console.warn("Could not restart recognition on interruption:", e); }
+                    }
                 }
             }
 
-            if(callModal) callModal.addEventListener('click', stopBotSpeakingAndStartListening);
+            if (callModal) {
+                callModal.addEventListener('click', stopBotSpeakingAndStartListening);
+            }
 
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
-                    if (!SpeechRecognition) { alert("Sorry, your browser doesn't support Voice Calls."); return; }
+                    if (!SpeechRecognition) {
+                        alert("Your browser doesn't support the Speech Recognition needed for this feature.");
+                        return;
+                    }
+
                     selectedCallVoiceProvider = callVoiceModel?.value || 'minimax';
                     selectedCallVoiceId = callVoiceStyle?.value || 'elder';
-                    isCallActive = true; isMuted = false; isRecognizing = false;
-                    muteCallBtn.classList.remove('muted'); muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+
+                    isCallActive = true;
+                    isMuted = false;
+                    isRecognizing = false;
+                    if (muteCallBtn) {
+                        muteCallBtn.classList.remove('muted');
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                    }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div id="userSpeechWave"></div>`;
+                    callConversation.innerHTML = '';
                     addCallMessage('status', 'Connecting to Philadelphia AI...');
                     callStatusMessage.textContent = 'Calling...';
-                    callHistory = []; userSaidSomething = false;
+                    tapToTalk.style.display = 'none';
+                    callHistory = [];
+                    userSaidSomething = false;
 
                     setTimeout(() => {
                         if (!isCallActive) return;
                         addCallMessage('status', 'Call Connected. Speak when ready.');
                         callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         tapToTalk.style.display = 'block';
-                        try { if (!isRecognizing) speechRecognition.start(); } catch(e) { callStatusMessage.textContent = 'Microphone error.'; }
+                        if (!isRecognizing) {
+                            try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed:", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error.'; }
+                        }
                     }, 1500);
                 });
             }
 
             function endCall() {
-                isCallActive = false; botIsSpeaking = false; isRecognizing = false;
-                if (currentAudio) { currentAudio.pause(); if (currentAudio.src) URL.revokeObjectURL(currentAudio.src); currentAudio = null; }
+                if (!callModal) return;
+                isCallActive = false;
+                botIsSpeaking = false;
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.onended = null;
+                    if (currentAudio.src.startsWith('blob:')) URL.revokeObjectURL(currentAudio.src);
+                    currentAudio = null;
+                }
                 callModal.classList.remove('active');
-                if (speechRecognition) try { speechRecognition.abort(); } catch(e) {}
-                botImageContainer.classList.remove('speaking');
-                callStatusMessage.textContent = 'Call Ended.';
+                if (speechRecognition) {
+                    try { speechRecognition.abort(); } catch(e) {}
+                }
+                if (botImageContainer) botImageContainer.classList.remove('speaking');
+                if (tapToTalk) tapToTalk.style.display = 'none';
+                if (callStatusMessage) callStatusMessage.textContent = 'Call Ended.';
             }
 
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
 
             if (muteCallBtn) {
                 muteCallBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
+                    e.stopPropagation(); // Prevent modal click from firing
                     isMuted = !isMuted;
                     if (isMuted) {
-                        muteCallBtn.classList.add('muted'); muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (isRecognizing) speechRecognition.stop();
+                        muteCallBtn.classList.add('muted');
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
+                        if (speechRecognition && isRecognizing) {
+                            try { speechRecognition.stop(); } catch(e) {}
+                        }
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
                     } else {
-                        muteCallBtn.classList.remove('muted'); muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                        muteCallBtn.classList.remove('muted');
+                        muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                         if (isCallActive && !botIsSpeaking && !isRecognizing) {
                             callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             tapToTalk.style.display = 'block';
