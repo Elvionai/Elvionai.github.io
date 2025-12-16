@@ -41,8 +41,6 @@
             --call-control-bg: rgba(25, 25, 40, 0.8);
             --call-control-border: rgba(255, 255, 255, 0.2);
             --call-text-color: var(--main-text-color);
-            --call-active-bg-glow: radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.1), rgba(189, 0, 255, 0.1), transparent 70%);
-
 
             --body-base-bg: #050714;
             --current-bg-blend-mode: screen;
@@ -385,28 +383,15 @@
         }
 
         .capsule-input textarea {
-            flex: 1; width: 100%; min-height: 30px; max-height: 120px; /* Max height allows vertical scrolling */
+            flex: 1; width: 100%; min-height: 30px; max-height: 120px;
             background: transparent; border: none;
             padding: 10px 0; color: var(--main-text-color); font-size: 1.05rem; outline: none;
             resize: none;
-            /* Removed scrollbar-width: none and -ms-overflow-style: none to allow native scrolling */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             position: relative; z-index: 1;
         }
-        .capsule-input textarea::-webkit-scrollbar { 
-            width: 8px; /* Width of the scrollbar */
-            background-color: rgba(255, 255, 255, 0.1); /* Background of the scrollbar track */
-            border-radius: 4px;
-        }
-        .capsule-input textarea::-webkit-scrollbar-thumb {
-            background-color: var(--neon-blue); /* Color of the scrollbar thumb */
-            border-radius: 4px;
-            border: 1px solid rgba(0, 242, 255, 0.3);
-        }
-        .capsule-input textarea::-webkit-scrollbar-thumb:hover {
-            background-color: var(--neon-green);
-        }
-
-
+        .capsule-input textarea::-webkit-scrollbar { display: none; }
         .capsule-input .input-action-buttons {
             display: flex; gap: 8px; margin-right: 5px; position: relative; z-index: 1;
         }
@@ -627,29 +612,8 @@
             flex-direction: column; align-items: center; padding: 20px; box-sizing: border-box;
             opacity: 0;
             transition: opacity 0.3s ease-out;
-            position: relative; /* For the active glow effect */
-            overflow: hidden; /* Ensure glow stays within bounds */
         }
         #callModal.active { display: flex; opacity: 1; }
-
-        /* New: Call Active Background Glow */
-        #callModal.active .call-active-glow {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--call-active-bg-glow);
-            animation: call-pulse-background 8s infinite ease-in-out alternate;
-            opacity: 0.3;
-            z-index: -1;
-            filter: blur(50px);
-            pointer-events: none;
-            will-change: opacity, transform;
-        }
-        @keyframes call-pulse-background {
-            0% { transform: scale(1); opacity: 0.3; }
-            50% { transform: scale(1.1); opacity: 0.4; }
-            100% { transform: scale(1); opacity: 0.3; }
-        }
-
 
         #callHeader {
             color: var(--neon-blue); font-family: 'Orbitron', sans-serif;
@@ -705,7 +669,6 @@
             height: 30px; text-align: center; font-style: italic;
             text-shadow: 0 0 8px var(--neon-blue);
             user-select: none;
-            transition: color 0.3s ease, text-shadow 0.3s ease; /* Smooth status changes */
         }
 
         #tapToTalk {
@@ -951,7 +914,7 @@
                     <button type="button" id="toolBtn" title="Philadelphia Tools" aria-label="Open AI tools menu"><i class="fa-solid fa-wrench"></i></button>
                 </div>
             </div>
-            <button class="thruster-btn" id="sendBtn" title="Send message" aria-label="Send message">
+            <button class="thruster-btn" id="sendBtn" onclick="sendMessage()" title="Send message" aria-label="Send message">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
             <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call"><i class="fa-solid fa-phone"></i></button>
@@ -1066,7 +1029,6 @@
     </div>
 
     <div id="callModal">
-        <div class="call-active-glow"></div> <!-- New: Visual for active call -->
         <div id="callHeader">Philadelphia AI - Live Call</div>
         <div id="botImageContainer">
             <img src="https://i.postimg.cc/XqL63yM9/IMG-20250824-133336-309.jpg" alt="Bot">
@@ -1137,7 +1099,7 @@
         let isCallActive = false;
         let callHistory = [];
         let botIsSpeaking = false;
-        let userSaidSomething = false;
+        let userSaidSomething = false; // Flag to indicate if user actually spoke
         let currentAudio = null;
         let isMuted = false;
         let isRecognizing = false;
@@ -1247,7 +1209,6 @@
             const tapToTalk = $('tapToTalk');
             const typingStatus = $('typing-status');
             const userSpeechWave = $('userSpeechWave');
-            const callActiveGlow = callModal ? callModal.querySelector('.call-active-glow') : null;
 
 
             if (!chatViewport || !userInput || !typingStatus) {
@@ -1316,37 +1277,19 @@
                     userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
                 };
                 userInput.addEventListener('input', autoResize);
-                // Modified keyboard behavior for 'Enter' key
+                // Modified: 'Enter' key now always inserts a newline, submission is only via sendBtn
                 userInput.addEventListener('keydown', e => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault(); // Prevent default (which would be newline, but we want to handle explicitly if needed, here we just prevent submission)
-                        // By preventing default and not calling sendMessage(), it effectively acts as "insert newline"
-                        // for most mobile keyboards (where enter is usually newline).
-                        // For desktop, it will just not submit. User must use Shift+Enter for newline.
-                        // However, since `textarea` naturally handles newlines on Enter, the default is fine if we don't prevent it.
-                        // Reverting to allow default browser behavior for Enter (newline)
-                        // If the user wants to *force* a newline and *not* trigger `sendMessage`
-                        // A simple enter key should insert a newline, not submit, unless Shift is held.
-                        // I'm assuming "gives space" means newline here.
-                        // So, we do *not* call sendMessage() on plain Enter.
-                        // The browser's default behavior for Enter in a textarea is usually a newline.
-                        // The user specifically wants to avoid submission.
-                        // If they want to force submit, they click the send button.
-                    } else if (e.key === 'Enter' && e.shiftKey) {
-                        // Keep Shift+Enter for explicit newline for consistency if plain Enter is consumed otherwise.
-                        // But now that plain Enter will just insert newline, this is redundant for functionality, but fine.
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // Prevent default submission behavior
+                        const start = userInput.selectionStart;
+                        const end = userInput.selectionEnd;
+                        userInput.value = userInput.value.substring(0, start) + "\n" + userInput.value.substring(end);
+                        userInput.selectionStart = userInput.selectionEnd = start + 1;
+                        autoResize();
                     }
                 });
                 autoResize();
             }
-
-            // Send button now calls sendMessage explicitly
-            if (sendBtn) {
-                sendBtn.addEventListener('click', () => {
-                    sendMessage();
-                });
-            }
-
 
             if (chatFile) {
                 chatFile.addEventListener('change', function() {
@@ -1911,7 +1854,7 @@
                 chatViewport.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let currentRenderingText = '';
-                const words = text.split(/(\s+)/);
+                const words = text.split(/(\s+)/); // Split by whitespace to process chunks
                 
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
@@ -1921,6 +1864,7 @@
                     currentRenderingText += word;
                     
                     let contentToRender = currentRenderingText;
+                    // Auto-close markdown code blocks if incomplete to prevent display issues during typing
                     const codeBlockCount = (contentToRender.match(/```/g) || []).length;
                     if (codeBlockCount % 2 !== 0) {
                         contentToRender += '\n```';
@@ -1928,9 +1872,11 @@
 
                     msgBubble.innerHTML = renderMarkdown(contentToRender).html;
                     chatViewport.scrollTop = chatViewport.scrollHeight;
-                    await new Promise(res => setTimeout(res, 1)); // Super fast delay
+                    // Optimized for speed: very short delay to simulate real-time typing
+                    await new Promise(res => setTimeout(res, 1)); 
                 }
                 
+                // Final render after typing effect is complete or aborted
                 msgBubble.innerHTML = renderMarkdown(text).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
@@ -2775,16 +2721,16 @@
                     isRecognizing = true;
                     currentInterimUserText = ''; // Clear on start
                     currentFinalUserText = '';   // Clear on start
+                    userSaidSomething = false; // Reset flag
                     if (!isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
-                        if (tapToTalk) tapToTalk.style.display = 'block'; 
+                        if (tapToTalk) tapToTalk.style.display = 'block'; // Show tap to talk when listening
                     }
                     if (userSpeechWave) userSpeechWave.classList.add('active');
                 };
 
                 speechRecognition.onresult = (event) => {
                     if (!isCallActive) return;
-                    userSaidSomething = true;
                     
                     let interimTranscript = '';
                     let newFinalTranscriptSegment = '';
@@ -2794,14 +2740,18 @@
                         const transcript = event.results[i].transcript;
                         if (event.results[i].isFinal) {
                             newFinalTranscriptSegment += transcript;
+                            userSaidSomething = true; // Mark that user said something substantial
                         } else {
                             interimTranscript += transcript;
                         }
                     }
 
+                    // Append new final segment to our running total of final text
                     currentFinalUserText += newFinalTranscriptSegment;
+                    // The current interim text is just the latest interim segment
                     currentInterimUserText = interimTranscript;
 
+                    // Find or create the interim message element
                     let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (!userMsgEl) {
                         userMsgEl = document.createElement('div');
@@ -2809,6 +2759,7 @@
                         if (userSpeechWave) callConversation.insertBefore(userMsgEl, userSpeechWave);
                         else callConversation.appendChild(userMsgEl);
                     }
+                    // Display combined final (from previous results) and current interim text
                     userMsgEl.textContent = (currentFinalUserText + currentInterimUserText).trim();
                     callConversation.scrollTop = callConversation.scrollHeight;
                 };
@@ -2820,6 +2771,8 @@
                     if (!isCallActive) {
                         currentInterimUserText = '';
                         currentFinalUserText = '';
+                        const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                        if (userMsgEl) userMsgEl.remove();
                         return;
                     }
 
@@ -2839,11 +2792,14 @@
                     currentInterimUserText = '';
                     currentFinalUserText = '';
 
-                    if (finalTranscriptToSend && userSaidSomething) {
+                    if (botIsSpeaking) {
+                        // If bot starts speaking immediately after user, we don't restart recognition here.
+                        // It will restart when bot finishes.
+                    } else if (finalTranscriptToSend && userSaidSomething) { // Only send if something was truly spoken by user
                         userSaidSomething = false; // Reset flag after processing
                         callHistory.push({ role: 'user', content: finalTranscriptToSend });
                         handleCallBotResponse();
-                    } else if (!botIsSpeaking && isCallActive && !isMuted && !isRecognizing) {
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         if (tapToTalk) tapToTalk.style.display = 'block';
                         try { speechRecognition.start(); } catch (e) { console.warn("Speech recognition failed to start (onend retry):", e); }
@@ -2857,19 +2813,19 @@
                     isRecognizing = false;
                     console.error('Speech recognition error:', event.error, event.message);
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if (tapToTalk) tapToTalk.style.display = 'none'; 
+                    if (tapToTalk) tapToTalk.style.display = 'none'; // Hide on error or while retrying
 
                     currentInterimUserText = ''; // Clear any pending text
                     currentFinalUserText = ''; // Clear any pending text
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                    if (userMsgEl) userMsgEl.remove(); 
+                    if (userMsgEl) userMsgEl.remove(); // Remove partial message
 
                     if(event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'permission-denied') {
                         if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in browser settings.';
                         setTimeout(endCall, 2000);
-                    } else if (isCallActive && !isMuted && !isRecognizing) { 
+                    } else if (isCallActive && !isMuted && !isRecognizing) { // If not muted and call is active, try to restart
                         if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
-                        if (!isRecognizing) { 
+                        if (!isRecognizing) { // Prevent multiple starts
                             try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
                         }
                     } else if (isMuted) {
@@ -2886,28 +2842,22 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                // Insert new message before the speech wave or at the end if wave is not active
-                if (userSpeechWave && userSpeechWave.parentNode === callConversation) {
-                    callConversation.insertBefore(msgEl, userSpeechWave);
-                } else {
-                    callConversation.appendChild(msgEl);
-                }
+                if (userSpeechWave && role !== 'status') callConversation.insertBefore(msgEl, userSpeechWave); // Insert above the wave
+                else callConversation.appendChild(msgEl);
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
-                
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
-                userSaidSomething = false;
+                userSaidSomething = false; // Reset flag before bot speaks
 
                 if (speechRecognition && isRecognizing) {
                     try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
                 }
-                if (userSpeechWave) userSpeechWave.classList.remove('active');
 
-
+                // Make history "blunt" as per request for internal bot processing
                 const bluntInstruction = { role: 'system', content: 'You are a direct, concise, and blunt AI assistant. Avoid pleasantries, long explanations, and conversational filler. Get straight to the point.' };
                 const historyForBot = [bluntInstruction, ...callHistory.map(m => ({ role: m.role, content: m.content || '' }))];
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
@@ -2922,16 +2872,15 @@
                     if (!res.ok) throw new Error(data.error || "Server error.");
                     const botResponse = data.response;
                     callHistory.push({ role: 'ai', content: botResponse });
-                    addCallMessage('bot', botResponse); // Add text to chat BEFORE speaking
-
-                    speakBotResponse(botResponse); // Then speak
+                    // Display text immediately, then speak
+                    addCallMessage('bot', botResponse); 
+                    speakBotResponse(botResponse);
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
-                    if (!botIsSpeaking && isCallActive && !isMuted && !isRecognizing) {
+                    if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        if (userSpeechWave) userSpeechWave.classList.add('active');
                         try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
                     }
                 }
@@ -2942,9 +2891,6 @@
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
-                if (userSpeechWave) userSpeechWave.classList.remove('active'); // Bot is speaking, no user wave
-
-
                 try {
                     let res;
                     if (selectedCallVoiceProvider === 'gemini') {
@@ -2973,12 +2919,10 @@
                         if (isCallActive && !isMuted && !isRecognizing) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            if (userSpeechWave) userSpeechWave.classList.add('active');
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after speaking:", e);}
                         } else if (isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                             if (tapToTalk) tapToTalk.style.display = 'none';
-                            if (userSpeechWave) userSpeechWave.classList.remove('active');
                         }
                     };
                     audio.play();
@@ -2989,12 +2933,10 @@
                     if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        if (userSpeechWave) userSpeechWave.classList.add('active');
                         try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after voice error:", e);}
                     } else if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         if (tapToTalk) tapToTalk.style.display = 'none';
-                        if (userSpeechWave) userSpeechWave.classList.remove('active');
                     }
                 }
             }
@@ -3011,9 +2953,6 @@
                     currentAudio = null;
                 }
                 callModal.classList.remove('active');
-                if (callActiveGlow) callActiveGlow.style.display = 'none'; // Deactivate new glow
-
-
                 if (speechRecognition) {
                     try { speechRecognition.abort(); } catch(e) { console.warn("Failed to abort speech recognition on call end:", e); }
                 }
@@ -3021,7 +2960,6 @@
                 tapToTalk.style.display = 'none';
                 callStatusMessage.textContent = 'Call Ended.';
                 if (userSpeechWave) userSpeechWave.classList.remove('active');
-
 
                 // Clear any leftover interim text
                 currentInterimUserText = '';
@@ -3052,18 +2990,18 @@
                 if (!isMuted) {
                     callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                     tapToTalk.style.display = 'block';
-                    if (userSpeechWave) userSpeechWave.classList.add('active'); 
-                    if (speechRecognition && isRecognizing) { 
+                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Activate wave when listening starts
+                    if (speechRecognition && isRecognizing) { // Only stop if it's currently running
                         try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition immediately:", e); }
                     }
-                    if (speechRecognition && !isRecognizing) { 
+                    if (speechRecognition && !isRecognizing) { // Start if not already running
                         try { speechRecognition.start(); } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
                     }
                 } else {
                     callStatusMessage.textContent = 'Microphone Muted.';
                     tapToTalk.style.display = 'none';
-                    if (userSpeechWave) userSpeechWave.classList.remove('active'); 
-                    if (speechRecognition && isRecognizing) { 
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Deactivate wave when muted
+                    if (speechRecognition && isRecognizing) { // Stop if muted
                         try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition when muted:", e); }
                     }
                 }
@@ -3096,26 +3034,24 @@
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    if (callActiveGlow) callActiveGlow.style.display = 'block'; // Activate new glow
-
-                    callConversation.innerHTML = `<div class="call-msg status">Calling...</div><div id="userSpeechWave"></div>`; 
+                    callConversation.innerHTML = `<div class="call-msg status">Calling...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
                     userSaidSomething = false;
-                    currentInterimUserText = ''; 
-                    currentFinalUserText = ''; 
+                    currentInterimUserText = ''; // Reset transcription storage
+                    currentFinalUserText = ''; // Reset transcription storage
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
 
 
                     setTimeout(() => {
-                        if (!isCallActive) return; 
-                        addCallMessage('status', 'Call Connected. Speak now.'); 
-                        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        if (!isCallActive) return; // Check if call was ended during timeout
+                        addCallMessage('status', 'Call Connected. Speak now.'); // Made blunter
+                        callStatusMessage.textContent = 'Listening...';
                         tapToTalk.style.display = 'block';
                         if (userSpeechWave) userSpeechWave.classList.add('active');
 
-                        if (!isRecognizing) { 
+                        if (!isRecognizing) { // Only start if not already recognizing
                             try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed in callBtn click:", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.'; }
                         }
                     }, 1500);
@@ -3132,7 +3068,7 @@
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition && isRecognizing) { 
+                        if (speechRecognition && isRecognizing) { // Only stop if it's running
                             try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
                         }
                         callStatusMessage.textContent = 'Microphone Muted.';
@@ -3141,15 +3077,15 @@
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
-                        if (isCallActive && !botIsSpeaking && !isRecognizing) { 
-                            callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        if (isCallActive && !botIsSpeaking && !isRecognizing) { // Start if active, not speaking, and not already recognizing
+                            callStatusMessage.textContent = 'Listening...';
                             tapToTalk.style.display = 'block';
                             userSpeechWave.classList.add('active');
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
                         } else if (isCallActive && botIsSpeaking) {
                             callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                             tapToTalk.style.display = 'none';
-                            userSpeechWave.classList.remove('active'); 
+                            userSpeechWave.classList.remove('active'); // Should not be active if bot is speaking
                         }
                     }
                 });
