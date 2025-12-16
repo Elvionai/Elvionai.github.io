@@ -1208,6 +1208,7 @@
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
             const typingStatus = $('typing-status');
+            const userSpeechWave = $('userSpeechWave');
 
 
             if (!chatViewport || !userInput || !typingStatus) {
@@ -2716,11 +2717,12 @@
 
                 speechRecognition.onstart = () => {
                     isRecognizing = true;
+                    currentInterimUserText = ''; // Clear on start
+                    currentFinalUserText = '';   // Clear on start
                     if (!isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
-                        if (tapToTalk) tapToTalk.style.display = 'none';
+                        if (tapToTalk) tapToTalk.style.display = 'block'; // Show tap to talk when listening
                     }
-                    const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.add('active');
                 };
 
@@ -2750,18 +2752,16 @@
                     if (!userMsgEl) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
-                        const userSpeechWave = $('userSpeechWave');
                         if (userSpeechWave) callConversation.insertBefore(userMsgEl, userSpeechWave);
                         else callConversation.appendChild(userMsgEl);
                     }
                     // Display combined final (from previous results) and current interim text
-                    userMsgEl.textContent = currentFinalUserText + currentInterimUserText;
+                    userMsgEl.textContent = (currentFinalUserText + currentInterimUserText).trim(); // Ensure no leading/trailing spaces from undefined
                     callConversation.scrollTop = callConversation.scrollHeight;
                 };
 
                 speechRecognition.onend = () => {
                     isRecognizing = false;
-                    const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
 
                     if (!isCallActive) {
@@ -2771,9 +2771,7 @@
                     }
 
                     const finalTranscriptToSend = currentFinalUserText.trim();
-                    currentInterimUserText = ''; // Clear interim for next turn
-                    currentFinalUserText = ''; // Clear final for next turn
-
+                    
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (userMsgEl) {
                         if (finalTranscriptToSend) {
@@ -2784,6 +2782,10 @@
                         }
                     }
                     
+                    // Clear for next recognition cycle AFTER extracting finalTranscriptToSend
+                    currentInterimUserText = '';
+                    currentFinalUserText = '';
+
                     if (botIsSpeaking) {
                         // If bot starts speaking immediately after user, we don't restart recognition here.
                         // It will restart when bot finishes.
@@ -2804,7 +2806,6 @@
                 speechRecognition.onerror = (event) => {
                     isRecognizing = false;
                     console.error('Speech recognition error:', event.error, event.message);
-                    const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (tapToTalk) tapToTalk.style.display = 'none'; // Hide on error or while retrying
 
@@ -2816,7 +2817,7 @@
                     if(event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'permission-denied') {
                         if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in browser settings.';
                         setTimeout(endCall, 2000);
-                    } else if (isCallActive && !isMuted) { // If not muted and call is active, try to restart
+                    } else if (isCallActive && !isMuted && !isRecognizing) { // If not muted and call is active, try to restart
                         if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
                         if (!isRecognizing) { // Prevent multiple starts
                             try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
@@ -2835,7 +2836,6 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                const userSpeechWave = $('userSpeechWave');
                 if (userSpeechWave && role !== 'status') callConversation.insertBefore(msgEl, userSpeechWave); // Insert above the wave
                 else callConversation.appendChild(msgEl);
                 callConversation.scrollTop = callConversation.scrollHeight;
@@ -2871,7 +2871,7 @@
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
                     if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                        if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
                         if (tapToTalk) tapToTalk.style.display = 'block';
                         try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after error:", e);}
                     }
@@ -2951,6 +2951,8 @@
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
                 callStatusMessage.textContent = 'Call Ended.';
+                if (userSpeechWave) userSpeechWave.classList.remove('active');
+
 
                 // Clear any leftover interim text
                 currentInterimUserText = '';
@@ -2979,8 +2981,9 @@
                 if (userMsgEl) userMsgEl.remove();
 
                 if (!isMuted) {
-                    callStatusMessage.textContent = 'Listening...';
+                    callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                     tapToTalk.style.display = 'block';
+                    if (userSpeechWave) userSpeechWave.classList.add('active'); // Activate wave when listening starts
                     if (speechRecognition && isRecognizing) { // Only stop if it's currently running
                         try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition immediately:", e); }
                     }
@@ -2990,6 +2993,7 @@
                 } else {
                     callStatusMessage.textContent = 'Microphone Muted.';
                     tapToTalk.style.display = 'none';
+                    if (userSpeechWave) userSpeechWave.classList.remove('active'); // Deactivate wave when muted
                     if (speechRecognition && isRecognizing) { // Stop if muted
                         try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition when muted:", e); }
                     }
@@ -3016,25 +3020,30 @@
 
                     isCallActive = true;
                     isMuted = false;
+                    botIsSpeaking = false;
                     isRecognizing = false; // Reset recognizing state
                     if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div class="call-msg status">Connecting...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
+                    callConversation.innerHTML = `<div class="call-msg status">Calling...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
                     userSaidSomething = false;
                     currentInterimUserText = ''; // Reset transcription storage
                     currentFinalUserText = ''; // Reset transcription storage
+                    if (userSpeechWave) userSpeechWave.classList.remove('active');
+
 
                     setTimeout(() => {
                         if (!isCallActive) return; // Check if call was ended during timeout
                         addCallMessage('status', 'Call Connected. Speak now.'); // Made blunter
                         callStatusMessage.textContent = 'Listening...';
                         tapToTalk.style.display = 'block';
+                        if (userSpeechWave) userSpeechWave.classList.add('active');
+
                         if (!isRecognizing) { // Only start if not already recognizing
                             try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed in callBtn click:", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.'; }
                         }
@@ -3046,7 +3055,7 @@
 
             if (muteCallBtn) {
                 muteCallBtn.addEventListener('click', () => {
-                    if (!callStatusMessage || !tapToTalk || !botImageContainer) return;
+                    if (!callStatusMessage || !tapToTalk || !botImageContainer || !userSpeechWave) return;
 
                     isMuted = !isMuted;
                     if (isMuted) {
@@ -3057,16 +3066,19 @@
                         }
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
+                        userSpeechWave.classList.remove('active');
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                         if (isCallActive && !botIsSpeaking && !isRecognizing) { // Start if active, not speaking, and not already recognizing
                             callStatusMessage.textContent = 'Listening...';
                             tapToTalk.style.display = 'block';
+                            userSpeechWave.classList.add('active');
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
                         } else if (isCallActive && botIsSpeaking) {
                             callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                             tapToTalk.style.display = 'none';
+                            userSpeechWave.classList.remove('active'); // Should not be active if bot is speaking
                         }
                     }
                 });
