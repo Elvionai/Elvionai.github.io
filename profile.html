@@ -1614,7 +1614,7 @@
                                 ${escapeHTML(msg.text || '')}
                                 <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                                     <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy'></i> Copy</button>
+                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
                                 </div>
                             </div>`;
                         } else {
@@ -1892,8 +1892,8 @@
                     try {
                         const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
                         div.setAttribute('data-message-id', docRef.id); // Update with real ID
-                        const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
-                        if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
+                            const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
+                            if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
                     } catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
@@ -2228,7 +2228,7 @@
                         if (!text) return "Please provide text to speak.";
                         const providerName = provider === 'minimax' ? 'Seraphina' : 'Philadelphia';
                         await addMessageToChat('user', `Voice generation request using ${providerName}.`);
-                        showTypingStatus('Generating audio...');
+                        showTypingStatus('Generating your audio...');
                         try {
                             let res;
                             if (provider === 'gemini') {
@@ -2341,7 +2341,7 @@
                         if (!prompt) return "Please provide a music prompt.";
                         const payload = { prompt, lyrics, model: 'music-1.5' };
                         await addMessageToChat('user', `Music generation request: "${payload.prompt}"`);
-                        showTypingStatus('Composing music...');
+                        showTypingStatus('Composing your music...');
                         try {
                             if (refFile) {
                                 showTypingStatus('Uploading reference audio first...');
@@ -2395,7 +2395,7 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeTypingStatus();
-                            await startTypewriter(`🌐 Website deployed! [View here](${data.url})`);
+                            await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2425,7 +2425,7 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeTypingStatus();
-                            await startTypewriter(`✏️ Website updated! [View new version here](${data.url})`);
+                            await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2439,19 +2439,19 @@
                     runAction: async () => {
                         if (!currentUser) { await startTypewriter("User not logged in."); return null; }
                         await addMessageToChat('user', 'Show me a list of my websites.');
-                        showTypingStatus('Fetching website list...');
+                        showTypingStatus('Fetching your website list...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/my-sites/${currentUser.uid}`, { signal: currentController?.signal });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
                             if (!data.sites || data.sites.length === 0) {
                                 removeTypingStatus();
-                                await startTypewriter("No websites created yet.");
+                                await startTypewriter("You haven't created any websites yet.");
                                 return null;
                             }
                             const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
                             removeTypingStatus();
-                            await startTypewriter(`Here are your websites:\n${siteList}`);
+                            await startTypewriter(`Here are the websites you've created:\n${siteList}`);
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2471,7 +2471,7 @@
                         const topic = form.querySelector('#research-topic')?.value;
                         if (!topic) return "Please provide a research topic.";
                         await addMessageToChat('user', `Research report request on: "${topic}"`);
-                        showTypingStatus('Conducting research. Compiling report...');
+                        showTypingStatus('Conducting research and compiling report...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/research`, {
                                 method: 'POST',
@@ -2622,7 +2622,7 @@
                 userInput.style.height = 'auto';
 
                 if (localUploadedFiles.length > 0) {
-                    showTypingStatus('Analyzing file(s)...');
+                    showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
                     const file = localUploadedFiles[0]; // Process first file
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
@@ -2631,7 +2631,7 @@
                     else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
                     else {
                         removeTypingStatus();
-                        finalResponse = "Sorry, cannot analyze that file type."; // Blunt
+                        finalResponse = "Sorry, I can't analyze that file type.";
                     }
                     try {
                         if(endpoint) {
@@ -2660,7 +2660,7 @@
                         if (!res.ok) throw new Error(data.error || "Server error.");
                         finalResponse = data.response;
                     } catch (err) {
-                        finalResponse = err.name === 'AbortError' ? '❌ Response stopped.' : `❌ Error: ${err.message}`; // Blunt
+                        finalResponse = err.name === 'AbortError' ? '❌ Response stopped.' : `❌ An error occurred: ${err.message}`;
                     }
                 }
 
@@ -2716,11 +2716,6 @@
 
                 speechRecognition.onstart = () => {
                     isRecognizing = true;
-                    currentInterimUserText = ''; // Clear on start
-                    currentFinalUserText = '';   // Clear on start
-                    const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                    if (userMsgEl) userMsgEl.remove(); // Remove any leftover interim element
-
                     if (!isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
                         if (tapToTalk) tapToTalk.style.display = 'none';
@@ -2733,20 +2728,23 @@
                     if (!isCallActive) return;
                     userSaidSomething = true;
                     
-                    let interimSegment = '';
-                    let finalSegment = ''; 
+                    let interimTranscript = '';
+                    let newFinalTranscriptSegment = '';
 
+                    // Accumulate final results and keep track of the current interim result
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        const transcript = event.results[i].transcript || ''; // Ensure it's a string
+                        const transcript = event.results[i].transcript;
                         if (event.results[i].isFinal) {
-                            finalSegment += transcript;
+                            newFinalTranscriptSegment += transcript;
                         } else {
-                            interimSegment += transcript;
+                            interimTranscript += transcript;
                         }
                     }
 
-                    currentFinalUserText += finalSegment; 
-                    currentInterimUserText = interimSegment; 
+                    // Append new final segment to our running total of final text
+                    currentFinalUserText += newFinalTranscriptSegment;
+                    // The current interim text is just the latest interim segment
+                    currentInterimUserText = interimTranscript;
 
                     let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (!userMsgEl) {
@@ -2756,7 +2754,8 @@
                         if (userSpeechWave) callConversation.insertBefore(userMsgEl, userSpeechWave);
                         else callConversation.appendChild(userMsgEl);
                     }
-                    userMsgEl.textContent = (currentFinalUserText + currentInterimUserText).trim(); 
+                    // Display combined final (from previous results) and current interim text
+                    userMsgEl.textContent = currentFinalUserText + currentInterimUserText;
                     callConversation.scrollTop = callConversation.scrollHeight;
                 };
 
@@ -2771,9 +2770,9 @@
                         return;
                     }
 
-                    let finalTranscriptToSend = currentFinalUserText.trim();
-                    currentInterimUserText = ''; 
-                    currentFinalUserText = ''; 
+                    const finalTranscriptToSend = currentFinalUserText.trim();
+                    currentInterimUserText = ''; // Clear interim for next turn
+                    currentFinalUserText = ''; // Clear final for next turn
 
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (userMsgEl) {
@@ -2781,22 +2780,21 @@
                             userMsgEl.textContent = finalTranscriptToSend;
                             userMsgEl.classList.remove('interim');
                         } else {
-                            userMsgEl.remove(); 
+                            userMsgEl.remove(); // Remove if nothing was spoken
                         }
                     }
                     
                     if (botIsSpeaking) {
-                        // Bot is speaking, recognition will restart when bot finishes
+                        // If bot starts speaking immediately after user, we don't restart recognition here.
+                        // It will restart when bot finishes.
                     } else if (finalTranscriptToSend && userSaidSomething) {
-                        userSaidSomething = false; 
+                        userSaidSomething = false; // Reset flag after processing
                         callHistory.push({ role: 'user', content: finalTranscriptToSend });
                         handleCallBotResponse();
-                    } else if (isCallActive && !isMuted) { 
+                    } else if (isCallActive && !isMuted && !isRecognizing) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        if (!isRecognizing) { 
-                           try { speechRecognition.start(); } catch (e) { console.warn("Speech recognition failed to start (onend retry):", e); }
-                        }
+                        try { speechRecognition.start(); } catch (e) { console.warn("Speech recognition failed to start (onend retry):", e); }
                     } else if (isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
                         if (tapToTalk) tapToTalk.style.display = 'none';
@@ -2808,19 +2806,19 @@
                     console.error('Speech recognition error:', event.error, event.message);
                     const userSpeechWave = $('userSpeechWave');
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if (tapToTalk) tapToTalk.style.display = 'none';
+                    if (tapToTalk) tapToTalk.style.display = 'none'; // Hide on error or while retrying
 
-                    currentInterimUserText = ''; 
-                    currentFinalUserText = '';   
+                    currentInterimUserText = ''; // Clear any pending text
+                    currentFinalUserText = ''; // Clear any pending text
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
-                    if (userMsgEl) userMsgEl.remove(); 
+                    if (userMsgEl) userMsgEl.remove(); // Remove partial message
 
                     if(event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'permission-denied') {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in browser settings.'; // Blunt
+                        if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in browser settings.';
                         setTimeout(endCall, 2000);
-                    } else if (isCallActive && !isMuted) { 
-                        if (callStatusMessage) callStatusMessage.textContent = 'Error. Retrying...'; // Blunt
-                        if (!isRecognizing) { 
+                    } else if (isCallActive && !isMuted) { // If not muted and call is active, try to restart
+                        if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
+                        if (!isRecognizing) { // Prevent multiple starts
                             try { speechRecognition.start(); } catch(e) { console.warn("Speech recognition failed to restart after error:", e); }
                         }
                     } else if (isMuted) {
@@ -2853,7 +2851,8 @@
                     try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
                 }
 
-                const historyForBot = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
+                const bluntInstruction = { role: 'system', content: 'You are a direct, concise, and blunt AI assistant. Avoid pleasantries, long explanations, and conversational filler. Get straight to the point.' };
+                const historyForBot = [bluntInstruction, ...callHistory.map(m => ({ role: m.role, content: m.content || '' }))];
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
                 
                 try {
@@ -2952,10 +2951,18 @@
                 botImageContainer.classList.remove('speaking');
                 tapToTalk.style.display = 'none';
                 callStatusMessage.textContent = 'Call Ended.';
+
+                // Clear any leftover interim text
+                currentInterimUserText = '';
+                currentFinalUserText = '';
+                const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                if (userMsgEl) userMsgEl.remove();
             }
 
             function stopBotSpeakingAndStartListening() {
                 if (!isCallActive || !botImageContainer || !callStatusMessage || !tapToTalk) return;
+                
+                // Stop current bot audio
                 if (currentAudio) {
                     currentAudio.pause();
                     currentAudio.currentTime = 0;
@@ -2965,6 +2972,7 @@
                 botIsSpeaking = false;
                 botImageContainer.classList.remove('speaking');
                 
+                // Clear any current interim/final user text and remove element
                 currentInterimUserText = '';
                 currentFinalUserText = '';
                 const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
@@ -2973,23 +2981,24 @@
                 if (!isMuted) {
                     callStatusMessage.textContent = 'Listening...';
                     tapToTalk.style.display = 'block';
-                    if (speechRecognition && isRecognizing) { 
+                    if (speechRecognition && isRecognizing) { // Only stop if it's currently running
                         try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition immediately:", e); }
                     }
-                    if (speechRecognition && !isRecognizing) { 
+                    if (speechRecognition && !isRecognizing) { // Start if not already running
                         try { speechRecognition.start(); } catch(e) { console.warn("Could not restart speech recognition immediately:", e); }
                     }
                 } else {
                     callStatusMessage.textContent = 'Microphone Muted.';
                     tapToTalk.style.display = 'none';
-                    if (speechRecognition && isRecognizing) { 
+                    if (speechRecognition && isRecognizing) { // Stop if muted
                         try { speechRecognition.stop(); } catch(e) { console.warn("Could not stop speech recognition when muted:", e); }
                     }
                 }
             }
 
             if (callModal) {
-                callModal.addEventListener('mousedown', stopBotSpeakingAndStartListening);
+                // Use click and touchstart to handle user interaction for interruption
+                callModal.addEventListener('click', stopBotSpeakingAndStartListening);
                 callModal.addEventListener('touchstart', stopBotSpeakingAndStartListening);
             }
 
@@ -3001,31 +3010,32 @@
                     }
                     if (!callModal || !callConversation || !callStatusMessage || !tapToTalk) return;
 
+                    // Update selected voice from UI before starting call
                     selectedCallVoiceProvider = callVoiceModel?.value || 'minimax';
                     selectedCallVoiceId = callVoiceStyle?.value || 'elder';
 
                     isCallActive = true;
                     isMuted = false;
-                    isRecognizing = false; 
+                    isRecognizing = false; // Reset recognizing state
                     if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div class="call-msg status">Connecting...</div><div id="userSpeechWave"></div>`; 
+                    callConversation.innerHTML = `<div class="call-msg status">Connecting...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
                     userSaidSomething = false;
-                    currentInterimUserText = ''; 
-                    currentFinalUserText = ''; 
+                    currentInterimUserText = ''; // Reset transcription storage
+                    currentFinalUserText = ''; // Reset transcription storage
 
                     setTimeout(() => {
-                        if (!isCallActive) return; 
-                        addCallMessage('status', 'Call Connected. Speak now.'); 
+                        if (!isCallActive) return; // Check if call was ended during timeout
+                        addCallMessage('status', 'Call Connected. Speak now.'); // Made blunter
                         callStatusMessage.textContent = 'Listening...';
                         tapToTalk.style.display = 'block';
-                        if (!isRecognizing) { 
+                        if (!isRecognizing) { // Only start if not already recognizing
                             try { speechRecognition.start(); } catch(e) { console.error("Speech recognition start failed in callBtn click:", e); if (callStatusMessage) callStatusMessage.textContent = 'Microphone error. Check browser permissions.'; }
                         }
                     }, 1500);
@@ -3042,7 +3052,7 @@
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition && isRecognizing) { 
+                        if (speechRecognition && isRecognizing) { // Only stop if it's running
                             try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition on mute:", e); }
                         }
                         callStatusMessage.textContent = 'Microphone Muted.';
@@ -3050,7 +3060,7 @@
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
-                        if (isCallActive && !botIsSpeaking && !isRecognizing) { 
+                        if (isCallActive && !botIsSpeaking && !isRecognizing) { // Start if active, not speaking, and not already recognizing
                             callStatusMessage.textContent = 'Listening...';
                             tapToTalk.style.display = 'block';
                             try { speechRecognition.start(); } catch(e) {console.warn("Speech recognition failed to start after unmute:", e);}
