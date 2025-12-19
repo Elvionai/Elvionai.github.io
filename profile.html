@@ -576,7 +576,7 @@
             background: rgba(25, 36, 65, 0.9);
             border-radius: 8px;
             padding: 5px 8px;
-            border: 1px solid rgba(0, 242, 255, 0.2);
+            border: 1.5px solid rgba(0, 242, 255, 0.25);
         }
         #filePreview.file-preview-floating .remove-file-btn {
             background:#d23; color:#fff; border-radius:50%; width:24px; height:24px; font-size:1em;
@@ -1099,7 +1099,7 @@
         let isCallActive = false;
         let callHistory = [];
         let botIsSpeaking = false;
-        let userSaidSomething = false; // Flag to indicate if user actually spoke
+        let userSaidSomething = false; // Flag to track if user actually spoke final speech
         let currentAudio = null;
         let isMuted = false;
         let isRecognizing = false;
@@ -1281,9 +1281,9 @@
                 userInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter') {
                         e.preventDefault(); // Prevent default submission behavior
-                        const start = userInput.selectionStart;
-                        const end = userInput.selectionEnd;
-                        userInput.value = userInput.value.substring(0, start) + "\n" + userInput.value.substring(end);
+                        const start = userInput.selectionStart || 0;
+                        const end = userInput.selectionEnd || 0;
+                        userInput.value = userInput.value.slice(0, start) + "\n" + userInput.value.slice(end);
                         userInput.selectionStart = userInput.selectionEnd = start + 1;
                         autoResize();
                     }
@@ -1740,11 +1740,11 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || "Server error.");
                             removeTypingStatus();
-                            await startTypewriter(data.response, false);
+                            await startTypewriter(data.response || "Philadelphia AI couldn't generate a response.", false);
                         } catch (err) {
                             removeTypingStatus();
-                            if (err.name === 'AbortError') { return '❌ Regeneration stopped.'; }
-                            await startTypewriter(`❌ Regeneration error: ${err.message}`, false);
+                            if (err.name === 'AbortError') { await startTypewriter('❌ Regeneration stopped.', false); }
+                            else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
                         } finally {
                             sendBtn.style.display = 'flex';
                             callBtn.style.display = 'flex'; // Show call button after regeneration
@@ -1877,7 +1877,8 @@
                 }
                 
                 // Final render after typing effect is complete or aborted
-                msgBubble.innerHTML = renderMarkdown(text).html + `
+                const finalRenderText = text || "Philadelphia AI couldn't generate a response."; // Fallback for empty text
+                msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
                         <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
@@ -1888,7 +1889,7 @@
                 chatViewport.scrollTop = chatViewport.scrollHeight;
                 
                 if (saveToDb && currentUser && currentChatId) {
-                    const newMsg = { role: 'ai', text: text, createdAt: serverTimestamp() };
+                    const newMsg = { role: 'ai', text: finalRenderText, createdAt: serverTimestamp() };
                     div.setAttribute('data-message-id', 'temp-id'); // Temp id for hooking controls
                     currentMessages.push({id: 'temp-id', ...newMsg});
                     hookAiMsgControls(); // Re-hook controls after final render
@@ -2734,24 +2735,26 @@
                     
                     let interimTranscript = '';
                     let newFinalTranscriptSegment = '';
+                    let hasFinalSpeech = false; // New flag
 
-                    // Accumulate final results and keep track of the current interim result
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         const transcript = event.results[i].transcript;
                         if (event.results[i].isFinal) {
                             newFinalTranscriptSegment += transcript;
-                            userSaidSomething = true; // Mark that user said something substantial
+                            hasFinalSpeech = true; // Set to true if any final speech detected
                         } else {
                             interimTranscript += transcript;
                         }
                     }
 
-                    // Append new final segment to our running total of final text
                     currentFinalUserText += newFinalTranscriptSegment;
-                    // The current interim text is just the latest interim segment
                     currentInterimUserText = interimTranscript;
 
-                    // Find or create the interim message element
+                    // Only set userSaidSomething if there was actual final speech in this result event
+                    if (hasFinalSpeech) {
+                        userSaidSomething = true;
+                    }
+
                     let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (!userMsgEl) {
                         userMsgEl = document.createElement('div');
@@ -2857,7 +2860,6 @@
                     try { speechRecognition.stop(); } catch(e) { console.warn("Failed to stop speech recognition before bot response:", e); }
                 }
 
-                // Make history "blunt" as per request for internal bot processing
                 const bluntInstruction = { role: 'system', content: 'You are a direct, concise, and blunt AI assistant. Avoid pleasantries, long explanations, and conversational filler. Get straight to the point.' };
                 const historyForBot = [bluntInstruction, ...callHistory.map(m => ({ role: m.role, content: m.content || '' }))];
                 const userMessage = historyForBot.length > 0 ? historyForBot[historyForBot.length - 1].content : "";
@@ -2870,10 +2872,9 @@
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "Server error.");
-                    const botResponse = data.response;
+                    const botResponse = data.response || "Philadelphia AI couldn't generate a response."; // Fallback for empty response
                     callHistory.push({ role: 'ai', content: botResponse });
-                    // Display text immediately, then speak
-                    addCallMessage('bot', botResponse); 
+                    addCallMessage('bot', botResponse);
                     speakBotResponse(botResponse);
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
@@ -2961,6 +2962,7 @@
                 callStatusMessage.textContent = 'Call Ended.';
                 if (userSpeechWave) userSpeechWave.classList.remove('active');
 
+
                 // Clear any leftover interim text
                 currentInterimUserText = '';
                 currentFinalUserText = '';
@@ -3034,7 +3036,7 @@
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
                     callModal.classList.add('active');
-                    callConversation.innerHTML = `<div class="call-msg status">Calling...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
+                    callConversation.innerHTML = `<div class="call-msg status">Connecting...</div><div id="userSpeechWave"></div>`; // Clear previous call messages & add wave
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
@@ -3047,7 +3049,7 @@
                     setTimeout(() => {
                         if (!isCallActive) return; // Check if call was ended during timeout
                         addCallMessage('status', 'Call Connected. Speak now.'); // Made blunter
-                        callStatusMessage.textContent = 'Listening...';
+                        callStatusMessage.textContent = 'Listening... (Tap to Speak)';
                         tapToTalk.style.display = 'block';
                         if (userSpeechWave) userSpeechWave.classList.add('active');
 
