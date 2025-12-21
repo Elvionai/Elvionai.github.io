@@ -523,26 +523,37 @@
             border-radius: 10px; box-shadow: 0 0 50px var(--neon-blue);
             object-fit: contain;
         }
-        #ai-image-preview {
+        #ai-image-preview, #ai-comic-preview {
             display:none;
             position:fixed; z-index:1210; right:22px; bottom:100px; max-width:320px;
             background:rgba(25,26,38,0.95); padding:12px; border-radius:17px;
             box-shadow:0 2px 19px var(--neon-blue); border: 1px solid var(--neon-blue);
         }
-        #ai-image-preview.active { display:block; }
-        #ai-image-preview #ai-image-close {
-            float:right;background:rgba(35,35,58,0.7);border:none;border-radius:7px;
-            color:var(--neon-blue);font-size:1.5em;cursor:pointer;margin-left:5px;
+        #ai-image-preview.active, #ai-comic-preview.active { display:block; }
+        #ai-image-preview #ai-image-close, #ai-comic-preview #ai-comic-close {
+            position: absolute; top: 8px; right: 8px;
+            background:rgba(35,35,58,0.7);border:none;border-radius:7px;
+            color:var(--neon-blue);font-size:1.5em;cursor:pointer;
         }
-        #ai-image-preview #ai-image-container img {
-            max-width:210px;max-height:210px;border-radius:12px;display:block;
+        #ai-image-preview #ai-image-container img, #ai-comic-preview #ai-comic-container img {
+            max-width:280px;max-height:280px;border-radius:12px;display:block;
             border: 1px solid var(--neon-green); box-shadow: 0 0 10px var(--neon-green);
             object-fit: contain;
         }
-        #ai-image-preview #ai-image-dl {
+        #ai-comic-preview .comic-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+        #ai-comic-preview .comic-nav button {
+             background:var(--plasma-gradient-dark); color:var(--main-text-color);
+             border: 1px solid var(--neon-blue); border-radius: 8px; padding: 5px 10px; cursor:pointer;
+        }
+        #ai-comic-preview #ai-comic-dl, #ai-image-preview #ai-image-dl {
             margin-top:9px;padding:7px 20px;background:var(--plasma-gradient);
             color:#222;border:none;border-radius:8px;box-shadow:0 2px 7px var(--neon-blue);
-            cursor:pointer;font-weight:bold;
+            cursor:pointer;font-weight:bold; width: 100%;
         }
         /* REFINED FILE PREVIEW STYLES */
         #filePreview.file-preview-floating {
@@ -781,6 +792,9 @@
             transition: background .1s, box-shadow .1s, color .1s;
             user-select: none;
         }
+        #endCallBtn {
+            background: #d23;
+        }
         #endCallBtn:hover { background: #ff7777; box-shadow: 0 0 15px #ff7777aa; color: #fff; }
         #muteCallBtn {
             box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
@@ -859,8 +873,8 @@
             .side-panel { width: 100vw; border-radius: 0; left: -100vw; }
             .side-panel.active { left: 0; }
             #filePreview.file-preview-floating { width: calc(100% - 20px); bottom: 95px; }
-            #ai-image-preview { right: 10px; bottom: 90px; max-width: 250px; }
-            #ai-image-preview #ai-image-container img { max-width: 170px; max-height: 170px; }
+            #ai-image-preview, #ai-comic-preview { right: 10px; bottom: 90px; max-width: 250px; }
+            #ai-image-preview #ai-image-container img, #ai-comic-preview #ai-comic-container img { max-width: 170px; max-height: 170px; }
             .chat-controls-menu { left: 10px; bottom: 95px; width: calc(100% - 20px); max-height: 150px; }
 
             /* Call Modal Adjustments for mobile */
@@ -954,10 +968,23 @@
         </nav>
     </div>
 
+    <!-- Single Image Preview Box -->
     <div id="ai-image-preview">
         <button type="button" id="ai-image-close" aria-label="Close image preview">&times;</button>
         <div id="ai-image-container"></div>
         <button type="button" id="ai-image-dl">Download</button>
+    </div>
+
+    <!-- Comic Viewer Preview Box -->
+    <div id="ai-comic-preview">
+        <button type="button" id="ai-comic-close" aria-label="Close comic preview">&times;</button>
+        <div id="ai-comic-container" style="text-align: center;"></div>
+        <div class="comic-nav">
+             <button id="comic-prev-btn"><i class="fa-solid fa-arrow-left"></i></button>
+             <span id="comic-panel-indicator"></span>
+             <button id="comic-next-btn"><i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <button type="button" id="ai-comic-dl">Download This Panel</button>
     </div>
 
     <div class="panel-bg" id="linksMenuBg">
@@ -1051,7 +1078,7 @@
         </div>
         <div id="callControls">
             <button type="button" id="muteCallBtn" class="submit-btn" aria-label="Mute microphone"><i class="fa-solid fa-microphone"></i> Mute</button>
-            <button type="button" id="endCallBtn" class="submit-btn" style="background: #d23;" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
+            <button type="button" id="endCallBtn" class="submit-btn" aria-label="End call"><i class="fa-solid fa-phone-slash"></i> End Call</button>
         </div>
     </div>
 
@@ -1099,32 +1126,31 @@
         let isCallActive = false;
         let callHistory = [];
         let botIsSpeaking = false;
-        let userSaidSomething = false; // Flag to track if user actually spoke final speech
+        let userSaidSomething = false;
         let currentAudio = null;
         let isMuted = false;
         let isRecognizing = false;
         let selectedCallVoiceId = 'elder'; // Default for minimax (Seraphina)
         let selectedCallVoiceProvider = 'minimax'; // Default provider
 
-        // Variables for real-time transcription
-        let currentInterimUserText = '';
-        let currentFinalUserText = '';
+        // Comic viewer state
+        let comicPanels = [];
+        let currentComicPanelIndex = 0;
 
         // Cosmic background animations
         function igniteCosmos() {
             if (cosmos) {
-                // Keep the nebulas as they are
-                cosmos.querySelectorAll('.star').forEach(p => p.remove()); // Remove existing stars
-                for (let i = 0; i < 200; i++) { // Increased number of stars for more depth
+                cosmos.querySelectorAll('.star').forEach(p => p.remove());
+                for (let i = 0; i < 200; i++) {
                     const particle = document.createElement('div');
                     particle.className = 'star';
-                    const size = Math.random() * 2 + 0.5; // Slightly larger stars
+                    const size = Math.random() * 2 + 0.5;
                     particle.style.width = `${size}px`;
                     particle.style.height = `${size}px`;
                     particle.style.left = `${Math.random() * 100}%`;
                     particle.style.top = `${Math.random() * 100}%`;
-                    particle.style.setProperty('--duration', `${Math.random() * 5 + 3}s`); // Varied twinkle duration
-                    particle.style.opacity = Math.random() * 0.7 + 0.3; // Varied initial opacity
+                    particle.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
+                    particle.style.opacity = Math.random() * 0.7 + 0.3;
                     cosmos.appendChild(particle);
                 }
             }
@@ -1154,7 +1180,7 @@
 
         igniteCosmos();
         setInterval(() => {
-             if (Math.random() < 0.2) launchShootingStar(); // Less frequent shooting stars
+             if (Math.random() < 0.2) launchShootingStar();
         }, 5000);
 
 
@@ -1189,11 +1215,25 @@
             const toolForm = $('toolForm');
             const toolFormTitle = $('toolFormTitle');
             const toolFormBackBtn = $('toolFormBackBtn');
+            const lightbox = $('lightbox');
+            const typingStatus = $('typing-status');
+            
+            // Image Preview Elements
             const aiPrevBox = $('ai-image-preview');
             const aiPrevClose = $('ai-image-close');
             const aiPrevDLBtn = $('ai-image-dl');
             const aiPrevImgBox = $('ai-image-container');
-            const lightbox = $('lightbox');
+
+            // Comic Preview Elements
+            const comicPrevBox = $('ai-comic-preview');
+            const comicPrevClose = $('ai-comic-close');
+            const comicPrevDLBtn = $('ai-comic-dl');
+            const comicPrevImgBox = $('ai-comic-container');
+            const comicNextBtn = $('comic-next-btn');
+            const comicPrevBtn = $('comic-prev-btn');
+            const comicIndicator = $('comic-panel-indicator');
+
+            // Call Elements
             const callBtn = $('callBtn');
             const callModal = $('callModal');
             const endCallBtn = $('endCallBtn');
@@ -1205,7 +1245,6 @@
             const botImageContainer = $('botImageContainer');
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
-            const typingStatus = $('typing-status');
             const userSpeechWave = $('userSpeechWave');
 
 
@@ -1262,7 +1301,7 @@
                         userInput.focus();
                         userInput.selectionStart = userInput.selectionEnd = start + text.length;
                         emojiPanel.classList.remove('active');
-                        userInput.dispatchEvent(new Event('input')); // Trigger input event for auto-resize
+                        userInput.dispatchEvent(new Event('input'));
                     }
                 });
             }
@@ -1276,7 +1315,7 @@
                 userInput.addEventListener('input', autoResize);
                 userInput.addEventListener('keydown', e => {
                     if (e.key === 'Enter') {
-                        e.preventDefault(); 
+                        e.preventDefault();
                         const start = userInput.selectionStart || 0;
                         const end = userInput.selectionEnd || 0;
                         userInput.value = userInput.value.slice(0, start) + "\n" + userInput.value.slice(end);
@@ -1719,7 +1758,7 @@
                         const signal = currentController.signal;
 
                         sendBtn.style.display = 'none';
-                        callBtn.style.display = 'none'; // Hide call button during regeneration
+                        callBtn.style.display = 'none';
                         stopBtn.style.display = 'flex';
                         const regenStopListener = () => { if (currentController) currentController.abort(); };
                         if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -1743,7 +1782,7 @@
                             else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
                         } finally {
                             sendBtn.style.display = 'flex';
-                            callBtn.style.display = 'flex'; // Show call button after regeneration
+                            callBtn.style.display = 'flex';
                             stopBtn.style.display = 'none';
                             if (stopBtn._currentStopListener) {
                                 stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -1828,12 +1867,12 @@
 
                     if (saveToDb && currentUser && currentChatId) {
                         const newMsg = { role: 'ai', text: text, createdAt: serverTimestamp() };
-                        div.setAttribute('data-message-id', 'temp-id'); // Temp id for hooking controls
+                        div.setAttribute('data-message-id', 'temp-id');
                         currentMessages.push({id: 'temp-id', ...newMsg});
-                        hookAiMsgControls(); // Hook controls immediately
+                        hookAiMsgControls();
                         try {
                             const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                            div.setAttribute('data-message-id', docRef.id); // Update with real ID
+                            div.setAttribute('data-message-id', docRef.id);
                             const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
                             if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
                         } catch (e) { console.error("Error saving AI media message: ", e); }
@@ -1849,7 +1888,7 @@
                 chatViewport.insertBefore(div, typingStatus.style.display === 'flex' ? typingStatus : null);
 
                 let currentRenderingText = '';
-                const words = text.split(/(\s+)/); // Split by whitespace to process chunks
+                const words = text.split(/(\s+)/);
                 
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
@@ -1869,7 +1908,7 @@
                     await new Promise(res => setTimeout(res, 1)); 
                 }
                 
-                const finalRenderText = text || "Philadelphia AI couldn't generate a response."; // Fallback for empty text
+                const finalRenderText = text || "Philadelphia AI couldn't generate a response.";
                 msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
@@ -1882,12 +1921,12 @@
                 
                 if (saveToDb && currentUser && currentChatId) {
                     const newMsg = { role: 'ai', text: finalRenderText, createdAt: serverTimestamp() };
-                    div.setAttribute('data-message-id', 'temp-id'); // Temp id for hooking controls
+                    div.setAttribute('data-message-id', 'temp-id');
                     currentMessages.push({id: 'temp-id', ...newMsg});
-                    hookAiMsgControls(); // Re-hook controls after final render
+                    hookAiMsgControls();
                     try {
                         const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                        div.setAttribute('data-message-id', docRef.id); // Update with real ID
+                        div.setAttribute('data-message-id', docRef.id);
                             const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
                             if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
                     } catch (e) { console.error("Error saving AI message: ", e); }
@@ -1951,7 +1990,7 @@
 
             function showAIImagePreview(base64, caption = '') {
                 if (!aiPrevBox || !aiPrevImgBox) return;
-                aiPrevImgBox.innerHTML = `<img src="${base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
+                aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
             }
 
@@ -2044,7 +2083,45 @@
             }
 
             const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-            const comicStyles = ["anime", "american", "manga"]; 
+            const comicStyles = ["anime", "american", "manga"];
+
+            // *** COMIC VIEWER FUNCTIONS ***
+            function showComicPreview(images, caption = '') {
+                if (!comicPrevBox) return;
+                comicPanels = images;
+                currentComicPanelIndex = 0;
+                renderComicPanel();
+                comicPrevBox.classList.add('active');
+            }
+
+            function renderComicPanel() {
+                if (!comicPrevImgBox || comicPanels.length === 0) return;
+                comicPrevImgBox.innerHTML = `<img src="data:image/png;base64,${comicPanels[currentComicPanelIndex]}" alt="Comic Panel ${currentComicPanelIndex + 1}">`;
+                comicIndicator.textContent = `Panel ${currentComicPanelIndex + 1} of ${comicPanels.length}`;
+                comicPrevBtn.disabled = currentComicPanelIndex === 0;
+                comicNextBtn.disabled = currentComicPanelIndex === comicPanels.length - 1;
+            }
+
+            if(comicPrevClose) comicPrevClose.addEventListener('click', () => comicPrevBox.classList.remove('active'));
+            if(comicNextBtn) comicNextBtn.addEventListener('click', () => {
+                if (currentComicPanelIndex < comicPanels.length - 1) {
+                    currentComicPanelIndex++;
+                    renderComicPanel();
+                }
+            });
+            if(comicPrevBtn) comicPrevBtn.addEventListener('click', () => {
+                if (currentComicPanelIndex > 0) {
+                    currentComicPanelIndex--;
+                    renderComicPanel();
+                }
+            });
+            if(comicPrevDLBtn) comicPrevDLBtn.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = `data:image/png;base64,${comicPanels[currentComicPanelIndex]}`;
+                a.download = `philadelphia_comic_panel_${currentComicPanelIndex + 1}.png`;
+                a.click();
+            });
+            // *** END COMIC VIEWER FUNCTIONS ***
 
             const toolDefinitions = {
                 "image": {
@@ -2149,7 +2226,7 @@
                         }
                     }
                 },
-                "comic": {
+                 "comic": {
                     title: "Create Comic",
                     description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
@@ -2183,32 +2260,11 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            const images = await Promise.all(data.images.map(base64 => {
-                                return new Promise(resolve => {
-                                    const img = new Image();
-                                    img.onload = () => resolve(img);
-                                    img.src = `data:image/png;base64,${base64}`;
-                                });
-                            }));
                             
-                            const panelWidth = images[0]?.width || 512;
-                            const panelHeight = images[0]?.height || 512;
-                            canvas.width = panelWidth * images.length;
-                            canvas.height = panelHeight;
-
-                            images.forEach((img, idx) => {
-                                ctx.drawImage(img, idx * panelWidth, 0, panelWidth, panelHeight);
-                            });
-                            
-                            const compositeImageBase64 = canvas.toDataURL('image/png');
+                            showComicPreview(data.images); // NEW: Show in dedicated viewer
 
                             removeTypingStatus();
-                            showAIImagePreview(compositeImageBase64, `Your comic is ready!`);
-                            await addMessageToChat('ai', '🖼️ Comic successfully created! Check the floating image box to view or download.');
-                            
+                            await addMessageToChat('ai', '🖼️ Comic created! Check the floating comic viewer to see the panels.');
                             return null;
                         } catch (err) {
                             removeTypingStatus();
@@ -2525,7 +2581,7 @@
                     currentController = new AbortController(); 
 
                     if (sendBtn) sendBtn.style.display = 'none';
-                    if (callBtn) callBtn.style.display = 'none'; 
+                    if (callBtn) callBtn.style.display = 'none';
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
                         const toolStopListener = () => { if (currentController) currentController.abort(); };
@@ -2551,7 +2607,7 @@
                             await startTypewriter(result);
                         }
                         if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex'; 
+                        if (callBtn) callBtn.style.display = 'flex';
                         if (stopBtn) stopBtn.style.display = 'none';
                         if (stopBtn._currentStopListener) {
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -2596,7 +2652,7 @@
                             submitButton.disabled = false;
                         }
                         if (sendBtn) sendBtn.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex'; 
+                        if (callBtn) callBtn.style.display = 'flex';
                         if (stopBtn) stopBtn.style.display = 'none';
                         if (stopBtn._currentStopListener) {
                             stopBtn.removeEventListener('click', stopBtn._currentStopListener);
@@ -2616,7 +2672,7 @@
 
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
-                if (callBtn) callBtn.style.display = 'none'; 
+                if (callBtn) callBtn.style.display = 'none';
 
                 currentController = new AbortController();
                 const signal = currentController.signal;
@@ -2642,7 +2698,7 @@
                 if (localUploadedFiles.length > 0) {
                     showTypingStatus('Analyzing your file(s)...');
                     let endpoint = '';
-                    const file = localUploadedFiles[0]; // Process first file
+                    const file = localUploadedFiles[0];
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
@@ -2689,7 +2745,7 @@
 
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
-                if (callBtn) callBtn.style.display = 'flex'; 
+                if (callBtn) callBtn.style.display = 'flex';
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                     stopBtn._currentStopListener = null;
@@ -2697,7 +2753,7 @@
                 currentController = null;
             }
 
-            // --- IMPROVED VOICE CALL LOGIC ---
+            // --- REFACTORED & IMPROVED VOICE CALL LOGIC ---
             const callVoices = {
                 gemini: {
                     label: "Philadelphia (Styles)",
@@ -2722,7 +2778,7 @@
             if (callVoiceModel) {
                 callVoiceModel.addEventListener('change', updateCallVoiceStyles);
                 callVoiceStyle.addEventListener('change', () => { selectedCallVoiceId = callVoiceStyle.value; });
-                updateCallVoiceStyles(); // Initialize on load
+                updateCallVoiceStyles();
             }
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2734,17 +2790,18 @@
 
                 speechRecognition.onstart = () => {
                     isRecognizing = true;
+                    userSaidSomething = false;
                     if (!isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        if (userSpeechWave) userSpeechWave.classList.add('active');
                     }
-                    if (userSpeechWave) userSpeechWave.classList.add('active');
                 };
 
                 speechRecognition.onresult = (event) => {
                     if (!isCallActive) return;
                     let interimTranscript = '';
                     let finalTranscript = '';
+                    
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
                             finalTranscript += event.results[i][0].transcript;
@@ -2752,20 +2809,20 @@
                             interimTranscript += event.results[i][0].transcript;
                         }
                     }
-                    currentFinalUserText += finalTranscript;
-                    currentInterimUserText = interimTranscript;
-                    
-                    if (finalTranscript.trim()) userSaidSomething = true;
-                    
+
+                    if(finalTranscript || interimTranscript) {
+                        userSaidSomething = true;
+                    }
+
                     let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (!userMsgEl) {
                         userMsgEl = document.createElement('div');
                         userMsgEl.className = 'call-msg user interim';
-                        if (userSpeechWave) callConversation.insertBefore(userMsgEl, userSpeechWave);
+                        if(userSpeechWave) callConversation.insertBefore(userMsgEl, userSpeechWave);
                         else callConversation.appendChild(userMsgEl);
                     }
-                    userMsgEl.textContent = (currentFinalUserText + currentInterimUserText).trim();
-                    callConversation.scrollTop = callConversation.scrollHeight;
+                    userMsgEl.textContent = (finalTranscript + interimTranscript).trim();
+                    if(userMsgEl.textContent) callConversation.scrollTop = callConversation.scrollHeight;
                 };
 
                 speechRecognition.onend = () => {
@@ -2773,48 +2830,38 @@
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
                     if (!isCallActive) return;
 
-                    const finalTranscriptToSend = currentFinalUserText.trim();
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                    let finalTranscript = '';
                     if (userMsgEl) {
-                        if (finalTranscriptToSend) {
-                            userMsgEl.textContent = finalTranscriptToSend;
-                            userMsgEl.classList.remove('interim');
-                        } else {
-                            userMsgEl.remove();
-                        }
+                        finalTranscript = userMsgEl.textContent.trim();
+                        userMsgEl.classList.remove('interim');
+                        if (!finalTranscript) userMsgEl.remove();
                     }
-
-                    currentInterimUserText = '';
-                    currentFinalUserText = '';
-
+                    
                     if (botIsSpeaking) {
-                        // Let bot finish, its onended handler will restart recognition
-                    } else if (finalTranscriptToSend && userSaidSomething) {
-                        userSaidSomething = false;
-                        callHistory.push({ role: 'user', content: finalTranscriptToSend });
+                        // Do nothing, wait for bot to finish.
+                    } else if (finalTranscript && userSaidSomething) {
+                        callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
-                    } else if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch (e) { console.warn("Could not restart recognition onend:", e); }
+                    } else if (isCallActive && !isMuted) {
+                        try { if(!isRecognizing) speechRecognition.start(); } catch(e) {}
                     }
                 };
 
                 speechRecognition.onerror = (event) => {
                     isRecognizing = false;
-                    console.error('Speech recognition error:', event.error, event.message);
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if(event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in browser settings.';
-                        setTimeout(endCall, 2000);
-                    } else if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Error listening. Retrying...';
-                        try { speechRecognition.start(); } catch(e) {}
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in settings.';
+                        setTimeout(endCall, 2500);
+                    } else if (isCallActive && !isMuted && event.error !== 'aborted') {
+                        // If not a manual abort, try to restart.
+                        try { if(!isRecognizing) speechRecognition.start(); } catch(e) {}
                     }
                 };
             } else {
                 if (callBtn) callBtn.style.display = 'none';
-                console.warn("Speech Recognition not supported in this browser.");
             }
 
             function addCallMessage(role, text) {
@@ -2822,33 +2869,30 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                if (userSpeechWave && role !== 'status') callConversation.insertBefore(msgEl, userSpeechWave);
+                if(userSpeechWave && role !== 'status') callConversation.insertBefore(msgEl, userSpeechWave);
                 else callConversation.appendChild(msgEl);
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
-                if (!isCallActive) return;
-                if (callStatusMessage) callStatusMessage.textContent = 'Philadelphia AI is thinking...';
-                if (tapToTalk) tapToTalk.style.display = 'none';
+                if (!isCallActive || !callStatusMessage || !tapToTalk) return;
+                callStatusMessage.textContent = 'Philadelphia AI is thinking...';
+                tapToTalk.style.display = 'none';
 
                 if (speechRecognition && isRecognizing) {
                     try { speechRecognition.stop(); } catch(e) {}
                 }
-
-                const bluntInstruction = { role: 'system', content: 'You are a direct, concise, and blunt AI assistant. Avoid pleasantries and filler.' };
-                const historyForBot = [bluntInstruction, ...callHistory];
-                const userMessage = historyForBot.length > 1 ? historyForBot[historyForBot.length - 1].content : "";
+                const userMessage = callHistory.length > 0 ? callHistory[callHistory.length - 1].content : "";
                 
                 try {
                     const res = await fetch(`${API_BASE_URL}/chat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: userMessage, history: historyForBot.slice(0, -1), user_id: currentUser?.uid || "user", call_context: true })
+                        body: JSON.stringify({ message: userMessage, history: callHistory.slice(0, -1), user_id: currentUser?.uid || "user", call_context: true })
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || "Server error.");
-                    const botResponse = data.response || "I have no response for that.";
+                    const botResponse = data.response || "I'm sorry, I couldn't generate a response.";
                     callHistory.push({ role: 'ai', content: botResponse });
                     addCallMessage('bot', botResponse);
                     speakBotResponse(botResponse);
@@ -2856,18 +2900,17 @@
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
                     if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {}
+                        if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
+                        if(tapToTalk) tapToTalk.style.display = 'block';
                     }
                 }
             }
 
             async function speakBotResponse(text) {
-                if (!isCallActive) return;
+                if (!isCallActive || !botImageContainer || !callStatusMessage) return;
                 botIsSpeaking = true;
-                if (botImageContainer) botImageContainer.classList.add('speaking');
-                if (callStatusMessage) callStatusMessage.textContent = 'Philadelphia AI is speaking...';
+                botImageContainer.classList.add('speaking');
+                callStatusMessage.textContent = 'Philadelphia AI is speaking...';
                 try {
                     let res;
                     if (selectedCallVoiceProvider === 'gemini') {
@@ -2877,7 +2920,8 @@
                         res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
                     } else {
                         res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
-                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ text: text, voice_id: selectedCallVoiceId })
                         });
                     }
@@ -2891,19 +2935,18 @@
                         currentAudio = null;
                         URL.revokeObjectURL(url);
                         if (isCallActive && !isMuted && !isRecognizing) {
-                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
+                            if (callStatusMessage) callStatusMessage.textContent = 'Tap anywhere to speak';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { speechRecognition.start(); } catch(e) {}
                         }
                     };
                     currentAudio.play();
                 } catch (err) {
+                    console.error("Voice generation error:", err);
                     botIsSpeaking = false;
                     if (botImageContainer) botImageContainer.classList.remove('speaking');
-                    if (isCallActive && !isMuted && !isRecognizing) {
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening (Voice Failed)...';
+                    if (isCallActive && !isMuted) {
+                        if (callStatusMessage) callStatusMessage.textContent = 'Voice Error. Tap to speak.';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {}
                     }
                 }
             }
@@ -2911,17 +2954,37 @@
             function endCall() {
                 isCallActive = false;
                 botIsSpeaking = false;
-                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                if (speechRecognition && isRecognizing) {
+                    try { speechRecognition.abort(); } catch(e) {}
+                }
+                isRecognizing = false;
                 if (callModal) callModal.classList.remove('active');
-                if (speechRecognition) { try { speechRecognition.abort(); } catch(e) {} }
                 if (botImageContainer) botImageContainer.classList.remove('speaking');
+                if (tapToTalk) tapToTalk.style.display = 'none';
+                if (callStatusMessage) callStatusMessage.textContent = 'Call Ended.';
+                if (userSpeechWave) userSpeechWave.classList.remove('active');
             }
 
             function stopBotSpeakingAndStartListening() {
-                if (!isCallActive || !botIsSpeaking) return;
-                if (currentAudio) {
+                if (!isCallActive || isRecognizing) return;
+                 if (currentAudio) {
                     currentAudio.pause();
-                    currentAudio.dispatchEvent(new Event('ended')); // Trigger the onended logic
+                    currentAudio = null;
+                }
+                botIsSpeaking = false;
+                if(botImageContainer) botImageContainer.classList.remove('speaking');
+                
+                const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                if(userMsgEl) userMsgEl.remove();
+
+                if (!isMuted) {
+                    if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
+                    if (tapToTalk) tapToTalk.style.display = 'none';
+                    try { if(!isRecognizing) speechRecognition.start(); } catch(e) {}
                 }
             }
 
@@ -2932,32 +2995,26 @@
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
                     if (!SpeechRecognition) {
-                        alert("Voice Call is not supported by your browser."); return;
+                        alert("Your browser doesn't support the Speech Recognition needed for voice calls.");
+                        return;
                     }
                     isCallActive = true;
                     isMuted = false;
-                    botIsSpeaking = false;
-                    isRecognizing = false;
-                    currentFinalUserText = '';
-                    currentInterimUserText = '';
                     if (muteCallBtn) {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                     }
-                    if(callModal) callModal.classList.add('active');
-                    if(callConversation) callConversation.innerHTML = `<div class="call-msg status">Connecting...</div><div id="userSpeechWave"></div>`;
-                    if(callStatusMessage) callStatusMessage.textContent = 'Calling...';
+                    callModal.classList.add('active');
+                    callConversation.innerHTML = `<div class="call-msg status">Connecting...</div><div id="userSpeechWave"></div>`;
+                    callStatusMessage.textContent = 'Calling...';
+                    tapToTalk.style.display = 'none';
                     callHistory = [];
-                    userSaidSomething = false;
                     
                     setTimeout(() => {
                         if (!isCallActive) return;
-                        addCallMessage('status', 'Connected. You can speak now.');
-                        if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                        if (tapToTalk) tapToTalk.style.display = 'block';
-                        if (!isRecognizing) {
-                            try { speechRecognition.start(); } catch(e) { console.error("Mic start failed:", e); if(callStatusMessage) callStatusMessage.textContent = 'Mic error.'; }
-                        }
+                        addCallMessage('status', 'Connected. Tap anywhere to speak.');
+                        callStatusMessage.textContent = 'Tap anywhere to speak';
+                        tapToTalk.style.display = 'block';
                     }, 1500);
                 });
             }
@@ -2965,7 +3022,8 @@
             if (endCallBtn) endCallBtn.addEventListener('click', endCall);
 
             if (muteCallBtn) {
-                muteCallBtn.addEventListener('click', () => {
+                muteCallBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent modal click from firing
                     isMuted = !isMuted;
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
@@ -2973,15 +3031,14 @@
                         if (speechRecognition && isRecognizing) {
                             try { speechRecognition.stop(); } catch(e) {}
                         }
-                        if (callStatusMessage) callStatusMessage.textContent = 'Microphone Muted.';
-                        if (tapToTalk) tapToTalk.style.display = 'none';
+                        callStatusMessage.textContent = 'Microphone Muted.';
+                        tapToTalk.style.display = 'none';
                     } else {
                         muteCallBtn.classList.remove('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
-                        if (isCallActive && !botIsSpeaking && !isRecognizing) {
-                            if (callStatusMessage) callStatusMessage.textContent = 'Listening... (Tap to Speak)';
-                            if (tapToTalk) tapToTalk.style.display = 'block';
-                            try { speechRecognition.start(); } catch(e) {}
+                        if (isCallActive && !botIsSpeaking) {
+                            callStatusMessage.textContent = 'Tap anywhere to speak';
+                            tapToTalk.style.display = 'block';
                         }
                     }
                 });
