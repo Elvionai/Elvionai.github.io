@@ -334,44 +334,35 @@
             background: var(--plasma-gradient);
         }
 
-        /* Typing Status - FIXED AND IMPROVED */
-        #typing-status {
-            display: flex; /* Always flex, visibility controlled by JS active class */
-            justify-content: flex-start; /* Align to the left */
-            align-items: center;
-            position: sticky; /* Make it sticky within its parent (.ui-container) */
-            bottom: 0; /* Stick to the bottom of the parent */
-            width: 100%;
-            padding: 15px 30px; /* Match input dock padding for consistency */
-            box-sizing: border-box;
-            background: rgba(5, 7, 20, 0.95); /* Darker, more opaque background to stand out */
-            backdrop-filter: blur(18px); /* Stronger blur */
-            -webkit-backdrop-filter: blur(18px);
-            border-top: 1px solid var(--glass-border);
-            z-index: 105; /* Ensure it's above chat bubbles and below input dock */
-            text-align: left;
-            flex-shrink: 0; /* Prevent it from shrinking */
-            transform: translateY(100%); /* Initially hidden below the input dock */
-            transition: transform 0.3s ease-out; /* Slide in/out animation */
-            pointer-events: none; /* Make it non-interactive to avoid blocking clicks */
+        /* Typing Status - REWORKED */
+        .typing-indicator-message {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 88%;
+            position: relative;
+            align-self: flex-start; /* Like an AI message */
+            opacity: 0; /* Start hidden for animation */
+            animation: fadeIn 0.3s forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        #typing-status.active {
-             transform: translateY(0); /* Slide up to be visible */
-        }
-
-        #typing-status .msg {
+        .typing-indicator-message .msg {
             padding: 14px 22px; border-radius: 25px; /* Larger padding and radius */
             background: linear-gradient(135deg, rgba(30, 30, 60, 0.75), rgba(20, 20, 35, 0.95)); /* Stronger background */
             border: 1.5px solid rgba(0, 242, 255, 0.2); /* More subtle border */
             box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.08);
             display: inline-flex; align-items: center; /* Use inline-flex to fit content */
-            max-width: 90%; /* Constrain width */
+            max-width: 100%; /* Can take full width of message-group */
         }
-        #typing-status .msg span { /* General text within status message */
+        .typing-indicator-message .msg span {
             color: var(--main-text-color);
             font-style: italic;
             font-size: 1.05em;
+            margin-left: 8px; /* Space from spinner */
         }
 
         .dot-anim {
@@ -925,9 +916,8 @@
                 border-radius: 8px;
             }
 
-            #typing-status { padding: 10px 15px; } /* Adjusted for mobile */
-            #typing-status .msg { padding: 8px 15px; border-radius: 18px; max-width: 100%;}
-            #typing-status .msg span { font-size: 0.9em; }
+            .typing-indicator-message .msg { padding: 8px 15px; border-radius: 18px; max-width: 100%;}
+            .typing-indicator-message .msg span { font-size: 0.9em; margin-left: 6px; }
             .dot-anim { width: 8px; height: 8px; margin: 0 3px; }
             .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
@@ -1002,14 +992,8 @@
             <!-- Initial welcome message can be dynamically added by JS if preferred -->
         </div>
 
-        <!-- Typing Status - NOW FIXED AND ALIGNED -->
-        <div id="typing-status" class="ai" aria-live="polite" aria-atomic="true">
-            <div class="msg">
-                <span class="spinner"></span>
-                <span style="margin-left:8px;">Philadelphia AI is typing</span>
-                <span class="typing-bubble" style="margin-left: 5px; display: none;"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>
-            </div>
-        </div>
+        <!-- The typing-status div is now a template for messages in chat-viewport -->
+        <!-- It will be dynamically created/removed/updated in JS within the chat flow -->
 
         <div class="input-dock">
             <div class="capsule-input" id="capsuleInputContainer">
@@ -1318,7 +1302,7 @@
             const toolFormTitle = $('toolFormTitle');
             const toolFormBackBtn = $('toolFormBackBtn');
             const lightbox = $('lightbox');
-            const typingStatus = $('typing-status');
+            // The old typingStatus element is removed from HTML; logic is now dynamic
             
             // Image Preview Elements
             const aiPrevBox = $('ai-image-preview');
@@ -1350,7 +1334,7 @@
             const userSpeechWave = $('userSpeechWave');
 
 
-            if (!chatViewport || !userInput || !typingStatus) {
+            if (!chatViewport || !userInput) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
@@ -1670,7 +1654,7 @@
 
             function inlineMarkdown(t = '') {
                 let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
-                s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+                s = s.replace(/\*\*([^*]+?)\*\*\/(g, '<strong>$1</strong>');
                 s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
                 s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
                 return s.replace(/\n/g, '<br>');
@@ -1849,7 +1833,7 @@
                             renderFilePreview();
                         }
 
-                        showTypingStatus('Re-generating response...');
+                        showTypingStatus('Re-generating response...'); // Use spinner here
 
                         const historyForRegen = currentMessages
                             .slice(0, msgIndex - 1)
@@ -1875,10 +1859,10 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || "Server error.");
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await startTypewriter(data.response || "Philadelphia AI couldn't generate a response.", false);
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { await startTypewriter('❌ Regeneration stopped.', false); }
                             else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
                         } finally {
@@ -1929,36 +1913,51 @@
                 });
             }
 
-            function showTypingStatus(text = 'Philadelphia AI is typing') {
-                if (!typingStatus) return;
-                const statusTextEl = typingStatus.querySelector('span:nth-child(2)');
-                const spinnerEl = typingStatus.querySelector('.spinner');
-                const typingBubbleEl = typingStatus.querySelector('.typing-bubble');
+            // REWORKED showTypingStatus
+            function showTypingStatus(text = '') {
+                if (!chatViewport) return;
 
-                if (text === 'Philadelphia AI is typing') {
-                    if (statusTextEl) statusTextEl.textContent = text;
-                    if (spinnerEl) spinnerEl.style.display = 'none';
-                    if (typingBubbleEl) typingBubbleEl.style.display = 'inline-block';
-                } else {
-                    if (statusTextEl) statusTextEl.textContent = text;
-                    if (spinnerEl) spinnerEl.style.display = 'inline-block';
-                    if (typingBubbleEl) typingBubbleEl.style.display = 'none';
-                }
+                // Remove any existing typing status first
+                removeTypingStatus();
+
+                const div = document.createElement('div');
+                div.className = "message-group ai typing-indicator-message"; // Add unique class
+                div.setAttribute('data-temp-id', 'ai-typing-status'); // Unique identifier
+                const msgBubble = document.createElement('div');
+                msgBubble.className = 'msg-bubble';
+                div.appendChild(msgBubble);
                 
-                typingStatus.classList.add('active'); // Use class to trigger CSS transition for visibility
-                chatViewport.scrollTop = chatViewport.scrollHeight; // Keep chat scrolled to bottom
+                if (text) { // Specific status with spinner
+                    msgBubble.innerHTML = `<div class="msg">
+                        <span class="spinner"></span>
+                        <span style="margin-left:8px; color:var(--main-text-color); font-style:italic;">${text}</span>
+                    </div>`;
+                } else { // Generic typing with dots animation
+                    msgBubble.innerHTML = `<div class="msg" style="display:flex;align-items:center;justify-content:center;padding:10px 15px; border-radius: 20px;">
+                        <span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>
+                    </div>`;
+                    // Adjust max-width and align to mimic bubble. Removed status text, only dots.
+                    div.style.maxWidth = 'fit-content';
+                    div.style.alignSelf = 'flex-start';
+                }
+
+                chatViewport.appendChild(div);
+                chatViewport.scrollTop = chatViewport.scrollHeight;
             }
 
-
+            // REWORKED removeTypingStatus
             function removeTypingStatus() {
-                if (!typingStatus) return;
-                typingStatus.classList.remove('active'); // Use class to trigger CSS transition for visibility
-                // Hide spinner/dots explicitly just in case, though transform handles visibility
-                typingStatus.querySelector('.spinner').style.display = 'none';
-                typingStatus.querySelector('.typing-bubble').style.display = 'none';
+                if (!chatViewport) return;
+                const existingStatus = chatViewport.querySelector('.typing-indicator-message');
+                if (existingStatus) {
+                    existingStatus.remove();
+                }
             }
             
             async function startTypewriter(text, saveToDb = true) {
+                // IMPORTANT: Remove the typing status message *before* starting to type the actual response
+                removeTypingStatus();
+
                  if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
                     const div = document.createElement('div');
                     div.className = "message-group ai";
@@ -1974,7 +1973,7 @@
                         </div>
                     `;
 
-                    chatViewport.appendChild(div); // Use appendChild here, then scroll
+                    chatViewport.appendChild(div); 
                     chatViewport.scrollTop = chatViewport.scrollHeight;
 
                     if (saveToDb && currentUser && currentChatId) {
@@ -1997,12 +1996,11 @@
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                chatViewport.appendChild(div); // Append directly, then update
+                chatViewport.appendChild(div); 
                 
                 let currentRenderingText = '';
                 const words = text.split(/(\s+)/);
                 
-                // Track typing duration for potential display
                 const startTime = performance.now();
                 let charsTyped = 0;
 
@@ -2017,18 +2015,17 @@
                     let contentToRender = currentRenderingText;
                     const codeBlockCount = (contentToRender.match(/```/g) || []).length;
                     if (codeBlockCount % 2 !== 0) {
-                        contentToRender += '\n```'; // Close any unclosed code blocks for rendering
+                        contentToRender += '\n```'; 
                     }
 
                     msgBubble.innerHTML = renderMarkdown(contentToRender).html;
                     chatViewport.scrollTop = chatViewport.scrollHeight;
-                    await new Promise(res => setTimeout(res, 0)); // Super fast typewriter (0ms delay)
+                    await new Promise(res => setTimeout(res, 0)); 
                 }
 
                 const endTime = performance.now();
                 const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
-                const typingSpeed = (charsTyped / durationSeconds).toFixed(0);
-
+                
                 const finalRenderText = text || "Philadelphia AI couldn't generate a response.";
                 msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
@@ -2162,7 +2159,7 @@
 
                     if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to start video task.');
 
-                    removeTypingStatus();
+                    removeTypingStatus(); // Remove temp status before typing
                     await startTypewriter(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I will notify you when it's ready. This can take a few minutes. Please do not leave this page or send another message.`);
 
                     const pollInterval = setInterval(async () => {
@@ -2195,7 +2192,7 @@
                         }
                     }, 20000);
                 } catch (err) {
-                    removeTypingStatus();
+                    removeTypingStatus(); // Remove temp status
                     if (err.name === 'AbortError') {
                         await startTypewriter(`❌ Video generation request stopped.`);
                     } else {
@@ -2276,11 +2273,11 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', '✅ Image generated! Check the floating image box to view or download.');
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Image generation stopped.'; }
                             return `❌ Image generation failed: ${err.message}`;
                         }
@@ -2309,11 +2306,11 @@
                             const blob = await res.blob();
                             const base64String = await blobToBase64(blob);
                             const imgHtml = `✅ Photo edited successfully! <br><img src="${base64String}" alt="Edited Photo" class="chat-media-preview">`;
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', imgHtml);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Photo edit stopped.'; }
                             return `❌ Photo edit failed: ${err.message}`;
                         }
@@ -2330,19 +2327,19 @@
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Background removal request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Removing background...');
-                        const fd = new FormData();
-                        fd.append('file', file);
                         try {
+                            const fd = new FormData();
+                            fd.append('file', file);
                             const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd, signal: currentController?.signal });
                             if (!res.ok) throw new Error(res.statusText);
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview">`;
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', imgHtml);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Background removal stopped.'; }
                             return `❌ Background removal failed: ${err.message}`;
                         }
@@ -2385,11 +2382,11 @@
                             
                             showComicPreview(data.images); // NEW: Show in dedicated viewer
 
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', '🖼️ Comic created! Check the floating comic viewer to see the panels.');
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Comic generation stopped.'; }
                             return `❌ Comic generation failed: ${err.message}`;
                         }
@@ -2444,11 +2441,11 @@
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const audioHtml = `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', audioHtml);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Voice generation stopped.'; }
                             return `❌ Voice generation failed: ${err.message}`;
                         }
@@ -2465,20 +2462,20 @@
                         if (!file) return "Please select a file.";
                         await addMessageToChat('user', `Audio narration request for: "${file.name}"`, [{name: file.name, type: file.type}]);
                         showTypingStatus('Analyzing and narrating document...');
-                        const fd = new FormData();
-                        fd.append('file', file);
-                        fd.append('style', 'podcast');
                         try {
+                            const fd = new FormData();
+                            fd.append('file', file);
+                            fd.append('style', 'podcast');
                             const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd, signal: currentController?.signal });
                             if (!res.ok) throw new Error(res.statusText);
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const narrationHtml = `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', narrationHtml);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Audio narration stopped.'; }
                             return `❌ Audio narration failed: ${err.message}`;
                         }
@@ -2560,11 +2557,11 @@
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const musicHtml = `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await addMessageToChat('ai', musicHtml);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Music generation stopped.'; }
                             return `❌ Music generation failed: ${err.message}`;
                         }
@@ -2590,11 +2587,11 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Website creation stopped.'; }
                             return `❌ Website creation failed: ${err.message}`;
                         }
@@ -2620,11 +2617,11 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Website edit stopped.'; }
                             return `❌ Website edit failed: ${err.message}`;
                         }
@@ -2641,16 +2638,16 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
                             if (!data.sites || data.sites.length === 0) {
-                                removeTypingStatus();
+                                removeTypingStatus(); // Remove temp status before typing
                                 await startTypewriter("You haven't created any websites yet.");
                                 return null;
                             }
                             const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await startTypewriter(`Here are the websites you've created:\n${siteList}`);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { await startTypewriter(`❌ Website list fetching stopped.`); return null; }
                             await startTypewriter(`❌ Error fetching websites: ${err.message}`);
                             return null;
@@ -2679,11 +2676,11 @@
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status before typing
                             await startTypewriter(`✅ Research report on **${topic}** is ready! ${downloadLink}`);
                             return null;
                         } catch (err) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             if (err.name === 'AbortError') { return '❌ Research report generation stopped.'; }
                             return `❌ Research report failed: ${err.message}`;
                         }
@@ -2725,7 +2722,7 @@
                         result = `❌ Tool execution error: ${err.message}`;
                     } finally {
                         if (result) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             await startTypewriter(result);
                         }
                         if (sendBtn) sendBtn.style.display = 'flex';
@@ -2766,7 +2763,7 @@
                         resultText = `❌ Tool submission failed: ${err.message}`;
                     } finally {
                         if (resultText) {
-                            removeTypingStatus();
+                            removeTypingStatus(); // Remove temp status
                             await startTypewriter(resultText);
                         }
                         if (submitButton) {
@@ -2818,7 +2815,7 @@
                 userInput.style.height = 'auto';
 
                 if (localUploadedFiles.length > 0) {
-                    showTypingStatus('Analyzing your file(s)...');
+                    showTypingStatus('Analyzing your file(s)...'); // Show spinner status
                     let endpoint = '';
                     const file = localUploadedFiles[0];
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
@@ -2826,7 +2823,7 @@
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
                     else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
                     else {
-                        removeTypingStatus();
+                        removeTypingStatus(); // Remove temp status
                         finalResponse = "Sorry, I can't analyze that file type.";
                     }
                     try {
@@ -2843,7 +2840,7 @@
                         finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
                     }
                 } else if (msgText) {
-                    showTypingStatus();
+                    showTypingStatus(); // Show dots animation for general typing
                     try {
                         const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const res = await fetch(`${API_BASE_URL}/chat`, {
@@ -2860,10 +2857,13 @@
                     }
                 }
 
-                removeTypingStatus();
+                // removeTypingStatus() is now called at the beginning of startTypewriter
                 if (finalResponse) {
                     await startTypewriter(finalResponse);
+                } else {
+                     removeTypingStatus(); // Ensure it's removed if no response
                 }
+
 
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
