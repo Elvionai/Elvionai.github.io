@@ -392,9 +392,10 @@
         }
 
         .capsule-input {
-            flex: 1; position: relative; min-height: 70px; max-height: 220px; /* Taller */
+            flex: 1; position: relative; min-height: 70px; /* Taller */
             background: var(--glass-bg-light);
-            border-radius: 45px; border: 2px solid var(--glass-border); /* Larger radius, thicker border */
+            border-radius: 30px; /* More rectangular */
+            border: 2px solid var(--glass-border); /* Larger radius, thicker border */
             transition: 0.3s; display: flex; align-items: center;
             box-shadow: inset 0 5px 18px rgba(0,0,0,0.5); /* Stronger inset shadow */
             padding: 0 30px; /* Increased padding */
@@ -407,17 +408,19 @@
         }
 
         .capsule-input textarea {
-            flex: 1; width: 100%; min-height: 45px; max-height: 180px; /* Adjusted height */
+            flex: 1; width: 100%; min-height: 45px; max-height: 220px; /* Adjusted max-height for more text */
             background: transparent; border: none;
             padding: 18px 0; color: var(--main-text-color); font-size: 1.2rem; outline: none; /* Larger font */
             resize: none;
             scrollbar-width: thin; /* Show scrollbar when needed */
             scrollbar-color: var(--neon-blue) transparent;
-            -ms-overflow-style: none;
+            -ms-overflow-style: -ms-autohiding-scrollbar; /* Show scrollbar on IE/Edge when needed */
             position: relative; z-index: 1;
         }
-        .capsule-input textarea::-webkit-scrollbar { width: 5px; }
+        .capsule-input textarea::-webkit-scrollbar { width: 8px; } /* Thicker scrollbar */
         .capsule-input textarea::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 10px; }
+        .capsule-input textarea::-webkit-scrollbar-track { background: rgba(0, 242, 255, 0.1); } /* Track for better visibility */
+
         .capsule-input .input-action-buttons {
             display: flex; gap: 15px; margin-right: 12px; position: relative; z-index: 1; /* Increased gap and margin */
         }
@@ -553,8 +556,11 @@
             position:fixed; z-index:1210; right:35px; bottom:150px; max-width:400px; /* Adjusted position and size */
             background:rgba(25,26,38,1); padding:20px; border-radius:25px; /* Larger, more opaque, larger radius */
             box-shadow:0 2px 28px var(--neon-blue); border: 2.5px solid var(--neon-blue); /* Stronger shadow */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
         }
-        #ai-image-preview.active, #ai-comic-preview.active { display:block; }
+        #ai-image-preview.active, #ai-comic-preview.active { display:block; opacity: 1; transform: translateY(0); }
         #ai-image-preview #ai-image-close, #ai-comic-preview #ai-comic-close {
             position: absolute; top: 15px; right: 15px; /* Adjusted position */
             background:rgba(35,35,58,0.9);border:none;border-radius:12px; /* More opaque, larger radius */
@@ -601,8 +607,11 @@
             gap: 10px; /* Increased gap */
             overflow-y: auto;
             max-height: 280px; /* Taller */
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
         }
-        #filePreview.file-preview-floating.active { display: flex; }
+        #filePreview.file-preview-floating.active { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
 
         /* Style for individual file items inside preview */
         #filePreview.file-preview-floating > div {
@@ -919,7 +928,7 @@
 
             .input-dock { padding: 15px 20px; gap: 10px; }
             .capsule-input { min-height: 50px; border-radius: 30px;}
-            .capsule-input textarea { font-size: 1rem; padding: 10px 0;}
+            .capsule-input textarea { font-size: 1rem; padding: 10px 0; max-height: 120px;} /* Adjusted for mobile */
             .capsule-input .input-action-buttons { margin-right: 0; gap: 5px;}
             .capsule-input .input-action-buttons button,
             .capsule-input .input-action-buttons label {
@@ -1392,7 +1401,7 @@
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto';
-                    userInput.style.height = Math.min(userInput.scrollHeight, 180) + 'px'; // Adjusted max-height
+                    userInput.style.height = Math.min(userInput.scrollHeight, 220) + 'px'; // Adjusted max-height
                 };
                 userInput.addEventListener('input', autoResize);
                 // NOTE: The keydown event listener for 'Enter' has been intentionally removed
@@ -1733,8 +1742,10 @@
                             } else {
                                 content = renderMarkdown(msg.text || '').html;
                             }
+                            const timeDisplay = msg.duration ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${msg.duration}s</span>` : '';
                             innerHtml = `<div class="msg-bubble">${content}
                                 <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                                    ${timeDisplay}
                                     <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
                                     <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
                                     <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
@@ -1817,7 +1828,7 @@
                             userInput.value = userMsg.text;
                             userInput.focus();
                             userInput.style.height = 'auto';
-                            userInput.style.height = Math.min(userInput.scrollHeight, 180) + 'px'; // Adjusted max-height
+                            userInput.style.height = Math.min(userInput.scrollHeight, 220) + 'px'; // Adjusted max-height
                             uploadedFiles = [];
                             renderFilePreview();
                         }
@@ -1903,6 +1914,12 @@
 
             // --- NEW & ENHANCED DYNAMIC ANIMATION FUNCTIONS ---
             
+            function scrollToBottom() {
+                if (chatViewport) {
+                    chatViewport.scrollTop = chatViewport.scrollHeight;
+                }
+            }
+
             function displayTypingDots() {
                 if (!chatViewport || currentTypingDotsElement) return;
                 removeProcessingMessage();
@@ -1916,7 +1933,7 @@
                 `;
                 chatViewport.appendChild(div);
                 currentTypingDotsElement = div;
-                setTimeout(() => { chatViewport.scrollTop = chatViewport.scrollHeight; }, 50);
+                scrollToBottom();
             }
 
             function removeTypingDots() {
@@ -1941,7 +1958,7 @@
                 `;
                 chatViewport.appendChild(div);
                 currentProcessingMessageElement = div;
-                setTimeout(() => { chatViewport.scrollTop = chatViewport.scrollHeight; }, 50);
+                scrollToBottom();
             }
 
             function removeProcessingMessage() {
@@ -1954,6 +1971,8 @@
             async function startTypewriter(text, saveToDb = true) {
                 removeTypingDots();
                 removeProcessingMessage();
+
+                const startTime = performance.now();
 
                  if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
                     const div = document.createElement('div');
@@ -1971,10 +1990,13 @@
                     `;
 
                     chatViewport.appendChild(div);
-                    setTimeout(() => { chatViewport.scrollTop = chatViewport.scrollHeight; }, 50);
+                    scrollToBottom();
+
+                    const endTime = performance.now();
+                    const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
 
                     if (saveToDb && currentUser && currentChatId) {
-                        const newMsg = { role: 'ai', text: text, createdAt: serverTimestamp() };
+                        const newMsg = { role: 'ai', text: text, duration: durationSeconds, createdAt: serverTimestamp() };
                         div.setAttribute('data-message-id', 'temp-id');
                         currentMessages.push({id: 'temp-id', ...newMsg});
                         hookAiMsgControls();
@@ -1998,8 +2020,6 @@
                 let currentRenderingText = '';
                 const words = text.split(/(\s+)/);
                 
-                const startTime = performance.now();
-
                 for (const word of words) {
                     if (currentController?.signal.aborted) {
                         text = currentRenderingText; 
@@ -2014,7 +2034,7 @@
                     }
 
                     msgBubble.innerHTML = renderMarkdown(contentToRender).html;
-                    chatViewport.scrollTop = chatViewport.scrollHeight;
+                    scrollToBottom();
                     await new Promise(res => setTimeout(res, 0));
                 }
 
@@ -2031,10 +2051,10 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                setTimeout(() => { chatViewport.scrollTop = chatViewport.scrollHeight; }, 50);
+                scrollToBottom();
                 
                 if (saveToDb && currentUser && currentChatId) {
-                    const newMsg = { role: 'ai', text: finalRenderText, createdAt: serverTimestamp() };
+                    const newMsg = { role: 'ai', text: finalRenderText, duration: durationSeconds, createdAt: serverTimestamp() };
                     div.setAttribute('data-message-id', 'temp-id');
                     currentMessages.push({id: 'temp-id', ...newMsg});
                     hookAiMsgControls();
@@ -2108,11 +2128,11 @@
                 aiPrevBox.classList.add('active');
             }
 
-            async function addMessageToChat(role, text, files = []) {
+            async function addMessageToChat(role, text, files = [], duration = null) {
                 if (!currentChatId || !currentUser) return;
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 try {
-                    await addDoc(messagesCol, { role, text, files, createdAt: serverTimestamp() });
+                    await addDoc(messagesCol, { role, text, files, duration, createdAt: serverTimestamp() });
                 } catch (e) {
                     console.error("Error adding message to Firestore: ", e);
                 }
