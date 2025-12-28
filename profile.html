@@ -245,50 +245,6 @@
         }
         #chat-viewport::-webkit-scrollbar { display: none; } /* Chrome, Safari, Opera */
 
-        /* Model selector below chat - FIXES FOR SIZE AND POSITIONING */
-        #model-selector {
-            display: flex;
-            justify-content: center;
-            gap: 10px; /* Reduced gap */
-            padding: 10px 0; /* Reduced padding */
-            background: var(--glass-bg-strong);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid var(--glass-border);
-            flex-shrink: 0;
-            align-items: center; /* Align items vertically */
-        }
-
-        #model-selector button {
-            background: rgba(0, 242, 255, 0.1); /* Slightly less opaque */
-            border: 1.5px solid var(--neon-blue); /* Thinner border */
-            border-radius: 15px; /* Smaller radius */
-            padding: 8px 18px; /* Reduced padding */
-            color: var(--main-text-color);
-            font-size: 0.95em; /* Smaller font */
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 8px rgba(0, 242, 255, 0.15); /* Smaller glow */
-            user-select: none;
-            display: flex;
-            align-items: center;
-            gap: 6px; /* Smaller gap */
-        }
-
-        #model-selector button.active {
-            background: var(--plasma-gradient);
-            color: #000;
-            border-color: var(--neon-green);
-            box-shadow: 0 0 15px var(--neon-green); /* Stronger glow for active */
-            transform: translateY(-2px) scale(1.03); /* Less pronounced transform */
-        }
-
-        #model-selector button:hover:not(.active) {
-            background: rgba(0, 242, 255, 0.18); /* Slightly more opaque */
-            border-color: rgba(0, 242, 255, 0.6);
-            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3); /* Stronger glow for hover */
-        }
-
         .message-group { display: flex; flex-direction: column; gap: 15px; max-width: 85%; position: relative; } /* Increased gap and max-width */
         .message-group.ai { align-self: flex-start; }
         .message-group.user { align-self: flex-end; align-items: flex-end; }
@@ -367,7 +323,7 @@
             text-shadow: 0 0 5px rgba(0,242,255,0.9); /* Stronger glow for highlighted text */
         }
 
-        .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
+        .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn, .switch-model-btn {
             padding: 12px 20px; border-radius: 18px; font-size: 1em; cursor: pointer; /* Larger padding, radius, font size */
             background: var(--plasma-gradient-dark); color: #000; font-weight: bold;
             border: 2px solid rgba(255,255,255,0.35); /* Thicker border */
@@ -375,12 +331,52 @@
             transition: all 0.2s ease;
             display: inline-flex; align-items: center; gap: 10px; margin-top: 15px; /* Increased gap and margin */
             user-select: none;
+            position: relative; /* For model switch popup */
         }
-        .copy-btn:hover, .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover {
+        .copy-btn:hover, .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover, .switch-model-btn:hover {
             transform: translateY(-5px) scale(1.05); /* More pronounced hover */
             box-shadow: 0 0 35px var(--neon-blue); /* Stronger glow */
             color: #fff;
             background: var(--plasma-gradient);
+        }
+
+        /* --- NEW: Model Switch Popup Menu --- */
+        .model-switch-popup {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 10px); /* Position above the button */
+            right: 0;
+            background: var(--panel-bg);
+            border: 2px solid var(--neon-blue);
+            border-radius: 15px;
+            box-shadow: var(--panel-shadow);
+            z-index: 10;
+            overflow: hidden;
+            flex-direction: column;
+            animation: popIn 0.2s ease-out;
+        }
+        .model-switch-popup button {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            color: var(--main-text-color);
+            padding: 12px 20px;
+            font-size: 0.9em;
+            text-align: left;
+            width: 100%;
+            margin: 0;
+            box-shadow: none;
+            gap: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .model-switch-popup button:hover {
+            background: rgba(0, 242, 255, 0.2);
+            color: #fff;
+            transform: none; /* Override default button hover */
+        }
+        .model-switch-popup button:not(:last-child) {
+            border-bottom: 1px solid var(--glass-border);
         }
 
         /* Typing Dots (new style for inline in chat) */
@@ -988,7 +984,7 @@
                 font-size: 0.85em;
                 border-radius: 12px;
             }
-            .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn {
+            .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn, .switch-model-btn {
                 padding: 6px 10px;
                 font-size: 0.75em;
                 border-radius: 8px;
@@ -1072,12 +1068,6 @@
 
         <div id="chat-viewport">
             <!-- Messages are dynamically injected here -->
-        </div>
-
-        <!-- REVISED MODEL SELECTOR -->
-        <div id="model-selector">
-            <button id="philadelphia-btn" class="active"><i class="fa-solid fa-feather-alt"></i> Philadelphia</button>
-            <button id="seraphina-btn"><i class="fa-solid fa-star-of-life"></i> Seraphina</button>
         </div>
 
         <!-- WIDER & REVAMPED INPUT DOCK -->
@@ -1319,9 +1309,10 @@
         let currentTypingDotsElement = null;
         let currentProcessingMessageElement = null;
 
-        // --- NEW: Model Switching State ---
-        // Default to Gemini (Philadelphia)
-        let currentModel = localStorage.getItem('selectedChatModel') || 'gemini'; 
+        // --- MODEL STATE ---
+        // 'gemini' for Philadelphia, 'perplexity' for Seraphina
+        let currentModel = 'gemini'; // Default to Philadelphia
+        
         let currentAIMessageElement = null; // Reference to the div currently being filled by streaming.
         let currentAIMessageFirestoreId = null; // Store message ID for saving to DB later.
 
@@ -1405,7 +1396,7 @@
             const toolFormTitle = $('toolFormTitle');
             const toolFormBackBtn = $('toolFormBackBtn');
             const lightbox = $('lightbox');
-            const inputDock = $('inputDock'); // Get the input dock element
+            const inputDock = $('inputDock'); 
             
             // Image Preview Elements
             const aiPrevBox = $('ai-image-preview');
@@ -1435,54 +1426,16 @@
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
             const userSpeechWave = $('userSpeechWave');
-
-            // NEW: Model Selector Elements
-            const philadelphiaBtn = $('philadelphia-btn');
-            const seraphinaBtn = $('seraphina-btn');
-
-
+            
             if (!chatViewport || !userInput || !inputDock) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
-
-            // --- NEW: Model Switching Logic ---
-            const updateModelSelectionUI = () => {
-                philadelphiaBtn.classList.toggle('active', currentModel === 'gemini');
-                seraphinaBtn.classList.toggle('active', currentModel === 'perplexity');
-                // You could also update a label here if you want to show which model is active.
-            };
-
-            philadelphiaBtn.addEventListener('click', () => {
-                currentModel = 'gemini';
-                localStorage.setItem('selectedChatModel', 'gemini');
-                updateModelSelectionUI();
-                // Optionally clear chat or add a system message about switching models
-                if(chatViewport.innerHTML.trim() === '' || currentMessages.length === 0) {
-                    addWelcomeMessage();
-                } else {
-                    addSystemMessage('Switched to Philadelphia AI.');
-                }
-            });
-
-            seraphinaBtn.addEventListener('click', () => {
-                currentModel = 'perplexity';
-                localStorage.setItem('selectedChatModel', 'perplexity');
-                updateModelSelectionUI();
-                if(chatViewport.innerHTML.trim() === '' || currentMessages.length === 0) {
-                     addWelcomeMessage(); // Maybe a different welcome message for Seraphina
-                } else {
-                    addSystemMessage('Switched to Seraphina AI.');
-                }
-            });
-
-            updateModelSelectionUI(); // Set initial UI state based on localStorage or default
-            // --- END NEW: Model Switching Logic ---
             
             const addWelcomeMessage = () => {
                 const welcomeMsg = `<div class="message-group ai">
                     <div class="msg-bubble">
-                        Greetings, traveler. 🦅 The cosmos is aligned. How can ${currentModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI'} illuminate your path today? I am fully charged and ready to create. ✨
+                        Greetings, traveler. 🦅 The cosmos is aligned. How can I illuminate your path today? I am fully charged and ready to create. ✨
                     </div>
                 </div>`;
                 if(chatViewport.innerHTML.trim() === '') {
@@ -1824,11 +1777,11 @@
                         newBtn.addEventListener('click', async () => {
                             try {
                                 await navigator.clipboard.writeText(codeEl.innerText);
-                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                                setTimeout(() => { if (newBtn) newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                                newBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
+                                setTimeout(() => { if (newBtn) newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                             } catch (e) {
-                                newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Failed";
-                                setTimeout(() => { newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                                newBtn.innerHTML = "<i class='fa-solid fa-times'></i> Failed";
+                                setTimeout(() => { newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                             }
                         });
                     }
@@ -1900,11 +1853,12 @@
                             }
                             const timeDisplay = msg.duration ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${msg.duration}s</span>` : '';
                             innerHtml = `<div class="msg-bubble">${content}
-                                <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                                <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
                                     ${timeDisplay}
-                                    <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                                    <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                                    <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-sync-alt"></i> Regenerate</button>
+                                    <div style="margin-left:auto;"></div>
+                                    <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                                    <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                                    <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
                                 </div>
                             </div>`;
                         }
@@ -1953,64 +1907,91 @@
                 chatViewport.querySelectorAll('.message-group.ai').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
                     if (!messageId) return;
-                    const msg = currentMessages.find(m => m.id === messageId);
-                    if (!msg) return;
 
                     const controls = div.querySelector('.ai-msg-controls');
                     if (!controls) return;
 
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const shareBtn = controls.querySelector('.inline-share-btn');
-                    const regenBtn = controls.querySelector('.regen-btn');
+                    const switchModelBtn = controls.querySelector('.switch-model-btn');
 
                     if (copyBtn) copyBtn.onclick = () => {
+                        const msg = currentMessages.find(m => m.id === messageId);
+                        if (!msg) return;
                         try {
-                            const bubble = div.querySelector('.msg-bubble');
-                            const controlsDiv = bubble.querySelector('.ai-msg-controls');
-                            if(controlsDiv) controlsDiv.style.display = 'none'; // Temporarily hide controls
-                            const textToCopy = bubble.innerText || bubble.textContent || '';
-                            if(controlsDiv) controlsDiv.style.display = 'flex'; // Restore controls
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = msg.text;
+                            const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i>";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
 
                     if (shareBtn) shareBtn.onclick = () => {
+                        const msg = currentMessages.find(m => m.id === messageId);
+                        if (!msg) return;
                         try {
                             const url = window.location.origin;
-                             const bubble = div.querySelector('.msg-bubble');
-                            const controlsDiv = bubble.querySelector('.ai-msg-controls');
-                            if(controlsDiv) controlsDiv.style.display = 'none';
-                            const plainText = bubble.innerText || bubble.textContent || '';
-                            if(controlsDiv) controlsDiv.style.display = 'flex';
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = msg.text;
+                            const plainText = tempDiv.textContent || tempDiv.innerText || '';
                             const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
                             if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
                             else prompt("Copy and share manually:", shareText);
                         } catch (e) { console.warn('Share failed:', e); }
                     };
+                    
+                    // --- NEW: Model Switch Popup Logic ---
+                    if (switchModelBtn) {
+                        switchModelBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            // Close any other open popups
+                            document.querySelectorAll('.model-switch-popup').forEach(p => p.remove());
 
-                    if (regenBtn) regenBtn.onclick = async () => {
-                        const msgIndex = currentMessages.findIndex(m => m.id === messageId);
-                        if (msgIndex < 1) return;
-                        const userMsg = currentMessages[msgIndex - 1];
-                        if (userMsg.role !== 'user') return;
+                            const popup = document.createElement('div');
+                            popup.className = 'model-switch-popup';
+                            popup.style.display = 'flex';
+                            
+                            popup.innerHTML = `
+                                <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Regen with Philadelphia</button>
+                                <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Regen with Seraphina</button>
+                            `;
 
-                        // Delete this AI response and any subsequent messages
-                        await deleteMessagesFrom(messageId); 
-                        
-                        // Set the input field to the user's prompt and resend
-                        if (userInput) {
-                            userInput.value = userMsg.text; 
-                            userInput.focus();
-                            userInput.dispatchEvent(new Event('input')); 
-                        }
-                        uploadedFiles = [];
-                        renderFilePreview();
-                        
-                        await sendMessage(); 
-                    };
+                            switchModelBtn.appendChild(popup);
+
+                            popup.addEventListener('click', (ev) => {
+                                const button = ev.target.closest('button');
+                                if (button) {
+                                    const regenWithModel = button.dataset.model;
+                                    regenerateResponse(messageId, regenWithModel);
+                                }
+                                popup.remove();
+                            });
+                            
+                            // Close popup if clicking elsewhere
+                            const closePopup = (event) => {
+                                if (!popup.contains(event.target)) {
+                                    popup.remove();
+                                    document.removeEventListener('click', closePopup);
+                                }
+                            };
+                            setTimeout(() => document.addEventListener('click', closePopup), 0);
+                        };
+                    }
                 });
+            }
+
+            async function regenerateResponse(messageId, regenWithModel) {
+                const msgIndex = currentMessages.findIndex(m => m.id === messageId);
+                if (msgIndex < 1) return;
+                const userMsg = currentMessages[msgIndex - 1];
+                if (userMsg.role !== 'user') return;
+
+                await deleteMessagesFrom(messageId);
+                
+                // Don't repopulate input, just resend the message with the chosen model
+                await sendMessage(userMsg.text, regenWithModel); 
             }
 
             function hookUserMsgControls() {
@@ -2023,18 +2004,18 @@
                     if (!controls) return;
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const editBtn = controls.querySelector('.inline-edit-btn');
+
                     if (copyBtn) copyBtn.onclick = () => {
                         try {
-                           const bubble = div.querySelector('.msg-bubble');
-                            const controlsDiv = bubble.querySelector('.user-msg-controls');
-                            if(controlsDiv) controlsDiv.style.display = 'none';
-                            const textToCopy = bubble.innerText || bubble.textContent || '';
-                            if(controlsDiv) controlsDiv.style.display = 'flex';
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = msg.text;
+                            const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
                             copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
                             setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
+
                     if (editBtn) editBtn.onclick = async () => {
                         try {
                             if (!msg.text) return;
@@ -2043,14 +2024,11 @@
                                 userInput.focus();
                                 userInput.dispatchEvent(new Event('input'));
                             }
-                            // Delete from this message onwards to allow re-submission
                             await deleteMessagesFrom(messageId);
                         } catch (e) { console.warn('Edit failed:', e); }
                     };
                 });
             }
-
-            // --- NEW & ENHANCED DYNAMIC ANIMATION FUNCTIONS ---
             
             function scrollToBottom() {
                 if (chatViewport) {
@@ -2060,12 +2038,12 @@
 
             function displayTypingDots() {
                 if (!chatViewport || currentTypingDotsElement) return;
-                removeProcessingMessage(); // Ensure no other status message is active
+                removeProcessingMessage();
 
                 const div = document.createElement('div');
                 div.className = "message-group ai typing-dots";
                 div.innerHTML = `
-                    <div class="msg-bubble" aria-label="${currentModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI'} is typing">
+                    <div class="msg-bubble" aria-label="AI is typing">
                         <span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>
                     </div>
                 `;
@@ -2083,8 +2061,8 @@
 
             function displayProcessingMessage(text) {
                 if (!chatViewport) return;
-                removeTypingDots(); // Ensure no typing dots are active
-                removeProcessingMessage(); // Remove any previous processing message
+                removeTypingDots(); 
+                removeProcessingMessage();
 
                 const div = document.createElement('div');
                 div.className = "message-group ai processing-message";
@@ -2106,8 +2084,8 @@
                 }
             }
 
-            // This is now only for NON-STREAMING responses (tool results).
-            async function startTypewriter(text, saveToDb = true, durationSeconds = null) {
+            // For non-streaming tool results
+            async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
                 removeTypingDots();
                 removeProcessingMessage();
 
@@ -2118,14 +2096,14 @@
                 div.appendChild(msgBubble);
                 chatViewport.appendChild(div);
                 
-                const finalRenderText = text || "AI couldn't generate a response.";
+                const finalRenderText = text || "Tool execution finished.";
                 
                 msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
-                    <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                    <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
                         ${durationSeconds ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${durationSeconds}s</span>` : ''}
-                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                        <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-sync-alt"></i> Regenerate</button>
+                        <div style="margin-left:auto;"></div>
+                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
@@ -2165,15 +2143,15 @@
                     }
 
                     if (file.type && file.type.startsWith('image/')) {
-                        preview = `<img src="${objUrl}" style="max-width:58px;max-height:41px;vertical-align:middle;border-radius:8px;margin-right:6px;">`;
+                        preview = `<img src="${objUrl}">`;
                     } else if (file.type && file.type.startsWith('video/')) {
-                        preview = `<video src="${objUrl}" controls style="max-width:58px;height:41px;vertical-align:middle;border-radius:8px;margin-right:7px;"></video>`;
+                        preview = `<video src="${objUrl}" controls></video>`;
                     } else if (file.type && file.type.startsWith('audio/')) {
-                        preview = `<audio controls src="${objUrl}" style="vertical-align:middle;width:52px;margin-right:7px;"></audio>`;
+                        preview = `<audio controls src="${objUrl}"></audio>`;
                     } else if (file.type === 'application/pdf') {
-                        preview = `<span style="font-size:1.25em;margin-right:7px;">📄</span>`;
+                        preview = `<i class="fa-solid fa-file-pdf" style="font-size: 2em;"></i>`;
                     } else {
-                        preview = `<span style="font-size:1.25em;margin-right:7px;">❓</span>`;
+                        preview = `<i class="fa-solid fa-file" style="font-size: 2em;"></i>`;
                     }
                     return `
                         <div>
@@ -2251,13 +2229,13 @@
 
                     if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || startData.error || 'Failed to start video task.');
 
-                    await startTypewriter(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I will notify you when it's ready. This can take a few minutes. Please do not leave this page or send another message.`);
+                    await showToolResponse(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I will notify you when it's ready. This can take a few minutes. Please do not leave this page or send another message.`);
 
                     const pollInterval = setInterval(async () => {
                         try {
                             if (currentController?.signal.aborted) {
                                 clearInterval(pollInterval);
-                                await startTypewriter(`❌ Video status polling stopped.`);
+                                await showToolResponse(`❌ Video status polling stopped.`);
                                 return;
                             }
                             const statusRes = await fetch(`${API_BASE_URL}/api/tools/video-status?task_id=${startData.task_id}`, { signal: currentController?.signal });
@@ -2269,24 +2247,24 @@
                                 await addMessageToChat('ai', videoHtml);
                             } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
                                 clearInterval(pollInterval);
-                                await startTypewriter(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
+                                await showToolResponse(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
                             }
                         } catch (pollErr) {
                             if (pollErr.name === 'AbortError') {
                                 console.log("Video status polling aborted.");
-                                await startTypewriter(`❌ Video status polling stopped.`);
+                                await showToolResponse(`❌ Video status polling stopped.`);
                             } else {
                                 console.error("Error during video status polling:", pollErr);
-                                await startTypewriter(`❌ Error checking video status.`);
+                                await showToolResponse(`❌ Error checking video status.`);
                             }
                             clearInterval(pollInterval);
                         }
                     }, 20000);
                 } catch (err) {
                     if (err.name === 'AbortError') {
-                        await startTypewriter(`❌ Video generation request stopped.`);
+                        await showToolResponse(`❌ Video generation request stopped.`);
                     } else {
-                        await startTypewriter(`❌ Could not start video generation: ${err.message}`);
+                        await showToolResponse(`❌ Could not start video generation: ${err.message}`);
                     }
                 } finally {
                     removeProcessingMessage();
@@ -2367,7 +2345,7 @@
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeProcessingMessage();
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
-                            await startTypewriter('✅ Image generated! Check the floating image box to view or download.', true);
+                            await showToolResponse('✅ Image generated! Check the floating image box to view or download.', true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Image generation stopped.'; }
@@ -2477,7 +2455,7 @@
                             removeProcessingMessage();
                             showComicPreview(data.images);
 
-                            await startTypewriter('🖼️ Comic created! Check the floating comic viewer to see the panels.', true);
+                            await showToolResponse('🖼️ Comic created! Check the floating comic viewer to see the panels.', true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Comic generation stopped.'; }
@@ -2682,7 +2660,7 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`, true);
+                            await showToolResponse(`🌐 Website deployed successfully! [View here](${data.url})`, true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Website creation stopped.'; }
@@ -2712,7 +2690,7 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`, true);
+                            await showToolResponse(`✏️ Website updated successfully! [View new version here](${data.url})`, true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Website edit stopped.'; }
@@ -2725,7 +2703,7 @@
                 "my-sites": {
                     isAction: true,
                     runAction: async () => {
-                        if (!currentUser) { await startTypewriter("User not logged in.", true); return null; }
+                        if (!currentUser) { await showToolResponse("User not logged in.", true); return null; }
                         await addMessageToChat('user', 'Show me a list of my websites.');
                         displayProcessingMessage('Fetching your website list...');
                         try {
@@ -2734,15 +2712,15 @@
                             if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
                             removeProcessingMessage();
                             if (!data.sites || data.sites.length === 0) {
-                                await startTypewriter("You haven't created any websites yet.", true);
+                                await showToolResponse("You haven't created any websites yet.", true);
                                 return null;
                             }
                             const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
-                            await startTypewriter(`Here are the websites you've created:\n${siteList}`, true);
+                            await showToolResponse(`Here are the websites you've created:\n${siteList}`, true);
                             return null;
                         } catch (err) {
-                            if (err.name === 'AbortError') { await startTypewriter(`❌ Website list fetching stopped.`, true); return null; }
-                            await startTypewriter(`❌ Error fetching websites: ${err.message}`, true);
+                            if (err.name === 'AbortError') { await showToolResponse(`❌ Website list fetching stopped.`, true); return null; }
+                            await showToolResponse(`❌ Error fetching websites: ${err.message}`, true);
                             return null;
                         } finally {
                             removeProcessingMessage();
@@ -2771,7 +2749,7 @@
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
-                            await startTypewriter(`✅ Research report on **${topic}** is ready! ${downloadLink}`, true);
+                            await showToolResponse(`✅ Research report on **${topic}** is ready! ${downloadLink}`, true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Research report generation stopped.'; }
@@ -2819,7 +2797,7 @@
                         result = `❌ Tool execution error: ${err.message}`;
                     } finally {
                         if (result && typeof result === 'string') {
-                            await startTypewriter(result, true);
+                            await showToolResponse(result, true);
                         }
                         removeProcessingMessage(); 
                         if (sendBtn) sendBtn.style.display = 'flex';
@@ -2860,7 +2838,7 @@
                         resultText = `❌ Tool submission failed: ${err.message}`;
                     } finally {
                         if (resultText) {
-                            await startTypewriter(resultText, true);
+                            await showToolResponse(resultText, true);
                         }
                         removeProcessingMessage();
                         if (submitButton) {
@@ -2881,93 +2859,56 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
-            window.sendMessage = async function() {
+            // *** REBUILT sendMessage to handle model override for regeneration ***
+            window.sendMessage = async function(overrideText = null, overrideModel = null) {
                 if (!currentChatId || !userInput) return;
-                const msgText = userInput.value.trim();
+                const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
 
-                // Disable send button, show stop button
+                const modelToUse = overrideModel || currentModel;
+
+                // Disable UI
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
 
-                // Abort previous request if any
                 if (currentController) currentController.abort();
                 currentController = new AbortController();
                 const signal = currentController.signal;
 
-                // Stop button listener
                 if (stopBtn) {
                     const chatStopListener = () => {
                         if (currentController) currentController.abort();
-                        removeTypingDots();
-                        removeProcessingMessage();
-                        if (currentAIMessageElement) {
-                             currentAIMessageElement.querySelector('.msg-bubble').innerHTML += '<br><em>(Response stopped by user)</em>';
-                        }
-                        finalizeChatResponseUI();
                     };
                     if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                     stopBtn.addEventListener('click', chatStopListener, { once: true });
                     stopBtn._currentStopListener = chatStopListener;
                 }
 
-                // Add user message to DB and UI
-                const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
-                await addMessageToChat('user', msgText, filesForHistory);
-                const localUploadedFiles = [...uploadedFiles];
-                userInput.value = '';
-                uploadedFiles = [];
-                renderFilePreview();
-                userInput.dispatchEvent(new Event('input')); // Reset height
+                // Only add user message if it's not a regeneration
+                if (overrideText === null) {
+                    const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
+                    await addMessageToChat('user', msgText, filesForHistory);
+                    userInput.value = '';
+                    uploadedFiles = [];
+                    renderFilePreview();
+                    userInput.dispatchEvent(new Event('input'));
+                }
 
+                // --- FIX: Immediately show typing dots ---
+                displayTypingDots();
+
+                const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                 let endpoint = '';
                 let chatPayload = {};
-                let isFileUpload = false;
 
-                if (localUploadedFiles.length > 0) {
-                    isFileUpload = true;
-                    const file = localUploadedFiles[0]; // Assuming only one file for multimodal endpoints
-                    if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
-                    else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
-                    else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
-                    else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
-                    else {
-                        await startTypewriter("Sorry, I can't analyze that file type.", true);
-                        finalizeChatResponseUI();
-                        return;
-                    }
-
-                    displayProcessingMessage('Analyzing your file(s)...');
-                    const fd = new FormData();
-                    fd.append('prompt', msgText || `Describe this ${file.type?.split('/')[0] || 'file'}`);
-                    fd.append('file', file);
-
-                    try {
-                        const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
-                        const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Analysis failed.");
-                        await startTypewriter(data.response || "No response from AI.", true);
-                    } catch (err) {
-                        await startTypewriter(err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`, true);
-                    } finally {
-                        removeProcessingMessage();
-                        finalizeChatResponseUI();
-                    }
-                    return; 
-                }
-                
-                // --- Handle Text-Based Chat (Streaming) ---
-                const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                
-                if (currentModel === 'gemini') {
+                if (modelToUse === 'gemini') {
                     endpoint = `${API_BASE_URL}/chat`;
                     chatPayload = { 
                         message: msgText, 
                         history: historyForAI, 
-                        user_id: currentUser?.uid || "user",
                     };
-                } else { // 'perplexity' model
+                } else { // 'perplexity'
                     endpoint = `${API_BASE_URL}/api/seraphina/chat`;
                     chatPayload = { 
                         message: msgText, 
@@ -2975,20 +2916,20 @@
                     };
                 }
 
-                // Create a temporary AI message div to stream into
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 aiMessageDiv.appendChild(msgBubble);
                 chatViewport.appendChild(aiMessageDiv);
-                currentAIMessageElement = aiMessageDiv; // Set global reference
-                currentAIMessageFirestoreId = 'temp-id-' + Date.now(); // Temp ID for now
+                currentAIMessageElement = aiMessageDiv;
+                currentAIMessageFirestoreId = 'temp-id-' + Date.now();
                 aiMessageDiv.setAttribute('data-message-id', currentAIMessageFirestoreId);
                 scrollToBottom();
 
                 let fullAIResponseText = '';
                 const startTime = performance.now();
+                let firstChunkReceived = false;
                 
                 try {
                     const res = await fetch(endpoint, {
@@ -2999,13 +2940,8 @@
                     });
 
                     if (!res.ok) {
-                        const errorResponseText = await res.text();
-                        try {
-                            const errorData = JSON.parse(errorResponseText);
-                            throw new Error(errorData.detail || errorData.error || 'Server error');
-                        } catch {
-                            throw new Error(`Server error (${res.status}): ${errorResponseText}`);
-                        }
+                        const errorText = await res.text();
+                        throw new Error(`Server error (${res.status}): ${errorText}`);
                     }
 
                     const reader = res.body.getReader();
@@ -3017,102 +2953,80 @@
                         if (done) break;
 
                         buffer += decoder.decode(value, { stream: true });
-
                         let newlineIndex;
                         while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
-                            const message = buffer.substring(0, newlineIndex);
-                            buffer = buffer.substring(newlineIndex + 2); // Remove message and separator
+                            const message = buffer.substring(0, newlineIndex).trim();
+                            buffer = buffer.substring(newlineIndex + 2);
+                            if (!message.startsWith('data: ')) continue;
+                            
+                            let jsonStr = message.substring(5).trim();
+                            if (jsonStr === '[DONE]') break;
 
-                            if (message.startsWith('data: ')) {
-                                let jsonStr = message.substring(6);
-                                if (jsonStr === '[DONE]') {
-                                    break;
-                                }
-
-                                try {
-                                    const chunkData = JSON.parse(jsonStr);
-                                    
-                                    if (chunkData.type === 'status') {
-                                        if (chunkData.content === 'thinking') {
-                                            displayTypingDots();
-                                        }
-                                    } else if (chunkData.type === 'content') {
+                            try {
+                                const chunkData = JSON.parse(jsonStr);
+                                
+                                if (chunkData.type === 'content' && chunkData.content) {
+                                    // --- FIX: Remove typing dots on FIRST content chunk ---
+                                    if (!firstChunkReceived) {
                                         removeTypingDots();
-                                        fullAIResponseText += chunkData.content;
-                                        msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
-                                        enhanceCodeBlocks(msgBubble);
-                                        scrollToBottom();
-                                    } else if (chunkData.type === 'error') {
-                                        fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
-                                        msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
-                                        scrollToBottom();
+                                        firstChunkReceived = true;
                                     }
-                                } catch (e) {
-                                    console.error("JSON parsing error in SSE chunk:", e, "Raw data:", jsonStr);
-                                    fullAIResponseText += `\n\n❌ Parsing Error.`;
+                                    fullAIResponseText += chunkData.content;
                                     msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                                     scrollToBottom();
+                                } else if (chunkData.type === 'error') {
+                                    fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
+                                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                                 }
+                            } catch (e) {
+                                console.error("Stream parsing error:", e, "Data:", jsonStr);
                             }
                         }
                     }
 
                 } catch (err) {
-                    removeTypingDots();
-                    if (err.name === 'AbortError') {
-                        fullAIResponseText += '\n\n<em>(Response stopped by user)</em>';
-                    } else {
-                        fullAIResponseText = `❌ An error occurred: ${err.message}`;
+                    if (err.name !== 'AbortError') {
                         console.error("Fetch/Stream error:", err);
+                        fullAIResponseText += `\n\n❌ An error occurred: ${err.message}`;
+                        msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
+                    } else {
+                         fullAIResponseText += '\n\n<em>(Response stopped by user)</em>';
+                         msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                     }
-                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
-                    scrollToBottom();
                 } finally {
-                    const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
-                    removeTypingDots();
-                    removeProcessingMessage();
-                    
-                    if (currentAIMessageElement) {
-                        const finalHtml = renderMarkdown(fullAIResponseText).html;
-                        currentAIMessageElement.querySelector('.msg-bubble').innerHTML = finalHtml + `
-                            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
-                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-sync-alt"></i> Regenerate</button>
-                            </div>
-                        `;
-                        enhanceCodeBlocks(currentAIMessageElement);
-                        
-                        // Save the complete message to Firestore
-                        if (currentUser && currentChatId) {
-                            const newMsg = { role: 'ai', text: fullAIResponseText, duration: responseDuration, createdAt: serverTimestamp() };
-                            try {
-                                const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                                const tempId = currentAIMessageFirestoreId;
-                                const msgIndex = currentMessages.findIndex(m => m.id === tempId);
-                                if(msgIndex > -1) {
-                                    currentMessages[msgIndex] = { id: docRef.id, ...newMsg };
-                                } else {
-                                    currentMessages.push({ id: docRef.id, ...newMsg });
-                                }
-                                currentAIMessageElement.setAttribute('data-message-id', docRef.id);
-                            } catch (e) {
-                                console.error("Error saving streamed AI message to Firestore: ", e);
-                            }
-                        }
-                    }
-                    finalizeChatResponseUI();
+                    finalizeChatResponseUI(fullAIResponseText, startTime);
                 }
             };
 
-            function finalizeChatResponseUI() {
+            function finalizeChatResponseUI(finalText, startTime) {
+                const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
+                removeTypingDots();
+                
+                if (currentAIMessageElement) {
+                    currentAIMessageElement.querySelector('.msg-bubble').innerHTML = renderMarkdown(finalText).html + `
+                        <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
+                            <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
+                            <div style="margin-left:auto;"></div>
+                            <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                            <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                            <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
+                        </div>
+                    `;
+                    enhanceCodeBlocks(currentAIMessageElement);
+                    
+                    if (currentUser && currentChatId) {
+                        const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
+                        addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
+                            currentAIMessageElement.setAttribute('data-message-id', docRef.id);
+                        }).catch(e => console.error("Error saving final message:", e));
+                    }
+                }
+
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                    stopBtn._currentStopListener = null;
                 }
                 currentController = null;
                 currentAIMessageElement = null;
@@ -3287,7 +3201,7 @@
                             const message = buffer.substring(0, newlineIndex);
                             buffer = buffer.substring(newlineIndex + 2);
                             if (message.startsWith('data: ')) {
-                                let jsonStr = message.substring(6);
+                                let jsonStr = message.substring(5).trim();
                                 if (jsonStr === '[DONE]') break;
                                 try {
                                     const chunkData = JSON.parse(jsonStr);
