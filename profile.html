@@ -302,6 +302,7 @@
             border: 2px solid var(--glass-border); /* Thicker border */
             animation: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
             overflow-wrap: break-word;
+            word-break: break-word;
         }
         @keyframes popIn { from { opacity: 0; transform: translateY(35px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } } /* More pronounced pop-in */
 
@@ -1845,19 +1846,25 @@
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                // Keep track of the current streaming message element so it's not removed
-                const existingAIMessageElement = currentAIMessageElement;
-                const existingAIMessageFirestoreId = currentAIMessageFirestoreId; // Keep its temporary ID
+                // --- FIX: Preserve active status messages during re-render ---
+                const activeStatusMessage = currentTypingDotsElement || currentProcessingMessageElement;
+                if (activeStatusMessage && activeStatusMessage.parentElement === chatViewport) {
+                    chatViewport.removeChild(activeStatusMessage);
+                }
+                const activeStreamingMessage = currentAIMessageElement;
+                if (activeStreamingMessage && activeStreamingMessage.parentElement === chatViewport) {
+                    chatViewport.removeChild(activeStreamingMessage);
+                }
 
-                // Clear all existing messages
+                // Clear and render messages from database
                 chatViewport.innerHTML = ''; 
 
-                if(messages.length === 0 && !existingAIMessageElement) {
+                if(messages.length === 0) {
                     addWelcomeMessage();
                 } else {
                     (messages || []).forEach((msg) => {
-                        // Skip if this message is currently being streamed (handled by existingAIMessageElement)
-                        if (msg.id === existingAIMessageFirestoreId) return;
+                        // Skip rendering the message that is currently being streamed
+                        if (msg.id === currentAIMessageFirestoreId) return;
 
                         const div = document.createElement('div');
                         div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
@@ -1878,7 +1885,7 @@
 
                             innerHtml = `<div class="msg-bubble">
                                 ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
-                                ${escapeHTML(msg.text || '')}
+                                ${inlineMarkdown(msg.text || '')}
                                 <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                                     <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
                                     <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
@@ -1897,7 +1904,7 @@
                                     ${timeDisplay}
                                     <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
                                     <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                                    <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
+                                    <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-sync-alt"></i> Regenerate</button>
                                 </div>
                             </div>`;
                         }
@@ -1906,12 +1913,12 @@
                     });
                 }
                 
-                // If there's an ongoing streamed message, ensure it's re-added and at the bottom
-                if (existingAIMessageElement && existingAIMessageElement.parentNode !== chatViewport) {
-                    chatViewport.appendChild(existingAIMessageElement);
-                } else if (currentAIMessageElement && chatViewport.lastChild !== currentAIMessageElement) {
-                    // If it was already appended but not last, move it to last
-                    chatViewport.appendChild(currentAIMessageElement);
+                // --- FIX: Re-append active status messages after render ---
+                if (activeStreamingMessage) {
+                    chatViewport.appendChild(activeStreamingMessage);
+                }
+                if (activeStatusMessage) {
+                    chatViewport.appendChild(activeStatusMessage);
                 }
 
                 enhanceCodeBlocks(chatViewport);
@@ -1928,8 +1935,11 @@
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 for (let i = msgIndex; i < currentMessages.length; i++) {
                     const msgToDel = currentMessages[i];
-                    const docRef = doc(messagesCol, msgToDel.id);
-                    batch.delete(docRef);
+                    // Handle potential temp IDs
+                    if (msgToDel.id && !msgToDel.id.startsWith('temp-id-')) {
+                        const docRef = doc(messagesCol, msgToDel.id);
+                        batch.delete(docRef);
+                    }
                 }
                 try {
                     await batch.commit();
@@ -1942,6 +1952,7 @@
                 if (!chatViewport) return;
                 chatViewport.querySelectorAll('.message-group.ai').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
+                    if (!messageId) return;
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
 
@@ -1954,21 +1965,25 @@
 
                     if (copyBtn) copyBtn.onclick = () => {
                         try {
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = msg.text;
-                            const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
+                            const bubble = div.querySelector('.msg-bubble');
+                            const controlsDiv = bubble.querySelector('.ai-msg-controls');
+                            if(controlsDiv) controlsDiv.style.display = 'none'; // Temporarily hide controls
+                            const textToCopy = bubble.innerText || bubble.textContent || '';
+                            if(controlsDiv) controlsDiv.style.display = 'flex'; // Restore controls
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
 
                     if (shareBtn) shareBtn.onclick = () => {
                         try {
                             const url = window.location.origin;
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = msg.text;
-                            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                             const bubble = div.querySelector('.msg-bubble');
+                            const controlsDiv = bubble.querySelector('.ai-msg-controls');
+                            if(controlsDiv) controlsDiv.style.display = 'none';
+                            const plainText = bubble.innerText || bubble.textContent || '';
+                            if(controlsDiv) controlsDiv.style.display = 'flex';
                             const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
                             if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
                             else prompt("Copy and share manually:", shareText);
@@ -1981,16 +1996,18 @@
                         const userMsg = currentMessages[msgIndex - 1];
                         if (userMsg.role !== 'user') return;
 
-                        await deleteMessagesFrom(messageId); // Delete AI response and subsequent messages
-                        if (userInput) {
-                            userInput.value = userMsg.text; // Repopulate user input
-                            userInput.focus();
-                            userInput.dispatchEvent(new Event('input')); // Trigger auto-resize
-                            uploadedFiles = [];
-                            renderFilePreview();
-                        }
+                        // Delete this AI response and any subsequent messages
+                        await deleteMessagesFrom(messageId); 
                         
-                        // Regenerate using the original user message
+                        // Set the input field to the user's prompt and resend
+                        if (userInput) {
+                            userInput.value = userMsg.text; 
+                            userInput.focus();
+                            userInput.dispatchEvent(new Event('input')); 
+                        }
+                        uploadedFiles = [];
+                        renderFilePreview();
+                        
                         await sendMessage(); 
                     };
                 });
@@ -2008,12 +2025,14 @@
                     const editBtn = controls.querySelector('.inline-edit-btn');
                     if (copyBtn) copyBtn.onclick = () => {
                         try {
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = msg.text;
-                            const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
+                           const bubble = div.querySelector('.msg-bubble');
+                            const controlsDiv = bubble.querySelector('.user-msg-controls');
+                            if(controlsDiv) controlsDiv.style.display = 'none';
+                            const textToCopy = bubble.innerText || bubble.textContent || '';
+                            if(controlsDiv) controlsDiv.style.display = 'flex';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 950);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
                     if (editBtn) editBtn.onclick = async () => {
@@ -2087,7 +2106,7 @@
                 }
             }
 
-            // Simplified startTypewriter for non-streaming responses (e.g., tool results)
+            // This is now only for NON-STREAMING responses (tool results).
             async function startTypewriter(text, saveToDb = true, durationSeconds = null) {
                 removeTypingDots();
                 removeProcessingMessage();
@@ -2104,9 +2123,9 @@
                 msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                         ${durationSeconds ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${durationSeconds}s</span>` : ''}
-                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy'></i> Copy</button>
-                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share'></i> Share</button>
-                        <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right'></i> Regenerate</button>
+                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                        <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-sync-alt"></i> Regenerate</button>
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
@@ -2114,16 +2133,11 @@
                 
                 if (saveToDb && currentUser && currentChatId) {
                     const newMsg = { role: 'ai', text: finalRenderText, duration: durationSeconds, createdAt: serverTimestamp() };
-                    // Temporarily add to currentMessages with a placeholder ID
-                    div.setAttribute('data-message-id', 'temp-id-' + Date.now()); 
-                    currentMessages.push({id: div.getAttribute('data-message-id'), ...newMsg});
-                    hookAiMsgControls(); // Re-hook controls for the new message
                     try {
                         const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                        // Update the temp ID with the real Firestore ID
-                        const msgIndex = currentMessages.findIndex(m => m.id === div.getAttribute('data-message-id'));
-                        if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
                         div.setAttribute('data-message-id', docRef.id);
+                        currentMessages.push({id: docRef.id, ...newMsg});
+                        hookAiMsgControls();
                     } catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
@@ -2353,7 +2367,7 @@
                             if (!res.ok) throw new Error(data.error || res.statusText);
                             removeProcessingMessage();
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
-                            await addMessageToChat('ai', '✅ Image generated! Check the floating image box to view or download.');
+                            await startTypewriter('✅ Image generated! Check the floating image box to view or download.', true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Image generation stopped.'; }
@@ -2463,7 +2477,7 @@
                             removeProcessingMessage();
                             showComicPreview(data.images);
 
-                            await addMessageToChat('ai', '🖼️ Comic created! Check the floating comic viewer to see the panels.');
+                            await startTypewriter('🖼️ Comic created! Check the floating comic viewer to see the panels.', true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Comic generation stopped.'; }
@@ -2668,7 +2682,7 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`);
+                            await startTypewriter(`🌐 Website deployed successfully! [View here](${data.url})`, true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Website creation stopped.'; }
@@ -2698,7 +2712,7 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || res.statusText);
-                            await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`);
+                            await startTypewriter(`✏️ Website updated successfully! [View new version here](${data.url})`, true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Website edit stopped.'; }
@@ -2711,7 +2725,7 @@
                 "my-sites": {
                     isAction: true,
                     runAction: async () => {
-                        if (!currentUser) { await startTypewriter("User not logged in."); return null; }
+                        if (!currentUser) { await startTypewriter("User not logged in.", true); return null; }
                         await addMessageToChat('user', 'Show me a list of my websites.');
                         displayProcessingMessage('Fetching your website list...');
                         try {
@@ -2720,15 +2734,15 @@
                             if (!res.ok) throw new Error(data.error || 'Could not fetch sites.');
                             removeProcessingMessage();
                             if (!data.sites || data.sites.length === 0) {
-                                await startTypewriter("You haven't created any websites yet.");
+                                await startTypewriter("You haven't created any websites yet.", true);
                                 return null;
                             }
                             const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Created: ${new Date(site.created_at).toLocaleString()})`).join('\n');
-                            await startTypewriter(`Here are the websites you've created:\n${siteList}`);
+                            await startTypewriter(`Here are the websites you've created:\n${siteList}`, true);
                             return null;
                         } catch (err) {
-                            if (err.name === 'AbortError') { await startTypewriter(`❌ Website list fetching stopped.`); return null; }
-                            await startTypewriter(`❌ Error fetching websites: ${err.message}`);
+                            if (err.name === 'AbortError') { await startTypewriter(`❌ Website list fetching stopped.`, true); return null; }
+                            await startTypewriter(`❌ Error fetching websites: ${err.message}`, true);
                             return null;
                         } finally {
                             removeProcessingMessage();
@@ -2757,7 +2771,7 @@
                             const blob = await res.blob();
                             const url = URL.createObjectURL(blob);
                             const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
-                            await startTypewriter(`✅ Research report on **${topic}** is ready! ${downloadLink}`);
+                            await startTypewriter(`✅ Research report on **${topic}** is ready! ${downloadLink}`, true);
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Research report generation stopped.'; }
@@ -2781,8 +2795,7 @@
                     // Abort any ongoing chat stream if a tool is activated
                     if (currentController) currentController.abort();
                     currentController = new AbortController(); 
-                    const signal = currentController.signal;
-
+                    
                     if (sendBtn) sendBtn.style.display = 'none';
                     if (callBtn) callBtn.style.display = 'none';
                     if (stopBtn) {
@@ -2805,11 +2818,8 @@
                     } catch (err) {
                         result = `❌ Tool execution error: ${err.message}`;
                     } finally {
-                        if (result) {
-                            if (typeof result === 'string') {
-                                // For tool results, we still use startTypewriter as they are typically not streamed
-                                await startTypewriter(result);
-                            }
+                        if (result && typeof result === 'string') {
+                            await startTypewriter(result, true);
                         }
                         removeProcessingMessage(); 
                         if (sendBtn) sendBtn.style.display = 'flex';
@@ -2850,7 +2860,7 @@
                         resultText = `❌ Tool submission failed: ${err.message}`;
                     } finally {
                         if (resultText) {
-                            await startTypewriter(resultText);
+                            await startTypewriter(resultText, true);
                         }
                         removeProcessingMessage();
                         if (submitButton) {
@@ -2923,13 +2933,11 @@
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
                     else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
                     else {
-                        await startTypewriter("Sorry, I can't analyze that file type.");
+                        await startTypewriter("Sorry, I can't analyze that file type.", true);
                         finalizeChatResponseUI();
                         return;
                     }
 
-                    // For multimodal requests, it's typically not streamed,
-                    // so we'll use a direct `fetch` and then `startTypewriter`.
                     displayProcessingMessage('Analyzing your file(s)...');
                     const fd = new FormData();
                     fd.append('prompt', msgText || `Describe this ${file.type?.split('/')[0] || 'file'}`);
@@ -2939,38 +2947,31 @@
                         const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || "Analysis failed.");
-                        await startTypewriter(data.response || "No response from AI.");
+                        await startTypewriter(data.response || "No response from AI.", true);
                     } catch (err) {
-                        await startTypewriter(err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`);
+                        await startTypewriter(err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`, true);
                     } finally {
                         removeProcessingMessage();
                         finalizeChatResponseUI();
                     }
-                    return; // Exit after handling file upload directly
+                    return; 
                 }
                 
                 // --- Handle Text-Based Chat (Streaming) ---
                 const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                let currentSystemPrompt = '';
-
+                
                 if (currentModel === 'gemini') {
                     endpoint = `${API_BASE_URL}/chat`;
-                    // The backend /chat endpoint uses DEFAULT_SYSTEM_PROMPT unless overridden.
-                    // For now, we don't pass a system_prompt here to let backend use its default.
                     chatPayload = { 
                         message: msgText, 
                         history: historyForAI, 
                         user_id: currentUser?.uid || "user",
-                        // grounded: true, // You might make this configurable
-                        // temperature: 0.7 // You might make this configurable
                     };
                 } else { // 'perplexity' model
                     endpoint = `${API_BASE_URL}/api/seraphina/chat`;
                     chatPayload = { 
                         message: msgText, 
-                        history: historyForAI, 
-                        // stream: true, // This is true by default in SeraphinaChatRequest
-                        // temperature: 0.7 // You might make this configurable
+                        history: historyForAI,
                     };
                 }
 
@@ -2988,12 +2989,7 @@
 
                 let fullAIResponseText = '';
                 const startTime = performance.now();
-
-                // Create a temporary text node within the msg-bubble for typing effect
-                const textNodeForTyping = document.createTextNode('');
-                msgBubble.appendChild(textNodeForTyping);
-
-
+                
                 try {
                     const res = await fetch(endpoint, {
                         method: 'POST',
@@ -3008,7 +3004,7 @@
                             const errorData = JSON.parse(errorResponseText);
                             throw new Error(errorData.detail || errorData.error || 'Server error');
                         } catch {
-                            throw new Error(`Server error: ${errorResponseText}`);
+                            throw new Error(`Server error (${res.status}): ${errorResponseText}`);
                         }
                     }
 
@@ -3039,36 +3035,22 @@
                                     if (chunkData.type === 'status') {
                                         if (chunkData.content === 'thinking') {
                                             displayTypingDots();
-                                        } else {
-                                            removeTypingDots();
-                                            // Handle other specific status messages if needed
                                         }
                                     } else if (chunkData.type === 'content') {
                                         removeTypingDots();
-                                        const contentChunk = chunkData.content;
-                                        fullAIResponseText += contentChunk;
-                                        // Update the text node directly for typewriter effect
-                                        if (textNodeForTyping) {
-                                            textNodeForTyping.textContent = fullAIResponseText; 
-                                        }
+                                        fullAIResponseText += chunkData.content;
+                                        msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
+                                        enhanceCodeBlocks(msgBubble);
                                         scrollToBottom();
                                     } else if (chunkData.type === 'error') {
                                         fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
-                                        if (textNodeForTyping) {
-                                            textNodeForTyping.textContent = fullAIResponseText;
-                                        }
+                                        msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                                         scrollToBottom();
                                     }
-                                    // You can add handling for `search_results` and `citations` here from Seraphina's stream
-                                    // e.g., if (chunkData.type === 'search_results') { /* display search results */ }
-
                                 } catch (e) {
                                     console.error("JSON parsing error in SSE chunk:", e, "Raw data:", jsonStr);
-                                    // Append raw error to response to notify user
-                                    fullAIResponseText += `\n\n❌ Parsing Error: ${jsonStr}`;
-                                    if (textNodeForTyping) {
-                                        textNodeForTyping.textContent = fullAIResponseText;
-                                    }
+                                    fullAIResponseText += `\n\n❌ Parsing Error.`;
+                                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                                     scrollToBottom();
                                 }
                             }
@@ -3076,15 +3058,14 @@
                     }
 
                 } catch (err) {
+                    removeTypingDots();
                     if (err.name === 'AbortError') {
                         fullAIResponseText += '\n\n<em>(Response stopped by user)</em>';
                     } else {
-                        fullAIResponseText += `\n\n❌ An error occurred: ${err.message}`;
+                        fullAIResponseText = `❌ An error occurred: ${err.message}`;
                         console.error("Fetch/Stream error:", err);
                     }
-                    if (textNodeForTyping) {
-                        textNodeForTyping.textContent = fullAIResponseText;
-                    }
+                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                     scrollToBottom();
                 } finally {
                     const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
@@ -3092,32 +3073,27 @@
                     removeProcessingMessage();
                     
                     if (currentAIMessageElement) {
-                        // Remove the temporary text node and replace with markdown-rendered HTML
-                        if (textNodeForTyping && textNodeForTyping.parentNode) {
-                            textNodeForTyping.remove();
-                        }
-                        
-                        currentAIMessageElement.querySelector('.msg-bubble').innerHTML = renderMarkdown(fullAIResponseText).html + `
+                        const finalHtml = renderMarkdown(fullAIResponseText).html;
+                        currentAIMessageElement.querySelector('.msg-bubble').innerHTML = finalHtml + `
                             <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
                                 <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
-                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy'></i> Copy</button>
-                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share'></i> Share</button>
-                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right'></i> Regenerate</button>
+                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
+                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
+                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-sync-alt"></i> Regenerate</button>
                             </div>
                         `;
-                        enhanceCodeBlocks(currentAIMessageElement); // Call only once at the end
+                        enhanceCodeBlocks(currentAIMessageElement);
                         
                         // Save the complete message to Firestore
                         if (currentUser && currentChatId) {
                             const newMsg = { role: 'ai', text: fullAIResponseText, duration: responseDuration, createdAt: serverTimestamp() };
                             try {
                                 const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                                // Update the global currentMessages array with the final message and its actual Firestore ID
-                                const msgIndex = currentMessages.findIndex(m => m.id === currentAIMessageFirestoreId);
+                                const tempId = currentAIMessageFirestoreId;
+                                const msgIndex = currentMessages.findIndex(m => m.id === tempId);
                                 if(msgIndex > -1) {
                                     currentMessages[msgIndex] = { id: docRef.id, ...newMsg };
                                 } else {
-                                     // This should ideally not happen if temp ID was set, but as a fallback
                                     currentMessages.push({ id: docRef.id, ...newMsg });
                                 }
                                 currentAIMessageElement.setAttribute('data-message-id', docRef.id);
@@ -3126,7 +3102,7 @@
                             }
                         }
                     }
-                    finalizeChatResponseUI(); // Reset UI elements
+                    finalizeChatResponseUI();
                 }
             };
 
@@ -3141,7 +3117,7 @@
                 currentController = null;
                 currentAIMessageElement = null;
                 currentAIMessageFirestoreId = null;
-                hookAiMsgControls(); // Re-hook controls for the *newly finalized* message
+                hookAiMsgControls();
                 scrollToBottom();
             }
 
@@ -3274,6 +3250,7 @@
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
+            // *** FIX: Rebuilt to handle streaming response for calls ***
             async function handleCallBotResponse() {
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 
@@ -3287,33 +3264,54 @@
                 const userLastMessage = callHistory.length > 0 ? callHistory[callHistory.length - 1].content : "";
                 
                 try {
-                    // Always use Gemini for voice calls as Perplexity doesn't offer TTS directly and is research-focused
-                    // The backend /chat endpoint can take a call_context flag.
                     const historyForChat = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
-
-                    const res = await fetch(`${API_BASE_URL}/chat`, { // Force Gemini endpoint for calls
+                    const res = await fetch(`${API_BASE_URL}/chat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: userLastMessage, history: historyForChat.slice(0, -1), user_id: currentUser?.uid || "user", call_context: true })
+                        body: JSON.stringify({ message: userLastMessage, history: historyForChat.slice(0, -1), call_context: true })
                     });
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || "Server error.");
-                    
-                    const botResponseText = data.response || "I'm sorry, I couldn't generate a response.";
-                    callHistory.push({ role: 'ai', content: botResponseText });
-                    addCallMessage('bot', botResponseText);
 
-                    speakBotResponse(botResponseText);
+                    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                    
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buffer = '';
+                    let fullBotResponseText = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        let newlineIndex;
+                        while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                            const message = buffer.substring(0, newlineIndex);
+                            buffer = buffer.substring(newlineIndex + 2);
+                            if (message.startsWith('data: ')) {
+                                let jsonStr = message.substring(6);
+                                if (jsonStr === '[DONE]') break;
+                                try {
+                                    const chunkData = JSON.parse(jsonStr);
+                                    if (chunkData.type === 'content') {
+                                        fullBotResponseText += chunkData.content;
+                                    }
+                                } catch (e) {
+                                    console.error("Error parsing call stream chunk:", e);
+                                }
+                            }
+                        }
+                    }
+
+                    const finalBotResponse = fullBotResponseText.trim() || "I'm sorry, I couldn't generate a response.";
+                    callHistory.push({ role: 'ai', content: finalBotResponse });
+                    addCallMessage('bot', finalBotResponse);
+                    speakBotResponse(finalBotResponse);
+
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
                     console.error("Error getting bot response:", err);
-                    
-                    if (isCallActive && !isMuted && !isRecognizing) {
-                        if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
-                        if(tapToTalk) tapToTalk.style.display = 'block';
-                        try { speechRecognition.start(); } catch(e) {}
-                    }
+                    if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
+                    if(tapToTalk) tapToTalk.style.display = 'block';
                 }
             }
 
@@ -3355,7 +3353,7 @@
                         
                         if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Tap anywhere to speak';
-                            if (tapToTalk) tapToDisplay = 'block';
+                            if (tapToTalk) tapToTalk.style.display = 'block';
                             if (!isRecognizing) {
                                 try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                             }
