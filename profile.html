@@ -354,6 +354,7 @@
             overflow: hidden;
             flex-direction: column;
             animation: popIn 0.2s ease-out;
+            width: max-content;
         }
         .model-switch-popup button {
             background: transparent;
@@ -369,6 +370,7 @@
             gap: 8px;
             display: flex;
             align-items: center;
+            cursor: pointer;
         }
         .model-switch-popup button:hover {
             background: rgba(0, 242, 255, 0.2);
@@ -1799,7 +1801,6 @@
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                // --- FIX: Preserve active status messages during re-render ---
                 const activeStatusMessage = currentTypingDotsElement || currentProcessingMessageElement;
                 if (activeStatusMessage && activeStatusMessage.parentElement === chatViewport) {
                     chatViewport.removeChild(activeStatusMessage);
@@ -1809,14 +1810,12 @@
                     chatViewport.removeChild(activeStreamingMessage);
                 }
 
-                // Clear and render messages from database
                 chatViewport.innerHTML = ''; 
 
                 if(messages.length === 0) {
                     addWelcomeMessage();
                 } else {
                     (messages || []).forEach((msg) => {
-                        // Skip rendering the message that is currently being streamed
                         if (msg.id === currentAIMessageFirestoreId) return;
 
                         const div = document.createElement('div');
@@ -1867,7 +1866,6 @@
                     });
                 }
                 
-                // --- FIX: Re-append active status messages after render ---
                 if (activeStreamingMessage) {
                     chatViewport.appendChild(activeStreamingMessage);
                 }
@@ -1889,7 +1887,6 @@
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 for (let i = msgIndex; i < currentMessages.length; i++) {
                     const msgToDel = currentMessages[i];
-                    // Handle potential temp IDs
                     if (msgToDel.id && !msgToDel.id.startsWith('temp-id-')) {
                         const docRef = doc(messagesCol, msgToDel.id);
                         batch.delete(docRef);
@@ -1916,13 +1913,13 @@
                     const switchModelBtn = controls.querySelector('.switch-model-btn');
 
                     if (copyBtn) copyBtn.onclick = () => {
-                        const msg = currentMessages.find(m => m.id === messageId);
+                        const msg = currentMessages.find(m => m.id === messageId) || (currentAIMessageElement?.getAttribute('data-message-id') === messageId ? { text: currentAIMessageElement.querySelector('.msg-bubble').innerText } : null);
                         if (!msg) return;
                         try {
                             const tempDiv = document.createElement('div');
                             tempDiv.innerHTML = msg.text;
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
-                            navigator.clipboard.writeText(textToCopy);
+                            navigator.clipboard.writeText(textToCopy.replace(/Generated in \d+\.\d+s$/, '').trim()); // Clean out duration
                             copyBtn.innerHTML = "<i class='fa-solid fa-check'></i>";
                             setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
@@ -1936,17 +1933,15 @@
                             const tempDiv = document.createElement('div');
                             tempDiv.innerHTML = msg.text;
                             const plainText = tempDiv.textContent || tempDiv.innerText || '';
-                            const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
+                            const shareText = `${plainText.replace(/Generated in \d+\.\d+s$/, '').trim()}\n\nShared via Philadelphia AI: ${url}`;
                             if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
                             else prompt("Copy and share manually:", shareText);
                         } catch (e) { console.warn('Share failed:', e); }
                     };
                     
-                    // --- NEW: Model Switch Popup Logic ---
                     if (switchModelBtn) {
                         switchModelBtn.onclick = (e) => {
                             e.stopPropagation();
-                            // Close any other open popups
                             document.querySelectorAll('.model-switch-popup').forEach(p => p.remove());
 
                             const popup = document.createElement('div');
@@ -1969,7 +1964,6 @@
                                 popup.remove();
                             });
                             
-                            // Close popup if clicking elsewhere
                             const closePopup = (event) => {
                                 if (!popup.contains(event.target)) {
                                     popup.remove();
@@ -1984,13 +1978,13 @@
 
             async function regenerateResponse(messageId, regenWithModel) {
                 const msgIndex = currentMessages.findIndex(m => m.id === messageId);
-                if (msgIndex < 1) return;
+                if (msgIndex < 1 || currentMessages[msgIndex - 1].role !== 'user') {
+                    addSystemMessage("Error: Could not find the original prompt for regeneration.");
+                    return;
+                }
                 const userMsg = currentMessages[msgIndex - 1];
-                if (userMsg.role !== 'user') return;
 
                 await deleteMessagesFrom(messageId);
-                
-                // Don't repopulate input, just resend the message with the chosen model
                 await sendMessage(userMsg.text, regenWithModel); 
             }
 
@@ -2084,7 +2078,6 @@
                 }
             }
 
-            // For non-streaming tool results
             async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
                 removeTypingDots();
                 removeProcessingMessage();
@@ -2104,6 +2097,7 @@
                         <div style="margin-left:auto;"></div>
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
                         <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                        <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
@@ -2770,7 +2764,6 @@
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     
-                    // Abort any ongoing chat stream if a tool is activated
                     if (currentController) currentController.abort();
                     currentController = new AbortController(); 
                     
@@ -2858,8 +2851,7 @@
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
-
-            // *** REBUILT sendMessage to handle model override for regeneration ***
+            
             window.sendMessage = async function(overrideText = null, overrideModel = null) {
                 if (!currentChatId || !userInput) return;
                 const msgText = overrideText ?? userInput.value.trim();
@@ -2867,7 +2859,6 @@
 
                 const modelToUse = overrideModel || currentModel;
 
-                // Disable UI
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
@@ -2885,7 +2876,6 @@
                     stopBtn._currentStopListener = chatStopListener;
                 }
 
-                // Only add user message if it's not a regeneration
                 if (overrideText === null) {
                     const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                     await addMessageToChat('user', msgText, filesForHistory);
@@ -2895,7 +2885,6 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
 
-                // --- FIX: Immediately show typing dots ---
                 displayTypingDots();
 
                 const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
@@ -2953,21 +2942,22 @@
                         if (done) break;
 
                         buffer += decoder.decode(value, { stream: true });
-                        let newlineIndex;
-                        while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
-                            const message = buffer.substring(0, newlineIndex).trim();
-                            buffer = buffer.substring(newlineIndex + 2);
-                            if (!message.startsWith('data: ')) continue;
-                            
-                            let jsonStr = message.substring(5).trim();
-                            if (jsonStr === '[DONE]') break;
+                        const lines = buffer.split('\n\n');
+                        buffer = lines.pop() || '';
 
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            const jsonStr = line.substring(5).trim();
+                            if (jsonStr === '[DONE]') {
+                                buffer = '[DONE]'; 
+                                break;
+                            }
+                            
                             try {
                                 const chunkData = JSON.parse(jsonStr);
                                 
-                                if (chunkData.type === 'content' && chunkData.content) {
-                                    // --- FIX: Remove typing dots on FIRST content chunk ---
-                                    if (!firstChunkReceived) {
+                                if (chunkData.type === 'content' && typeof chunkData.content === 'string') {
+                                    if (!firstChunkReceived && chunkData.content) {
                                         removeTypingDots();
                                         firstChunkReceived = true;
                                     }
@@ -2979,9 +2969,10 @@
                                     msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                                 }
                             } catch (e) {
-                                console.error("Stream parsing error:", e, "Data:", jsonStr);
+                                console.warn("Could not parse stream chunk:", jsonStr, e);
                             }
                         }
+                        if (buffer === '[DONE]') break;
                     }
 
                 } catch (err) {
@@ -3003,21 +2994,24 @@
                 removeTypingDots();
                 
                 if (currentAIMessageElement) {
-                    currentAIMessageElement.querySelector('.msg-bubble').innerHTML = renderMarkdown(finalText).html + `
-                        <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
-                            <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
-                            <div style="margin-left:auto;"></div>
-                            <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
-                            <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
-                            <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
-                        </div>
-                    `;
-                    enhanceCodeBlocks(currentAIMessageElement);
+                    const msgBubble = currentAIMessageElement.querySelector('.msg-bubble');
+                    if (msgBubble) {
+                        msgBubble.innerHTML = renderMarkdown(finalText).html + `
+                            <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
+                                <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
+                                <div style="margin-left:auto;"></div>
+                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                                <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
+                            </div>
+                        `;
+                        enhanceCodeBlocks(msgBubble);
+                    }
                     
                     if (currentUser && currentChatId) {
                         const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
                         addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
-                            currentAIMessageElement.setAttribute('data-message-id', docRef.id);
+                            if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
                         }).catch(e => console.error("Error saving final message:", e));
                     }
                 }
@@ -3163,8 +3157,7 @@
                 
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
-
-            // *** FIX: Rebuilt to handle streaming response for calls ***
+            
             async function handleCallBotResponse() {
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
                 
