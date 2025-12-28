@@ -82,7 +82,7 @@
             position: absolute; top: 0; left: 0; width: 400%; height: 400%; /* Even Larger to allow more drift */
             background:
                 radial-gradient(circle at 50% 50%, rgba(76, 0, 255, 0.22), transparent 70%), /* Stronger core */
-                radial-gradient(circle at 80% 20%, rgba(0, 242, 255, 0.25), transparent 60%), /* More spread */
+                radial-gradient(circle at 80% 20%, rgba(0, 242, 255, 0.25), transparent 60%), 
                 linear-gradient(to bottom right, rgba(5, 7, 20, 0.25), rgba(26, 10, 46, 0.25)); /* Deeper contrast */
             mix-blend-mode: var(--current-bg-blend-mode);
             animation: drift 110s infinite linear alternate; /* Slower, more majestic drift */
@@ -244,6 +244,50 @@
             position: relative;
         }
         #chat-viewport::-webkit-scrollbar { display: none; } /* Chrome, Safari, Opera */
+
+        /* Model selector below chat - FIXES FOR SIZE AND POSITIONING */
+        #model-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px; /* Reduced gap */
+            padding: 10px 0; /* Reduced padding */
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            flex-shrink: 0;
+            align-items: center; /* Align items vertically */
+        }
+
+        #model-selector button {
+            background: rgba(0, 242, 255, 0.1); /* Slightly less opaque */
+            border: 1.5px solid var(--neon-blue); /* Thinner border */
+            border-radius: 15px; /* Smaller radius */
+            padding: 8px 18px; /* Reduced padding */
+            color: var(--main-text-color);
+            font-size: 0.95em; /* Smaller font */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 8px rgba(0, 242, 255, 0.15); /* Smaller glow */
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px; /* Smaller gap */
+        }
+
+        #model-selector button.active {
+            background: var(--plasma-gradient);
+            color: #000;
+            border-color: var(--neon-green);
+            box-shadow: 0 0 15px var(--neon-green); /* Stronger glow for active */
+            transform: translateY(-2px) scale(1.03); /* Less pronounced transform */
+        }
+
+        #model-selector button:hover:not(.active) {
+            background: rgba(0, 242, 255, 0.18); /* Slightly more opaque */
+            border-color: rgba(0, 242, 255, 0.6);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3); /* Stronger glow for hover */
+        }
 
         .message-group { display: flex; flex-direction: column; gap: 15px; max-width: 85%; position: relative; } /* Increased gap and max-width */
         .message-group.ai { align-self: flex-start; }
@@ -1029,6 +1073,12 @@
             <!-- Messages are dynamically injected here -->
         </div>
 
+        <!-- REVISED MODEL SELECTOR -->
+        <div id="model-selector">
+            <button id="philadelphia-btn" class="active"><i class="fa-solid fa-feather-alt"></i> Philadelphia</button>
+            <button id="seraphina-btn"><i class="fa-solid fa-star-of-life"></i> Seraphina</button>
+        </div>
+
         <!-- WIDER & REVAMPED INPUT DOCK -->
         <div class="input-dock" id="inputDock">
             <button class="thruster-btn" id="callBtn" title="Start Voice Call" aria-label="Start voice call">
@@ -1232,6 +1282,7 @@
 
         const $ = id => document.getElementById(id);
 
+        // Define API base URL
         const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
 
         let chats = [];
@@ -1266,6 +1317,12 @@
         // --- References for dynamic animation elements ---
         let currentTypingDotsElement = null;
         let currentProcessingMessageElement = null;
+
+        // --- NEW: Model Switching State ---
+        // Default to Gemini (Philadelphia)
+        let currentModel = localStorage.getItem('selectedChatModel') || 'gemini'; 
+        let currentAIMessageElement = null; // Reference to the div currently being filled by streaming.
+        let currentAIMessageFirestoreId = null; // Store message ID for saving to DB later.
 
 
         // Cosmic background animations
@@ -1378,16 +1435,53 @@
             const tapToTalk = $('tapToTalk');
             const userSpeechWave = $('userSpeechWave');
 
+            // NEW: Model Selector Elements
+            const philadelphiaBtn = $('philadelphia-btn');
+            const seraphinaBtn = $('seraphina-btn');
+
 
             if (!chatViewport || !userInput || !inputDock) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
                 return;
             }
+
+            // --- NEW: Model Switching Logic ---
+            const updateModelSelectionUI = () => {
+                philadelphiaBtn.classList.toggle('active', currentModel === 'gemini');
+                seraphinaBtn.classList.toggle('active', currentModel === 'perplexity');
+                // You could also update a label here if you want to show which model is active.
+            };
+
+            philadelphiaBtn.addEventListener('click', () => {
+                currentModel = 'gemini';
+                localStorage.setItem('selectedChatModel', 'gemini');
+                updateModelSelectionUI();
+                // Optionally clear chat or add a system message about switching models
+                if(chatViewport.innerHTML.trim() === '' || currentMessages.length === 0) {
+                    addWelcomeMessage();
+                } else {
+                    addSystemMessage('Switched to Philadelphia AI.');
+                }
+            });
+
+            seraphinaBtn.addEventListener('click', () => {
+                currentModel = 'perplexity';
+                localStorage.setItem('selectedChatModel', 'perplexity');
+                updateModelSelectionUI();
+                if(chatViewport.innerHTML.trim() === '' || currentMessages.length === 0) {
+                     addWelcomeMessage(); // Maybe a different welcome message for Seraphina
+                } else {
+                    addSystemMessage('Switched to Seraphina AI.');
+                }
+            });
+
+            updateModelSelectionUI(); // Set initial UI state based on localStorage or default
+            // --- END NEW: Model Switching Logic ---
             
             const addWelcomeMessage = () => {
                 const welcomeMsg = `<div class="message-group ai">
                     <div class="msg-bubble">
-                        Greetings, traveler. 🦅 The cosmos is aligned. How can Philadelphia AI illuminate your path today? I am fully charged and ready to create. ✨
+                        Greetings, traveler. 🦅 The cosmos is aligned. How can ${currentModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI'} illuminate your path today? I am fully charged and ready to create. ✨
                     </div>
                 </div>`;
                 if(chatViewport.innerHTML.trim() === '') {
@@ -1740,18 +1834,31 @@
                 });
             }
 
+            function addSystemMessage(text) {
+                const div = document.createElement('div');
+                div.className = 'message-group system';
+                div.innerHTML = `<div class="msg-bubble">${escapeHTML(text)}</div>`;
+                chatViewport.appendChild(div);
+                scrollToBottom();
+            }
+
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                // Preserve status messages if they exist
-                const statusMessages = chatViewport.querySelectorAll('.typing-dots, .processing-message');
-                
-                chatViewport.innerHTML = ''; // Clear previous messages
-                
-                if(messages.length === 0) {
+                // Keep track of the current streaming message element so it's not removed
+                const existingAIMessageElement = currentAIMessageElement;
+                const existingAIMessageFirestoreId = currentAIMessageFirestoreId; // Keep its temporary ID
+
+                // Clear all existing messages
+                chatViewport.innerHTML = ''; 
+
+                if(messages.length === 0 && !existingAIMessageElement) {
                     addWelcomeMessage();
                 } else {
                     (messages || []).forEach((msg) => {
+                        // Skip if this message is currently being streamed (handled by existingAIMessageElement)
+                        if (msg.id === existingAIMessageFirestoreId) return;
+
                         const div = document.createElement('div');
                         div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
                         div.setAttribute('data-message-id', msg.id);
@@ -1799,8 +1906,13 @@
                     });
                 }
                 
-                // Re-append status messages
-                statusMessages.forEach(el => chatViewport.appendChild(el));
+                // If there's an ongoing streamed message, ensure it's re-added and at the bottom
+                if (existingAIMessageElement && existingAIMessageElement.parentNode !== chatViewport) {
+                    chatViewport.appendChild(existingAIMessageElement);
+                } else if (currentAIMessageElement && chatViewport.lastChild !== currentAIMessageElement) {
+                    // If it was already appended but not last, move it to last
+                    chatViewport.appendChild(currentAIMessageElement);
+                }
 
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
@@ -1869,56 +1981,17 @@
                         const userMsg = currentMessages[msgIndex - 1];
                         if (userMsg.role !== 'user') return;
 
-                        await deleteMessagesFrom(messageId);
+                        await deleteMessagesFrom(messageId); // Delete AI response and subsequent messages
                         if (userInput) {
-                            userInput.value = userMsg.text;
+                            userInput.value = userMsg.text; // Repopulate user input
                             userInput.focus();
                             userInput.dispatchEvent(new Event('input')); // Trigger auto-resize
                             uploadedFiles = [];
                             renderFilePreview();
                         }
-
-                        displayProcessingMessage('Re-generating response...');
-
-                        const historyForRegen = currentMessages
-                            .slice(0, msgIndex - 1)
-                            .map(m => ({ role: m.role, content: m.text || '' }));
-
-                        currentController = new AbortController();
-                        const signal = currentController.signal;
-
-                        sendBtn.style.display = 'none';
-                        callBtn.style.display = 'none';
-                        stopBtn.style.display = 'flex';
-                        const regenStopListener = () => { if (currentController) currentController.abort(); };
-                        if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                        stopBtn.addEventListener('click', regenStopListener, { once: true });
-                        stopBtn._currentStopListener = regenStopListener;
-
-                        try {
-                            const res = await fetch(`${API_BASE_URL}/chat`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ message: userMsg.text, history: historyForRegen, user_id: currentUser?.uid || "user" }),
-                                signal
-                            });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "Server error.");
-                            
-                            await startTypewriter(data.response || "Philadelphia AI couldn't generate a response.", false);
-                        } catch (err) {
-                            if (err.name === 'AbortError') { await startTypewriter('❌ Regeneration stopped.', false); }
-                            else { await startTypewriter(`❌ Regeneration error: ${err.message}`, false); }
-                        } finally {
-                            sendBtn.style.display = 'flex';
-                            callBtn.style.display = 'flex';
-                            stopBtn.style.display = 'none';
-                            if (stopBtn._currentStopListener) {
-                                stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                                stopBtn._currentStopListener = null;
-                            }
-                            currentController = null;
-                        }
+                        
+                        // Regenerate using the original user message
+                        await sendMessage(); 
                     };
                 });
             }
@@ -1951,6 +2024,7 @@
                                 userInput.focus();
                                 userInput.dispatchEvent(new Event('input'));
                             }
+                            // Delete from this message onwards to allow re-submission
                             await deleteMessagesFrom(messageId);
                         } catch (e) { console.warn('Edit failed:', e); }
                     };
@@ -1967,12 +2041,12 @@
 
             function displayTypingDots() {
                 if (!chatViewport || currentTypingDotsElement) return;
-                removeProcessingMessage();
+                removeProcessingMessage(); // Ensure no other status message is active
 
                 const div = document.createElement('div');
                 div.className = "message-group ai typing-dots";
                 div.innerHTML = `
-                    <div class="msg-bubble" aria-label="Philadelphia AI is typing">
+                    <div class="msg-bubble" aria-label="${currentModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI'} is typing">
                         <span class="typing-bubble"><span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span></span>
                     </div>
                 `;
@@ -1990,8 +2064,8 @@
 
             function displayProcessingMessage(text) {
                 if (!chatViewport) return;
-                removeTypingDots();
-                removeProcessingMessage();
+                removeTypingDots(); // Ensure no typing dots are active
+                removeProcessingMessage(); // Remove any previous processing message
 
                 const div = document.createElement('div');
                 div.className = "message-group ai processing-message";
@@ -2013,47 +2087,10 @@
                 }
             }
 
-            async function startTypewriter(text, saveToDb = true) {
-                const startTime = performance.now();
-                
+            // Simplified startTypewriter for non-streaming responses (e.g., tool results)
+            async function startTypewriter(text, saveToDb = true, durationSeconds = null) {
                 removeTypingDots();
                 removeProcessingMessage();
-
-                 if (text && (text.includes('<img') || text.includes('<audio') || text.includes('<video'))) {
-                    const div = document.createElement('div');
-                    div.className = "message-group ai";
-                    const msgBubble = document.createElement('div');
-                    msgBubble.className = 'msg-bubble';
-                    div.appendChild(msgBubble);
-                    
-                    msgBubble.innerHTML = text + `
-                        <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                            <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                            <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                            <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
-                        </div>
-                    `;
-
-                    chatViewport.appendChild(div);
-                    scrollToBottom();
-
-                    const endTime = performance.now();
-                    const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
-
-                    if (saveToDb && currentUser && currentChatId) {
-                        const newMsg = { role: 'ai', text: text, duration: durationSeconds, createdAt: serverTimestamp() };
-                        div.setAttribute('data-message-id', 'temp-id');
-                        currentMessages.push({id: 'temp-id', ...newMsg});
-                        hookAiMsgControls();
-                        try {
-                            const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                            div.setAttribute('data-message-id', docRef.id);
-                            const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
-                            if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
-                        } catch (e) { console.error("Error saving AI media message: ", e); }
-                    }
-                    return;
-                }
 
                 const div = document.createElement('div');
                 div.className = "message-group ai";
@@ -2062,37 +2099,14 @@
                 div.appendChild(msgBubble);
                 chatViewport.appendChild(div);
                 
-                let currentRenderingText = '';
-                const words = text.split(/(\s+)/);
+                const finalRenderText = text || "AI couldn't generate a response.";
                 
-                for (const word of words) {
-                    if (currentController?.signal.aborted) {
-                        text = currentRenderingText; 
-                        break;
-                    }
-                    currentRenderingText += word;
-                    
-                    let contentToRender = currentRenderingText;
-                    const codeBlockCount = (contentToRender.match(/```/g) || []).length;
-                    if (codeBlockCount % 2 !== 0) {
-                        contentToRender += '\n```';
-                    }
-
-                    msgBubble.innerHTML = renderMarkdown(contentToRender).html;
-                    scrollToBottom();
-                    await new Promise(res => setTimeout(res, 0)); // Renders as fast as possible
-                }
-
-                const endTime = performance.now();
-                const durationSeconds = ((endTime - startTime) / 1000).toFixed(1);
-
-                const finalRenderText = text || "Philadelphia AI couldn't generate a response.";
                 msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
                     <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                        <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${durationSeconds}s</span>
-                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i> Copy</button>
-                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i> Share</button>
-                        <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right"></i> Regenerate</button>
+                        ${durationSeconds ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${durationSeconds}s</span>` : ''}
+                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy'></i> Copy</button>
+                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share'></i> Share</button>
+                        <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right'></i> Regenerate</button>
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
@@ -2100,14 +2114,16 @@
                 
                 if (saveToDb && currentUser && currentChatId) {
                     const newMsg = { role: 'ai', text: finalRenderText, duration: durationSeconds, createdAt: serverTimestamp() };
-                    div.setAttribute('data-message-id', 'temp-id');
-                    currentMessages.push({id: 'temp-id', ...newMsg});
-                    hookAiMsgControls();
+                    // Temporarily add to currentMessages with a placeholder ID
+                    div.setAttribute('data-message-id', 'temp-id-' + Date.now()); 
+                    currentMessages.push({id: div.getAttribute('data-message-id'), ...newMsg});
+                    hookAiMsgControls(); // Re-hook controls for the new message
                     try {
                         const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                        div.setAttribute('data-message-id', docRef.id);
-                        const msgIndex = currentMessages.findIndex(m => m.id === 'temp-id');
+                        // Update the temp ID with the real Firestore ID
+                        const msgIndex = currentMessages.findIndex(m => m.id === div.getAttribute('data-message-id'));
                         if(msgIndex > -1) currentMessages[msgIndex].id = docRef.id;
+                        div.setAttribute('data-message-id', docRef.id);
                     } catch (e) { console.error("Error saving AI message: ", e); }
                 }
             }
@@ -2202,10 +2218,10 @@
                     let options;
 
                     if (isImageToVideo) {
-                        payload.append('model', commonPayload.model);
-                        payload.append('duration', commonPayload.duration);
-                        payload.append('resolution', commonPayload.resolution);
-                        options = { method: 'POST', body: payload, signal: currentController?.signal };
+                        const fd = new FormData();
+                        fd.append('prompt', payload.prompt);
+                        fd.append('file', payload.file); // Assuming payload.file exists for image-to-video
+                        options = { method: 'POST', body: fd, signal: currentController?.signal };
                     } else {
                         const finalPayload = { ...payload, ...commonPayload };
                         options = {
@@ -2219,7 +2235,7 @@
                     const startRes = await fetch(API_BASE_URL + endpoint, options);
                     const startData = await startRes.json();
 
-                    if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || 'Failed to start video task.');
+                    if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || startData.error || 'Failed to start video task.');
 
                     await startTypewriter(`✅ Video job submitted! Task ID: \`${startData.task_id}\`. I will notify you when it's ready. This can take a few minutes. Please do not leave this page or send another message.`);
 
@@ -2762,7 +2778,10 @@
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     
+                    // Abort any ongoing chat stream if a tool is activated
+                    if (currentController) currentController.abort();
                     currentController = new AbortController(); 
+                    const signal = currentController.signal;
 
                     if (sendBtn) sendBtn.style.display = 'none';
                     if (callBtn) callBtn.style.display = 'none';
@@ -2788,6 +2807,7 @@
                     } finally {
                         if (result) {
                             if (typeof result === 'string') {
+                                // For tool results, we still use startTypewriter as they are typically not streamed
                                 await startTypewriter(result);
                             }
                         }
@@ -2856,23 +2876,33 @@
                 const msgText = userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
 
+                // Disable send button, show stop button
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
 
+                // Abort previous request if any
+                if (currentController) currentController.abort();
                 currentController = new AbortController();
                 const signal = currentController.signal;
-                let finalResponse = '';
 
+                // Stop button listener
                 if (stopBtn) {
                     const chatStopListener = () => {
                         if (currentController) currentController.abort();
+                        removeTypingDots();
+                        removeProcessingMessage();
+                        if (currentAIMessageElement) {
+                             currentAIMessageElement.querySelector('.msg-bubble').innerHTML += '<br><em>(Response stopped by user)</em>';
+                        }
+                        finalizeChatResponseUI();
                     };
                     if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                     stopBtn.addEventListener('click', chatStopListener, { once: true });
                     stopBtn._currentStopListener = chatStopListener;
                 }
 
+                // Add user message to DB and UI
                 const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                 await addMessageToChat('user', msgText, filesForHistory);
                 const localUploadedFiles = [...uploadedFiles];
@@ -2881,55 +2911,226 @@
                 renderFilePreview();
                 userInput.dispatchEvent(new Event('input')); // Reset height
 
+                let endpoint = '';
+                let chatPayload = {};
+                let isFileUpload = false;
+
                 if (localUploadedFiles.length > 0) {
-                    displayProcessingMessage('Analyzing your file(s)...');
-                    let endpoint = '';
-                    const file = localUploadedFiles[0];
+                    isFileUpload = true;
+                    const file = localUploadedFiles[0]; // Assuming only one file for multimodal endpoints
                     if (file.type && file.type.startsWith('image/')) endpoint = '/understand-image';
                     else if (file.type === 'application/pdf') endpoint = '/understand-pdf';
                     else if (file.type && file.type.startsWith('audio/')) endpoint = '/understand-audio';
                     else if (file.type && file.type.startsWith('video/')) endpoint = '/understand-video';
                     else {
-                        finalResponse = "Sorry, I can't analyze that file type.";
-                        removeProcessingMessage();
+                        await startTypewriter("Sorry, I can't analyze that file type.");
+                        finalizeChatResponseUI();
+                        return;
                     }
+
+                    // For multimodal requests, it's typically not streamed,
+                    // so we'll use a direct `fetch` and then `startTypewriter`.
+                    displayProcessingMessage('Analyzing your file(s)...');
+                    const fd = new FormData();
+                    fd.append('prompt', msgText || `Describe this ${file.type?.split('/')[0] || 'file'}`);
+                    fd.append('file', file);
+
                     try {
-                        if(endpoint) {
-                            const fd = new FormData();
-                            fd.append('prompt', msgText || `Describe this ${file.type?.split('/')[0] || 'file'}`);
-                            fd.append('file', file);
-                            const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || "Analysis failed.");
-                            finalResponse = data.response;
-                        }
-                    } catch (err) {
-                        finalResponse = err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`;
-                    } finally {
-                         removeProcessingMessage();
-                    }
-                } else if (msgText) {
-                    displayTypingDots();
-                    try {
-                        const history = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                        const res = await fetch(`${API_BASE_URL}/chat`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ message: msgText, history, user_id: currentUser?.uid || "user" }),
-                            signal
-                        });
+                        const res = await fetch(API_BASE_URL + endpoint, { method: 'POST', body: fd, signal });
                         const data = await res.json();
-                        if (!res.ok) throw new Error(data.error || "Server error.");
-                        finalResponse = data.response;
+                        if (!res.ok) throw new Error(data.error || "Analysis failed.");
+                        await startTypewriter(data.response || "No response from AI.");
                     } catch (err) {
-                        finalResponse = err.name === 'AbortError' ? '❌ Response stopped.' : `❌ An error occurred: ${err.message}`;
+                        await startTypewriter(err.name === 'AbortError' ? '❌ File analysis stopped.' : `❌ File analysis failed: ${err.message}`);
+                    } finally {
+                        removeProcessingMessage();
+                        finalizeChatResponseUI();
                     }
+                    return; // Exit after handling file upload directly
+                }
+                
+                // --- Handle Text-Based Chat (Streaming) ---
+                const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
+                let currentSystemPrompt = '';
+
+                if (currentModel === 'gemini') {
+                    endpoint = `${API_BASE_URL}/chat`;
+                    // The backend /chat endpoint uses DEFAULT_SYSTEM_PROMPT unless overridden.
+                    // For now, we don't pass a system_prompt here to let backend use its default.
+                    chatPayload = { 
+                        message: msgText, 
+                        history: historyForAI, 
+                        user_id: currentUser?.uid || "user",
+                        // grounded: true, // You might make this configurable
+                        // temperature: 0.7 // You might make this configurable
+                    };
+                } else { // 'perplexity' model
+                    endpoint = `${API_BASE_URL}/api/seraphina/chat`;
+                    chatPayload = { 
+                        message: msgText, 
+                        history: historyForAI, 
+                        // stream: true, // This is true by default in SeraphinaChatRequest
+                        // temperature: 0.7 // You might make this configurable
+                    };
                 }
 
-                if (finalResponse) {
-                    await startTypewriter(finalResponse);
-                }
+                // Create a temporary AI message div to stream into
+                const aiMessageDiv = document.createElement('div');
+                aiMessageDiv.className = "message-group ai";
+                const msgBubble = document.createElement('div');
+                msgBubble.className = 'msg-bubble';
+                aiMessageDiv.appendChild(msgBubble);
+                chatViewport.appendChild(aiMessageDiv);
+                currentAIMessageElement = aiMessageDiv; // Set global reference
+                currentAIMessageFirestoreId = 'temp-id-' + Date.now(); // Temp ID for now
+                aiMessageDiv.setAttribute('data-message-id', currentAIMessageFirestoreId);
+                scrollToBottom();
 
+                let fullAIResponseText = '';
+                const startTime = performance.now();
+
+                // Create a temporary text node within the msg-bubble for typing effect
+                const textNodeForTyping = document.createTextNode('');
+                msgBubble.appendChild(textNodeForTyping);
+
+
+                try {
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(chatPayload),
+                        signal
+                    });
+
+                    if (!res.ok) {
+                        const errorResponseText = await res.text();
+                        try {
+                            const errorData = JSON.parse(errorResponseText);
+                            throw new Error(errorData.detail || errorData.error || 'Server error');
+                        } catch {
+                            throw new Error(`Server error: ${errorResponseText}`);
+                        }
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buffer = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+
+                        let newlineIndex;
+                        while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                            const message = buffer.substring(0, newlineIndex);
+                            buffer = buffer.substring(newlineIndex + 2); // Remove message and separator
+
+                            if (message.startsWith('data: ')) {
+                                let jsonStr = message.substring(6);
+                                if (jsonStr === '[DONE]') {
+                                    break;
+                                }
+
+                                try {
+                                    const chunkData = JSON.parse(jsonStr);
+                                    
+                                    if (chunkData.type === 'status') {
+                                        if (chunkData.content === 'thinking') {
+                                            displayTypingDots();
+                                        } else {
+                                            removeTypingDots();
+                                            // Handle other specific status messages if needed
+                                        }
+                                    } else if (chunkData.type === 'content') {
+                                        removeTypingDots();
+                                        const contentChunk = chunkData.content;
+                                        fullAIResponseText += contentChunk;
+                                        // Update the text node directly for typewriter effect
+                                        if (textNodeForTyping) {
+                                            textNodeForTyping.textContent = fullAIResponseText; 
+                                        }
+                                        scrollToBottom();
+                                    } else if (chunkData.type === 'error') {
+                                        fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
+                                        if (textNodeForTyping) {
+                                            textNodeForTyping.textContent = fullAIResponseText;
+                                        }
+                                        scrollToBottom();
+                                    }
+                                    // You can add handling for `search_results` and `citations` here from Seraphina's stream
+                                    // e.g., if (chunkData.type === 'search_results') { /* display search results */ }
+
+                                } catch (e) {
+                                    console.error("JSON parsing error in SSE chunk:", e, "Raw data:", jsonStr);
+                                    // Append raw error to response to notify user
+                                    fullAIResponseText += `\n\n❌ Parsing Error: ${jsonStr}`;
+                                    if (textNodeForTyping) {
+                                        textNodeForTyping.textContent = fullAIResponseText;
+                                    }
+                                    scrollToBottom();
+                                }
+                            }
+                        }
+                    }
+
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        fullAIResponseText += '\n\n<em>(Response stopped by user)</em>';
+                    } else {
+                        fullAIResponseText += `\n\n❌ An error occurred: ${err.message}`;
+                        console.error("Fetch/Stream error:", err);
+                    }
+                    if (textNodeForTyping) {
+                        textNodeForTyping.textContent = fullAIResponseText;
+                    }
+                    scrollToBottom();
+                } finally {
+                    const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
+                    removeTypingDots();
+                    removeProcessingMessage();
+                    
+                    if (currentAIMessageElement) {
+                        // Remove the temporary text node and replace with markdown-rendered HTML
+                        if (textNodeForTyping && textNodeForTyping.parentNode) {
+                            textNodeForTyping.remove();
+                        }
+                        
+                        currentAIMessageElement.querySelector('.msg-bubble').innerHTML = renderMarkdown(fullAIResponseText).html + `
+                            <div class="ai-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
+                                <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
+                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy'></i> Copy</button>
+                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share'></i> Share</button>
+                                <button type="button" class="regen-btn" title="Regenerate response"><i class="fa-solid fa-rotate-right'></i> Regenerate</button>
+                            </div>
+                        `;
+                        enhanceCodeBlocks(currentAIMessageElement); // Call only once at the end
+                        
+                        // Save the complete message to Firestore
+                        if (currentUser && currentChatId) {
+                            const newMsg = { role: 'ai', text: fullAIResponseText, duration: responseDuration, createdAt: serverTimestamp() };
+                            try {
+                                const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
+                                // Update the global currentMessages array with the final message and its actual Firestore ID
+                                const msgIndex = currentMessages.findIndex(m => m.id === currentAIMessageFirestoreId);
+                                if(msgIndex > -1) {
+                                    currentMessages[msgIndex] = { id: docRef.id, ...newMsg };
+                                } else {
+                                     // This should ideally not happen if temp ID was set, but as a fallback
+                                    currentMessages.push({ id: docRef.id, ...newMsg });
+                                }
+                                currentAIMessageElement.setAttribute('data-message-id', docRef.id);
+                            } catch (e) {
+                                console.error("Error saving streamed AI message to Firestore: ", e);
+                            }
+                        }
+                    }
+                    finalizeChatResponseUI(); // Reset UI elements
+                }
+            };
+
+            function finalizeChatResponseUI() {
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
@@ -2938,7 +3139,12 @@
                     stopBtn._currentStopListener = null;
                 }
                 currentController = null;
+                currentAIMessageElement = null;
+                currentAIMessageFirestoreId = null;
+                hookAiMsgControls(); // Re-hook controls for the *newly finalized* message
+                scrollToBottom();
             }
+
 
             // --- REBUILT & ENHANCED VOICE CALL LOGIC ---
             const callVoices = {
@@ -3081,9 +3287,11 @@
                 const userLastMessage = callHistory.length > 0 ? callHistory[callHistory.length - 1].content : "";
                 
                 try {
+                    // Always use Gemini for voice calls as Perplexity doesn't offer TTS directly and is research-focused
+                    // The backend /chat endpoint can take a call_context flag.
                     const historyForChat = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
 
-                    const res = await fetch(`${API_BASE_URL}/chat`, {
+                    const res = await fetch(`${API_BASE_URL}/chat`, { // Force Gemini endpoint for calls
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: userLastMessage, history: historyForChat.slice(0, -1), user_id: currentUser?.uid || "user", call_context: true })
@@ -3147,9 +3355,9 @@
                         
                         if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Tap anywhere to speak';
-                            if (tapToTalk) tapToTalk.style.display = 'block';
+                            if (tapToTalk) tapToDisplay = 'block';
                             if (!isRecognizing) {
-                                try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
+                                try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                             }
                         }
                     };
@@ -3163,7 +3371,7 @@
                         if (callStatusMessage) callStatusMessage.textContent = 'Voice Error. Tap to speak.';
                         if (tapToTalk) tapToTalk.style.display = 'block';
                         if (!isRecognizing) {
-                            try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
+                            try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                         }
                     }
                 }
@@ -3264,7 +3472,7 @@
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
                         if (isCallActive && !botIsSpeaking) {
                             callStatusMessage.textContent = 'Tap anywhere to speak';
-                            tapToTalk.style.display = 'block';
+                            if (tapToTalk) tapToTalk.style.display = 'block';
                             if (!isRecognizing) {
                                 try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                             }
