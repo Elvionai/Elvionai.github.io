@@ -1325,18 +1325,18 @@
         let currentComicPanelIndex = 0;
 
         // --- References for dynamic animation elements ---
-        let currentProcessingMessageElement = null;
+        let currentProcessingMessageElement = null; // Still used for tool processing messages
 
         // --- MODEL STATE ---
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
-        // --- REAL-TIME TYPING STATE ---
+        // --- STREAMING & TYPEWRITER STATE ---
+        let currentAIMessageElement = null; // Reference to the entire message-group div for the streaming AI response.
         let typewriterInterval = null;
         let typedCharIndex = 0;
         let fullResponseContent = ''; // Accumulates raw content from stream
-        let currentTypingBubbleContentEl = null; // Refers to the .ai-content-area element
-        let currentAIControlsEl = null; // Refers to the .ai-msg-controls element
-        let currentAIMessageElement = null; // Reference to the entire message-group div for the streaming AI response.
+        let currentTypingBubbleContentEl = null; // Refers to the .ai-content-area element within the current AI bubble
+        let currentAIControlsEl = null; // Refers to the .ai-msg-controls element within the current AI bubble
 
         // Cosmic background animations
         function igniteCosmos() {
@@ -1541,7 +1541,13 @@
             }
 
             if (userInput) {
-                // REMOVED: userInput.addEventListener('keydown', (e) => { ... }); to disable Enter key submission
+                // Allows enter key for submission only if not holding shift
+                userInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1705,6 +1711,9 @@
                 const messagesCol = collection(db, 'users', userId, 'chats', chatId, 'messages');
                 const q = query(messagesCol, orderBy('createdAt'));
                 messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+                    // Prevent re-rendering if a streaming response is active
+                    if (currentAIMessageElement) return;
+
                     currentMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatBox(currentMessages);
                 }, (error) => {
@@ -1857,23 +1866,6 @@
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                // Clear any ongoing typewriter effect
-                if (typewriterInterval) {
-                    clearInterval(typewriterInterval);
-                    typewriterInterval = null;
-                }
-                typedCharIndex = 0;
-                fullResponseContent = '';
-                currentTypingBubbleContentEl = null;
-                currentAIControlsEl = null;
-                currentAIMessageElement = null;
-
-                // Remove any active processing/typing messages before re-rendering
-                if (currentProcessingMessageElement && currentProcessingMessageElement.parentElement === chatViewport) {
-                    chatViewport.removeChild(currentProcessingMessageElement);
-                    currentProcessingMessageElement = null;
-                }
-                
                 chatViewport.innerHTML = ''; 
 
                 if(messages.length === 0) {
@@ -1936,11 +1928,6 @@
                     });
                 }
                 
-                // Re-append active processing message if it was present
-                if (currentProcessingMessageElement) { 
-                    chatViewport.appendChild(currentProcessingMessageElement);
-                }
-
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
@@ -2100,20 +2087,18 @@
                 removeProcessingMessage(); // Clear previous tool message
 
                 const div = document.createElement('div');
-                div.className = "message-group ai processing-message";
+                div.className = "message-group ai processing-message"; // Keep for consistency for general tool processing
                 div.innerHTML = `
                     <div class="msg-bubble" aria-label="${text}">
                         <div class="ai-content-area">
-                            <div class="typing-status-indicator">
-                                <span class="spinner"></span>
-                                <span style="margin-left:10px; color:var(--main-text-color); font-style:italic;">${text}</span>
-                            </div>
+                            <span class="spinner"></span>
+                            <span style="margin-left:10px; color:var(--main-text-color); font-style:italic;">${text}</span>
                         </div>
                     </div>
                 `;
                 chatViewport.appendChild(div);
                 currentProcessingMessageElement = div;
-                setTimeout(scrollToBottom, 50); // Use a timeout to ensure the DOM has updated
+                setTimeout(scrollToBottom, 50); 
             }
 
             function removeProcessingMessage() {
@@ -2233,10 +2218,52 @@
                 if (!currentChatId || !currentUser) return;
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 try {
-                    await addDoc(messagesCol, { role, text, files, duration, createdAt: serverTimestamp() });
+                    const docRef = await addDoc(messagesCol, { role, text, files, duration, createdAt: serverTimestamp() });
+                    // Immediately add to local state to reflect in UI without waiting for snapshot
+                    currentMessages.push({ id: docRef.id, role, text, files, duration, createdAt: { seconds: Date.now() / 1000 } });
+                    // Re-render the user's message immediately
+                    if (role === 'user') {
+                        renderUserMessage(docRef.id, text, files);
+                    }
                 } catch (e) {
                     console.error("Error adding message to Firestore: ", e);
                 }
+            }
+
+            function renderUserMessage(id, text, files = []) {
+                const div = document.createElement('div');
+                div.className = 'message-group user';
+                div.setAttribute('data-message-id', id);
+
+                const fileHtml = (files || [])
+                    .map(file => {
+                        let icon = 'fa-file';
+                        if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
+                        else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
+                        else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
+                        else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
+                        return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
+                    })
+                    .join('');
+
+                div.innerHTML = `<div class="msg-bubble">
+                    ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
+                    ${inlineMarkdown(text || '')}
+                    <div class="user-msg-controls">
+                        <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>`;
+                
+                // If an AI message is currently streaming, insert before it. Otherwise, append.
+                if (currentAIMessageElement) {
+                    chatViewport.insertBefore(div, currentAIMessageElement);
+                } else {
+                    chatViewport.appendChild(div);
+                }
+                
+                hookUserMsgControls();
+                scrollToBottom();
             }
 
             function blobToBase64(blob) {
@@ -2904,17 +2931,14 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
-            // =========================================================================
-            // === CORE SEND MESSAGE & TYPEWRITER LOGIC (RE-ENGINEERED) ===
-            // =========================================================================
             window.sendMessage = async function(overrideText = null) {
                 if (!currentChatId || !userInput) return;
                 const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
+                 if (currentAIMessageElement) return; // Prevent sending while another response is streaming
 
                 const modelToUse = currentModel;
 
-                // --- UI State Update: Start Processing ---
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
@@ -2939,7 +2963,7 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
 
-                // --- Reset Typewriter State & Create AI Placeholder ---
+                // --- TYPEWRITER INITIALIZATION ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typewriterInterval = null;
                 typedCharIndex = 0;
@@ -2973,7 +2997,8 @@
                 
                 try {
                     const historyForAI = currentMessages
-                        .filter(m => !m.id.startsWith('temp-id-'))
+                        .filter(m => m.role === 'user' || (m.role === 'ai' && m.text)) // Use only valid history items
+                        .slice(-10) // Limit history to last 10 messages
                         .map(m => ({ role: m.role, content: m.text || '' }));
                         
                     let endpoint = '';
@@ -3021,9 +3046,11 @@
                                 const chunkData = JSON.parse(jsonStr);
                                 
                                 if (!firstChunkReceived) {
-                                    if (currentTypingBubbleContentEl) currentTypingBubbleContentEl.innerHTML = ''; 
+                                    if (currentTypingBubbleContentEl) {
+                                        currentTypingBubbleContentEl.innerHTML = ''; 
+                                    }
                                     firstChunkReceived = true;
-                                    startTypewriter(); // Start the animation loop
+                                    startTypewriter(); 
                                 }
 
                                 if (chunkData.type === 'content' && chunkData.content) {
@@ -3044,90 +3071,83 @@
                          fullResponseContent += '\n\n*(Response stopped by user)*';
                     }
                 } finally {
-                    // This function will handle cleanup, final rendering, and saving to DB
-                    finalizeChatResponse(fullResponseContent, startTime);
+                    finalizeChatResponseUI(fullResponseContent, startTime);
                 }
             };
 
             function startTypewriter() {
-                if (typewriterInterval) return; // Prevent multiple intervals
+                if (typewriterInterval) return;
 
                 typewriterInterval = setInterval(() => {
                     if (typedCharIndex < fullResponseContent.length) {
                         if (currentTypingBubbleContentEl) {
-                            // Append characters one by one for the typing effect
+                            // To handle special HTML characters correctly during typing
                             currentTypingBubbleContentEl.textContent += fullResponseContent[typedCharIndex];
-                            typedCharIndex++;
-                            scrollToBottom(); // AGGRESSIVE SCROLLING
+                            scrollToBottom();
                         }
+                        typedCharIndex++;
                     } else {
-                        // Don't clear interval here; let the stream add more content
-                        // It will be cleared in the finalize function
+                        // Typing is caught up with the buffer, but more content might stream in.
+                        // The interval keeps running and will pick up new characters as they are added to `fullResponseContent`.
                     }
-                }, 30); // Typing speed in milliseconds
+                }, 20); // FAST typing speed
             }
 
-            function finalizeChatResponse(finalText, startTime) {
-                // Stop the typewriter animation
+            function finalizeChatResponseUI(finalText, startTime) {
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typewriterInterval = null;
 
                 const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
                 
-                // Final render with full markdown and controls
+                const controlsHtml = `
+                    <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
+                    <div style="margin-left:auto;"></div>
+                    <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                    <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                    <button type="button" class="inline-regen-btn" title="Regenerate response (current model)"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <div class="switch-model-btn" title="Change AI Model">
+                        <i class="fa-solid fa-sitemap"></i>
+                        <div class="model-switch-popup">
+                            <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                            <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                        </div>
+                    </div>
+                `;
+
                 if (currentAIMessageElement && currentTypingBubbleContentEl && currentAIControlsEl) {
                     currentTypingBubbleContentEl.innerHTML = renderMarkdown(finalText).html;
-                    
-                    const controlsHtml = `
-                        <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
-                        <div style="margin-left:auto;"></div>
-                        <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
-                        <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
-                        <button type="button" class="inline-regen-btn" title="Regenerate response (current model)"><i class="fa-solid fa-arrows-rotate"></i></button>
-                        <div class="switch-model-btn" title="Change AI Model">
-                            <i class="fa-solid fa-sitemap"></i>
-                            <div class="model-switch-popup">
-                                <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
-                                <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                            </div>
-                        </div>
-                    `;
                     currentAIControlsEl.innerHTML = controlsHtml;
                     currentAIControlsEl.style.display = 'flex';
 
                     enhanceCodeBlocks(currentAIMessageElement);
-                    hookAiMsgControls();
+                    hookAiMsgControls(); 
                 }
                 
-                // Save the final message to Firestore
                 if (currentUser && currentChatId && finalText.trim()) {
                     const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
                     addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
                         if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
+                        currentMessages.push({ id: docRef.id, ...newMsg });
                     }).catch(e => console.error("Error saving final message:", e));
                 }
 
-                // --- UI State Update: End Processing ---
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                 }
+                
+                // Reset all streaming state variables
                 currentController = null;
-
-                // Reset global state variables for the next message
+                currentAIMessageElement = null;
                 fullResponseContent = '';
                 typedCharIndex = 0;
                 currentTypingBubbleContentEl = null;
                 currentAIControlsEl = null;
-                currentAIMessageElement = null;
 
                 scrollToBottom();
             }
-            // =========================================================================
-            // === END OF RE-ENGINEERED LOGIC ===
-            // =========================================================================
 
             // --- REBUILT & ENHANCED VOICE CALL LOGIC ---
             const callVoices = {
