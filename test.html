@@ -1,10 +1,10 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Philadelphia AI - Chat </title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght%40500%3B700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;700&family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"/>
     <style>
@@ -217,6 +217,7 @@
             text-shadow: var(--text-glow);
             white-space: nowrap;
             user-select: none;
+            transition: all 0.3s ease;
         }
         @keyframes plasmaFlow { to { background-position: 300% center; } }
 
@@ -249,6 +250,15 @@
         .message-group.ai { align-self: flex-start; }
         .message-group.user { align-self: flex-end; align-items: flex-end; }
         .message-group.system { align-self: center; text-align: center; font-style: italic; opacity: 0.8; font-size: 1em; }
+        
+        /* Specific styles for status/thinking message */
+        .message-group.ai.status-message .msg-bubble {
+            display: inline-flex;
+            align-items: center;
+            background: var(--glass-bg-strong);
+            color: var(--main-text-color);
+            font-style: italic;
+        }
 
         .msg-bubble {
             padding: 22px 30px; border-radius: 32px; /* Larger padding and radius */
@@ -322,40 +332,52 @@
         pre.highlighted code {
             text-shadow: 0 0 5px rgba(0,242,255,0.9); /* Stronger glow for highlighted text */
         }
-
+        
+        .ai-msg-controls, .user-msg-controls {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .message-group:hover .ai-msg-controls,
+        .message-group:hover .user-msg-controls {
+            opacity: 1;
+        }
+        
         .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn, .switch-model-btn {
-            padding: 12px 20px; border-radius: 18px; font-size: 1em; cursor: pointer; /* Larger padding, radius, font size */
-            background: var(--plasma-gradient-dark); color: #000; font-weight: bold;
-            border: 2px solid rgba(255,255,255,0.35); /* Thicker border */
-            box-shadow: 0 0 18px rgba(189,0,255,0.6); /* Stronger shadow */
+            padding: 8px 12px; border-radius: 12px; font-size: 0.8em; cursor: pointer; /* Smaller, more subtle */
+            background: rgba(255, 255, 255, 0.1); color: var(--main-text-color); font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: none;
             transition: all 0.2s ease;
-            display: inline-flex; align-items: center; gap: 10px; margin-top: 15px; /* Increased gap and margin */
+            display: inline-flex; align-items: center; gap: 8px; 
             user-select: none;
             position: relative; /* For model switch popup */
         }
         .copy-btn:hover, .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover, .switch-model-btn:hover {
-            transform: translateY(-5px) scale(1.05); /* More pronounced hover */
-            box-shadow: 0 0 35px var(--neon-blue); /* Stronger glow */
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
             color: #fff;
-            background: var(--plasma-gradient);
+            background: var(--plasma-gradient-dark);
         }
 
         /* --- NEW: Model Switch Popup Menu --- */
         .model-switch-popup {
             display: none;
             position: absolute;
-            top: 100%; /* Position below the button */
-            left: 50%; /* Center horizontally */
-            transform: translateX(-50%); /* Adjust for centering */
+            bottom: calc(100% + 10px); /* Position above the button */
+            right: 0;
             background: var(--panel-bg);
             border: 2px solid var(--neon-blue);
             border-radius: 15px;
             box-shadow: var(--panel-shadow);
-            z-index: 10;
+            z-index: 1000;
             overflow: hidden;
             flex-direction: column;
             animation: popIn 0.2s ease-out;
-            min-width: 220px;
+            width: 260px;
+        }
+        .switch-model-btn:hover .model-switch-popup,
+        .model-switch-popup:hover {
+             display: flex;
         }
         .model-switch-popup button {
             background: transparent;
@@ -381,70 +403,6 @@
             border-bottom: 1px solid var(--glass-border);
         }
 
-        /* NEW: Default Model Selector Popup */
-        .default-model-selector-popup {
-            display: none;
-            position: absolute;
-            top: 70px; /* Adjust based on header height */
-            right: 25px; /* Align with header actions */
-            background: var(--panel-bg);
-            border: 2px solid var(--neon-blue);
-            border-radius: 15px;
-            box-shadow: var(--panel-shadow);
-            z-index: 102; /* Above chat, below full modals */
-            overflow: hidden;
-            flex-direction: column;
-            animation: popIn 0.2s ease-out;
-            width: 220px;
-            padding: 10px;
-        }
-        .default-model-selector-popup.active {
-            display: flex;
-        }
-        .default-model-selector-popup label {
-            color: var(--main-text-color);
-            padding: 8px 10px 5px 10px;
-            font-size: 0.9em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .default-model-selector-popup select {
-            width: calc(100% - 20px);
-            margin: 5px 10px 10px 10px;
-            padding: 10px 15px;
-            border: 2px solid var(--neon-purple);
-            border-radius: 10px;
-            background: rgba(10, 10, 20, 0.9);
-            color: var(--main-text-color);
-            font-size: 1em;
-            outline: none;
-            cursor: pointer;
-            box-shadow: inset 0 0 10px rgba(189, 0, 255, 0.25);
-        }
-        .default-model-selector-popup select:focus {
-            border-color: var(--neon-green);
-            box-shadow: inset 0 0 15px rgba(0, 255, 136, 0.35);
-        }
-        .default-model-selector-popup button {
-            background: var(--plasma-gradient-dark);
-            color: #000;
-            font-weight: bold;
-            border: 2px solid rgba(255,255,255,0.35);
-            box-shadow: 0 0 18px rgba(189,0,255,0.6);
-            transition: all 0.2s ease;
-            padding: 8px 15px;
-            border-radius: 12px;
-            font-size: 0.9em;
-            margin: 5px 10px 10px 10px;
-            cursor: pointer;
-        }
-        .default-model-selector-popup button:hover {
-            transform: translateY(-2px) scale(1.02);
-            box-shadow: 0 0 25px var(--neon-blue);
-            color: #fff;
-            background: var(--plasma-gradient);
-        }
-
         /* Typing Dots (new style for inline in chat) */
         .message-group.ai.typing-dots .msg-bubble {
             padding: 18px 25px; /* Match standard bubble padding */
@@ -452,15 +410,7 @@
             border-bottom-left-radius: 12px;
             box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.12);
             display: inline-flex; /* To wrap around content */
-            align-items: center; /* Vertically align dots and text */
         }
-        /* Ensure the span for the text in typing dots is styled to be alongside */
-        .message-group.ai.typing-dots .msg-bubble > span {
-            margin-left:10px; 
-            color:var(--main-text-color); 
-            font-style:italic;
-        }
-
 
         .message-group.ai.typing-dots .typing-bubble {
             display: inline-flex; /* Ensure dots are in line */
@@ -1113,17 +1063,6 @@
             #callControls { gap: 15px; padding-bottom: 15px; margin-top: 15px;}
             #endCallBtn, #muteCallBtn { font-size: 1.1em; padding: 10px 18px; border-radius: 10px;}
             #userSpeechWave { bottom: 10px; height: 30px; border-radius: 15px; }
-
-            /* Mobile adjustments for default model selector */
-            .default-model-selector-popup {
-                top: 60px; /* Adjust for smaller header */
-                right: 10px;
-                width: 180px;
-            }
-            .default-model-selector-popup select, .default-model-selector-popup button {
-                font-size: 0.8em;
-                padding: 8px;
-            }
         }
 
     </style>
@@ -1147,7 +1086,6 @@
                 <div class="header-welcome" id="headerWelcome"></div>
             </div>
             <div class="header-actions">
-                <div class="icon-btn" id="changeDefaultModelBtn" title="Change Default AI Model" role="button" aria-label="Change default AI model"><i class="fa-solid fa-robot"></i></div>
                 <div class="icon-btn" id="openLinksMenu" title="Links" role="button" aria-label="Open links menu"><i class="fa-solid fa-link"></i></div>
             </div>
         </header>
@@ -1184,16 +1122,6 @@
 
     <div id="emojiPanel" class="chat-controls-menu"></div>
     <div id="filePreview" class="file-preview-floating"></div>
-
-    <!-- Default Model Selector Popup -->
-    <div class="default-model-selector-popup" id="defaultModelSelectorPopup">
-        <label for="defaultModelSelect">Default AI:</label>
-        <select id="defaultModelSelect">
-            <option value="gemini">Philadelphia (Gemini)</option>
-            <option value="perplexity">Seraphina (Perplexity)</option>
-        </select>
-        <button id="saveDefaultModelBtn">Save Default</button>
-    </div>
 
     <div class="panel-bg" id="profileMenuBg">
         <nav class="side-panel" id="profileMenu" role="menu" aria-label="Profile and Chat Menu">
@@ -1406,18 +1334,10 @@
         let currentProcessingMessageElement = null;
 
         // --- MODEL STATE ---
-        let currentModel = localStorage.getItem('defaultModel') || 'gemini'; // Default to 'gemini' for Philadelphia, Load from localStorage
+        let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
         let currentAIMessageElement = null; // Reference to the div currently being filled by streaming.
         let currentAIMessageFirestoreId = null; // Store message ID for saving to DB later.
-
-
-        // --- REAL-TIME TYPING STATE ---
-        let typingQueue = [];
-        let typingInProgress = false;
-        let currentTypingElement = null; // The `msgBubble` element where typing is happening
-        let currentFullMarkdownText = ''; // Accumulates the full markdown text as it's typed
-        const TYPING_DELAY = 25; // Milliseconds per character for typewriter effect
 
 
         // Cosmic background animations
@@ -1500,6 +1420,7 @@
             const toolFormBackBtn = $('toolFormBackBtn');
             const lightbox = $('lightbox');
             const inputDock = $('inputDock'); 
+            const brandTitle = $('brandTitle');
             
             // Image Preview Elements
             const aiPrevBox = $('ai-image-preview');
@@ -1529,12 +1450,6 @@
             const callStatusMessage = $('callStatusMessage');
             const tapToTalk = $('tapToTalk');
             const userSpeechWave = $('userSpeechWave');
-
-            // Default Model Selector Elements
-            const changeDefaultModelBtn = $('changeDefaultModelBtn');
-            const defaultModelSelectorPopup = $('defaultModelSelectorPopup');
-            const defaultModelSelect = $('defaultModelSelect');
-            const saveDefaultModelBtn = $('saveDefaultModelBtn');
             
             if (!chatViewport || !userInput || !inputDock) {
                 console.error("Essential UI elements are missing. App functionality will be limited.");
@@ -1552,6 +1467,24 @@
                 }
             };
             addWelcomeMessage();
+
+            // --- MODEL SELECTION LOGIC ---
+            function setCurrentModel(newModel) {
+                if (newModel !== 'gemini' && newModel !== 'perplexity') {
+                    newModel = 'gemini'; // Default fallback
+                }
+                currentModel = newModel;
+                localStorage.setItem('userPreferredModel', newModel);
+                if (brandTitle) {
+                    brandTitle.textContent = newModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
+                }
+            }
+
+            const savedModel = localStorage.getItem('userPreferredModel');
+            if (savedModel) {
+                setCurrentModel(savedModel);
+            }
+            // --- END MODEL SELECTION LOGIC ---
 
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
@@ -1593,6 +1526,12 @@
             }
 
             if (userInput) {
+                userInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1629,7 +1568,7 @@
             }
             if (chatViewport) {
                 chatViewport.addEventListener('click', e => {
-                    if (e.target && e.tagName === 'IMG' && e.target.closest('.message-group.ai .msg-bubble')) {
+                    if (e.target && e.target.tagName === 'IMG' && e.target.closest('.message-group.ai .msg-bubble')) {
                         e.preventDefault();
                         const lbImg = lightbox.querySelector('img');
                         if (lbImg) {
@@ -1946,8 +1885,8 @@
                                 ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
                                 ${inlineMarkdown(msg.text || '')}
                                 <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                    <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
+                                    <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i></button>
                                 </div>
                             </div>`;
                         } else {
@@ -1964,7 +1903,13 @@
                                     <div style="margin-left:auto;"></div>
                                     <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
                                     <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
-                                    <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
+                                    <div class="switch-model-btn" title="Regenerate or switch model">
+                                        <i class="fa-solid fa-arrows-rotate"></i>
+                                        <div class="model-switch-popup">
+                                            <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Regen with Philadelphia</button>
+                                            <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Regen with Seraphina</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>`;
                         }
@@ -2017,14 +1962,12 @@
 
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const shareBtn = controls.querySelector('.inline-share-btn');
-                    const switchModelBtn = controls.querySelector('.switch-model-btn');
+                    const popup = controls.querySelector('.model-switch-popup');
 
                     if (copyBtn) copyBtn.onclick = () => {
-                        const msg = currentMessages.find(m => m.id === messageId);
                         const msgBubble = div.querySelector('.msg-bubble');
                         if (!msgBubble) return;
                         
-                        // Temporarily remove controls for clean copy
                         const tempControls = msgBubble.querySelector('.ai-msg-controls');
                         if(tempControls) tempControls.style.display = 'none';
 
@@ -2051,45 +1994,20 @@
                         } catch (e) { console.warn('Share failed:', e); }
                     };
                     
-                    if (switchModelBtn) {
-                        switchModelBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            document.querySelectorAll('.model-switch-popup').forEach(p => p.remove());
-
-                            const popup = document.createElement('div');
-                            popup.className = 'model-switch-popup';
-                            popup.style.display = 'flex';
-                            
-                            const otherModel = currentModel === 'gemini' ? 'perplexity' : 'gemini';
-                            popup.innerHTML = `
-                                <button data-model="${currentModel}"><i class="fa-solid fa-sync-alt"></i> Regenerate with ${currentModel === 'gemini' ? 'Philadelphia' : 'Seraphina'}</button>
-                                <button data-model="${otherModel}"><i class="fa-solid fa-exchange-alt"></i> Regenerate with ${otherModel === 'gemini' ? 'Philadelphia' : 'Seraphina'}</button>
-                            `;
-
-                            switchModelBtn.appendChild(popup);
-
-                            popup.addEventListener('click', (ev) => {
-                                const button = ev.target.closest('button');
-                                if (button) {
-                                    const regenWithModel = button.dataset.model;
-                                    regenerateResponse(messageId, regenWithModel);
-                                }
-                                popup.remove();
-                            });
-                            
-                            const closePopup = (event) => {
-                                if (!popup.contains(event.target) && event.target !== switchModelBtn) {
-                                    popup.remove();
-                                    document.removeEventListener('click', closePopup);
-                                }
-                            };
-                            setTimeout(() => document.addEventListener('click', closePopup), 0);
-                        };
+                    if (popup) {
+                        popup.addEventListener('click', (ev) => {
+                            const button = ev.target.closest('button');
+                            if (button) {
+                                const regenWithModel = button.dataset.model;
+                                setCurrentModel(regenWithModel); // Set the model for future chats
+                                regenerateResponse(messageId);
+                            }
+                        });
                     }
                 });
             }
 
-            async function regenerateResponse(messageId, regenWithModel) {
+            async function regenerateResponse(messageId) {
                 const msgIndex = currentMessages.findIndex(m => m.id === messageId);
                 if (msgIndex < 1) return;
                 const userMsg = currentMessages[msgIndex - 1];
@@ -2097,8 +2015,10 @@
 
                 await deleteMessagesFrom(messageId);
                 
-                await sendMessage(userMsg.text, regenWithModel); 
+                // sendMessage will now use the globally set `currentModel`
+                await sendMessage(userMsg.text); 
             }
+
 
             function hookUserMsgControls() {
                 if (!chatViewport) return;
@@ -2117,8 +2037,8 @@
                             tempDiv.innerHTML = msg.text;
                             const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i>";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
 
@@ -2150,15 +2070,11 @@
                 let modelDisplayName = modelName === 'perplexity' ? 'Seraphina' : 'Philadelphia';
 
                 const div = document.createElement('div');
-                div.className = "message-group ai typing-dots"; // Use typing-dots class
+                div.className = "message-group ai status-message";
                 div.innerHTML = `
                     <div class="msg-bubble" aria-label="${text}">
-                        <div class="typing-bubble">
-                            <span class="dot-anim"></span>
-                            <span class="dot-anim"></span>
-                            <span class="dot-anim"></span>
-                        </div>
-                        <span style="margin-left:10px; color:var(--main-text-color); font-style:italic;">${modelDisplayName} is ${text}...</span>
+                        <span class="spinner"></span>
+                        <span style="margin-left:10px;">${modelDisplayName} is ${text}...</span>
                     </div>
                 `;
                 chatViewport.appendChild(div);
@@ -2971,12 +2887,12 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
 
-            window.sendMessage = async function(overrideText = null, overrideModel = null) {
+            window.sendMessage = async function(overrideText = null) {
                 if (!currentChatId || !userInput) return;
                 const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
 
-                const modelToUse = overrideModel || currentModel;
+                const modelToUse = currentModel;
 
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
@@ -3002,6 +2918,8 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
 
+                displayStatusMessage('thinking', modelToUse);
+
                 const historyForAI = currentMessages
                     .filter(m => m.id !== currentAIMessageFirestoreId) // Exclude any leftover temp messages
                     .map(m => ({ role: m.role, content: m.text || '' }));
@@ -3026,11 +2944,6 @@
                 currentAIMessageElement = aiMessageDiv;
                 currentAIMessageFirestoreId = 'temp-id-' + Date.now();
                 aiMessageDiv.setAttribute('data-message-id', currentAIMessageFirestoreId);
-
-                // Set current typing target and reset state for new message
-                currentTypingElement = msgBubble;
-                resetTypingState();
-
                 scrollToBottom();
 
                 let fullAIResponseText = '';
@@ -3054,136 +2967,57 @@
                     const decoder = new TextDecoder('utf-8');
                     let buffer = '';
 
-                    // Use a Promise to wait for both stream consumption and typing to finish
-                    const streamAndTypePromise = new Promise((resolve, reject) => {
-                        const processStream = async () => {
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        let newlineIndex;
+                        while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                            const message = buffer.substring(0, newlineIndex).trim();
+                            buffer = buffer.substring(newlineIndex + 2);
+                            if (!message.startsWith('data: ')) continue;
+                            
+                            let jsonStr = message.substring(5).trim();
+                            if (jsonStr === '[DONE]') break;
+
                             try {
-                                while (true) {
-                                    const { value, done } = await reader.read();
-                                    if (done) break;
-
-                                    buffer += decoder.decode(value, { stream: true });
-                                    let newlineIndex;
-                                    while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
-                                        const message = buffer.substring(0, newlineIndex).trim();
-                                        buffer = buffer.substring(newlineIndex + 2);
-                                        if (!message.startsWith('data: ')) continue;
-                                        
-                                        let jsonStr = message.substring(5).trim();
-                                        if (jsonStr === '[DONE]') break;
-
-                                        try {
-                                            const chunkData = JSON.parse(jsonStr);
-                                            
-                                            if (!firstChunkReceived) {
-                                                removeStatusMessage();
-                                                firstChunkReceived = true;
-                                                msgBubble.innerHTML = ''; // Clear status to start typing
-                                            }
-
-                                            if (chunkData.type === 'status' && chunkData.content === 'thinking') {
-                                                displayStatusMessage('thinking', modelToUse);
-                                            } else if (chunkData.type === 'content' && chunkData.content) {
-                                                removeStatusMessage();
-                                                
-                                                let content = chunkData.content;
-                                                // Remove branding "I am seraphina from elviin ai" for Seraphina model
-                                                if (modelToUse === 'perplexity') {
-                                                    content = content.replace(/I am seraphina from elviin ai/gi, '');
-                                                    // Strip citation numbers [1], [2], etc.
-                                                    const citationRegex = /\[\d+\]/g;
-                                                    content = content.replace(citationRegex, '');
-                                                    content = content.trimStart(); // Clean up leading spaces after replacement
-                                                }
-
-                                                fullAIResponseText += content; // Accumulate the stripped content for final save
-                                                addToTypingQueue(content); // Add stripped content to typing queue
-                                                
-                                            } else if (chunkData.type === 'error') {
-                                                fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
-                                                addToTypingQueue(`\n\n❌ AI Error: ${chunkData.content}`);
-                                            }
-                                        } catch (e) {
-                                            console.error("Stream parsing error:", e, "Data:", jsonStr);
-                                            addToTypingQueue(`\n\n❌ Stream parsing error.`);
-                                        }
-                                    }
+                                const chunkData = JSON.parse(jsonStr);
+                                
+                                if (!firstChunkReceived) {
+                                    removeStatusMessage();
+                                    firstChunkReceived = true;
+                                    msgBubble.innerHTML = '...'; // Start with a placeholder
                                 }
-                                resolve(); // Stream finished
-                            } catch (error) {
-                                reject(error); // Stream error
-                            }
-                        };
-                        processStream();
-                    });
 
-                    await streamAndTypePromise; // Wait for streaming to finish
+                                if (chunkData.type === 'content' && chunkData.content) {
+                                    removeStatusMessage();
+                                    // *** CITATION REMOVAL ***
+                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
+                                    fullAIResponseText += cleanedContent;
+                                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
+                                    scrollToBottom();
+                                } else if (chunkData.type === 'error') {
+                                    fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
+                                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
+                                }
+                            } catch (e) {
+                                console.error("Stream parsing error:", e, "Data:", jsonStr);
+                            }
+                        }
+                    }
                 } catch (err) {
                     if (err.name !== 'AbortError') {
                         console.error("Fetch/Stream error:", err);
                         fullAIResponseText += `\n\n❌ An error occurred: ${err.message}`;
-                        addToTypingQueue(`\n\n❌ An error occurred: ${err.message}`);
                     } else {
                          fullAIResponseText += '\n\n<em>(Response stopped by user)</em>';
-                         addToTypingQueue('\n\n<em>(Response stopped by user)</em>');
                     }
+                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                 } finally {
-                    // Wait for the typing queue to empty before finalizing UI elements
-                    await new Promise(resolve => {
-                        const checkTyping = setInterval(() => {
-                            if (typingQueue.length === 0 && !typingInProgress) {
-                                clearInterval(checkTyping);
-                                resolve();
-                            }
-                        }, 50);
-                    });
                     finalizeChatResponseUI(fullAIResponseText, startTime);
                 }
             };
-
-            // Function to add characters to the typing queue
-            function addToTypingQueue(text) {
-                if (!text) return;
-                for (const char of text) {
-                    typingQueue.push(char);
-                }
-                if (!typingInProgress) {
-                    startTypingWorker();
-                }
-            }
-
-            // Typing worker function that processes the queue
-            function startTypingWorker() {
-                if (typingQueue.length === 0) {
-                    typingInProgress = false;
-                    // Final render to ensure all markdown is applied, including code highlighting
-                    if (currentTypingElement) {
-                        currentTypingElement.innerHTML = renderMarkdown(currentFullMarkdownText).html;
-                        enhanceCodeBlocks(currentTypingElement.parentElement);
-                    }
-                    return;
-                }
-
-                typingInProgress = true;
-                const char = typingQueue.shift();
-                currentFullMarkdownText += char;
-
-                if (currentTypingElement) {
-                    currentTypingElement.innerHTML = renderMarkdown(currentFullMarkdownText).html;
-                    scrollToBottom();
-                }
-
-                setTimeout(startTypingWorker, TYPING_DELAY);
-            }
-
-            // Function to reset typing state for a new message
-            function resetTypingState() {
-                typingQueue = [];
-                typingInProgress = false;
-                currentTypingElement = null; // Clear reference
-                currentFullMarkdownText = '';
-            }
-
 
             function finalizeChatResponseUI(finalText, startTime) {
                 const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
@@ -3192,15 +3026,19 @@
                 if (currentAIMessageElement) {
                     const bubble = currentAIMessageElement.querySelector('.msg-bubble');
                     if(bubble) {
-                        // The content itself should already be typed out by startTypingWorker.
-                        // We only need to append the controls now.
                         bubble.innerHTML = renderMarkdown(finalText).html + `
                             <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
                                 <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
                                 <div style="margin-left:auto;"></div>
                                 <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
                                 <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
-                                <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
+                                <div class="switch-model-btn" title="Regenerate or switch model">
+                                    <i class="fa-solid fa-arrows-rotate"></i>
+                                    <div class="model-switch-popup">
+                                        <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Regen with Philadelphia</button>
+                                        <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Regen with Seraphina</button>
+                                    </div>
+                                </div>
                             </div>
                         `;
                         enhanceCodeBlocks(currentAIMessageElement);
@@ -3226,44 +3064,6 @@
                 hookAiMsgControls();
                 scrollToBottom();
             }
-
-            // --- DEFAULT MODEL SELECTION LOGIC ---
-            if (defaultModelSelect) {
-                defaultModelSelect.value = currentModel; // Set initial selection
-            }
-
-            if (changeDefaultModelBtn) {
-                changeDefaultModelBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent immediate closing
-                    defaultModelSelectorPopup.classList.toggle('active');
-                    // Position relative to the button
-                    const rect = changeDefaultModelBtn.getBoundingClientRect();
-                    defaultModelSelectorPopup.style.top = `${rect.bottom + 10}px`;
-                    // Calculate right position to align with the button, considering popup width
-                    const popupWidth = defaultModelSelectorPopup.offsetWidth || 220;
-                    defaultModelSelectorPopup.style.right = `${window.innerWidth - rect.right - 10 + (rect.width/2) - (popupWidth/2)}px`; // Adjusted for more central alignment under the icon
-                });
-
-                // Close popup if clicked outside
-                document.addEventListener('click', (e) => {
-                    if (defaultModelSelectorPopup && defaultModelSelectorPopup.classList.contains('active') &&
-                        !defaultModelSelectorPopup.contains(e.target) && e.target !== changeDefaultModelBtn) {
-                        defaultModelSelectorPopup.classList.remove('active');
-                    }
-                });
-            }
-
-            if (saveDefaultModelBtn) {
-                saveDefaultModelBtn.addEventListener('click', () => {
-                    if (defaultModelSelect) {
-                        currentModel = defaultModelSelect.value;
-                        localStorage.setItem('defaultModel', currentModel);
-                        alert(`Default AI Model set to: ${currentModel === 'gemini' ? 'Philadelphia' : 'Seraphina'}`);
-                        defaultModelSelectorPopup.classList.remove('active');
-                    }
-                });
-            }
-
 
             // --- REBUILT & ENHANCED VOICE CALL LOGIC ---
             const callVoices = {
