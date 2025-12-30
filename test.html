@@ -407,22 +407,24 @@
             word-break: break-word;
         }
 
-        .message-group.ai .msg-bubble .typing-status-indicator {
+        /* The main container for the typing animation (spinner + dots) */
+        .typing-status-indicator {
             display: flex;
             align-items: center;
             font-style: italic;
             color: var(--main-text-color);
             padding-bottom: 5px; /* Little space above dots */
         }
-        .message-group.ai .msg-bubble .typing-status-indicator .dots {
+        /* Each individual dot */
+        .typing-status-indicator .dots {
             display: inline-block;
             width: 14px; height: 14px; margin: 0 6px;
             background: var(--neon-blue); border-radius: 50%;
             opacity: 0.98; animation: typing-blink 1s infinite both;
             box-shadow: 0 0 12px var(--neon-blue);
         }
-        .message-group.ai .msg-bubble .typing-status-indicator .dots:nth-child(2){animation-delay:.2s;}
-        .message-group.ai .msg-bubble .typing-status-indicator .dots:nth-child(3){animation-delay:.4s;}
+        .typing-status-indicator .dots:nth-child(2){animation-delay:.2s;}
+        .typing-status-indicator .dots:nth-child(3){animation-delay:.4s;}
         @keyframes typing-blink {
             0%,100% {opacity:.15; transform: scale(0.5);}
             25% {opacity:1; transform: scale(1.4);}
@@ -998,7 +1000,7 @@
             .ai .msg-bubble, .user .msg-bubble { border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
             
             /* Typing dots on mobile */
-            .message-group.ai .msg-bubble .typing-status-indicator .dots { width: 10px; height: 10px; margin: 0 4px; }
+            .typing-status-indicator .dots { width: 10px; height: 10px; margin: 0 4px; }
             .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
             pre {
@@ -1325,20 +1327,20 @@
         let currentComicPanelIndex = 0;
 
         // --- References for dynamic animation elements ---
-        let currentProcessingMessageElement = null; // Used for tool processing messages
+        let currentProcessingMessageElement = null; // Still used for tool processing messages
 
         // --- MODEL STATE ---
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
-        // --- TYPEWRITER ANIMATION STATE ---
         let currentAIMessageElement = null; // Reference to the entire message-group div for the streaming AI response.
         let currentAIMessageFirestoreId = null; // Store message ID for saving to DB later.
+
+        // --- TYPEWRITER ANIMATION STATE ---
         let typewriterInterval = null;
         let typedCharIndex = 0;
         let fullResponseContent = ''; // Accumulates raw content from stream
         let currentTypingBubbleContentEl = null; // Refers to the .ai-content-area element within the current AI bubble
         let currentAIControlsEl = null; // Refers to the .ai-msg-controls element within the current AI bubble
-
 
         // Cosmic background animations
         function igniteCosmos() {
@@ -1431,7 +1433,7 @@
             // Comic Preview Elements
             const comicPrevBox = $('ai-comic-preview');
             const comicPrevClose = $('ai-comic-close');
-            const comicPrevDLBtn = $('ai-comic-dl');
+            const comicPrevDLBtn = $('ai-image-dl'); // Changed to comicPrevDLBtn
             const comicPrevImgBox = $('ai-comic-container');
             const comicNextBtn = $('comic-next-btn');
             const comicPrevBtn = $('comic-prev-btn');
@@ -1481,7 +1483,7 @@
                 if(chatViewport.innerHTML.trim() === '') {
                     chatViewport.innerHTML = welcomeMsg;
                     hookAiMsgControls(); // Hook controls for initial message
-                    scrollToBottom(); // Ensure scroll to bottom for welcome message
+                    setTimeout(scrollToBottom, 0); // Ensure welcome message is visible
                 }
             };
             addWelcomeMessage();
@@ -1523,7 +1525,6 @@
 
                     emojiPanel.style.left = `${panelLeft}px`;
                     emojiPanel.style.bottom = `${inputDock.offsetHeight + 15}px`;
-                    scrollToBottom(); // Scroll to bottom after opening emoji panel
                 });
                 document.addEventListener('click', e => {
                     if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== emojiBtn) {
@@ -1855,13 +1856,13 @@
                 div.className = 'message-group system';
                 div.innerHTML = `<div class="msg-bubble">${escapeHTML(text)}</div>`;
                 chatViewport.appendChild(div);
-                scrollToBottom();
+                setTimeout(scrollToBottom, 50);
             }
 
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                // Clear any ongoing typewriter effect if we're re-rendering the chat.
+                // Clear any ongoing typewriter effect
                 if (typewriterInterval) {
                     clearInterval(typewriterInterval);
                     typewriterInterval = null;
@@ -1896,8 +1897,8 @@
                                     let icon = 'fa-file';
                                     if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
                                     else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
-                                    else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
                                     else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
+                                    else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
                                     return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
                                 })
                                 .join('');
@@ -1913,10 +1914,8 @@
                         } else {
                             let content;
                             if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-                                // If message already contains HTML for media, use it directly
                                 content = msg.text;
                             } else {
-                                // Otherwise, render markdown for plain text
                                 content = renderMarkdown(msg.text || '').html;
                             }
                             const timeDisplay = msg.duration ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${msg.duration}s</span>` : '';
@@ -1943,7 +1942,7 @@
                     });
                 }
                 
-                // Re-append active processing message if it was present, after all history messages
+                // Re-append active processing message if it was present
                 if (currentProcessingMessageElement) { 
                     chatViewport.appendChild(currentProcessingMessageElement);
                 }
@@ -1951,7 +1950,7 @@
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                scrollToBottom();
+                setTimeout(scrollToBottom, 0); // Aggressive autoscroll
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -1962,7 +1961,7 @@
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 for (let i = msgIndex; i < currentMessages.length; i++) {
                     const msgToDel = currentMessages[i];
-                    if (msgToDel.id && !msgToDel.id.startsWith('temp-id-')) { // Avoid trying to delete unsaved temporary messages
+                    if (msgToDel.id && !msgToDel.id.startsWith('temp-id-')) {
                         const docRef = doc(messagesCol, msgToDel.id);
                         batch.delete(docRef);
                     }
@@ -2054,7 +2053,6 @@
                 // Stop any ongoing response first
                 if (currentController) currentController.abort();
                 
-                // Delete the AI message to be regenerated and any subsequent messages
                 await deleteMessagesFrom(messageId);
                 
                 // sendMessage will now use the globally set `currentModel`
@@ -2065,7 +2063,7 @@
             function hookUserMsgControls() {
                 if (!chatViewport) return;
                 chatViewport.querySelectorAll('.message-group.user').forEach(div => {
-                    const messageId = div.id || div.getAttribute('data-message-id'); // Use id or data-message-id
+                    const messageId = div.getAttribute('data-message-id');
                     const msg = currentMessages.find(m => m.id === messageId);
                     if (!msg) return;
                     const controls = div.querySelector('.user-msg-controls');
@@ -2119,7 +2117,7 @@
                 `;
                 chatViewport.appendChild(div);
                 currentProcessingMessageElement = div;
-                setTimeout(scrollToBottom, 50); // Aggressive autoscroll
+                setTimeout(scrollToBottom, 50); 
             }
 
             function removeProcessingMessage() {
@@ -2127,10 +2125,11 @@
                     currentProcessingMessageElement.remove();
                     currentProcessingMessageElement = null;
                 }
+                setTimeout(scrollToBottom, 50); // Ensure scroll after removal
             }
 
             async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
-                removeProcessingMessage(); // Ensure any previous processing message is gone
+                removeProcessingMessage();
 
                 const div = document.createElement('div');
                 div.className = "message-group ai";
@@ -2159,7 +2158,7 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                scrollToBottom(); // Aggressive autoscroll
+                setTimeout(scrollToBottom, 50);
                 
                 if (saveToDb && currentUser && currentChatId) {
                     const newMsg = { role: 'ai', text: finalRenderText, duration: durationSeconds, createdAt: serverTimestamp() };
@@ -2226,7 +2225,6 @@
                     });
                 });
                 filePreview.style.bottom = `${inputDock.offsetHeight + 15}px`;
-                scrollToBottom(); // Aggressive autoscroll
             }
 
             function showAIImagePreview(base64, caption = '') {
@@ -2234,7 +2232,6 @@
                 aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
                 aiPrevBox.style.bottom = `${inputDock.offsetHeight + 15}px`;
-                scrollToBottom(); // Aggressive autoscroll
             }
 
             async function addMessageToChat(role, text, files = [], duration = null) {
@@ -2336,7 +2333,6 @@
                 renderComicPanel();
                 comicPrevBox.classList.add('active');
                 comicPrevBox.style.bottom = `${inputDock.offsetHeight + 15}px`;
-                scrollToBottom(); // Aggressive autoscroll
             }
 
             function renderComicPanel() {
@@ -2345,7 +2341,6 @@
                 comicIndicator.textContent = `Panel ${currentComicPanelIndex + 1} of ${comicPanels.length}`;
                 comicPrevBtn.disabled = currentComicPanelIndex === 0;
                 comicNextBtn.disabled = currentComicPanelIndex === comicPanels.length - 1;
-                scrollToBottom(); // Aggressive autoscroll
             }
 
             if(comicPrevClose) comicPrevClose.addEventListener('click', () => comicPrevBox.classList.remove('active'));
@@ -2833,7 +2828,14 @@
                     if (callBtn) callBtn.style.display = 'none';
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
-                        const toolStopListener = () => { if (currentController) currentController.abort(); };
+                        const toolStopListener = () => { 
+                            if (currentController) currentController.abort(); 
+                            removeProcessingMessage(); // Ensure message is cleared on stop
+                            // Reset buttons after stopping
+                            if (sendBtn) sendBtn.style.display = 'flex';
+                            if (callBtn) callBtn.style.display = 'flex';
+                            if (stopBtn) stopBtn.style.display = 'none';
+                        };
                         if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                         stopBtn.addEventListener('click', toolStopListener, { once: true });
                         stopBtn._currentStopListener = toolStopListener;
@@ -2917,7 +2919,7 @@
             window.sendMessage = async function(overrideText = null) {
                 if (!currentChatId || !userInput) return;
                 const msgText = overrideText ?? userInput.value.trim();
-                if (!msgText && uploadedFiles.length === 0 && overrideText === null) return; // Only block if user attempts to send empty message
+                if (!msgText && uploadedFiles.length === 0) return;
 
                 const modelToUse = currentModel;
 
@@ -2930,13 +2932,21 @@
                 const signal = currentController.signal;
 
                 if (stopBtn) {
-                    const chatStopListener = () => { if (currentController) currentController.abort(); };
-                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                    const chatStopListener = () => { 
+                        if (currentController) currentController.abort(); 
+                        if (typewriterInterval) {
+                            clearInterval(typewriterInterval);
+                            typewriterInterval = null;
+                        }
+                        // Immediately finalize with what we have + a stopped message
+                        finalizeChatResponseUI(fullResponseContent + '\n\n<em>(Response stopped by user)</em>', performance.now());
+                    };
+                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', chatStopListener);
                     stopBtn.addEventListener('click', chatStopListener, { once: true });
                     stopBtn._currentStopListener = chatStopListener;
                 }
 
-                if (overrideText === null) { // Only add user message to DB if it's not a regeneration
+                if (overrideText === null) {
                     const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
                     await addMessageToChat('user', msgText, filesForHistory);
                     userInput.value = '';
@@ -2955,13 +2965,11 @@
                 // Create AI message div with processing indicator
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
-                // Assign a temporary ID, which will be updated after saving to Firestore
-                aiMessageDiv.setAttribute('data-message-id', 'temp-id-' + Date.now()); 
+                aiMessageDiv.setAttribute('data-message-id', 'temp-id-' + Date.now()); // Temporary ID
                 currentAIMessageFirestoreId = aiMessageDiv.getAttribute('data-message-id');
 
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
-                // Initial content with spinner and dots
                 msgBubble.innerHTML = `
                     <div class="ai-content-area">
                         <div class="typing-status-indicator">
@@ -2977,15 +2985,14 @@
                 currentTypingBubbleContentEl = msgBubble.querySelector('.ai-content-area');
                 currentAIControlsEl = msgBubble.querySelector('.ai-msg-controls');
                 
-                scrollToBottom();
+                setTimeout(scrollToBottom, 50); // Aggressive autoscroll
 
                 let firstChunkReceived = false;
                 const startTime = performance.now();
                 
                 try {
-                    // Filter out any temporary AI messages that might not be fully saved yet
                     const historyForAI = currentMessages
-                        .filter(m => !m.id.startsWith('temp-id-') || m.role === 'user') // Exclude temp AI messages from history, but include temp user messages for regeneration context
+                        .filter(m => m.id !== currentAIMessageFirestoreId) // Exclude any leftover temp messages
                         .map(m => ({ role: m.role, content: m.text || '' }));
                         
                     let endpoint = '';
@@ -3041,7 +3048,7 @@
                                 }
 
                                 if (chunkData.type === 'content' && chunkData.content) {
-                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, ''); // Remove citation markers
+                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
                                     fullResponseContent += cleanedContent;
                                     startTypewriter(); // Start or continue typing
                                 } else if (chunkData.type === 'error') {
@@ -3060,40 +3067,34 @@
                     } else {
                          fullResponseContent += '\n\n<em>(Response stopped by user)</em>';
                     }
-                    // Ensure full content is available for finalization even if typing stopped early
-                    if (currentTypingBubbleContentEl && !typewriterInterval) { // if interval already cleared
-                         currentTypingBubbleContentEl.innerHTML = renderMarkdown(fullResponseContent).html; 
-                    }
                 } finally {
                     finalizeChatResponseUI(fullResponseContent, startTime);
                 }
             };
-            
-            // --- NEW: Typewriter Animation Logic ---
+
             function startTypewriter() {
-                if (typewriterInterval) return; // Already typing
+                if (typewriterInterval) clearInterval(typewriterInterval); // Clear any existing interval
 
                 typewriterInterval = setInterval(() => {
-                    if (!currentTypingBubbleContentEl || typedCharIndex >= fullResponseContent.length) {
+                    if (typedCharIndex < fullResponseContent.length) {
+                        if (currentTypingBubbleContentEl) {
+                            // Append one character at a time
+                            currentTypingBubbleContentEl.textContent += fullResponseContent[typedCharIndex];
+                        }
+                        typedCharIndex++;
+                        setTimeout(scrollToBottom, 0); // Aggressive autoscroll during typing
+                    } else {
                         clearInterval(typewriterInterval);
-                        typewriterInterval = null;
-                        return;
+                        typewriterInterval = null; // Typing finished
                     }
-
-                    // Append the next character
-                    currentTypingBubbleContentEl.textContent += fullResponseContent[typedCharIndex];
-                    typedCharIndex++;
-                    scrollToBottom();
                 }, 30); // Adjust typing speed here (ms per character)
             }
 
             function finalizeChatResponseUI(finalText, startTime) {
                 const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
                 
-                if (typewriterInterval) {
-                    clearInterval(typewriterInterval); // Ensure typing stops
-                    typewriterInterval = null;
-                }
+                if (typewriterInterval) clearInterval(typewriterInterval); // Ensure typing stops
+                typewriterInterval = null;
 
                 // Construct the final HTML for the bubble's controls area
                 const controlsHtml = `
@@ -3120,44 +3121,33 @@
                     hookAiMsgControls(); // Re-hook listeners for newly rendered controls
                 }
                 
-                // Save the final message to Firestore and update its temporary ID
                 if (currentUser && currentChatId && finalText.trim()) {
+                    // Only save if the response wasn't aborted empty
                     const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
                     addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
                         if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
-                        // Update currentMessages if we need it for future history
-                        if (currentAIMessageFirestoreId) {
-                            const idx = currentMessages.findIndex(m => m.id === currentAIMessageFirestoreId);
-                            if (idx !== -1) {
-                                currentMessages[idx] = {id: docRef.id, ...newMsg};
-                            } else {
-                                currentMessages.push({id: docRef.id, ...newMsg});
-                            }
-                        } else {
-                            currentMessages.push({id: docRef.id, ...newMsg});
-                        }
+                        // Add to currentMessages for proper history context on regeneration
+                        currentMessages.push({id: docRef.id, ...newMsg});
                     }).catch(e => console.error("Error saving final message:", e));
                 }
 
-                // Reset UI buttons
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
                 if (callBtn) callBtn.style.display = 'flex';
                 if (stopBtn._currentStopListener) {
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                    stopBtn._currentStopListener = null; // Clear reference
                 }
-                currentController = null; // Clear the AbortController
-
+                currentController = null;
+                currentAIMessageElement = null; // Clear reference
+                currentAIMessageFirestoreId = null;
+                
                 // Reset typewriter related global state
                 fullResponseContent = '';
                 typedCharIndex = 0;
-                currentAIMessageElement = null;
-                currentAIMessageFirestoreId = null;
                 currentTypingBubbleContentEl = null;
                 currentAIControlsEl = null;
 
-                scrollToBottom();
+                setTimeout(scrollToBottom, 50); // Final aggressive autoscroll
             }
 
             // --- REBUILT & ENHANCED VOICE CALL LOGIC ---
@@ -3202,6 +3192,7 @@
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
                         if (userSpeechWave) userSpeechWave.classList.add('active');
                     }
+                    setTimeout(scrollToBottom, 50);
                 };
 
                 speechRecognition.onresult = (event) => {
@@ -3230,7 +3221,7 @@
                         else callConversation.appendChild(userMsgEl);
                     }
                     userMsgEl.textContent = (finalTranscript + interimTranscript).trim();
-                    if(userMsgEl.textContent) callConversation.scrollTop = callConversation.scrollHeight;
+                    if(userMsgEl.textContent) setTimeout(callConversation.scrollTop = callConversation.scrollHeight, 50);
                 };
 
                 speechRecognition.onend = () => {
@@ -3258,6 +3249,7 @@
                     } else if (isCallActive && !isMuted) {
                         try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
                     }
+                    setTimeout(scrollToBottom, 50);
                 };
 
                 speechRecognition.onerror = (event) => {
@@ -3270,6 +3262,7 @@
                     } else if (isCallActive && !isMuted && event.error !== 'aborted') {
                         try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
                     }
+                    setTimeout(scrollToBottom, 50);
                 };
             } else {
                 if (callBtn) callBtn.style.display = 'none';
@@ -3285,7 +3278,7 @@
                 if(waveElement) callConversation.insertBefore(msgEl, waveElement);
                 else callConversation.appendChild(msgEl);
                 
-                callConversation.scrollTop = callConversation.scrollHeight;
+                setTimeout(callConversation.scrollTop = callConversation.scrollHeight, 50);
             }
 
             async function handleCallBotResponse() {
@@ -3293,6 +3286,7 @@
                 
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
+                setTimeout(scrollToBottom, 50);
 
                 if (speechRecognition && isRecognizing) {
                     try { speechRecognition.stop(); } catch(e) {}
@@ -3349,6 +3343,7 @@
                     console.error("Error getting bot response:", err);
                     if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
                     if(tapToTalk) tapToTalk.style.display = 'block';
+                    setTimeout(scrollToBottom, 50);
                 }
             }
 
@@ -3358,6 +3353,7 @@
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
+                setTimeout(scrollToBottom, 50);
 
                 if (speechRecognition && isRecognizing) {
                     try { speechRecognition.stop(); } catch(e) {}
@@ -3395,6 +3391,7 @@
                                 try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                             }
                         }
+                        setTimeout(scrollToBottom, 50);
                     };
                     currentAudio.play();
                 } catch (err) {
@@ -3409,6 +3406,7 @@
                             try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                         }
                     }
+                    setTimeout(scrollToBottom, 50);
                 }
             }
 
@@ -3428,6 +3426,7 @@
                 if (tapToTalk) tapToTalk.style.display = 'none';
                 if (callStatusMessage) callStatusMessage.textContent = 'Call Ended.';
                 if (userSpeechWave) userSpeechWave.classList.remove('active');
+                setTimeout(scrollToBottom, 50);
             }
 
             function stopBotSpeakingAndStartListening() {
@@ -3450,6 +3449,7 @@
                         try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                     }
                 }
+                setTimeout(scrollToBottom, 50);
             }
 
             if (callModal) {
@@ -3473,6 +3473,7 @@
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
+                    setTimeout(scrollToBottom, 50);
 
                     setTimeout(() => {
                         if (!isCallActive) return;
@@ -3483,6 +3484,7 @@
                         if (!isMuted && !isRecognizing) {
                             try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                         }
+                        setTimeout(scrollToBottom, 50);
                     }, 1500);
                 });
             }
@@ -3513,6 +3515,7 @@
                             }
                         }
                     }
+                    setTimeout(scrollToBottom, 50);
                 });
             }
 
