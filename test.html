@@ -1331,7 +1331,7 @@
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
         let currentAIMessageElement = null; // Reference to the entire message-group div for the streaming AI response.
-        let currentAIMessageTempId = null; // Temporary ID for the streaming message, used to prevent renderChatBox from clearing it.
+        let currentAIMessageFirestoreId = null; // Store message ID for saving to DB later.
 
         // --- TYPEWRITER ANIMATION STATE ---
         let typewriterInterval = null;
@@ -1339,6 +1339,7 @@
         let fullResponseContent = ''; // Accumulates raw content from stream
         let currentTypingBubbleContentEl = null; // Refers to the .ai-content-area element within the current AI bubble
         let currentAIControlsEl = null; // Refers to the .ai-msg-controls element within the current AI bubble
+        let typewriterSpeed = 30; // Milliseconds per character for typing animation. Faster.
 
         // Cosmic background animations
         function igniteCosmos() {
@@ -1481,8 +1482,8 @@
                 if(chatViewport.innerHTML.trim() === '') {
                     chatViewport.innerHTML = welcomeMsg;
                     hookAiMsgControls(); // Hook controls for initial message
-                    scrollToBottom(); // Ensure welcome message is visible
                 }
+                scrollToBottom(); // Ensure welcome message is visible.
             };
             addWelcomeMessage();
 
@@ -1561,6 +1562,7 @@
                     fileObjectURLs = [];
                     uploadedFiles = Array.from(this.files || []);
                     renderFilePreview();
+                    scrollToBottom(); // Scroll to bottom when file preview appears.
                 });
             }
 
@@ -1671,20 +1673,16 @@
                 const chatsCol = collection(db, 'users', userId, 'chats');
                 const q = query(chatsCol, orderBy('createdAt', 'desc'));
                 chatsUnsubscribe = onSnapshot(q, async (snapshot) => {
-                    if (snapshot.empty && !currentAIMessageElement) { // Only create new chat if no messages and no ongoing AI response
+                    if (snapshot.empty) {
                         await createNewChat(userId);
                         return;
                     }
                     chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatsListSidebar();
                     if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                        currentChatId = chats[0]?.id; // Ensure currentChatId is set if chats exist
+                        currentChatId = chats[0].id;
                     }
-                    if (currentChatId) {
-                        subscribeToMessages(userId, currentChatId);
-                    } else { // No chats even after creating one (shouldn't happen often, but good fallback)
-                         renderChatBox([]);
-                    }
+                    subscribeToMessages(userId, currentChatId);
                 }, (error) => {
                     console.error("Error fetching chats: ", error);
                     if (chatsListEl) chatsListEl.innerHTML = `<div class="message-group system" style="color: #f44;">Error loading chats.</div>`;
@@ -1698,8 +1696,6 @@
                 try {
                     const newChatDoc = await addDoc(chatsCol, { name: "New Chat", createdAt: serverTimestamp() });
                     currentChatId = newChatDoc.id;
-                    // Force refresh messages for the new chat
-                    subscribeToMessages(userId, currentChatId);
                 } catch (e) {
                     console.error("Error creating new chat: ", e);
                 }
@@ -1837,8 +1833,8 @@
                         pre.classList.add('highlighted');
                     }
                     const btn = pre.querySelector('.copy-btn');
-                    if (btn && codeEl && !btn.dataset.listenerAttached) { // Prevent attaching multiple listeners
-                        const newBtn = btn.cloneNode(true); // Clone to remove existing listeners
+                    if (btn && codeEl) {
+                        const newBtn = btn.cloneNode(true);
                         btn.parentNode.replaceChild(newBtn, btn);
 
                         newBtn.addEventListener('click', async () => {
@@ -1851,7 +1847,6 @@
                                 setTimeout(() => { newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
                             }
                         });
-                        newBtn.dataset.listenerAttached = 'true'; // Mark as attached
                     }
                 });
             }
@@ -1867,23 +1862,22 @@
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                // If there's an ongoing typewriter effect for a temporary element, clear it
+                // Clear any ongoing typewriter effect
                 if (typewriterInterval) {
                     clearInterval(typewriterInterval);
                     typewriterInterval = null;
                 }
-                // Reset typewriter state (important for new responses)
                 typedCharIndex = 0;
                 fullResponseContent = '';
                 currentTypingBubbleContentEl = null;
                 currentAIControlsEl = null;
                 currentAIMessageElement = null;
-                currentAIMessageTempId = null;
+                currentAIMessageFirestoreId = null;
 
-                // Remove any active processing message if it exists
+                // Remove any active processing/typing messages before re-rendering
                 removeProcessingMessage();
                 
-                chatViewport.innerHTML = ''; // Clear the actual viewport now
+                chatViewport.innerHTML = ''; 
 
                 if(messages.length === 0) {
                     addWelcomeMessage();
@@ -1945,6 +1939,11 @@
                     });
                 }
                 
+                // Re-append active processing message if it was present
+                if (currentProcessingMessageElement && currentProcessingMessageElement.parentElement !== chatViewport) { 
+                    chatViewport.appendChild(currentProcessingMessageElement);
+                }
+
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
@@ -1959,7 +1958,7 @@
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 for (let i = msgIndex; i < currentMessages.length; i++) {
                     const msgToDel = currentMessages[i];
-                    if (msgToDel.id) { // Only delete if it's a persisted message, not a temporary streaming one
+                    if (msgToDel.id && !msgToDel.id.startsWith('temp-id-')) {
                         const docRef = doc(messagesCol, msgToDel.id);
                         batch.delete(docRef);
                     }
@@ -2093,20 +2092,23 @@
                 });
             }
             
-            // Aggressive scrolling function
             function scrollToBottom() {
                 if (chatViewport) {
-                    chatViewport.scrollTop = chatViewport.scrollHeight;
+                    // Using scrollIntoView for smoother and more reliable scrolling to the end.
+                    // chatViewport.scrollTop = chatViewport.scrollHeight;
+                    const lastChild = chatViewport.lastElementChild;
+                    if (lastChild) {
+                        lastChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
                 }
             }
 
             function displayProcessingMessage(text) {
                 if (!chatViewport) return;
-                removeProcessingMessage(); // Clear previous tool message if any
+                removeProcessingMessage(); // Clear previous tool message
 
                 const div = document.createElement('div');
-                div.className = "message-group ai processing-message";
-                div.id = 'processing-temp-msg'; // Unique ID for processing messages
+                div.className = "message-group ai processing-message"; // Keep for consistency for general tool processing
                 div.innerHTML = `
                     <div class="msg-bubble" aria-label="${text}">
                         <div class="ai-content-area">
@@ -2117,28 +2119,26 @@
                 `;
                 chatViewport.appendChild(div);
                 currentProcessingMessageElement = div;
-                scrollToBottom(); 
+                scrollToBottom(); // Ensure processing message is visible.
             }
 
             function removeProcessingMessage() {
-                // Only remove if it's currently in the DOM using its ID
-                const existingProcessingMsg = $('processing-temp-msg');
-                if (existingProcessingMsg) {
-                    existingProcessingMsg.remove();
-                    currentProcessingMessageElement = null; // Clear the reference
+                if (currentProcessingMessageElement) {
+                    currentProcessingMessageElement.remove();
+                    currentProcessingMessageElement = null;
                 }
             }
 
             async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
-                removeProcessingMessage(); // Ensure any prior processing message is gone
+                removeProcessingMessage();
 
                 const div = document.createElement('div');
                 div.className = "message-group ai";
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                chatViewport.appendChild(div); // Add to DOM before populating to allow scrolling
-
+                chatViewport.appendChild(div);
+                
                 const finalRenderText = text || "Tool execution finished.";
                 
                 msgBubble.innerHTML = `
@@ -2159,14 +2159,14 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                scrollToBottom(); // Scroll after content is in
+                scrollToBottom();
                 
                 if (saveToDb && currentUser && currentChatId) {
                     const newMsg = { role: 'ai', text: finalRenderText, duration: durationSeconds, createdAt: serverTimestamp() };
                     try {
                         const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
                         div.setAttribute('data-message-id', docRef.id);
-                        currentMessages.push({id: docRef.id, ...newMsg}); // Add to local state for regen/edit logic
+                        currentMessages.push({id: docRef.id, ...newMsg});
                         hookAiMsgControls();
                     } catch (e) { console.error("Error saving AI message: ", e); }
                 }
@@ -2223,6 +2223,7 @@
                         fileObjectURLs.splice(idx, 1);
                         if (!uploadedFiles.length && chatFile) chatFile.value = '';
                         renderFilePreview();
+                        scrollToBottom(); // Scroll to bottom after file is removed/preview adjusted.
                     });
                 });
                 filePreview.style.bottom = `${inputDock.offsetHeight + 15}px`;
@@ -2233,6 +2234,7 @@
                 aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
                 aiPrevBox.style.bottom = `${inputDock.offsetHeight + 15}px`;
+                scrollToBottom(); // Ensure image preview is visible.
             }
 
             async function addMessageToChat(role, text, files = [], duration = null) {
@@ -2297,6 +2299,7 @@
                                 clearInterval(pollInterval);
                                 const videoHtml = `🎉 Your video is ready! <br><video controls src="${statusData.url}" class="chat-media-preview"></video>`;
                                 await addMessageToChat('ai', videoHtml);
+                                scrollToBottom(); // Scroll to bottom after adding video.
                             } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
                                 clearInterval(pollInterval);
                                 await showToolResponse(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
@@ -2334,6 +2337,7 @@
                 renderComicPanel();
                 comicPrevBox.classList.add('active');
                 comicPrevBox.style.bottom = `${inputDock.offsetHeight + 15}px`;
+                scrollToBottom(); // Ensure comic preview is visible.
             }
 
             function renderComicPanel() {
@@ -2342,6 +2346,7 @@
                 comicIndicator.textContent = `Panel ${currentComicPanelIndex + 1} of ${comicPanels.length}`;
                 comicPrevBtn.disabled = currentComicPanelIndex === 0;
                 comicNextBtn.disabled = currentComicPanelIndex === comicPanels.length - 1;
+                scrollToBottom(); // Scroll to bottom when new comic panel is rendered.
             }
 
             if(comicPrevClose) comicPrevClose.addEventListener('click', () => comicPrevBox.classList.remove('active'));
@@ -2431,6 +2436,7 @@
                             const base64String = await blobToBase64(blob);
                             const imgHtml = `✅ Photo edited successfully! <br><img src="${base64String}" alt="Edited Photo" class="chat-media-preview">`;
                             await addMessageToChat('ai', imgHtml);
+                            scrollToBottom(); // Scroll to bottom after adding edited photo.
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Photo edit stopped.'; }
@@ -2460,6 +2466,7 @@
                             const url = URL.createObjectURL(blob);
                             const imgHtml = `✅ Background removed! <br><img src="${url}" alt="Image with background removed" class="chat-media-preview">`;
                             await addMessageToChat('ai', imgHtml);
+                            scrollToBottom(); // Scroll to bottom after adding background removed image.
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Background removal stopped.'; }
@@ -2567,6 +2574,7 @@
                             const url = URL.createObjectURL(blob);
                             const audioHtml = `🗣️ Voice generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             await addMessageToChat('ai', audioHtml);
+                            scrollToBottom(); // Scroll to bottom after adding audio.
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Voice generation stopped.'; }
@@ -2597,6 +2605,7 @@
                             const url = URL.createObjectURL(blob);
                             const narrationHtml = `🗣️ Narration generated! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             await addMessageToChat('ai', narrationHtml);
+                            scrollToBottom(); // Scroll to bottom after adding narration.
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Audio narration stopped.'; }
@@ -2683,6 +2692,7 @@
                             const url = URL.createObjectURL(blob);
                             const musicHtml = `🎵 Your music is ready! <br><audio controls src="${url}" class="chat-media-preview"></audio>`;
                             await addMessageToChat('ai', musicHtml);
+                            scrollToBottom(); // Scroll to bottom after adding music.
                             return null;
                         } catch (err) {
                             if (err.name === 'AbortError') { return '❌ Music generation stopped.'; }
@@ -2822,7 +2832,7 @@
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     
-                    if (currentController) currentController.abort(); // Abort any ongoing chat/tool
+                    if (currentController) currentController.abort();
                     currentController = new AbortController(); 
                     
                     if (sendBtn) sendBtn.style.display = 'none';
@@ -2850,7 +2860,7 @@
                         if (result && typeof result === 'string') {
                             await showToolResponse(result, true);
                         }
-                        removeProcessingMessage(); // Ensure processing message is gone after tool execution
+                        removeProcessingMessage(); 
                         if (sendBtn) sendBtn.style.display = 'flex';
                         if (callBtn) callBtn.style.display = 'flex';
                         if (stopBtn) stopBtn.style.display = 'none';
@@ -2891,7 +2901,7 @@
                         if (resultText) {
                             await showToolResponse(resultText, true);
                         }
-                        removeProcessingMessage(); // Ensure processing message is gone after form submission
+                        removeProcessingMessage();
                         if (submitButton) {
                             submitButton.innerHTML = originalButtonContent;
                             submitButton.disabled = false;
@@ -2921,7 +2931,7 @@
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
 
-                if (currentController) currentController.abort(); // Abort any previous AI response
+                if (currentController) currentController.abort();
                 currentController = new AbortController();
                 const signal = currentController.signal;
 
@@ -2931,8 +2941,6 @@
                     stopBtn.addEventListener('click', chatStopListener, { once: true });
                     stopBtn._currentStopListener = chatStopListener;
                 }
-                
-                removeProcessingMessage(); // Ensure no tool processing message interferes
 
                 if (overrideText === null) {
                     const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
@@ -2944,16 +2952,17 @@
                 }
 
                 // --- TYPEWRITER INITIALIZATION ---
+                // Reset typewriter state
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typewriterInterval = null;
                 typedCharIndex = 0;
                 fullResponseContent = '';
 
-                // Create a temporary AI message div with processing indicator
+                // Create AI message div with processing indicator
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
-                currentAIMessageTempId = 'temp-ai-msg-' + Date.now(); // Unique temporary ID
-                aiMessageDiv.id = currentAIMessageTempId; 
+                aiMessageDiv.setAttribute('data-message-id', 'temp-id-' + Date.now()); // Temporary ID
+                currentAIMessageFirestoreId = aiMessageDiv.getAttribute('data-message-id');
 
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
@@ -2979,7 +2988,7 @@
                 
                 try {
                     const historyForAI = currentMessages
-                        .filter(m => m.id !== currentAIMessageTempId) // Exclude the temporary streaming message if it somehow made it to history
+                        .filter(m => m.id !== currentAIMessageFirestoreId) // Exclude any leftover temp messages
                         .map(m => ({ role: m.role, content: m.text || '' }));
                         
                     let endpoint = '';
@@ -3054,12 +3063,9 @@
                     } else {
                          fullResponseContent += '\n\n<em>(Response stopped by user)</em>';
                     }
-                    // Ensure final text is displayed if typing stopped prematurely
                     if (currentTypingBubbleContentEl) {
-                        if (typewriterInterval) clearInterval(typewriterInterval); // Stop any ongoing typing
-                        currentTypingBubbleContentEl.innerHTML = renderMarkdown(fullResponseContent).html;
-                        enhanceCodeBlocks(currentTypingBubbleContentEl);
-                        scrollToBottom();
+                        // Ensure final text is displayed if typing stopped prematurely
+                        currentTypingBubbleContentEl.textContent = fullResponseContent; 
                     }
                 } finally {
                     finalizeChatResponseUI(fullResponseContent, startTime);
@@ -3067,30 +3073,23 @@
             };
 
             function startTypewriter() {
-                if (!currentTypingBubbleContentEl || !fullResponseContent) {
-                    if (typewriterInterval) clearInterval(typewriterInterval);
-                    typewriterInterval = null;
-                    return;
-                }
-
                 if (typewriterInterval) clearInterval(typewriterInterval); // Clear any existing interval
 
                 typewriterInterval = setInterval(() => {
                     if (typedCharIndex < fullResponseContent.length) {
+                        if (currentTypingBubbleContentEl) {
+                            currentTypingBubbleContentEl.textContent += fullResponseContent[typedCharIndex];
+                        }
                         typedCharIndex++;
-                        // Render the current substring as markdown
-                        const currentTypedContent = fullResponseContent.substring(0, typedCharIndex);
-                        currentTypingBubbleContentEl.innerHTML = renderMarkdown(currentTypedContent).html;
-                        enhanceCodeBlocks(currentTypingBubbleContentEl); // Re-highlight as content grows
                         scrollToBottom();
                     } else {
                         clearInterval(typewriterInterval);
                         typewriterInterval = null; // Typing finished
                     }
-                }, 30); // Adjust typing speed here (ms per character)
+                }, typewriterSpeed); // Adjust typing speed here (ms per character)
             }
 
-            async function finalizeChatResponseUI(finalText, startTime) {
+            function finalizeChatResponseUI(finalText, startTime) {
                 const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
                 
                 if (typewriterInterval) clearInterval(typewriterInterval); // Ensure typing stops
@@ -3113,7 +3112,7 @@
                 `;
 
                 if (currentAIMessageElement && currentTypingBubbleContentEl && currentAIControlsEl) {
-                    currentTypingBubbleContentEl.innerHTML = renderMarkdown(finalText).html; // Ensure final content is rendered correctly
+                    currentTypingBubbleContentEl.innerHTML = renderMarkdown(finalText).html; // Render markdown once fully available
                     currentAIControlsEl.innerHTML = controlsHtml;
                     currentAIControlsEl.style.display = 'flex'; // Make controls visible
 
@@ -3121,35 +3120,12 @@
                     hookAiMsgControls(); // Re-hook listeners for newly rendered controls
                 }
                 
-                // Add the final message to Firestore
                 if (currentUser && currentChatId && finalText.trim()) {
                     const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
-                    try {
-                        const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
-                        // Once saved, the Firestore listener will pick it up and re-render.
-                        // We remove the temporary element here, knowing it will be replaced by the persisted one.
-                        if (currentAIMessageElement && currentAIMessageElement.id === currentAIMessageTempId) {
-                            currentAIMessageElement.remove();
-                        }
-                    } catch (e) {
-                        console.error("Error saving final message:", e);
-                        // If saving failed, keep the temporary message in the UI with an error.
-                        if (currentAIMessageElement) {
-                            currentAIMessageElement.setAttribute('data-message-id', 'error-' + Date.now()); // Mark as error
-                        }
-                    }
-                } else if (currentAIMessageElement) {
-                    // If response was empty or error, but not saved, remove the temporary element.
-                    currentAIMessageElement.remove();
+                    addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
+                        if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
+                    }).catch(e => console.error("Error saving final message:", e));
                 }
-
-                // Reset global state for the next message
-                fullResponseContent = '';
-                typedCharIndex = 0;
-                currentTypingBubbleContentEl = null;
-                currentAIControlsEl = null;
-                currentAIMessageElement = null; // Clear reference to the temporary element
-                currentAIMessageTempId = null;
 
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
@@ -3158,6 +3134,14 @@
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                 }
                 currentController = null;
+                currentAIMessageElement = null;
+                currentAIMessageFirestoreId = null;
+                
+                // Reset typewriter related global state
+                fullResponseContent = '';
+                typedCharIndex = 0;
+                currentTypingBubbleContentEl = null;
+                currentAIControlsEl = null;
 
                 scrollToBottom();
             }
@@ -3171,7 +3155,8 @@
                 minimax: {
                     label: "Seraphina (Characters)",
                     styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
-                };
+                }
+            };
 
             function updateCallVoiceStyles() {
                 if (!callVoiceModel || !callVoiceStyle || !callVoiceStyleLabel) return;
@@ -3203,6 +3188,7 @@
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
                         if (userSpeechWave) userSpeechWave.classList.add('active');
                     }
+                    scrollToBottom(); // Scroll to bottom when listening starts.
                 };
 
                 speechRecognition.onresult = (event) => {
@@ -3232,6 +3218,7 @@
                     }
                     userMsgEl.textContent = (finalTranscript + interimTranscript).trim();
                     if(userMsgEl.textContent) callConversation.scrollTop = callConversation.scrollHeight;
+                    scrollToBottom(); // Scroll to bottom when new speech result comes.
                 };
 
                 speechRecognition.onend = () => {
@@ -3259,6 +3246,7 @@
                     } else if (isCallActive && !isMuted) {
                         try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
                     }
+                    scrollToBottom(); // Scroll to bottom when recognition ends.
                 };
 
                 speechRecognition.onerror = (event) => {
@@ -3271,6 +3259,7 @@
                     } else if (isCallActive && !isMuted && event.error !== 'aborted') {
                         try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
                     }
+                    scrollToBottom(); // Scroll to bottom on recognition error.
                 };
             } else {
                 if (callBtn) callBtn.style.display = 'none';
@@ -3287,6 +3276,7 @@
                 else callConversation.appendChild(msgEl);
                 
                 callConversation.scrollTop = callConversation.scrollHeight;
+                scrollToBottom(); // Scroll to bottom when a call message is added.
             }
 
             async function handleCallBotResponse() {
@@ -3351,6 +3341,7 @@
                     if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
                     if(tapToTalk) tapToTalk.style.display = 'block';
                 }
+                scrollToBottom(); // Scroll to bottom after bot response is handled.
             }
 
             async function speakBotResponse(textToSpeak) {
@@ -3411,6 +3402,7 @@
                         }
                     }
                 }
+                scrollToBottom(); // Scroll to bottom after bot starts speaking.
             }
 
             function endCall() {
@@ -3429,6 +3421,7 @@
                 if (tapToTalk) tapToTalk.style.display = 'none';
                 if (callStatusMessage) callStatusMessage.textContent = 'Call Ended.';
                 if (userSpeechWave) userSpeechWave.classList.remove('active');
+                scrollToBottom(); // Scroll to bottom when call ends.
             }
 
             function stopBotSpeakingAndStartListening() {
@@ -3451,6 +3444,7 @@
                         try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                     }
                 }
+                scrollToBottom(); // Scroll to bottom when starting listening.
             }
 
             if (callModal) {
@@ -3485,6 +3479,7 @@
                             try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                         }
                     }, 1500);
+                    scrollToBottom(); // Scroll to bottom when call starts.
                 });
             }
 
@@ -3514,6 +3509,7 @@
                             }
                         }
                     }
+                    scrollToBottom(); // Scroll to bottom when mute status changes.
                 });
             }
 
