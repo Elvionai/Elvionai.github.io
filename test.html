@@ -251,7 +251,7 @@
         .message-group.user { align-self: flex-end; align-items: flex-end; }
         .message-group.system { align-self: center; text-align: center; font-style: italic; opacity: 0.8; font-size: 1em; }
         
-        /* Specific styles for status/thinking message */
+        /* Specific styles for status/thinking message - NO LONGER USED, replaced by typing-dots */
         .message-group.ai.status-message .msg-bubble {
             display: inline-flex;
             align-items: center;
@@ -410,12 +410,10 @@
             border-bottom-left-radius: 12px;
             box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.12);
             display: inline-flex; /* To wrap around content */
+            min-width: 80px; /* Ensure it's visible even with just dots */
+            justify-content: center;
         }
 
-        .message-group.ai.typing-dots .typing-bubble {
-            display: inline-flex; /* Ensure dots are in line */
-            align-items: center;
-        }
         .message-group.ai.typing-dots .dot-anim {
             display: inline-block;
             width: 14px; height: 14px; margin: 0 6px; /* Larger dots */
@@ -1330,8 +1328,8 @@
         let currentComicPanelIndex = 0;
 
         // --- References for dynamic animation elements ---
-        let currentStatusMessageElement = null;
-        let currentProcessingMessageElement = null;
+        // let currentStatusMessageElement = null; // No longer needed directly for "thinking"
+        let currentProcessingMessageElement = null; // Still used for tool processing messages
 
         // --- MODEL STATE ---
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
@@ -1526,12 +1524,7 @@
             }
 
             if (userInput) {
-                userInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                    }
-                });
+                // REMOVED: userInput.addEventListener('keydown', (e) => { ... }); to disable Enter key submission
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1847,9 +1840,10 @@
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
                 
-                const activeStatusMessage = currentStatusMessageElement || currentProcessingMessageElement;
-                if (activeStatusMessage && activeStatusMessage.parentElement === chatViewport) {
-                    chatViewport.removeChild(activeStatusMessage);
+                // Remove any active processing/typing messages before re-rendering
+                const activeProcessingMessage = currentProcessingMessageElement;
+                if (activeProcessingMessage && activeProcessingMessage.parentElement === chatViewport) {
+                    chatViewport.removeChild(activeProcessingMessage);
                 }
                 const activeStreamingMessage = currentAIMessageElement;
                 if (activeStreamingMessage && activeStreamingMessage.parentElement === chatViewport) {
@@ -1862,7 +1856,7 @@
                     addWelcomeMessage();
                 } else {
                     (messages || []).forEach((msg) => {
-                        if (msg.id === currentAIMessageFirestoreId) return;
+                        if (msg.id === currentAIMessageFirestoreId) return; // Skip temporary streaming message if it exists
 
                         const div = document.createElement('div');
                         div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
@@ -1918,11 +1912,12 @@
                     });
                 }
                 
+                // Re-append active streaming/processing message after history is rendered
                 if (activeStreamingMessage) {
                     chatViewport.appendChild(activeStreamingMessage);
                 }
-                if (activeStatusMessage) {
-                    chatViewport.appendChild(activeStatusMessage);
+                if (activeProcessingMessage) { // For tool processing, still a general status
+                    chatViewport.appendChild(activeProcessingMessage);
                 }
 
                 enhanceCodeBlocks(chatViewport);
@@ -1962,18 +1957,19 @@
 
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const shareBtn = controls.querySelector('.inline-share-btn');
-                    const popup = controls.querySelector('.model-switch-popup');
+                    const popup = controls.querySelector('.model-switch-popup'); // Reference the popup
 
                     if (copyBtn) copyBtn.onclick = () => {
                         const msgBubble = div.querySelector('.msg-bubble');
                         if (!msgBubble) return;
                         
+                        // Temporarily hide controls to copy only the content
                         const tempControls = msgBubble.querySelector('.ai-msg-controls');
                         if(tempControls) tempControls.style.display = 'none';
 
                         const textToCopy = msgBubble.innerText || '';
                         
-                        if(tempControls) tempControls.style.display = 'flex';
+                        if(tempControls) tempControls.style.display = 'flex'; // Restore controls
 
                         navigator.clipboard.writeText(textToCopy.trim());
                         copyBtn.innerHTML = "<i class='fa-solid fa-check'></i>";
@@ -1994,13 +1990,14 @@
                         } catch (e) { console.warn('Share failed:', e); }
                     };
                     
-                    if (popup) {
+                    if (popup) { // Add listener to the popup itself
                         popup.addEventListener('click', (ev) => {
                             const button = ev.target.closest('button');
                             if (button) {
                                 const regenWithModel = button.dataset.model;
                                 setCurrentModel(regenWithModel); // Set the model for future chats
                                 regenerateResponse(messageId);
+                                popup.style.display = 'none'; // Close popup after selection
                             }
                         });
                     }
@@ -2013,6 +2010,9 @@
                 const userMsg = currentMessages[msgIndex - 1];
                 if (userMsg.role !== 'user') return;
 
+                // Stop any ongoing response first
+                if (currentController) currentController.abort();
+                
                 await deleteMessagesFrom(messageId);
                 
                 // sendMessage will now use the globally set `currentModel`
@@ -2062,37 +2062,13 @@
                 }
             }
 
-            function displayStatusMessage(text, modelName) {
-                if (!chatViewport) return;
-                removeStatusMessage(); 
-                removeProcessingMessage();
-
-                let modelDisplayName = modelName === 'perplexity' ? 'Seraphina' : 'Philadelphia';
-
-                const div = document.createElement('div');
-                div.className = "message-group ai status-message";
-                div.innerHTML = `
-                    <div class="msg-bubble" aria-label="${text}">
-                        <span class="spinner"></span>
-                        <span style="margin-left:10px;">${modelDisplayName} is ${text}...</span>
-                    </div>
-                `;
-                chatViewport.appendChild(div);
-                currentStatusMessageElement = div;
-                setTimeout(scrollToBottom, 50); 
-            }
-
-            function removeStatusMessage() {
-                if (currentStatusMessageElement) {
-                    currentStatusMessageElement.remove();
-                    currentStatusMessageElement = null;
-                }
-            }
+            // Removed `displayStatusMessage` as it's replaced by `typing-dots` for chat responses.
+            // `removeStatusMessage` is also implicitly removed in favor of direct class manipulation.
 
             function displayProcessingMessage(text) {
                 if (!chatViewport) return;
-                removeStatusMessage(); 
-                removeProcessingMessage();
+                // removeStatusMessage(); // No longer needed
+                removeProcessingMessage(); // Clear previous tool message
 
                 const div = document.createElement('div');
                 div.className = "message-group ai processing-message";
@@ -2115,7 +2091,7 @@
             }
 
             async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
-                removeStatusMessage();
+                // removeStatusMessage(); // No longer needed
                 removeProcessingMessage();
 
                 const div = document.createElement('div');
@@ -2133,6 +2109,13 @@
                         <div style="margin-left:auto;"></div>
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
                         <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                        <div class="switch-model-btn" title="Regenerate or switch model">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <div class="model-switch-popup">
+                                <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Regen with Philadelphia</button>
+                                <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Regen with Seraphina</button>
+                            </div>
+                        </div>
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
@@ -2918,27 +2901,12 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
 
-                displayStatusMessage('thinking', modelToUse);
-
-                const historyForAI = currentMessages
-                    .filter(m => m.id !== currentAIMessageFirestoreId) // Exclude any leftover temp messages
-                    .map(m => ({ role: m.role, content: m.text || '' }));
-                    
-                let endpoint = '';
-                let chatPayload = {};
-
-                if (modelToUse === 'gemini') {
-                    endpoint = `${API_BASE_URL}/chat`;
-                    chatPayload = { message: msgText, history: historyForAI };
-                } else { // 'perplexity'
-                    endpoint = `${API_BASE_URL}/api/seraphina/chat`;
-                    chatPayload = { message: msgText, history: historyForAI };
-                }
-
+                // Immediately create the AI message div with typing dots
                 const aiMessageDiv = document.createElement('div');
-                aiMessageDiv.className = "message-group ai";
+                aiMessageDiv.className = "message-group ai typing-dots"; // Add typing-dots class
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
+                msgBubble.innerHTML = `<span class="dot-anim"></span><span class="dot-anim"></span><span class="dot-anim"></span>`; // Typing animation
                 aiMessageDiv.appendChild(msgBubble);
                 chatViewport.appendChild(aiMessageDiv);
                 currentAIMessageElement = aiMessageDiv;
@@ -2951,6 +2919,21 @@
                 let firstChunkReceived = false;
                 
                 try {
+                    const historyForAI = currentMessages
+                        .filter(m => m.id !== currentAIMessageFirestoreId) // Exclude any leftover temp messages
+                        .map(m => ({ role: m.role, content: m.text || '' }));
+                        
+                    let endpoint = '';
+                    let chatPayload = {};
+
+                    if (modelToUse === 'gemini') {
+                        endpoint = `${API_BASE_URL}/chat`;
+                        chatPayload = { message: msgText, history: historyForAI };
+                    } else { // 'perplexity'
+                        endpoint = `${API_BASE_URL}/api/seraphina/chat`;
+                        chatPayload = { message: msgText, history: historyForAI };
+                    }
+
                     const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2985,13 +2968,11 @@
                                 const chunkData = JSON.parse(jsonStr);
                                 
                                 if (!firstChunkReceived) {
-                                    removeStatusMessage();
+                                    aiMessageDiv.classList.remove('typing-dots'); // Remove dots once content starts
                                     firstChunkReceived = true;
-                                    msgBubble.innerHTML = '...'; // Start with a placeholder
                                 }
 
                                 if (chunkData.type === 'content' && chunkData.content) {
-                                    removeStatusMessage();
                                     // *** CITATION REMOVAL ***
                                     const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
                                     fullAIResponseText += cleanedContent;
@@ -3021,9 +3002,9 @@
 
             function finalizeChatResponseUI(finalText, startTime) {
                 const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
-                removeStatusMessage();
                 
                 if (currentAIMessageElement) {
+                    currentAIMessageElement.classList.remove('typing-dots'); // Ensure typing dots are removed
                     const bubble = currentAIMessageElement.querySelector('.msg-bubble');
                     if(bubble) {
                         bubble.innerHTML = renderMarkdown(finalText).html + `
