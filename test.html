@@ -407,24 +407,23 @@
             word-break: break-word;
         }
 
-        /* The main container for the typing animation (spinner + dots) */
-        .typing-status-indicator {
+        .message-group.ai .msg-bubble .typing-status-indicator,
+        .message-group.ai.processing-message .msg-bubble .ai-content-area { /* Apply to processing messages too */
             display: flex;
             align-items: center;
             font-style: italic;
             color: var(--main-text-color);
             padding-bottom: 5px; /* Little space above dots */
         }
-        /* Each individual dot */
-        .typing-status-indicator .dots {
+        .message-group.ai .msg-bubble .typing-status-indicator .dots {
             display: inline-block;
             width: 14px; height: 14px; margin: 0 6px;
             background: var(--neon-blue); border-radius: 50%;
             opacity: 0.98; animation: typing-blink 1s infinite both;
             box-shadow: 0 0 12px var(--neon-blue);
         }
-        .typing-status-indicator .dots:nth-child(2){animation-delay:.2s;}
-        .typing-status-indicator .dots:nth-child(3){animation-delay:.4s;}
+        .message-group.ai .msg-bubble .typing-status-indicator .dots:nth-child(2){animation-delay:.2s;}
+        .message-group.ai .msg-bubble .typing-status-indicator .dots:nth-child(3){animation-delay:.4s;}
         @keyframes typing-blink {
             0%,100% {opacity:.15; transform: scale(0.5);}
             25% {opacity:1; transform: scale(1.4);}
@@ -1000,7 +999,7 @@
             .ai .msg-bubble, .user .msg-bubble { border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
             
             /* Typing dots on mobile */
-            .typing-status-indicator .dots { width: 10px; height: 10px; margin: 0 4px; }
+            .message-group.ai .msg-bubble .typing-status-indicator .dots { width: 10px; height: 10px; margin: 0 4px; }
             .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
             pre {
@@ -1327,7 +1326,7 @@
         let currentComicPanelIndex = 0;
 
         // --- References for dynamic animation elements ---
-        let currentProcessingMessageElement = null; // Still used for tool processing messages
+        let currentProcessingMessageElement = null; // Used for tool processing messages
 
         // --- MODEL STATE ---
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
@@ -1433,7 +1432,7 @@
             // Comic Preview Elements
             const comicPrevBox = $('ai-comic-preview');
             const comicPrevClose = $('ai-comic-close');
-            const comicPrevDLBtn = $('ai-image-dl'); // Changed to comicPrevDLBtn
+            const comicPrevDLBtn = $('ai-comic-dl');
             const comicPrevImgBox = $('ai-comic-container');
             const comicNextBtn = $('comic-next-btn');
             const comicPrevBtn = $('comic-prev-btn');
@@ -1483,7 +1482,6 @@
                 if(chatViewport.innerHTML.trim() === '') {
                     chatViewport.innerHTML = welcomeMsg;
                     hookAiMsgControls(); // Hook controls for initial message
-                    setTimeout(scrollToBottom, 0); // Ensure welcome message is visible
                 }
             };
             addWelcomeMessage();
@@ -1856,7 +1854,7 @@
                 div.className = 'message-group system';
                 div.innerHTML = `<div class="msg-bubble">${escapeHTML(text)}</div>`;
                 chatViewport.appendChild(div);
-                setTimeout(scrollToBottom, 50);
+                scrollToBottom();
             }
 
             function renderChatBox(messages = []) {
@@ -1950,7 +1948,7 @@
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
-                setTimeout(scrollToBottom, 0); // Aggressive autoscroll
+                scrollToBottom();
             }
 
             async function deleteMessagesFrom(messageId) {
@@ -2125,7 +2123,6 @@
                     currentProcessingMessageElement.remove();
                     currentProcessingMessageElement = null;
                 }
-                setTimeout(scrollToBottom, 50); // Ensure scroll after removal
             }
 
             async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
@@ -2158,7 +2155,7 @@
                     </div>
                 `;
                 enhanceCodeBlocks(msgBubble);
-                setTimeout(scrollToBottom, 50);
+                scrollToBottom();
                 
                 if (saveToDb && currentUser && currentChatId) {
                     const newMsg = { role: 'ai', text: finalRenderText, duration: durationSeconds, createdAt: serverTimestamp() };
@@ -2225,6 +2222,7 @@
                     });
                 });
                 filePreview.style.bottom = `${inputDock.offsetHeight + 15}px`;
+                scrollToBottom(); // Aggressive autoscroll
             }
 
             function showAIImagePreview(base64, caption = '') {
@@ -2232,6 +2230,7 @@
                 aiPrevImgBox.innerHTML = `<img src="data:image/png;base64,${base64}" alt="AI generated image">` + `<div style="color:var(--main-text-color);font-size:.95em;margin-top:3px;text-align:center;">${caption}</div>`;
                 aiPrevBox.classList.add('active');
                 aiPrevBox.style.bottom = `${inputDock.offsetHeight + 15}px`;
+                scrollToBottom(); // Aggressive autoscroll
             }
 
             async function addMessageToChat(role, text, files = [], duration = null) {
@@ -2296,6 +2295,7 @@
                                 clearInterval(pollInterval);
                                 const videoHtml = `🎉 Your video is ready! <br><video controls src="${statusData.url}" class="chat-media-preview"></video>`;
                                 await addMessageToChat('ai', videoHtml);
+                                scrollToBottom(); // Aggressive autoscroll
                             } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
                                 clearInterval(pollInterval);
                                 await showToolResponse(`❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
@@ -2333,6 +2333,7 @@
                 renderComicPanel();
                 comicPrevBox.classList.add('active');
                 comicPrevBox.style.bottom = `${inputDock.offsetHeight + 15}px`;
+                scrollToBottom(); // Aggressive autoscroll
             }
 
             function renderComicPanel() {
@@ -2828,14 +2829,7 @@
                     if (callBtn) callBtn.style.display = 'none';
                     if (stopBtn) {
                         stopBtn.style.display = 'flex';
-                        const toolStopListener = () => { 
-                            if (currentController) currentController.abort(); 
-                            removeProcessingMessage(); // Ensure message is cleared on stop
-                            // Reset buttons after stopping
-                            if (sendBtn) sendBtn.style.display = 'flex';
-                            if (callBtn) callBtn.style.display = 'flex';
-                            if (stopBtn) stopBtn.style.display = 'none';
-                        };
+                        const toolStopListener = () => { if (currentController) currentController.abort(); };
                         if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                         stopBtn.addEventListener('click', toolStopListener, { once: true });
                         stopBtn._currentStopListener = toolStopListener;
@@ -2914,6 +2908,7 @@
                 };
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
+                scrollToBottom(); // Aggressive autoscroll
             }
 
             window.sendMessage = async function(overrideText = null) {
@@ -2932,15 +2927,7 @@
                 const signal = currentController.signal;
 
                 if (stopBtn) {
-                    const chatStopListener = () => { 
-                        if (currentController) currentController.abort(); 
-                        if (typewriterInterval) {
-                            clearInterval(typewriterInterval);
-                            typewriterInterval = null;
-                        }
-                        // Immediately finalize with what we have + a stopped message
-                        finalizeChatResponseUI(fullResponseContent + '\n\n<em>(Response stopped by user)</em>', performance.now());
-                    };
+                    const chatStopListener = () => { if (currentController) currentController.abort(); };
                     if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', chatStopListener);
                     stopBtn.addEventListener('click', chatStopListener, { once: true });
                     stopBtn._currentStopListener = chatStopListener;
@@ -2985,7 +2972,7 @@
                 currentTypingBubbleContentEl = msgBubble.querySelector('.ai-content-area');
                 currentAIControlsEl = msgBubble.querySelector('.ai-msg-controls');
                 
-                setTimeout(scrollToBottom, 50); // Aggressive autoscroll
+                scrollToBottom();
 
                 let firstChunkReceived = false;
                 const startTime = performance.now();
@@ -3067,6 +3054,10 @@
                     } else {
                          fullResponseContent += '\n\n<em>(Response stopped by user)</em>';
                     }
+                    // Ensure final text is displayed if typing stopped prematurely or error
+                    if (currentTypingBubbleContentEl && !typewriterInterval) { // If typewriter already stopped/not started
+                        currentTypingBubbleContentEl.textContent = fullResponseContent; 
+                    }
                 } finally {
                     finalizeChatResponseUI(fullResponseContent, startTime);
                 }
@@ -3078,11 +3069,10 @@
                 typewriterInterval = setInterval(() => {
                     if (typedCharIndex < fullResponseContent.length) {
                         if (currentTypingBubbleContentEl) {
-                            // Append one character at a time
                             currentTypingBubbleContentEl.textContent += fullResponseContent[typedCharIndex];
                         }
                         typedCharIndex++;
-                        setTimeout(scrollToBottom, 0); // Aggressive autoscroll during typing
+                        scrollToBottom();
                     } else {
                         clearInterval(typewriterInterval);
                         typewriterInterval = null; // Typing finished
@@ -3122,12 +3112,9 @@
                 }
                 
                 if (currentUser && currentChatId && finalText.trim()) {
-                    // Only save if the response wasn't aborted empty
                     const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
                     addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
                         if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
-                        // Add to currentMessages for proper history context on regeneration
-                        currentMessages.push({id: docRef.id, ...newMsg});
                     }).catch(e => console.error("Error saving final message:", e));
                 }
 
@@ -3138,7 +3125,7 @@
                     stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                 }
                 currentController = null;
-                currentAIMessageElement = null; // Clear reference
+                currentAIMessageElement = null;
                 currentAIMessageFirestoreId = null;
                 
                 // Reset typewriter related global state
@@ -3147,7 +3134,7 @@
                 currentTypingBubbleContentEl = null;
                 currentAIControlsEl = null;
 
-                setTimeout(scrollToBottom, 50); // Final aggressive autoscroll
+                scrollToBottom();
             }
 
             // --- REBUILT & ENHANCED VOICE CALL LOGIC ---
@@ -3192,7 +3179,7 @@
                         if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
                         if (userSpeechWave) userSpeechWave.classList.add('active');
                     }
-                    setTimeout(scrollToBottom, 50);
+                    callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                 };
 
                 speechRecognition.onresult = (event) => {
@@ -3221,7 +3208,7 @@
                         else callConversation.appendChild(userMsgEl);
                     }
                     userMsgEl.textContent = (finalTranscript + interimTranscript).trim();
-                    if(userMsgEl.textContent) setTimeout(callConversation.scrollTop = callConversation.scrollHeight, 50);
+                    if(userMsgEl.textContent) callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                 };
 
                 speechRecognition.onend = () => {
@@ -3249,7 +3236,7 @@
                     } else if (isCallActive && !isMuted) {
                         try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
                     }
-                    setTimeout(scrollToBottom, 50);
+                    callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                 };
 
                 speechRecognition.onerror = (event) => {
@@ -3262,7 +3249,7 @@
                     } else if (isCallActive && !isMuted && event.error !== 'aborted') {
                         try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
                     }
-                    setTimeout(scrollToBottom, 50);
+                    callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                 };
             } else {
                 if (callBtn) callBtn.style.display = 'none';
@@ -3278,7 +3265,7 @@
                 if(waveElement) callConversation.insertBefore(msgEl, waveElement);
                 else callConversation.appendChild(msgEl);
                 
-                setTimeout(callConversation.scrollTop = callConversation.scrollHeight, 50);
+                callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
             }
 
             async function handleCallBotResponse() {
@@ -3286,7 +3273,6 @@
                 
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
-                setTimeout(scrollToBottom, 50);
 
                 if (speechRecognition && isRecognizing) {
                     try { speechRecognition.stop(); } catch(e) {}
@@ -3343,8 +3329,8 @@
                     console.error("Error getting bot response:", err);
                     if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
                     if(tapToTalk) tapToTalk.style.display = 'block';
-                    setTimeout(scrollToBottom, 50);
                 }
+                callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
             }
 
             async function speakBotResponse(textToSpeak) {
@@ -3353,7 +3339,6 @@
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
-                setTimeout(scrollToBottom, 50);
 
                 if (speechRecognition && isRecognizing) {
                     try { speechRecognition.stop(); } catch(e) {}
@@ -3391,7 +3376,7 @@
                                 try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                             }
                         }
-                        setTimeout(scrollToBottom, 50);
+                        callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                     };
                     currentAudio.play();
                 } catch (err) {
@@ -3406,7 +3391,7 @@
                             try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                         }
                     }
-                    setTimeout(scrollToBottom, 50);
+                    callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                 }
             }
 
@@ -3426,7 +3411,7 @@
                 if (tapToTalk) tapToTalk.style.display = 'none';
                 if (callStatusMessage) callStatusMessage.textContent = 'Call Ended.';
                 if (userSpeechWave) userSpeechWave.classList.remove('active');
-                setTimeout(scrollToBottom, 50);
+                callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
             }
 
             function stopBotSpeakingAndStartListening() {
@@ -3449,7 +3434,7 @@
                         try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                     }
                 }
-                setTimeout(scrollToBottom, 50);
+                callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
             }
 
             if (callModal) {
@@ -3473,7 +3458,6 @@
                     callStatusMessage.textContent = 'Calling...';
                     tapToTalk.style.display = 'none';
                     callHistory = [];
-                    setTimeout(scrollToBottom, 50);
 
                     setTimeout(() => {
                         if (!isCallActive) return;
@@ -3484,7 +3468,7 @@
                         if (!isMuted && !isRecognizing) {
                             try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
                         }
-                        setTimeout(scrollToBottom, 50);
+                        callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                     }, 1500);
                 });
             }
@@ -3515,7 +3499,7 @@
                             }
                         }
                     }
-                    setTimeout(scrollToBottom, 50);
+                    callConversation.scrollTop = callConversation.scrollHeight; // Aggressive autoscroll
                 });
             }
 
