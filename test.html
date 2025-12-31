@@ -400,11 +400,14 @@
             border-bottom: 1px solid var(--glass-border);
         }
 
-        /* BADASS MODE: Real-time Typing & Processing Styles */
+        /* --- UPGRADED --- Typing & Processing Status Styles */
         .message-group.ai .msg-bubble .ai-content-area {
             min-height: 1.15rem; /* Ensure minimum height for typing */
             white-space: pre-wrap;
             word-break: break-word;
+            /* Added display: flex and align-items: center for proper alignment of ai-typing-dot */
+            display: flex;
+            align-items: center;
         }
         
         /* This is the live typewriter cursor */
@@ -423,20 +426,24 @@
             50% { opacity: 0; }
         }
 
-        /* UPGRADED: Single-circle "thinking" spinner */
-        .thinking-spinner {
-            display: inline-block;
-            width: 28px; height: 28px;
-            border: 4px solid rgba(0, 242, 255, 0.25);
+        /* NEW: Single, moderate dancing circle for initial thinking */
+        .ai-typing-dot {
+            width: 16px; /* Moderate size */
+            height: 16px; /* Moderate size */
             border-radius: 50%;
-            border-top-color: var(--neon-blue);
-            animation: spin 0.8s ease-in-out infinite;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
-        }
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
+            background-color: var(--neon-blue); /* Using neon-blue for consistency */
+            box-shadow: 0 0 12px var(--neon-blue); /* Subtle glow */
+            animation: simple-dot-bounce 0.9s infinite ease-in-out; /* Moderate dancing */
+            display: inline-block; /* Keep it inline, not a big box */
+            vertical-align: middle;
+            margin: 0 4px; /* A bit of margin */
         }
 
+        @keyframes simple-dot-bounce {
+            0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+            50% { transform: translateY(-6px) scale(1.2); opacity: 1; }
+        }
+        
         /* General Spinner (for 'Generating...' type messages) */
         .spinner {
             display: inline-block;
@@ -448,6 +455,8 @@
             margin-right: 10px;
             vertical-align: middle;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
 
         /* --- Input Dock - REVAMPED & WIDER --- */
         .input-dock {
@@ -1003,7 +1012,7 @@
             .ai .msg-bubble, .user .msg-bubble { border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
             
             /* Typing dots on mobile */
-            .thinking-spinner { width: 22px; height: 22px; }
+            .ai-typing-dot { width: 12px; height: 12px; } /* Adjust size for mobile */
             .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
             pre {
@@ -1337,7 +1346,7 @@
         // --- MODEL STATE ---
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
-        // BADASS MODE: Real-time Typewriter & Streaming State
+        // --- UPGRADED: STREAMING & TYPEWRITER STATE ---
         let typewriterInterval = null;      // Holds the setInterval ID for the typewriter effect
         let isAIResponding = false;         // A master flag to indicate any AI activity (chat or tool)
         
@@ -1359,7 +1368,6 @@
         function igniteCosmos() {
             if (cosmos) {
                 cosmos.querySelectorAll('.star').forEach(p => p.remove());
-                // UPGRADED: Increased star count for a denser starfield
                 for (let i = 0; i < 400; i++) {
                     const particle = document.createElement('div');
                     particle.className = 'star';
@@ -1398,7 +1406,6 @@
         }
 
         igniteCosmos();
-        // UPGRADED: More frequent shooting stars for a more dynamic background
         setInterval(() => {
              if (Math.random() < 0.4) launchShootingStar();
         }, 2500);
@@ -1448,7 +1455,7 @@
             // Comic Preview Elements
             const comicPrevBox = $('ai-comic-preview');
             const comicPrevClose = $('ai-comic-close');
-            const comicPrevDLBtn = $('ai-comic-dl');
+            const comicPrevDLBtn = $('ai-image-dl'); // Changed to comicPrevDLBtn
             const comicPrevImgBox = $('ai-comic-container');
             const comicNextBtn = $('comic-next-btn');
             const comicPrevBtn = $('comic-prev-btn');
@@ -2931,24 +2938,18 @@
                 if (typewriterInterval) return; // Already running
 
                 typewriterInterval = setInterval(() => {
-                    // Type faster if the buffer is getting long
-                    const speedRamp = Math.max(1, 5 - Math.floor((fullResponseContent.length - typewriterIndex) / 50));
-                    
-                    for(let i=0; i < speedRamp; i++) {
-                        if (typewriterIndex < fullResponseContent.length) {
-                            if (currentAIContentElement && currentCursorElement) {
-                                const nextChar = fullResponseContent[typewriterIndex];
-                                // Use insertAdjacentText for performance
-                                currentCursorElement.insertAdjacentText('beforebegin', nextChar);
-                                typewriterIndex++;
-                            }
-                        } else {
-                            // Typewriter is caught up to the buffer.
-                            break;
+                    if (typewriterIndex < fullResponseContent.length) {
+                        if (currentAIContentElement && currentCursorElement) {
+                            const nextChar = fullResponseContent[typewriterIndex];
+                            currentCursorElement.insertAdjacentText('beforebegin', nextChar);
+                            typewriterIndex++;
+                            scrollToBottom(); // Keep view at the bottom as text is typed
                         }
+                    } else {
+                        // Typewriter is caught up to the buffer.
+                        // The interval will be cleared by finalizeChatResponse when the stream ends.
                     }
-                    if(typewriterIndex % 10 === 0) scrollToBottom(); // Scroll intermittently to avoid layout thrashing
-                }, 15); // Typing speed in milliseconds
+                }, 10); // Typing speed in milliseconds per character (very fast)
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -2973,13 +2974,11 @@
                 `;
                 
                 // Final render with full markdown and controls
-                if (currentAIMessageElement && currentAIContentElement) {
+                if (currentAIMessageElement && currentAIContentElement && currentAIControlsElement) {
                     currentAIContentElement.innerHTML = renderMarkdown(finalText).html; // Render final markdown
                     enhanceCodeBlocks(currentAIMessageElement);
-                    if (currentAIControlsElement) {
-                         currentAIControlsElement.innerHTML = controlsHtml;
-                         currentAIControlsElement.style.display = 'flex';
-                    }
+                    currentAIControlsElement.innerHTML = controlsHtml;
+                    currentAIControlsElement.style.display = 'flex';
                     hookAiMsgControls();
                 }
                 
@@ -3037,18 +3036,18 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
                 
-                // --- 2. CREATE "THINKING" PLACEHOLDER ---
+                // --- 2. CREATE "THINKING" PLACEHOLDER (single dancing circle) ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typewriterIndex = 0;
                 fullResponseContent = '';
                 
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
-                // UPGRADED: Using the new .thinking-spinner
+                // Changed from three dots to a single dancing circle
                 aiMessageDiv.innerHTML = `
                     <div class="msg-bubble">
-                        <div class="ai-content-area" style="display: flex; justify-content: center; align-items: center; padding: 10px 0;">
-                            <div class="thinking-spinner"></div>
+                        <div class="ai-content-area" style="display: flex; align-items: center;">
+                            <div class="ai-typing-dot"></div>
                         </div>
                         <div class="ai-msg-controls" style="display: none;"></div>
                     </div>`;
@@ -3075,8 +3074,6 @@
                     });
 
                     if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
-                    if (!res.body) throw new Error('Response body is missing.');
-
 
                     const reader = res.body.getReader();
                     const decoder = new TextDecoder('utf-8');
@@ -3104,7 +3101,7 @@
                                 if (isFirstChunk) {
                                     isFirstChunk = false;
                                     if (currentAIContentElement) {
-                                        currentAIContentElement.style.padding = '0'; // Reset padding
+                                        // Clear the single dancing dot and insert typewriter cursor
                                         currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
                                         currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
                                     }
@@ -3126,7 +3123,6 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
-                    // This function now handles cleanup, final rendering, and saving.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
