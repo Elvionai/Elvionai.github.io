@@ -2355,11 +2355,11 @@
                 }
             }
             
-            // UPDATE: Use new, user-friendly style names for Version 1
-            const versionOneStyles = [
-                { value: 'illustration', text: 'Illustration / General' },
-                { value: 'realistic', text: 'Realistic / Photoreal' },
-                { value: 'cinematic', text: 'Cinematic / Movie' },
+            // UPDATE: New array for Version 1 styles, abstracting "Thena"
+            const version1ImageStyles = [
+                { value: 'illustration', text: 'Illustration' },
+                { value: 'realistic', text: 'Realistic' },
+                { value: 'cinematic', text: 'Cinematic' },
                 { value: 'anime', text: 'Anime' }
             ];
 
@@ -2408,33 +2408,12 @@
                     description: "Create stunning visuals from a text prompt. Choose a model for different results.",
                     buildForm: () => `
                         <label for="tool-provider">Generation Model</label>
-                        <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
+                        <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option></select>
                         <label for="tool-prompt">Image Prompt</label>
                         <textarea id="tool-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required aria-label="Image prompt"></textarea>
-                        <label for="tool-style" id="tool-style-label">Style</label>
-                        <select id="tool-style" aria-label="Image style"></select>
+                        <label for="tool-style">Style (for Version 1 only)</label>
+                        <select id="tool-style" aria-label="Image style">${version1ImageStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
-                    onFormReady: () => {
-                        const providerSelect = $('tool-provider');
-                        const styleSelect = $('tool-style');
-                        const styleLabel = $('tool-style-label');
-                        if (!providerSelect || !styleSelect || !styleLabel) return;
-                        
-                        const updateVisibility = () => {
-                            const selectedProvider = providerSelect.value;
-                            if (selectedProvider === 'thena') { // Version 1
-                                styleSelect.innerHTML = versionOneStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
-                                styleSelect.style.display = 'block';
-                                styleLabel.style.display = 'block';
-                                styleLabel.textContent = 'Style (for Version 1 only)';
-                            } else { // Version 2
-                                styleSelect.style.display = 'none';
-                                styleLabel.style.display = 'none';
-                            }
-                        };
-                        providerSelect.addEventListener('change', updateVisibility);
-                        updateVisibility(); // Initial call
-                    },
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
                         const providerName = use_minimax ? 'Version 2 (Creative)' : 'Version 1 (Stylized)';
@@ -2444,11 +2423,16 @@
                         
                         const payload = { 
                             prompt: prompt, 
-                            model: use_minimax ? null : style, 
-                            use_minimax: use_minimax
+                            model: style, 
+                            use_minimax: use_minimax,
+                            creative: false,
+                            width: null,
+                            height: null,
+                            fastMode: false,
+                            denseMode: false
                         };
 
-                        await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName}${!use_minimax ? ', Style: ' + style : ''})`);
+                        await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
                         displayProcessingMessage('Generating your image...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/generate-image`, {
@@ -2539,50 +2523,58 @@
                     buildForm: () => `
                         <label for="tool-provider">Generation Model</label>
                         <select id="tool-provider" aria-label="Comic generation model">
-                            <option value="thena">Version 1 (Stylized, Recommended)</option>
                             <option value="minimax">Version 2 (Creative)</option>
+                            <option value="thena">Version 1 (Stylized)</option>
                         </select>
-                        <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Hero: Are you seeing this?&#10;[NARRATION] A strange light filled the sky..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style" id="tool-style-label">Style</label>
+                        <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and stitch were once best friends..." required aria-label="Comic story"></textarea>
+                        <label for="tool-style">Comic Style</label>
                         <select id="tool-style" aria-label="Comic style"></select>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
                     onFormReady: () => {
                         const providerSelect = $('tool-provider');
                         const styleSelect = $('tool-style');
-                        const styleLabel = $('tool-style-label');
-                        if (!providerSelect || !styleSelect || !styleLabel) return;
-
-                        const comicStylesV2 = [
-                            { value: 'anime', text: 'Anime' },
-                            { value: 'american', text: 'American Comic' },
-                            { value: 'manga', text: 'Manga' }
-                        ];
-
-                        const updateStyles = () => {
-                            const selectedProvider = providerSelect.value;
-                            let stylesToShow = [];
-                            if (selectedProvider === 'thena') { // Version 1
-                                styleLabel.textContent = 'Style (for Version 1 only)';
-                                stylesToShow = versionOneStyles;
-                            } else { // 'minimax' or Version 2
-                                styleLabel.textContent = 'Comic Style';
-                                stylesToShow = comicStylesV2;
-                            }
-                            styleSelect.innerHTML = stylesToShow.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+                        if (!providerSelect || !styleSelect) return;
+                        
+                        const comicStyleOptions = {
+                            minimax: [
+                                { value: 'anime', text: 'Anime' },
+                                { value: 'american', text: 'American Comic' },
+                                { value: 'manga', text: 'Manga' }
+                            ],
+                            // As per request, use the same styles as image gen for Version 1
+                            thena: version1ImageStyles 
                         };
-                        providerSelect.addEventListener('change', updateStyles);
-                        updateStyles();
+
+                        const updateComicStyles = () => {
+                            const selectedProvider = providerSelect.value;
+                            styleSelect.innerHTML = (comicStyleOptions[selectedProvider] || []).map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
+                        };
+
+                        providerSelect.addEventListener('change', updateComicStyles);
+                        updateComicStyles(); // Initial call to set styles
                     },
                     handleSubmit: async (form) => {
                         const modelProvider = form.querySelector('#tool-provider')?.value;
                         const story = form.querySelector('#tool-story')?.value;
-                        const style = form.querySelector('#tool-style')?.value;
+                        let style = form.querySelector('#tool-style')?.value;
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
+                        
                         if (!story) return "Please provide a comic story.";
+
+                        // Map frontend style to backend-compatible style for Version 1
+                        if (modelProvider === 'thena') {
+                            const styleMap = {
+                                'illustration': 'american',
+                                'realistic': 'american',
+                                'cinematic': 'american',
+                                'anime': 'anime'
+                            };
+                            style = styleMap[style] || 'american';
+                        }
+                        
                         const payload = { story, style, panels, user: currentUser?.displayName || "User", model_provider: modelProvider };
-                        const providerName = modelProvider === 'thena' ? 'Version 1' : 'Version 2';
-                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (using ${providerName}, Style: ${style})`);
+                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Provider: ${modelProvider}, Style: ${style})`);
                         displayProcessingMessage('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
