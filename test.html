@@ -405,9 +405,6 @@
             min-height: 1.15rem; /* Ensure minimum height for typing */
             white-space: pre-wrap;
             word-break: break-word;
-            /* Added display: flex and align-items: center for proper alignment of ai-typing-dot */
-            display: flex;
-            align-items: center;
         }
         
         /* This is the live typewriter cursor */
@@ -426,24 +423,28 @@
             50% { opacity: 0; }
         }
 
-        /* NEW: Single, moderate dancing circle for initial thinking */
-        .ai-typing-dot {
-            width: 16px; /* Moderate size */
-            height: 16px; /* Moderate size */
+        /* New "thinking" animation before stream starts */
+        .thinking-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 0;
+        }
+        .thinking-indicator .dot {
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background-color: var(--neon-blue); /* Using neon-blue for consistency */
-            box-shadow: 0 0 12px var(--neon-blue); /* Subtle glow */
-            animation: simple-dot-bounce 0.9s infinite ease-in-out; /* Moderate dancing */
-            display: inline-block; /* Keep it inline, not a big box */
-            vertical-align: middle;
-            margin: 0 4px; /* A bit of margin */
+            background-color: var(--neon-blue);
+            animation: thinking-wave 1.4s infinite ease-in-out;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+        .thinking-indicator .dot:nth-child(2) { animation-delay: -1.2s; }
+        .thinking-indicator .dot:nth-child(3) { animation-delay: -1.0s; }
+        @keyframes thinking-wave {
+            0%, 60%, 100% { transform: scale(0.6); opacity: 0.5; }
+            30% { transform: scale(1.4); opacity: 1; }
         }
 
-        @keyframes simple-dot-bounce {
-            0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
-            50% { transform: translateY(-6px) scale(1.2); opacity: 1; }
-        }
-        
         /* General Spinner (for 'Generating...' type messages) */
         .spinner {
             display: inline-block;
@@ -1012,7 +1013,7 @@
             .ai .msg-bubble, .user .msg-bubble { border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
             
             /* Typing dots on mobile */
-            .ai-typing-dot { width: 12px; height: 12px; } /* Adjust size for mobile */
+            .thinking-indicator .dot { width: 8px; height: 8px; }
             .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
             pre {
@@ -1455,7 +1456,7 @@
             // Comic Preview Elements
             const comicPrevBox = $('ai-comic-preview');
             const comicPrevClose = $('ai-comic-close');
-            const comicPrevDLBtn = $('ai-image-dl'); // Changed to comicPrevDLBtn
+            const comicPrevDLBtn = $('ai-comic-dl');
             const comicPrevImgBox = $('ai-comic-container');
             const comicNextBtn = $('comic-next-btn');
             const comicPrevBtn = $('comic-prev-btn');
@@ -2949,7 +2950,7 @@
                         // Typewriter is caught up to the buffer.
                         // The interval will be cleared by finalizeChatResponse when the stream ends.
                     }
-                }, 10); // Typing speed in milliseconds per character (very fast)
+                }, 20); // Typing speed in milliseconds per character
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -3036,18 +3037,19 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
                 
-                // --- 2. CREATE "THINKING" PLACEHOLDER (single dancing circle) ---
+                // --- 2. CREATE "THINKING" PLACEHOLDER ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typewriterIndex = 0;
                 fullResponseContent = '';
                 
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
-                // Changed from three dots to a single dancing circle
                 aiMessageDiv.innerHTML = `
                     <div class="msg-bubble">
-                        <div class="ai-content-area" style="display: flex; align-items: center;">
-                            <div class="ai-typing-dot"></div>
+                        <div class="ai-content-area">
+                            <div class="thinking-indicator">
+                                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                            </div>
                         </div>
                         <div class="ai-msg-controls" style="display: none;"></div>
                     </div>`;
@@ -3064,6 +3066,7 @@
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                     
+                    // --- FIXED: Explicit endpoint selection ---
                     const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
                     
                     const res = await fetch(endpoint, {
@@ -3101,7 +3104,6 @@
                                 if (isFirstChunk) {
                                     isFirstChunk = false;
                                     if (currentAIContentElement) {
-                                        // Clear the single dancing dot and insert typewriter cursor
                                         currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
                                         currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
                                     }
@@ -3123,6 +3125,7 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
+                    // This function now handles cleanup, final rendering, and saving.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
