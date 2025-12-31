@@ -2080,8 +2080,6 @@
             function scrollToBottom() {
                 if (chatViewport) {
                     // This is a more forceful, immediate scroll.
-                    // The timeout(0) pushes it to the end of the execution queue, 
-                    // allowing the DOM to update before we calculate the scroll height.
                     setTimeout(() => {
                         chatViewport.scrollTop = chatViewport.scrollHeight;
                     }, 0);
@@ -2250,7 +2248,6 @@
                     await addDoc(messagesCol, { role, text, files, duration, createdAt: serverTimestamp() });
                 } catch (e) {
                     console.error("Error adding message to Firestore: ", e);
-                    // Optionally show an error to the user
                 }
             }
 
@@ -2927,11 +2924,8 @@
                             scrollToBottom(); // AGGRESSIVE SCROLL on each character
                         }
                         typedCharIndex++;
-                    } else {
-                        // The interval will be cleared by the finalize function
-                        // to prevent race conditions.
                     }
-                }, 25); // Fast typing speed (milliseconds per character)
+                }, 25); // Fast typing speed
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -2993,13 +2987,13 @@
             window.sendMessage = async function(overrideText = null) {
                 const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
-                if (isAIResponding) return; // Prevent sending while AI is busy
+                if (isAIResponding) return;
                 
-                isAIResponding = true; // Set master flag
+                isAIResponding = true;
                 if (currentController) currentController.abort();
                 currentController = new AbortController();
+                const signal = currentController.signal;
                 
-                // --- 1. SETUP UI FOR RESPONSE ---
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
@@ -3017,7 +3011,6 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
                 
-                // --- 2. CREATE "THINKING" PLACEHOLDER (ANIMATION) ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typedCharIndex = 0;
                 fullResponseContent = '';
@@ -3034,7 +3027,7 @@
                         <div class="ai-msg-controls" style="display: none;"></div>
                     </div>`;
                 chatViewport.appendChild(aiMessageDiv);
-                scrollToBottom(); // SCROLL TO SEE THE "..."
+                scrollToBottom();
 
                 currentAIMessageElement = aiMessageDiv;
                 currentTypingBubbleContentEl = aiMessageDiv.querySelector('.ai-content-area');
@@ -3042,15 +3035,26 @@
 
                 const startTime = performance.now();
                 
-                // --- 3. FETCH AND STREAM RESPONSE ---
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                    const endpoint = currentModel === 'gemini' ? `${API_BASE_URL}/chat` : `${API_BASE_URL}/api/seraphina/chat`;
+                    const chatPayload = { message: msgText, history: historyForAI };
+
+                    // --- *** THE CORE FIX FOR MODEL SWITCHING *** ---
+                    let endpoint;
+                    if (currentModel === 'gemini') {
+                        endpoint = `${API_BASE_URL}/chat`;
+                        console.log("Using model: Philadelphia (gemini). Endpoint:", endpoint);
+                    } else { // Assumes 'perplexity' for Seraphina
+                        endpoint = `${API_BASE_URL}/api/seraphina/chat`;
+                        console.log("Using model: Seraphina (perplexity). Endpoint:", endpoint);
+                    }
+                    // --- *** END OF FIX *** ---
+
                     const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: msgText, history: historyForAI }),
-                        signal: currentController.signal
+                        body: JSON.stringify(chatPayload),
+                        signal
                     });
 
                     if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
@@ -3086,7 +3090,7 @@
                                     fullResponseContent += cleanedContent;
                                     startTypewriter();
                                 }
-                            } catch (e) { /* Ignore parsing errors for now */ }
+                            } catch (e) { /* Ignore parsing errors */ }
                         }
                     }
                 } catch (err) {
@@ -3101,7 +3105,7 @@
                 }
             };
             
-            // --- VOICE CALL LOGIC (Unchanged from previous correct version) ---
+            // --- VOICE CALL LOGIC (Unchanged) ---
             const callVoices = {
                 gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
                 minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
