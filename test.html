@@ -1307,29 +1307,30 @@
 
         const $ = id => document.getElementById(id);
 
-        // --- API ENDPOINT MANAGEMENT ---
+        // --- API & MODEL CONFIGURATION ---
         const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
         const API_ENDPOINTS = {
-            gemini: `${API_BASE_URL}/chat`, // Philadelphia
-            perplexity: `${API_BASE_URL}/api/seraphina/chat`, // Seraphina
-            llama: `${API_BASE_URL}/api/llama/chat` // NEW: Llama Chat
+            gemini: `${API_BASE_URL}/chat`,
+            perplexity: `${API_BASE_URL}/api/seraphina/chat`,
+            llama: `${API_BASE_URL}/api/llama/chat`
         };
 
+        const LLAMA_SYSTEM_PROMPT = `You are Bobby, a highly intelligent and efficient AI assistant from Elvion AI. Your responses are direct, accurate, and concise. You avoid unnecessary pleasantries and focus on providing the most relevant information or completing the task at hand. You are a specialist in logic, data, and straightforward problem-solving.`;
 
         let chats = [];
         let currentChatId = null;
         let currentMessages = [];
         let uploadedFiles = [];
         let currentUser = null;
-        let currentController = null; // Used for aborting fetch requests
-        let fileObjectURLs = []; // To manage created object URLs for file previews
+        let currentController = null;
+        let fileObjectURLs = []; 
 
         let chatsUnsubscribe = null;
         let messagesUnsubscribe = null;
 
         const cosmos = $('cosmos-container');
 
-        // Call-related state variables
+        // Call-related state
         let speechRecognition;
         let isCallActive = false;
         let callHistory = [];
@@ -1338,32 +1339,25 @@
         let currentAudio = null;
         let isMuted = false;
         let isRecognizing = false;
-        let selectedCallVoiceId = 'elder'; // Default for minimax (Seraphina)
-        let selectedCallVoiceProvider = 'minimax'; // Default provider
+        let selectedCallVoiceId = 'elder';
+        let selectedCallVoiceProvider = 'minimax';
 
         // Comic viewer state
         let comicPanels = [];
         let currentComicPanelIndex = 0;
         
-        // --- MODEL STATE ---
-        let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
+        // Model state
+        let currentModel = 'gemini';
         
-        // --- UPGRADED: STREAMING & TYPEWRITER STATE ---
-        let typewriterInterval = null;      // Holds the setInterval ID for the typewriter effect
-        let isAIResponding = false;         // A master flag to indicate any AI activity (chat or tool)
-        
-        // References to the elements of the message currently being streamed
+        // Streaming & Typewriter state
+        let typewriterInterval = null;
+        let isAIResponding = false;
         let currentAIMessageElement = null; 
         let currentAIContentElement = null; 
         let currentAIControlsElement = null; 
         let currentCursorElement = null;
-
-        // Accumulator for the streaming response text
         let fullResponseContent = '';
-        // Index for the typewriter effect to track progress
         let typewriterIndex = 0;
-        
-        // Reference to any active tool processing message (e.g., "Generating image...")
         let currentProcessingMessageElement = null; 
 
         // Cosmic background animations
@@ -1499,7 +1493,7 @@
                                 <div class="model-switch-popup">
                                     <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                     <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                    <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                                    <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
                                 </div>
                             </div>
                         </div>
@@ -1521,7 +1515,7 @@
                 if (brandTitle) {
                     if (newModel === 'gemini') brandTitle.textContent = 'Philadelphia AI';
                     else if (newModel === 'perplexity') brandTitle.textContent = 'Seraphina AI';
-                    else if (newModel === 'llama') brandTitle.textContent = 'Llama Chat';
+                    else if (newModel === 'llama') brandTitle.textContent = 'Bobby (Llama)';
                 }
             }
 
@@ -1738,7 +1732,6 @@
                 const messagesCol = collection(db, 'users', userId, 'chats', chatId, 'messages');
                 const q = query(messagesCol, orderBy('createdAt'));
                 messagesUnsubscribe = onSnapshot(q, (snapshot) => {
-                    // *** FIX: Add guard to prevent re-rendering during AI response streaming ***
                     if (isAIResponding) {
                         return;
                     }
@@ -1948,7 +1941,7 @@
                                         <div class="model-switch-popup">
                                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
                                         </div>
                                     </div>
                                 </div>
@@ -2161,7 +2154,7 @@
                             <div class="model-switch-popup">
                                 <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                 <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                                <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
                             </div>
                         </div>
                     </div>
@@ -2355,21 +2348,16 @@
                 }
             }
             
-            // --- MODIFICATION START ---
-            // Moved these definitions here to be accessible by multiple tool definitions.
-            const version1Styles = [
-                { value: 'illustration', text: 'Illustration (V6)' },
-                { value: 'realistic', text: 'Realistic (Photoreal)' },
-                { value: 'cinematic', text: 'Cinematic (Movie)' },
-                { value: 'anime', text: 'Anime (Core)' }
+            // UPDATE: Use new model definitions and mappings
+            const version1ImageModels = [
+                { value: 'v6', text: 'V6 (General/Illustration)', backendStyle: 'illustration' },
+                { value: 'photoreal', text: 'Photoreal (Realistic)', backendStyle: 'realistic' },
+                { value: 'movie', text: 'Movie (Cinematic)', backendStyle: 'illustration' }, // Map to illustration for comics
+                { value: 'anime_core', text: 'Anime Core', backendStyle: 'anime' },
+                { value: 'deepanime', text: 'Deep Anime (Legacy)', backendStyle: 'anime' },
+                { value: 'animelegacy', text: 'Anime Legacy (Manga-like)', backendStyle: 'manga' },
+                { value: 'dreamcore', text: 'Dreamcore (Legacy)', backendStyle: 'illustration' } // Map to illustration
             ];
-            const version2ComicStyles = [
-                { value: 'anime', text: 'Anime' },
-                { value: 'american', text: 'American Comic' },
-                { value: 'manga', text: 'Manga' }
-            ];
-            // --- MODIFICATION END ---
-
 
             // *** COMIC VIEWER FUNCTIONS ***
             function showComicPreview(images, caption = '') {
@@ -2419,21 +2407,17 @@
                         <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option></select>
                         <label for="tool-prompt">Image Prompt</label>
                         <textarea id="tool-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required aria-label="Image prompt"></textarea>
-                        <label for="tool-style" id="tool-style-label">Style (for Version 1 only)</label>
-                        <select id="tool-style" aria-label="Image style">${version1Styles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
+                        <div id="style-selector-wrapper">
+                            <label for="tool-style">Style (for Version 1 only)</label>
+                            <select id="tool-style" aria-label="Image style">${version1ImageModels.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
+                        </div>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
                     onFormReady: () => {
-                        const provider = $('tool-provider');
-                        const styleSelect = $('tool-style');
-                        const styleLabel = $('tool-style-label');
-                        if (!provider || !styleSelect || !styleLabel) return;
-                        const toggleStyleVisibility = () => {
-                            const isV1 = provider.value === 'thena';
-                            styleSelect.style.display = isV1 ? 'block' : 'none';
-                            styleLabel.style.display = isV1 ? 'block' : 'none';
-                        };
-                        provider.addEventListener('change', toggleStyleVisibility);
-                        toggleStyleVisibility(); // Initial check
+                        const providerSelect = $('tool-provider');
+                        const styleWrapper = $('style-selector-wrapper');
+                        providerSelect.addEventListener('change', () => {
+                            styleWrapper.style.display = providerSelect.value === 'thena' ? 'block' : 'none';
+                        });
                     },
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
@@ -2444,9 +2428,8 @@
                         
                         const payload = { 
                             prompt: prompt, 
-                            model: use_minimax ? 'illustration' : style, // Pass the detailed style for V1
+                            model: style, 
                             use_minimax: use_minimax,
-                            creative: false, width: null, height: null, fastMode: false, denseMode: false
                         };
 
                         await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
@@ -2534,7 +2517,7 @@
                         }
                     }
                 },
-                "comic": {
+                 "comic": {
                     title: "Create Comic",
                     description: "Write a story and watch it transform into a comic strip. Use tags like [DIALOGUE], [INSTRUCTION] and [NARRATION] to guide the story.",
                     buildForm: () => `
@@ -2544,52 +2527,35 @@
                             <option value="minimax">Version 2 (Creative, MiniMax)</option>
                         </select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style">Comic Style</label>
-                        <select id="tool-style" aria-label="Comic style"></select>
+                        <div id="comic-style-wrapper">
+                            <label for="tool-style">Comic Style (for Version 1 only)</label>
+                            <select id="tool-style" aria-label="Comic style">${version1ImageModels.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
+                        </div>
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
                     onFormReady: () => {
                         const providerSelect = $('tool-provider');
-                        const styleSelect = $('tool-style');
-                        if (!providerSelect || !styleSelect) return;
-
-                        const updateStyles = () => {
-                            const provider = providerSelect.value;
-                            if (provider === 'thena') {
-                                styleSelect.innerHTML = version1Styles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
-                            } else { // minimax
-                                styleSelect.innerHTML = version2ComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
-                            }
+                        const styleWrapper = $('comic-style-wrapper');
+                        const updateVisibility = () => {
+                             styleWrapper.style.display = providerSelect.value === 'thena' ? 'block' : 'none';
                         };
-                        
-                        providerSelect.addEventListener('change', updateStyles);
-                        updateStyles(); // Initial population
+                        providerSelect.addEventListener('change', updateVisibility);
+                        updateVisibility(); // Set initial state
                     },
                     handleSubmit: async (form) => {
                         const modelProvider = form.querySelector('#tool-provider')?.value;
                         const story = form.querySelector('#tool-story')?.value;
-                        const styleFromForm = form.querySelector('#tool-style')?.value;
+                        const selectedStyleValue = form.querySelector('#tool-style')?.value;
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
+                        
+                        // Find the selected style object to get the backend style name
+                        const styleMapping = version1ImageModels.find(s => s.value === selectedStyleValue);
+                        const backendStyle = styleMapping ? styleMapping.backendStyle : 'illustration';
+
                         if (!story) return "Please provide a comic story.";
-
-                        // --- MODIFICATION START: Map detailed styles to backend-compatible styles for Version 1 ---
-                        let finalStyle;
-                        if (modelProvider === 'thena') {
-                            // Map the detailed Version 1 style to a simple one the backend understands
-                            const realisticStyles = ['realistic', 'cinematic', 'illustration'];
-                            if (realisticStyles.includes(styleFromForm)) {
-                                finalStyle = 'american';
-                            } else { // All other styles (anime, etc.) map to anime
-                                finalStyle = 'anime';
-                            }
-                        } else {
-                            // For Version 2 (minimax), use the style directly
-                            finalStyle = styleFromForm;
-                        }
-                        // --- MODIFICATION END ---
-
-                        const payload = { story, style: finalStyle, panels, user: currentUser?.displayName || "User", model_provider: modelProvider };
-                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Provider: ${modelProvider}, Style: ${styleFromForm})`);
+                        const payload = { story, style: backendStyle, panels, user: currentUser?.displayName || "User", model_provider: modelProvider };
+                        
+                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Provider: ${modelProvider}, Style: ${backendStyle})`);
                         displayProcessingMessage('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
@@ -3004,9 +2970,8 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
             
-            // --- UPGRADED: Real-time Typewriter & Streaming Logic ---
             function startTypewriterEffect() {
-                if (typewriterInterval) return; // Already running
+                if (typewriterInterval) return; 
 
                 typewriterInterval = setInterval(() => {
                     if (typewriterIndex < fullResponseContent.length) {
@@ -3014,13 +2979,10 @@
                             const nextChar = fullResponseContent[typewriterIndex];
                             currentCursorElement.insertAdjacentText('beforebegin', nextChar);
                             typewriterIndex++;
-                            scrollToBottom(); // Keep view at the bottom as text is typed
+                            scrollToBottom(); 
                         }
-                    } else {
-                        // Typewriter is caught up to the buffer.
-                        // The interval will be cleared by finalizeChatResponse when the stream ends.
-                    }
-                }, 15); // IMPROVEMENT: Typing speed increased from 25ms to 15ms for a "flashier" effect
+                    } 
+                }, 15);
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -3040,21 +3002,19 @@
                         <div class="model-switch-popup">
                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
                         </div>
                     </div>
                 `;
                 
-                // Final render with full markdown and controls
                 if (currentAIMessageElement && currentAIContentElement && currentAIControlsElement) {
-                    currentAIContentElement.innerHTML = renderMarkdown(finalText).html; // Render final markdown
+                    currentAIContentElement.innerHTML = renderMarkdown(finalText).html; 
                     enhanceCodeBlocks(currentAIMessageElement);
                     currentAIControlsElement.innerHTML = controlsHtml;
                     currentAIControlsElement.style.display = 'flex';
                     hookAiMsgControls();
                 }
                 
-                // Save final, complete message to the database
                 if (currentUser && currentChatId && finalText.trim()) {
                     const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
                     addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg)
@@ -3063,7 +3023,6 @@
                         }).catch(e => console.error("Error saving final message:", e));
                 }
                 
-                // Reset all streaming-related state variables
                 isAIResponding = false;
                 if (sendBtn) sendBtn.style.display = 'flex';
                 if (stopBtn) stopBtn.style.display = 'none';
@@ -3080,7 +3039,6 @@
                 scrollToBottom();
             }
 
-            // --- RE-ARCHITECTED `sendMessage` FUNCTION ---
             window.sendMessage = async function(overrideText = null) {
                 const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
@@ -3090,7 +3048,6 @@
                 if (currentController) currentController.abort();
                 currentController = new AbortController();
                 
-                // --- 1. UI SETUP ---
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
@@ -3108,7 +3065,6 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
                 
-                // --- 2. CREATE "THINKING" PLACEHOLDER ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typewriterIndex = 0;
                 fullResponseContent = '';
@@ -3133,16 +3089,13 @@
 
                 const startTime = performance.now();
                 
-                // --- 3. FETCH & STREAM RESPONSE ---
                 try {
-                    const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                    
-                    // --- NEW: Handle Llama non-streaming model ---
                     if (currentModel === 'llama') {
+                        // Handle Llama's non-streaming, stateless endpoint
                         const res = await fetch(API_ENDPOINTS.llama, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: msgText }), // Llama is stateless on the backend
+                            body: JSON.stringify({ prompt: msgText, systemPrompt: LLAMA_SYSTEM_PROMPT }),
                             signal: currentController.signal
                         });
                         if (!res.ok) {
@@ -3151,9 +3104,16 @@
                         }
                         const data = await res.json();
                         fullResponseContent = data.content || "I'm sorry, I couldn't get a response.";
-                        
+                        // Since it's not streaming, we can immediately start the typewriter for the full content
+                        if (currentAIContentElement) {
+                            currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
+                            currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                        }
+                        startTypewriterEffect();
+
                     } else {
                         // Existing streaming logic for Gemini and Perplexity
+                        const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                         const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
                         const res = await fetch(endpoint, {
                             method: 'POST',
@@ -3185,8 +3145,6 @@
 
                                 try {
                                     const chunkData = JSON.parse(jsonStr);
-
-                                    // On first valid data chunk, replace "thinking" with typewriter
                                     if (isFirstChunk) {
                                         isFirstChunk = false;
                                         if (currentAIContentElement) {
@@ -3195,10 +3153,9 @@
                                         }
                                         startTypewriterEffect();
                                     }
-
                                     if (chunkData.type === 'content' && chunkData.content) {
                                         const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
-                                        fullResponseContent += cleanedContent; // Add to buffer for typewriter
+                                        fullResponseContent += cleanedContent;
                                     }
                                 } catch (e) { /* Ignore parsing errors */ }
                             }
@@ -3212,7 +3169,6 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
-                    // This function now handles cleanup, final rendering, and saving for BOTH streaming and non-streaming calls.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
