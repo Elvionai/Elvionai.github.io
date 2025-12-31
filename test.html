@@ -406,27 +406,34 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
-
+        
+        /* --- IMPROVED TYPING ANIMATION --- */
         .typing-status-indicator {
             display: flex;
             align-items: center;
-            font-style: italic;
-            color: var(--main-text-color);
+            justify-content: center;
+            padding: 10px 0;
         }
         .typing-status-indicator .dots {
             display: inline-block;
-            width: 14px; height: 14px; margin: 0 6px;
+            width: 12px; height: 12px; margin: 0 5px;
             background: var(--neon-blue); border-radius: 50%;
-            opacity: 0.98; animation: typing-blink 1s infinite both;
-            box-shadow: 0 0 12px var(--neon-blue);
+            animation: typing-pulse 1.4s infinite ease-in-out both;
+            box-shadow: 0 0 10px var(--neon-blue);
         }
-        .typing-status-indicator .dots:nth-child(2){animation-delay:.2s;}
-        .typing-status-indicator .dots:nth-child(3){animation-delay:.4s;}
-        @keyframes typing-blink {
-            0%,100% {opacity:.15; transform: scale(0.5);}
-            25% {opacity:1; transform: scale(1.4);}
-            50% {opacity:1; transform: scale(1.5);}
-            75% {opacity:.9; transform: scale(1);}
+        .typing-status-indicator .dots:nth-child(1) { animation-delay: 0s; }
+        .typing-status-indicator .dots:nth-child(2) { animation-delay: 0.2s; }
+        .typing-status-indicator .dots:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing-pulse {
+            0%, 80%, 100% {
+                transform: scale(0.6);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
         }
 
         /* General Spinner (for 'Generating...' type messages) */
@@ -997,7 +1004,7 @@
             .ai .msg-bubble, .user .msg-bubble { border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
             
             /* Typing dots on mobile */
-            .typing-status-indicator .dots { width: 10px; height: 10px; margin: 0 4px; }
+            .typing-status-indicator .dots { width: 8px; height: 8px; margin: 0 4px; }
             .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
             pre {
@@ -1323,8 +1330,9 @@
         let comicPanels = [];
         let currentComicPanelIndex = 0;
         
-        // --- MODEL STATE ---
-        let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
+        // --- MODEL STATE (FIXED) ---
+        // Using explicit names to avoid confusion. 'philadelphia' is the default.
+        let currentModel = 'philadelphia'; 
         
         // --- REVAMPED STREAMING & ANIMATION STATE ---
         let typewriterInterval = null; // Holds the setInterval ID for typing
@@ -1473,8 +1481,8 @@
                             <div class="switch-model-btn" title="Change AI Model">
                                 <i class="fa-solid fa-sitemap"></i>
                                 <div class="model-switch-popup">
-                                    <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
-                                    <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                    <button data-model="philadelphia"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                                    <button data-model="seraphina"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
                                 </div>
                             </div>
                         </div>
@@ -1486,23 +1494,24 @@
                 }
             };
 
-            // --- MODEL SELECTION LOGIC ---
+            // --- MODEL SELECTION LOGIC (FIXED & ROBUST) ---
             function setCurrentModel(newModel) {
-                if (newModel !== 'gemini' && newModel !== 'perplexity') {
-                    newModel = 'gemini'; // Default fallback
+                if (newModel !== 'philadelphia' && newModel !== 'seraphina') {
+                    newModel = 'philadelphia'; // Default fallback
                 }
                 currentModel = newModel;
                 localStorage.setItem('userPreferredModel', newModel);
                 if (brandTitle) {
-                    brandTitle.textContent = newModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
+                    brandTitle.textContent = newModel === 'philadelphia' ? 'Philadelphia AI' : 'Seraphina AI';
                 }
             }
 
+            // Load the saved model preference on start
             const savedModel = localStorage.getItem('userPreferredModel');
             if (savedModel) {
                 setCurrentModel(savedModel);
             } else {
-                addWelcomeMessage();
+                setCurrentModel('philadelphia'); // Ensure a default is set
             }
             // --- END MODEL SELECTION LOGIC ---
 
@@ -1921,8 +1930,8 @@
                                     <div class="switch-model-btn" title="Change AI Model">
                                         <i class="fa-solid fa-sitemap"></i>
                                         <div class="model-switch-popup">
-                                            <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
-                                            <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                            <button data-model="philadelphia"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                                            <button data-model="seraphina"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1963,7 +1972,6 @@
                 if (!chatViewport) return;
                 chatViewport.querySelectorAll('.message-group.ai').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
-                    if (!messageId) return;
 
                     const controls = div.querySelector('.ai-msg-controls');
                     if (!controls) return;
@@ -1997,6 +2005,7 @@
                     };
 
                     if (regenBtn) regenBtn.onclick = () => {
+                        if (!messageId) return; // Don't allow regenerating a welcome message
                         regenerateResponse(messageId); // Regenerate using the current global model
                     };
                     
@@ -2080,6 +2089,8 @@
             function scrollToBottom() {
                 if (chatViewport) {
                     // This is a more forceful, immediate scroll.
+                    // The timeout(0) pushes it to the end of the execution queue, 
+                    // allowing the DOM to update before we calculate the scroll height.
                     setTimeout(() => {
                         chatViewport.scrollTop = chatViewport.scrollHeight;
                     }, 0);
@@ -2136,8 +2147,8 @@
                         <div class="switch-model-btn" title="Change AI Model">
                             <i class="fa-solid fa-sitemap"></i>
                             <div class="model-switch-popup">
-                                <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
-                                <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                <button data-model="philadelphia"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                                <button data-model="seraphina"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
                             </div>
                         </div>
                     </div>
@@ -2248,6 +2259,7 @@
                     await addDoc(messagesCol, { role, text, files, duration, createdAt: serverTimestamp() });
                 } catch (e) {
                     console.error("Error adding message to Firestore: ", e);
+                    // Optionally show an error to the user
                 }
             }
 
@@ -2913,7 +2925,7 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
             
-            // --- NEW: TYPEWRITER/STREAMING LOGIC (FIXED) ---
+            // --- NEW: TYPEWRITER/STREAMING LOGIC ---
             function startTypewriter() {
                 if (typewriterInterval) return; // Already running
 
@@ -2924,8 +2936,11 @@
                             scrollToBottom(); // AGGRESSIVE SCROLL on each character
                         }
                         typedCharIndex++;
+                    } else {
+                        // The interval will be cleared by the finalize function
+                        // to prevent race conditions.
                     }
-                }, 25); // Fast typing speed
+                }, 25); // Fast typing speed (milliseconds per character)
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -2943,8 +2958,8 @@
                     <div class="switch-model-btn" title="Change AI Model">
                         <i class="fa-solid fa-sitemap"></i>
                         <div class="model-switch-popup">
-                            <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
-                            <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                            <button data-model="philadelphia"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                            <button data-model="seraphina"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
                         </div>
                     </div>
                 `;
@@ -2987,13 +3002,13 @@
             window.sendMessage = async function(overrideText = null) {
                 const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
-                if (isAIResponding) return;
+                if (isAIResponding) return; // Prevent sending while AI is busy
                 
-                isAIResponding = true;
+                isAIResponding = true; // Set master flag
                 if (currentController) currentController.abort();
                 currentController = new AbortController();
-                const signal = currentController.signal;
                 
+                // --- 1. SETUP UI FOR RESPONSE ---
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
@@ -3011,6 +3026,7 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
                 
+                // --- 2. CREATE "THINKING" PLACEHOLDER (ANIMATION) ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
                 typedCharIndex = 0;
                 fullResponseContent = '';
@@ -3021,13 +3037,13 @@
                     <div class="msg-bubble">
                         <div class="ai-content-area">
                             <div class="typing-status-indicator">
-                                <span class="spinner"></span><div class="dots"></div><div class="dots"></div><div class="dots"></div>
+                                <div class="dots"></div><div class="dots"></div><div class="dots"></div>
                             </div>
                         </div>
                         <div class="ai-msg-controls" style="display: none;"></div>
                     </div>`;
                 chatViewport.appendChild(aiMessageDiv);
-                scrollToBottom();
+                scrollToBottom(); // SCROLL TO SEE THE "..."
 
                 currentAIMessageElement = aiMessageDiv;
                 currentTypingBubbleContentEl = aiMessageDiv.querySelector('.ai-content-area');
@@ -3035,26 +3051,17 @@
 
                 const startTime = performance.now();
                 
+                // --- 3. FETCH AND STREAM RESPONSE (ENDPOINT LOGIC FIXED) ---
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
-                    const chatPayload = { message: msgText, history: historyForAI };
-
-                    // --- *** THE CORE FIX FOR MODEL SWITCHING *** ---
-                    let endpoint;
-                    if (currentModel === 'gemini') {
-                        endpoint = `${API_BASE_URL}/chat`;
-                        console.log("Using model: Philadelphia (gemini). Endpoint:", endpoint);
-                    } else { // Assumes 'perplexity' for Seraphina
-                        endpoint = `${API_BASE_URL}/api/seraphina/chat`;
-                        console.log("Using model: Seraphina (perplexity). Endpoint:", endpoint);
-                    }
-                    // --- *** END OF FIX *** ---
-
+                    // This is the critical fix: Correctly select the endpoint based on the 'currentModel' state.
+                    const endpoint = currentModel === 'philadelphia' ? `${API_BASE_URL}/chat` : `${API_BASE_URL}/api/seraphina/chat`;
+                    
                     const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(chatPayload),
-                        signal
+                        body: JSON.stringify({ message: msgText, history: historyForAI }),
+                        signal: currentController.signal
                     });
 
                     if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
@@ -3090,7 +3097,7 @@
                                     fullResponseContent += cleanedContent;
                                     startTypewriter();
                                 }
-                            } catch (e) { /* Ignore parsing errors */ }
+                            } catch (e) { /* Ignore parsing errors for now */ }
                         }
                     }
                 } catch (err) {
@@ -3105,7 +3112,7 @@
                 }
             };
             
-            // --- VOICE CALL LOGIC (Unchanged) ---
+            // --- VOICE CALL LOGIC (Unchanged from previous correct version) ---
             const callVoices = {
                 gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
                 minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
