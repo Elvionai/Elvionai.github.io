@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1356,6 +1356,9 @@
         let currentAIContentElement = null; 
         let currentAIControlsElement = null; 
         let currentCursorElement = null;
+
+        // --- DEFINITIVE FIX: Standalone "Thinking" Indicator ---
+        let currentThinkingIndicatorElement = null;
 
         // Accumulator for the streaming response text
         let fullResponseContent = '';
@@ -2938,6 +2941,7 @@
             function startTypewriterEffect() {
                 if (typewriterInterval) return; // Already running
 
+                // --- DEFINITIVE FIX: Maximum Typing Speed ---
                 typewriterInterval = setInterval(() => {
                     if (typewriterIndex < fullResponseContent.length) {
                         if (currentAIContentElement && currentCursorElement) {
@@ -2946,11 +2950,8 @@
                             typewriterIndex++;
                             scrollToBottom(); // Keep view at the bottom as text is typed
                         }
-                    } else {
-                        // Typewriter is caught up to the buffer.
-                        // The interval will be cleared by finalizeChatResponse when the stream ends.
                     }
-                }, 20); // Typing speed in milliseconds per character
+                }, 5); // Hyper-speed typing: 5ms interval
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -3037,28 +3038,22 @@
                     userInput.dispatchEvent(new Event('input'));
                 }
                 
-                // --- 2. CREATE "THINKING" PLACEHOLDER ---
+                // --- 2. DEFINITIVE FIX: CREATE STANDALONE "THINKING" INDICATOR ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
+                if (currentThinkingIndicatorElement) currentThinkingIndicatorElement.remove();
                 typewriterIndex = 0;
                 fullResponseContent = '';
                 
-                const aiMessageDiv = document.createElement('div');
-                aiMessageDiv.className = "message-group ai";
-                aiMessageDiv.innerHTML = `
-                    <div class="msg-bubble">
-                        <div class="ai-content-area">
-                            <div class="thinking-indicator">
-                                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                            </div>
-                        </div>
-                        <div class="ai-msg-controls" style="display: none;"></div>
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.className = "message-group ai";
+                thinkingDiv.innerHTML = `
+                    <div class="thinking-indicator">
+                        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
                     </div>`;
-                chatViewport.appendChild(aiMessageDiv);
+                chatViewport.appendChild(thinkingDiv);
                 scrollToBottom();
+                currentThinkingIndicatorElement = thinkingDiv;
 
-                currentAIMessageElement = aiMessageDiv;
-                currentAIContentElement = aiMessageDiv.querySelector('.ai-content-area');
-                currentAIControlsElement = aiMessageDiv.querySelector('.ai-msg-controls');
 
                 const startTime = performance.now();
                 
@@ -3100,13 +3095,33 @@
                             try {
                                 const chunkData = JSON.parse(jsonStr);
 
-                                // On first valid data chunk, replace "thinking" with typewriter
+                                // --- DEFINITIVE FIX: On first chunk, swap indicator for message bubble ---
                                 if (isFirstChunk) {
                                     isFirstChunk = false;
-                                    if (currentAIContentElement) {
-                                        currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
-                                        currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                    // Remove the standalone thinking indicator
+                                    if (currentThinkingIndicatorElement) {
+                                        currentThinkingIndicatorElement.remove();
+                                        currentThinkingIndicatorElement = null;
                                     }
+
+                                    // Create the actual message bubble to type into
+                                    const aiMessageDiv = document.createElement('div');
+                                    aiMessageDiv.className = "message-group ai";
+                                    aiMessageDiv.innerHTML = `
+                                        <div class="msg-bubble">
+                                            <div class="ai-content-area">
+                                                <span class="typewriter-cursor"></span>
+                                            </div>
+                                            <div class="ai-msg-controls" style="display: none;"></div>
+                                        </div>`;
+                                    chatViewport.appendChild(aiMessageDiv);
+                                    
+                                    // Set global references to the new elements
+                                    currentAIMessageElement = aiMessageDiv;
+                                    currentAIContentElement = aiMessageDiv.querySelector('.ai-content-area');
+                                    currentAIControlsElement = aiMessageDiv.querySelector('.ai-msg-controls');
+                                    currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                    
                                     startTypewriterEffect();
                                 }
 
@@ -3125,6 +3140,11 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
+                     // If the stream ended before any content was received (e.g., error), clean up the thinking indicator
+                    if (currentThinkingIndicatorElement) {
+                        currentThinkingIndicatorElement.remove();
+                        currentThinkingIndicatorElement = null;
+                    }
                     // This function now handles cleanup, final rendering, and saving.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
