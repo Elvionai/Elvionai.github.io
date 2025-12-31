@@ -111,30 +111,51 @@
             position: absolute;
             pointer-events: none;
             border-radius: 50%;
-            background: var(--neon-blue); /* More integrated color */
+            /* UPDATED: CRITICAL FIX #3 - Enhanced Star Animation CSS (part 1) */
+            background: radial-gradient(circle, var(--neon-blue), transparent);
             animation: twinkle var(--duration) infinite ease-in-out alternate;
-            box-shadow: 0 0 8px rgba(0, 242, 255, 0.9), 0 0 15px rgba(0, 242, 255, 0.7); /* Stronger glow */
+            box-shadow: 0 0 10px rgba(0, 242, 255, 1), 0 0 20px rgba(0, 242, 255, 0.8), 0 0 30px rgba(189, 0, 255, 0.6);
             will-change: transform, opacity;
+        }
+        /* ADDED: CRITICAL FIX #3 - Enhanced Star Animation CSS (part 2) */
+        .star::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.3), transparent);
+            border-radius: 50%;
+            animation: pulse-glow var(--duration) infinite ease-in-out;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.8); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.5); }
         }
         @keyframes twinkle {
             0%, 100% { opacity: 0.15; transform: scale(0.4); } /* Softer start/end */
             50% { opacity: 1.2; transform: scale(1.6); } /* Brighter, larger peak - more lively */
         }
 
+        /* UPDATED: BONUS FIX #10: Enhanced Shooting Star CSS */
         .shooting-star {
             position: absolute;
-            height: 5px; /* Thicker trail */
-            background: linear-gradient(-90deg, var(--neon-blue), transparent); /* Use neon blue for shooting stars */
-            filter: drop-shadow(0 0 15px var(--neon-blue)); /* Stronger shadow */
+            height: 6px; /* Thicker trail */
+            background: linear-gradient(-90deg, rgba(0, 242, 255, 1), rgba(0, 242, 255, 0.8), rgba(189, 0, 255, 0.6), transparent);
+            filter: drop-shadow(0 0 20px var(--neon-blue)) drop-shadow(0 0 30px var(--neon-purple));
             animation: shoot var(--duration) ease-out forwards; /* forwards to ensure full animation */
             opacity: 0;
             z-index: 0;
             will-change: transform, opacity, width;
+            border-radius: 50% 0 0 50%;
         }
+        /* UPDATED: BONUS FIX #10: Enhanced Shooting Star CSS - Keyframes */
         @keyframes shoot {
             0% { transform: translate(var(--startX), var(--startY)) rotate(-50deg); opacity: 0; width: 0; } /* Steeper angle */
             5% { opacity: 1; width: var(--initialWidth); }
-            95% { opacity: 0.5; width: 0; }
+            95% { opacity: 0.6; width: calc(var(--initialWidth) * 0.3); } /* Fade more gradually */
             100% { transform: translate(calc(var(--startX) + var(--travelX)), calc(var(--startY) + var(--travelY))) rotate(-50deg); opacity: 0; width: 0; }
         }
 
@@ -422,11 +443,27 @@
         }
         .typing-status-indicator .dots:nth-child(2){animation-delay:.2s;}
         .typing-status-indicator .dots:nth-child(3){animation-delay:.4s;}
+        /* UPDATED: CRITICAL FIX #2: Enhanced Typing Animation CSS */
         @keyframes typing-blink {
-            0%,100% {opacity:.15; transform: scale(0.5) translateY(0);}
-            25% {opacity:1; transform: scale(1.4) translateY(-3px);} /* Added translateY for bounce */
-            50% {opacity:1; transform: scale(1.5) translateY(-5px);} /* Added translateY for bounce */
-            75% {opacity:.9; transform: scale(1) translateY(-2px);} /* Added translateY for bounce */
+            0% { opacity: 0.2; transform: scale(0.6) translateY(0); box-shadow: 0 0 5px var(--neon-blue); }
+            25% { opacity: 0.8; transform: scale(1.2) translateY(-4px); box-shadow: 0 0 15px var(--neon-blue), 0 0 25px var(--neon-purple); }
+            50% { opacity: 1; transform: scale(1.6) translateY(-8px); box-shadow: 0 0 20px var(--neon-blue), 0 0 35px var(--neon-purple); }
+            75% { opacity: 0.8; transform: scale(1.2) translateY(-4px); box-shadow: 0 0 15px var(--neon-blue), 0 0 25px var(--neon-purple); }
+            100% { opacity: 0.2; transform: scale(0.6) translateY(0); box-shadow: 0 0 5px var(--neon-blue); }
+        }
+        /* ADDED: CRITICAL FIX #2: Blinking cursor for typewriter effect */
+        .cursor-blink {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background: var(--neon-blue);
+            margin-left: 2px;
+            animation: cursor-flash 0.8s infinite;
+            vertical-align: text-bottom;
+        }
+        @keyframes cursor-flash {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
         }
 
         /* General Spinner (for 'Generating...' type messages) */
@@ -554,7 +591,7 @@
             position: fixed; top: 0; left: -420px; /* Hidden off-screen, wider panel */
             height: 100vh; width: 400px; /* Wider */
             background: var(--panel-bg);
-            border-right: 44px solid var(--panel-border); /* Thicker border */
+            border-right: 4px solid var(--panel-border); /* Thicker border */
             box-shadow: var(--panel-shadow);
             z-index: 1212;
             padding: 30px 25px 35px 25px; /* Increased padding */
@@ -1300,6 +1337,7 @@
         let uploadedFiles = [];
         let currentUser = null;
         let currentController = null; // Used for aborting fetch requests
+        let currentModel = 'gemini'; // DEFAULT TO PHILADELPHIA - CRITICAL FIX #1
         let fileObjectURLs = []; // To manage created object URLs for file previews
 
         let chatsUnsubscribe = null;
@@ -1323,11 +1361,10 @@
         let comicPanels = [];
         let currentComicPanelIndex = 0;
         
-        // --- MODEL STATE ---
-        let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
-        
         // --- REVAMPED STREAMING & ANIMATION STATE ---
+        let typewriterSpeed = 12; // milliseconds per character - CRITICAL FIX #8
         let typewriterInterval = null; // Holds the setInterval ID for typing
+        let typedCharIndex = 0; // CRITICAL FIX #8
         let isAIResponding = false;      // A master flag to indicate any AI activity
         
         // References to the elements of the message currently being streamed
@@ -1337,57 +1374,76 @@
 
         // Accumulators for the streaming response
         let fullResponseContent = '';
-        let typedCharIndex = 0;
         
         // Reference to any active tool processing message
         let currentProcessingMessageElement = null; 
 
         // Cosmic background animations
+        // ADDED: CRITICAL FIX #4 - new createStar function
+        function createStar() {
+            const star = document.createElement('div');
+            star.className = 'star';
+            // More variety in star sizes for depth
+            const sizeVariant = Math.random();
+            const size = sizeVariant < 0.7 ? Math.random() * 2 + 0.5 : Math.random() * 4 + 2;
+            star.style.width = size + 'px';
+            star.style.height = size + 'px';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            // Varied durations for more organic feel
+            const duration = Math.random() * 4 + 1.5;
+            star.style.setProperty('--duration', duration + 's');
+            star.style.animationDelay = Math.random() * 3 + 's';
+            // Different opacity for depth perception
+            star.style.opacity = Math.random() * 0.5 + 0.5;
+            cosmos.appendChild(star);
+        }
+
         function igniteCosmos() {
             if (cosmos) {
                 cosmos.querySelectorAll('.star').forEach(p => p.remove());
-                for (let i = 0; i < 400; i++) { // Increased star count
-                    const particle = document.createElement('div');
-                    particle.className = 'star';
-                    const size = Math.random() * 3.5 + 0.8; // Slightly larger stars
-                    particle.style.width = `${size}px`;
-                    particle.style.height = `${size}px`;
-                    particle.style.left = `${Math.random() * 100}%`;
-                    particle.style.top = `${Math.random() * 100}%`;
-                    particle.style.setProperty('--duration', `${Math.random() * 7 + 4}s`);
-                    particle.style.opacity = Math.random() * 0.9 + 0.1;
-                    cosmos.appendChild(particle);
+                for (let i = 0; i < 400; i++) {
+                    createStar(); // Call the new createStar function
                 }
             }
         }
 
-        function launchShootingStar() {
+        // UPDATED: CRITICAL FIX #6 - Renamed from launchShootingStar to createShootingStar
+        function createShootingStar() {
             if (!cosmos) return;
             const star = document.createElement('div');
             star.className = 'shooting-star';
-            const startX = Math.random() * window.innerWidth * 2 - window.innerWidth / 2;
-            const startY = Math.random() * window.innerHeight / 2 - window.innerHeight / 4;
-            const travelX = -Math.random() * 1200 - 800; // Longer travel
-            const travelY = Math.random() * 1000 + 700; // Longer travel
-            const duration = Math.random() * 6 + 4; // Slightly longer duration
-            const initialWidth = Math.random() * 150 + 60; // Thicker trail
+            const startX = Math.random() * window.innerWidth;
+            const startY = Math.random() * window.innerHeight * 0.6;
+            const travelX = (Math.random() * 400 + 300) * (Math.random() < 0.5 ? 1 : -1);
+            const travelY = Math.random() * 300 + 200;
+            const width = Math.random() * 150 + 100;
+            const duration = Math.random() * 1.5 + 0.8; // Shorter, snappier animations
 
-            star.style.setProperty('--startX', `${startX}px`);
-            star.style.setProperty('--startY', `${startY}px`);
-            star.style.setProperty('--travelX', `${travelX}px`);
-            star.style.setProperty('--travelY', `${travelY}px`);
-            star.style.setProperty('--duration', `${duration}s`);
-            star.style.setProperty('--initialWidth', `${initialWidth}px`);
+            star.style.setProperty('--startX', startX + 'px');
+            star.style.setProperty('--startY', startY + 'px');
+            star.style.setProperty('--travelX', travelX + 'px');
+            star.style.setProperty('--travelY', travelY + 'px');
+            star.style.setProperty('--initialWidth', width + 'px');
+            star.style.setProperty('--duration', duration + 's');
 
             cosmos.appendChild(star);
             setTimeout(() => star.remove(), duration * 1000);
         }
 
         igniteCosmos();
-        setInterval(() => {
-             if (Math.random() < 0.5) launchShootingStar(); // Increased frequency
-        }, 2000); // Shorter interval between checks for new shooting stars
+        // UPDATED: CRITICAL FIX #6 - Increase frequency for shooting stars
+        setInterval(createShootingStar, Math.random() * 3000 + 3000);
 
+
+        // ADDED: BONUS FIX #9 - Model Indicator to Header
+        function updateModelIndicator() {
+            const headerWelcome = $('headerWelcome');
+            if (headerWelcome && currentUser) {
+                const modelName = currentModel === 'gemini' ? 'Philadelphia' : 'Seraphina';
+                headerWelcome.textContent = `${currentUser.displayName || 'User'} • ${modelName} Active`;
+            }
+        }
 
         window.addEventListener('DOMContentLoaded', () => {
             const profileMenuBg = $('profileMenuBg');
@@ -1497,6 +1553,7 @@
                     brandTitle.textContent = newModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
                 }
                 console.log("DEBUG: Model set to:", currentModel); // Added for debugging
+                updateModelIndicator(); // BONUS FIX #9
             }
 
             const savedModel = localStorage.getItem('userPreferredModel');
@@ -1651,7 +1708,8 @@
                 if (editName) editName.value = displayName;
                 if (editPhoto) editPhoto.value = user.photoURL || "";
                 if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-                if (headerWelcome) headerWelcome.textContent = `Welcome, ${displayName}`;
+                // if (headerWelcome) headerWelcome.textContent = `Welcome, ${displayName}`; // Replaced by updateModelIndicator
+                updateModelIndicator(); // BONUS FIX #9
                 loadUserChats(user.uid);
             });
 
@@ -1667,7 +1725,8 @@
                         if (status) { status.textContent = "Profile updated!"; status.style.color = "var(--neon-green)"; }
                         setTimeout(() => { closeProfileMenu(); }, 800);
                         if (profilePicPreview) profilePicPreview.src = auth.currentUser?.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
-                        if (headerWelcome) headerWelcome.textContent = `Welcome, ${auth.currentUser?.displayName || 'User'}`;
+                        // if (headerWelcome) headerWelcome.textContent = `Welcome, ${auth.currentUser?.displayName || 'User'}`; // Replaced by updateModelIndicator
+                        updateModelIndicator(); // BONUS FIX #9
                     } catch (err) {
                         if (status) { status.textContent = err.message; status.style.color = "#ffd700"; }
                     }
@@ -2001,13 +2060,51 @@
                         regenerateResponse(messageId); // Regenerate using the current global model
                     };
                     
-                    if (popup) { 
-                        popup.querySelectorAll('button').forEach(button => {
-                            button.onclick = (ev) => {
-                                ev.stopPropagation();
-                                const newModel = ev.currentTarget.dataset.model;
-                                setCurrentModel(newModel);
-                                popup.style.display = 'none';
+                    // CRITICAL FIX #5: Model Switch Button Logic (COMPLETELY REPLACED)
+                    if (switchModelContainer && popup) {
+                        popup.querySelectorAll('button[data-model]').forEach(btn => {
+                            btn.onclick = (e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                const newModel = btn.getAttribute('data-model');
+                                // CRITICAL: Update the global currentModel variable
+                                currentModel = newModel === 'gemini' ? 'gemini' : 'perplexity';
+                                console.log('✅ Model switched to:', currentModel);
+                                console.log('➡️ Will use endpoint:', currentModel === 'gemini' ? '/chat' : '/api/seraphina/chat');
+
+                                // Update UI to reflect model change
+                                const brandTitle = $('brandTitle');
+                                if (brandTitle) {
+                                    brandTitle.textContent = currentModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
+                                }
+                                updateModelIndicator(); // BONUS FIX #9
+
+                                // Show visual confirmation
+                                const statusMsg = document.createElement('div');
+                                statusMsg.textContent = `Switched to ${currentModel === 'gemini' ? 'Philadelphia' : 'Seraphina'}`;
+                                statusMsg.style.cssText = `
+                                    position: fixed; top: 20px; right: 20px;
+                                    background: var(--plasma-gradient); color: #000;
+                                    padding: 15px 25px; border-radius: 12px;
+                                    font-weight: bold; z-index: 9999;
+                                    animation: popIn 0.3s ease-out; box-shadow: 0 0 30px var(--neon-blue);
+                                `;
+                                document.body.appendChild(statusMsg);
+                                setTimeout(() => statusMsg.remove(), 2000);
+
+                                // Regenerate response with new model
+                                deleteMessagesFrom(messageId); // Delete old AI response
+                                // Get the user message that prompted this AI response
+                                const msgIndex = currentMessages.findIndex(m => m.id === messageId);
+                                if (msgIndex > 0) {
+                                    const userMsg = currentMessages[msgIndex - 1];
+                                    if (userMsg && userMsg.role === 'user') {
+                                        // Resend with new model
+                                        setTimeout(() => {
+                                            window.sendMessage(userMsg.text);
+                                        }, 300); // Small delay for UI feedback
+                                    }
+                                }
                             };
                         });
                         if (switchModelContainer) {
@@ -2158,6 +2255,7 @@
                     } catch (e) { console.error("Error saving AI message: ", e); }
                 }
                 isAIResponding = false; // Reset master flag
+                updateModelIndicator(); // BONUS FIX #9
             }
 
 
@@ -2917,22 +3015,42 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
             
-            // --- NEW: TYPEWRITER/STREAMING LOGIC (FIXED) ---
+            // --- REPLACED: CRITICAL FIX #8 - NEW Typewriter Function ---
             function startTypewriter() {
-                if (typewriterInterval) return; // Already running
+                if (typewriterInterval) clearInterval(typewriterInterval); // Clear any existing interval
 
                 typewriterInterval = setInterval(() => {
                     if (typedCharIndex < fullResponseContent.length) {
-                        if (currentTypingBubbleContentEl) {
-                            currentTypingBubbleContentEl.textContent += fullResponseContent[typedCharIndex];
-                            scrollToBottom(); // AGGRESSIVE SCROLL on each character
-                        }
                         typedCharIndex++;
+                        const partialContent = fullResponseContent.substring(0, typedCharIndex);
+                        if (currentTypingBubbleContentEl) {
+                            try {
+                                const rendered = renderMarkdown(partialContent);
+                                // Add blinking cursor
+                                currentTypingBubbleContentEl.innerHTML = rendered.html + '<span class="cursor-blink"></span>';
+                                enhanceCodeBlocks(currentTypingBubbleContentEl.closest('.message-group'));
+                            } catch (e) {
+                                console.error('Render error:', e);
+                                currentTypingBubbleContentEl.textContent = partialContent + '|'; // Fallback
+                            }
+                        }
+                        scrollToBottom(); // AGGRESSIVE SCROLL on each character
                     } else {
-                        // The interval will be cleared by the finalize function
-                        // to prevent race conditions.
+                        // Finished typing
+                        clearInterval(typewriterInterval);
+                        typewriterInterval = null;
+                        if (currentTypingBubbleContentEl) {
+                            try {
+                                const finalRendered = renderMarkdown(fullResponseContent);
+                                currentTypingBubbleContentEl.innerHTML = finalRendered.html; // Remove cursor
+                                enhanceCodeBlocks(currentTypingBubbleContentEl.closest('.message-group'));
+                            } catch (e) {
+                                console.error('Final render error:', e);
+                                currentTypingBubbleContentEl.textContent = fullResponseContent; // Fallback
+                            }
+                        }
                     }
-                }, 25); // Fast typing speed (milliseconds per character)
+                }, typewriterSpeed); // Using the global typewriterSpeed
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -2988,6 +3106,7 @@
                 currentAIControlsEl = null;
 
                 scrollToBottom();
+                updateModelIndicator(); // BONUS FIX #9
             }
 
             // --- REBUILT `sendMessage` FUNCTION (FIXED) ---
@@ -3045,11 +3164,12 @@
                 
                 // --- 3. FETCH AND STREAM RESPONSE ---
                 try {
-                    console.log("DEBUG: currentModel before API call:", currentModel); // Added for debugging
-                    const endpoint = currentModel === 'gemini' ? `${API_BASE_URL}/chat` : `${API_BASE_URL}/api/seraphina/chat`;
-                    console.log("DEBUG: API Endpoint being used:", endpoint); // Added for debugging
-
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
+                    // CRITICAL FIX #7: Use currentModel to determine endpoint
+                    const endpoint = currentModel === 'gemini' ? `${API_BASE_URL}/chat` // Philadelphia endpoint
+                                                               : `${API_BASE_URL}/api/seraphina/chat`; // Seraphina endpoint
+                    console.log('🚀 Sending to:', endpoint);
+                    console.log('📊 Current model:', currentModel);
                     
                     const res = await fetch(endpoint, {
                         method: 'POST',
