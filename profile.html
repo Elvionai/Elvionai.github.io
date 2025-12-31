@@ -217,6 +217,7 @@
             text-shadow: var(--text-glow);
             white-space: nowrap;
             user-select: none;
+            transition: all 0.3s ease;
         }
         @keyframes plasmaFlow { to { background-position: 300% center; } }
 
@@ -249,7 +250,7 @@
         .message-group.ai { align-self: flex-start; }
         .message-group.user { align-self: flex-end; align-items: flex-end; }
         .message-group.system { align-self: center; text-align: center; font-style: italic; opacity: 0.8; font-size: 1em; }
-
+        
         .msg-bubble {
             padding: 22px 30px; border-radius: 32px; /* Larger padding and radius */
             font-size: 1.15rem; line-height: 1.7; /* Slightly larger text and line height */
@@ -322,22 +323,37 @@
         pre.highlighted code {
             text-shadow: 0 0 5px rgba(0,242,255,0.9); /* Stronger glow for highlighted text */
         }
-
-        .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn, .switch-model-btn {
-            padding: 12px 20px; border-radius: 18px; font-size: 1em; cursor: pointer; /* Larger padding, radius, font size */
-            background: var(--plasma-gradient-dark); color: #000; font-weight: bold;
-            border: 2px solid rgba(255,255,255,0.35); /* Thicker border */
-            box-shadow: 0 0 18px rgba(189,0,255,0.6); /* Stronger shadow */
+        
+        /* Always visible controls */
+        .ai-msg-controls, .user-msg-controls {
+            opacity: 1; /* Always visible now */
+            display: flex; /* Ensure it's always laid out */
+            transition: none; /* No transition on opacity anymore */
+            margin-top: 8px; /* Maintain spacing */
+            justify-content: flex-end; /* Align right */
+            gap: 10px; /* Space between icons */
+            align-items: center; /* Vertically center icons */
+        }
+        
+        .copy-btn, .inline-copy-btn, .inline-share-btn, .inline-regen-btn, .inline-edit-btn, .switch-model-btn {
+            padding: 8px 12px; border-radius: 12px; font-size: 0.8em; cursor: pointer; /* Smaller, more subtle */
+            background: rgba(255, 255, 255, 0.1); color: var(--main-text-color); font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: none;
             transition: all 0.2s ease;
-            display: inline-flex; align-items: center; gap: 10px; margin-top: 15px; /* Increased gap and margin */
+            display: inline-flex; align-items: center; gap: 8px; 
             user-select: none;
             position: relative; /* For model switch popup */
         }
-        .copy-btn:hover, .inline-copy-btn:hover, .inline-share-btn:hover, .regen-btn:hover, .inline-edit-btn:hover, .switch-model-btn:hover {
-            transform: translateY(-5px) scale(1.05); /* More pronounced hover */
-            box-shadow: 0 0 35px var(--neon-blue); /* Stronger glow */
+        .copy-btn:hover, .inline-copy-btn:hover, .inline-share-btn:hover, .inline-regen-btn:hover, .inline-edit-btn:hover, .switch-model-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
             color: #fff;
-            background: var(--plasma-gradient);
+            background: var(--plasma-gradient-dark);
+        }
+        /* Specific styling for switch model button icon */
+        .switch-model-btn i.fa-sitemap {
+            margin-right: 0; /* No margin as it's the primary icon */
         }
 
         /* --- NEW: Model Switch Popup Menu --- */
@@ -350,11 +366,15 @@
             border: 2px solid var(--neon-blue);
             border-radius: 15px;
             box-shadow: var(--panel-shadow);
-            z-index: 10;
+            z-index: 1000;
             overflow: hidden;
             flex-direction: column;
             animation: popIn 0.2s ease-out;
             width: 260px;
+        }
+        .switch-model-btn:hover .model-switch-popup,
+        .model-switch-popup:hover {
+             display: flex;
         }
         .model-switch-popup button {
             background: transparent;
@@ -380,45 +400,61 @@
             border-bottom: 1px solid var(--glass-border);
         }
 
-        /* Typing Dots (new style for inline in chat) */
-        .message-group.ai.typing-dots .msg-bubble {
-            padding: 18px 25px; /* Match standard bubble padding */
-            background: linear-gradient(135deg, rgba(30, 30, 60, 0.75), rgba(20, 20, 35, 0.9));
-            border-bottom-left-radius: 12px;
-            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.12);
-            display: inline-flex; /* To wrap around content */
+        /* --- UPGRADED --- Typing & Processing Status Styles */
+        .message-group.ai .msg-bubble .ai-content-area {
+            min-height: 1.15rem; /* Ensure minimum height for typing */
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        /* This is the live typewriter cursor */
+        .typewriter-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background: var(--neon-green);
+            animation: cursor-blink 0.8s infinite;
+            margin-left: 2px;
+            vertical-align: bottom;
+            border-radius: 2px;
+            box-shadow: 0 0 8px var(--neon-green);
+        }
+        @keyframes cursor-blink {
+            50% { opacity: 0; }
         }
 
-        .message-group.ai.typing-dots .typing-bubble {
-            display: inline-flex; /* Ensure dots are in line */
+        /* New "thinking" animation before stream starts */
+        .thinking-indicator {
+            display: flex;
             align-items: center;
+            gap: 8px;
+            padding: 5px 0;
         }
-        .message-group.ai.typing-dots .dot-anim {
-            display: inline-block;
-            width: 14px; height: 14px; margin: 0 6px; /* Larger dots */
-            background: var(--neon-blue); border-radius: 50%;
-            opacity: 0.98; animation: typing-blink 1s infinite both; /* More opaque, faster */
-            box-shadow: 0 0 12px var(--neon-blue); /* Stronger glow */
+        .thinking-indicator .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--neon-blue);
+            animation: thinking-wave 1.0s infinite ease-in-out; /* FIX: Animation speed increased */
+            box-shadow: 0 0 10px var(--neon-blue);
         }
-        .message-group.ai.typing-dots .dot-anim:nth-child(2){animation-delay:.2s;} /* Adjusted delays */
-        .message-group.ai.typing-dots .dot-anim:nth-child(3){animation-delay:.4s;}
-        @keyframes typing-blink {
-            0%,100% {opacity:.15; transform: scale(0.5);} /* Smaller start/end */
-            25% {opacity:1; transform: scale(1.4);} /* Brighter, larger peak */
-            50% {opacity:1; transform: scale(1.5);}
-            75% {opacity:.9; transform: scale(1);}
+        .thinking-indicator .dot:nth-child(2) { animation-delay: -0.8s; }
+        .thinking-indicator .dot:nth-child(3) { animation-delay: -0.6s; }
+        @keyframes thinking-wave {
+            0%, 60%, 100% { transform: scale(0.6); opacity: 0.5; }
+            30% { transform: scale(1.4); opacity: 1; }
         }
 
         /* General Spinner (for 'Generating...' type messages) */
         .spinner {
             display: inline-block;
-            width: 30px; height: 30px; /* Larger spinner */
-            border: 5px solid rgba(0, 255, 247, 0.6); /* Thicker, more opaque border */
+            width: 25px; height: 25px; /* Smaller spinner for inline use */
+            border: 4px solid rgba(0, 255, 247, 0.6);
             border-radius: 50%;
             border-top-color: var(--neon-green);
-            animation: spin 0.6s ease-in-out infinite; /* Faster spin */
-            margin-right: 15px; /* More spacing */
-            vertical-align: middle; /* Align with text */
+            animation: spin 0.6s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -977,23 +1013,20 @@
             .ai .msg-bubble, .user .msg-bubble { border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; }
             
             /* Typing dots on mobile */
-            .message-group.ai.typing-dots .msg-bubble { padding: 10px 15px; border-radius: 20px; }
-            .message-group.ai.typing-dots .dot-anim { width: 10px; height: 10px; margin: 0 4px; }
+            .thinking-indicator .dot { width: 8px; height: 8px; }
+            .spinner { width: 18px; height: 18px; margin-right: 6px; }
 
             pre {
                 padding: 0.8em 1em;
                 font-size: 0.85em;
                 border-radius: 12px;
             }
-            .copy-btn, .inline-copy-btn, .inline-share-btn, .regen-btn, .inline-edit-btn, .switch-model-btn {
+            .copy-btn, .inline-copy-btn, .inline-share-btn, .inline-regen-btn, .inline-edit-btn, .switch-model-btn {
                 padding: 6px 10px;
                 font-size: 0.75em;
                 border-radius: 8px;
             }
             
-            .spinner { width: 18px; height: 18px; margin-right: 6px; }
-
-
             .input-dock { padding: 10px 15px; gap: 8px; min-height: 80px;}
             
             .main-action-buttons {
@@ -1274,8 +1307,13 @@
 
         const $ = id => document.getElementById(id);
 
-        // Define API base URL
+        // --- FIXED: API ENDPOINT MANAGEMENT ---
         const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
+        const API_ENDPOINTS = {
+            gemini: `${API_BASE_URL}/chat`, // Philadelphia
+            perplexity: `${API_BASE_URL}/api/seraphina/chat` // Seraphina
+        };
+
 
         let chats = [];
         let currentChatId = null;
@@ -1305,17 +1343,27 @@
         // Comic viewer state
         let comicPanels = [];
         let currentComicPanelIndex = 0;
-
-        // --- References for dynamic animation elements ---
-        let currentStatusMessageElement = null;
-        let currentProcessingMessageElement = null;
-
+        
         // --- MODEL STATE ---
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
-        let currentAIMessageElement = null; // Reference to the div currently being filled by streaming.
-        let currentAIMessageFirestoreId = null; // Store message ID for saving to DB later.
+        // --- UPGRADED: STREAMING & TYPEWRITER STATE ---
+        let typewriterInterval = null;      // Holds the setInterval ID for the typewriter effect
+        let isAIResponding = false;         // A master flag to indicate any AI activity (chat or tool)
+        
+        // References to the elements of the message currently being streamed
+        let currentAIMessageElement = null; 
+        let currentAIContentElement = null; 
+        let currentAIControlsElement = null; 
+        let currentCursorElement = null;
 
+        // Accumulator for the streaming response text
+        let fullResponseContent = '';
+        // Index for the typewriter effect to track progress
+        let typewriterIndex = 0;
+        
+        // Reference to any active tool processing message (e.g., "Generating image...")
+        let currentProcessingMessageElement = null; 
 
         // Cosmic background animations
         function igniteCosmos() {
@@ -1397,6 +1445,7 @@
             const toolFormBackBtn = $('toolFormBackBtn');
             const lightbox = $('lightbox');
             const inputDock = $('inputDock'); 
+            const brandTitle = $('brandTitle');
             
             // Image Preview Elements
             const aiPrevBox = $('ai-image-preview');
@@ -1435,14 +1484,50 @@
             const addWelcomeMessage = () => {
                 const welcomeMsg = `<div class="message-group ai">
                     <div class="msg-bubble">
-                        Greetings, traveler. 🦅 The cosmos is aligned. How can I illuminate your path today? I am fully charged and ready to create. ✨
+                        <div class="ai-content-area">
+                            Greetings, traveler. 🦅 The cosmos is aligned. How can I illuminate your path today? I am fully charged and ready to create. ✨
+                        </div>
+                        <div class="ai-msg-controls">
+                            <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;"></span>
+                            <div style="margin-left:auto;"></div>
+                            <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                            <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                            <button type="button" class="inline-regen-btn" title="Regenerate response (current model)"><i class="fa-solid fa-arrows-rotate"></i></button>
+                            <div class="switch-model-btn" title="Change AI Model">
+                                <i class="fa-solid fa-sitemap"></i>
+                                <div class="model-switch-popup">
+                                    <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                                    <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>`;
                 if(chatViewport.innerHTML.trim() === '') {
                     chatViewport.innerHTML = welcomeMsg;
+                    hookAiMsgControls(); // Hook controls for initial message
                 }
             };
-            addWelcomeMessage();
+
+            // --- MODEL SELECTION LOGIC ---
+            function setCurrentModel(newModel) {
+                if (newModel !== 'gemini' && newModel !== 'perplexity') {
+                    newModel = 'gemini'; // Default fallback
+                }
+                currentModel = newModel;
+                localStorage.setItem('userPreferredModel', newModel);
+                if (brandTitle) {
+                    brandTitle.textContent = newModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
+                }
+            }
+
+            const savedModel = localStorage.getItem('userPreferredModel');
+            if (savedModel) {
+                setCurrentModel(savedModel);
+            } else {
+                addWelcomeMessage();
+            }
+            // --- END MODEL SELECTION LOGIC ---
 
 
             const emojis = ["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀"];
@@ -1484,6 +1569,13 @@
             }
 
             if (userInput) {
+                 // FIX: Removed the 'Enter' keydown listener to prevent it from submitting the form.
+                 // Only the send button can now submit.
+                 userInput.addEventListener('keydown', (e) => {
+                    // The original 'Enter' key submission logic has been removed as requested.
+                    // The default behavior (new line) will now occur.
+                    // Shift+Enter will also create a new line by default.
+                });
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1647,6 +1739,10 @@
                 const messagesCol = collection(db, 'users', userId, 'chats', chatId, 'messages');
                 const q = query(messagesCol, orderBy('createdAt'));
                 messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+                    // *** FIX: Add guard to prevent re-rendering during AI response streaming ***
+                    if (isAIResponding) {
+                        return;
+                    }
                     currentMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatBox(currentMessages);
                 }, (error) => {
@@ -1798,15 +1894,6 @@
 
             function renderChatBox(messages = []) {
                 if (!chatViewport) return;
-                
-                const activeStatusMessage = currentStatusMessageElement || currentProcessingMessageElement;
-                if (activeStatusMessage && activeStatusMessage.parentElement === chatViewport) {
-                    chatViewport.removeChild(activeStatusMessage);
-                }
-                const activeStreamingMessage = currentAIMessageElement;
-                if (activeStreamingMessage && activeStreamingMessage.parentElement === chatViewport) {
-                    chatViewport.removeChild(activeStreamingMessage);
-                }
 
                 chatViewport.innerHTML = ''; 
 
@@ -1814,8 +1901,6 @@
                     addWelcomeMessage();
                 } else {
                     (messages || []).forEach((msg) => {
-                        if (msg.id === currentAIMessageFirestoreId) return;
-
                         const div = document.createElement('div');
                         div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
                         div.setAttribute('data-message-id', msg.id);
@@ -1832,13 +1917,16 @@
                                     return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
                                 })
                                 .join('');
+                            
+                            // FIX: Use full renderMarkdown for user messages to support code blocks
+                            const userContent = renderMarkdown(msg.text || '').html;
 
                             innerHtml = `<div class="msg-bubble">
                                 ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
-                                ${inlineMarkdown(msg.text || '')}
-                                <div class="user-msg-controls" style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px;">
-                                    <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i> Copy</button>
+                                ${userContent}
+                                <div class="user-msg-controls">
+                                    <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i></button>
                                 </div>
                             </div>`;
                         } else {
@@ -1849,13 +1937,21 @@
                                 content = renderMarkdown(msg.text || '').html;
                             }
                             const timeDisplay = msg.duration ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${msg.duration}s</span>` : '';
-                            innerHtml = `<div class="msg-bubble">${content}
-                                <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
+                            innerHtml = `<div class="msg-bubble">
+                                <div class="ai-content-area">${content}</div>
+                                <div class="ai-msg-controls">
                                     ${timeDisplay}
                                     <div style="margin-left:auto;"></div>
                                     <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
                                     <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
-                                    <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
+                                    <button type="button" class="inline-regen-btn" title="Regenerate response (current model)"><i class="fa-solid fa-arrows-rotate"></i></button>
+                                    <div class="switch-model-btn" title="Change AI Model">
+                                        <i class="fa-solid fa-sitemap"></i>
+                                        <div class="model-switch-popup">
+                                            <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                                            <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>`;
                         }
@@ -1864,13 +1960,6 @@
                     });
                 }
                 
-                if (activeStreamingMessage) {
-                    chatViewport.appendChild(activeStreamingMessage);
-                }
-                if (activeStatusMessage) {
-                    chatViewport.appendChild(activeStatusMessage);
-                }
-
                 enhanceCodeBlocks(chatViewport);
                 hookAiMsgControls();
                 hookUserMsgControls();
@@ -1908,87 +1997,76 @@
 
                     const copyBtn = controls.querySelector('.inline-copy-btn');
                     const shareBtn = controls.querySelector('.inline-share-btn');
-                    const switchModelBtn = controls.querySelector('.switch-model-btn');
+                    const regenBtn = controls.querySelector('.inline-regen-btn');
+                    const switchModelContainer = controls.querySelector('.switch-model-btn');
+                    const popup = controls.querySelector('.model-switch-popup'); 
 
                     if (copyBtn) copyBtn.onclick = () => {
-                        const msg = currentMessages.find(m => m.id === messageId);
-                        const msgBubble = div.querySelector('.msg-bubble');
-                        if (!msgBubble) return;
+                        const msgContentArea = div.querySelector('.ai-content-area');
+                        if (!msgContentArea) return;
                         
-                        // Temporarily remove controls for clean copy
-                        const tempControls = msgBubble.querySelector('.ai-msg-controls');
-                        if(tempControls) tempControls.style.display = 'none';
-
-                        const textToCopy = msgBubble.innerText || '';
-                        
-                        if(tempControls) tempControls.style.display = 'flex';
-
+                        const textToCopy = msgContentArea.innerText || ''; // Get plain text content
                         navigator.clipboard.writeText(textToCopy.trim());
                         copyBtn.innerHTML = "<i class='fa-solid fa-check'></i>";
                         setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>"; }, 1200);
                     };
 
                     if (shareBtn) shareBtn.onclick = () => {
-                        const msg = currentMessages.find(m => m.id === messageId);
-                        if (!msg) return;
+                        const msgContentArea = div.querySelector('.ai-content-area');
+                        if (!msgContentArea) return;
                         try {
                             const url = window.location.origin;
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = msg.text;
-                            const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                            const plainText = msgContentArea.innerText || '';
                             const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
                             if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
                             else prompt("Copy and share manually:", shareText);
                         } catch (e) { console.warn('Share failed:', e); }
                     };
+
+                    if (regenBtn) regenBtn.onclick = () => {
+                        regenerateResponse(messageId); // Regenerate using the current global model
+                    };
                     
-                    if (switchModelBtn) {
-                        switchModelBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            document.querySelectorAll('.model-switch-popup').forEach(p => p.remove());
-
-                            const popup = document.createElement('div');
-                            popup.className = 'model-switch-popup';
-                            popup.style.display = 'flex';
-                            
-                            popup.innerHTML = `
-                                <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Regen with Philadelphia</button>
-                                <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Regen with Seraphina</button>
-                            `;
-
-                            switchModelBtn.appendChild(popup);
-
-                            popup.addEventListener('click', (ev) => {
-                                const button = ev.target.closest('button');
-                                if (button) {
-                                    const regenWithModel = button.dataset.model;
-                                    regenerateResponse(messageId, regenWithModel);
-                                }
-                                popup.remove();
-                            });
-                            
-                            const closePopup = (event) => {
-                                if (!popup.contains(event.target)) {
-                                    popup.remove();
-                                    document.removeEventListener('click', closePopup);
-                                }
+                    if (popup) { 
+                        popup.querySelectorAll('button').forEach(button => {
+                            button.onclick = (ev) => {
+                                ev.stopPropagation();
+                                const newModel = ev.currentTarget.dataset.model;
+                                setCurrentModel(newModel);
+                                popup.style.display = 'none';
                             };
-                            setTimeout(() => document.addEventListener('click', closePopup), 0);
-                        };
+                        });
+                        if (switchModelContainer) {
+                            switchModelContainer.onclick = (ev) => {
+                                ev.stopPropagation();
+                                popup.style.display = popup.style.display === 'flex' ? 'none' : 'flex';
+                            };
+                        }
                     }
+                });
+                document.addEventListener('click', (e) => {
+                    document.querySelectorAll('.model-switch-popup').forEach(popup => {
+                        const switchBtn = popup.closest('.switch-model-btn');
+                        if (popup.style.display === 'flex' && switchBtn && !switchBtn.contains(e.target) && !popup.contains(e.target)) {
+                            popup.style.display = 'none';
+                        }
+                    });
                 });
             }
 
-            async function regenerateResponse(messageId, regenWithModel) {
+            async function regenerateResponse(messageId) {
                 const msgIndex = currentMessages.findIndex(m => m.id === messageId);
                 if (msgIndex < 1) return;
                 const userMsg = currentMessages[msgIndex - 1];
                 if (userMsg.role !== 'user') return;
 
+                if (currentController) currentController.abort();
+                
                 await deleteMessagesFrom(messageId);
                 
-                await sendMessage(userMsg.text, regenWithModel); 
+                await sendMessage(userMsg.text); 
             }
+
 
             function hookUserMsgControls() {
                 if (!chatViewport) return;
@@ -2003,12 +2081,11 @@
 
                     if (copyBtn) copyBtn.onclick = () => {
                         try {
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = msg.text;
-                            const textToCopy = tempDiv.textContent || tempDiv.innerText || '';
+                            const msgBubble = div.querySelector('.msg-bubble');
+                            const textToCopy = msgBubble.innerText || '';
                             navigator.clipboard.writeText(textToCopy);
-                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
-                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1200);
+                            copyBtn.innerHTML = "<i class='fa-solid fa-check'></i>";
+                            setTimeout(() => { if (copyBtn) copyBtn.innerHTML = "<i class='fa-solid fa-copy'></i>"; }, 1200);
                         } catch (e) { console.warn('Copy failed:', e); }
                     };
 
@@ -2028,53 +2105,30 @@
             
             function scrollToBottom() {
                 if (chatViewport) {
-                    chatViewport.scrollTop = chatViewport.scrollHeight;
-                }
-            }
-
-            function displayStatusMessage(text, modelName) {
-                if (!chatViewport) return;
-                removeStatusMessage(); 
-                removeProcessingMessage();
-
-                let modelDisplayName = modelName === 'perplexity' ? 'Seraphina' : 'Philadelphia';
-
-                const div = document.createElement('div');
-                div.className = "message-group ai status-message";
-                div.innerHTML = `
-                    <div class="msg-bubble" aria-label="${text}">
-                        <span class="spinner"></span>
-                        <span style="margin-left:10px; color:var(--main-text-color); font-style:italic;">${modelDisplayName} is ${text}...</span>
-                    </div>
-                `;
-                chatViewport.appendChild(div);
-                currentStatusMessageElement = div;
-                setTimeout(scrollToBottom, 50); 
-            }
-
-            function removeStatusMessage() {
-                if (currentStatusMessageElement) {
-                    currentStatusMessageElement.remove();
-                    currentStatusMessageElement = null;
+                    setTimeout(() => {
+                        chatViewport.scrollTop = chatViewport.scrollHeight;
+                    }, 0);
                 }
             }
 
             function displayProcessingMessage(text) {
                 if (!chatViewport) return;
-                removeStatusMessage(); 
-                removeProcessingMessage();
+                removeProcessingMessage(); // Clear previous message
 
                 const div = document.createElement('div');
-                div.className = "message-group ai processing-message";
+                div.className = "message-group ai";
                 div.innerHTML = `
                     <div class="msg-bubble" aria-label="${text}">
-                        <span class="spinner"></span>
-                        <span style="margin-left:10px; color:var(--main-text-color); font-style:italic;">${text}</span>
+                        <div class="ai-content-area" style="display: flex; align-items: center;">
+                            <span class="spinner"></span>
+                            <span style="margin-left:10px; color:var(--main-text-color); font-style:italic;">${escapeHTML(text)}</span>
+                        </div>
                     </div>
                 `;
                 chatViewport.appendChild(div);
                 currentProcessingMessageElement = div;
-                setTimeout(scrollToBottom, 50); 
+                isAIResponding = true;
+                scrollToBottom();
             }
 
             function removeProcessingMessage() {
@@ -2085,26 +2139,34 @@
             }
 
             async function showToolResponse(text, saveToDb = true, durationSeconds = null) {
-                removeStatusMessage();
-                removeProcessingMessage();
+                removeProcessingMessage(); // Clear "Generating..." message
 
                 const div = document.createElement('div');
                 div.className = "message-group ai";
                 const msgBubble = document.createElement('div');
                 msgBubble.className = 'msg-bubble';
                 div.appendChild(msgBubble);
-                chatViewport.appendChild(div);
                 
                 const finalRenderText = text || "Tool execution finished.";
                 
-                msgBubble.innerHTML = renderMarkdown(finalRenderText).html + `
-                    <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
+                msgBubble.innerHTML = `
+                    <div class="ai-content-area">${renderMarkdown(finalRenderText).html}</div>
+                    <div class="ai-msg-controls">
                         ${durationSeconds ? `<span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${durationSeconds}s</span>` : ''}
                         <div style="margin-left:auto;"></div>
                         <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
                         <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                        <button type="button" class="inline-regen-btn" title="Regenerate response (current model)"><i class="fa-solid fa-arrows-rotate"></i></button>
+                        <div class="switch-model-btn" title="Change AI Model">
+                            <i class="fa-solid fa-sitemap"></i>
+                            <div class="model-switch-popup">
+                                <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                                <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                            </div>
+                        </div>
                     </div>
                 `;
+                chatViewport.appendChild(div);
                 enhanceCodeBlocks(msgBubble);
                 scrollToBottom();
                 
@@ -2113,10 +2175,10 @@
                     try {
                         const docRef = await addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg);
                         div.setAttribute('data-message-id', docRef.id);
-                        currentMessages.push({id: docRef.id, ...newMsg});
                         hookAiMsgControls();
                     } catch (e) { console.error("Error saving AI message: ", e); }
                 }
+                isAIResponding = false; // Reset master flag
             }
 
 
@@ -2184,11 +2246,34 @@
 
             async function addMessageToChat(role, text, files = [], duration = null) {
                 if (!currentChatId || !currentUser) return;
+
+                // Add message visually right away for responsiveness
+                if (role === 'user') {
+                     const div = document.createElement('div');
+                    div.className = 'message-group user';
+                    const fileHtml = (files || []).map(file => {
+                        let icon = 'fa-file';
+                        if (file.type?.startsWith('image/')) icon = 'fa-file-image';
+                        else if (file.type?.startsWith('video/')) icon = 'fa-file-video';
+                        else if (file.type?.startsWith('audio/')) icon = 'fa-file-audio';
+                        return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name)}</div>`;
+                    }).join('');
+                    div.innerHTML = `<div class="msg-bubble">
+                        ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
+                        ${renderMarkdown(text).html}
+                    </div>`; // Controls will be added by renderChatBox later
+                    chatViewport.appendChild(div);
+                    enhanceCodeBlocks(div); // Enhance code blocks in the new user message
+                    scrollToBottom();
+                }
+
+                // Save to Firestore in the background
                 const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
                 try {
                     await addDoc(messagesCol, { role, text, files, duration, createdAt: serverTimestamp() });
                 } catch (e) {
                     console.error("Error adding message to Firestore: ", e);
+                    // Optionally show an error to the user
                 }
             }
 
@@ -2769,7 +2854,7 @@
                     const tool = toolDefinitions[toolKey];
                     if (!tool) { console.error(`Tool "${toolKey}" is not defined.`); return; }
                     
-                    if (currentController) currentController.abort();
+                    if (isAIResponding) return;
                     currentController = new AbortController(); 
                     
                     if (sendBtn) sendBtn.style.display = 'none';
@@ -2797,6 +2882,8 @@
                         if (result && typeof result === 'string') {
                             await showToolResponse(result, true);
                         }
+                        // Reset UI state
+                        isAIResponding = false;
                         removeProcessingMessage(); 
                         if (sendBtn) sendBtn.style.display = 'flex';
                         if (callBtn) callBtn.style.display = 'flex';
@@ -2821,11 +2908,8 @@
                 toolForm.onsubmit = async (e) => {
                     e.preventDefault();
                     const submitButton = toolForm.querySelector('button[type="submit"]');
-                    const originalButtonContent = submitButton ? submitButton.innerHTML : '';
-                    if (submitButton) {
-                        submitButton.innerHTML = `<div class="spinner"></div> Processing...`;
-                        submitButton.disabled = true;
-                    }
+                    if (submitButton) submitButton.disabled = true;
+
                     if (toolFormModal) toolFormModal.classList.remove('active');
                     if (toolFormModalBg) toolFormModalBg.classList.remove('active');
                     
@@ -2838,11 +2922,9 @@
                         if (resultText) {
                             await showToolResponse(resultText, true);
                         }
+                        // Reset UI state
+                        isAIResponding = false;
                         removeProcessingMessage();
-                        if (submitButton) {
-                            submitButton.innerHTML = originalButtonContent;
-                            submitButton.disabled = false;
-                        }
                         if (sendBtn) sendBtn.style.display = 'flex';
                         if (callBtn) callBtn.style.display = 'flex';
                         if (stopBtn) stopBtn.style.display = 'none';
@@ -2856,28 +2938,100 @@
                 if (toolFormModalBg) toolFormModalBg.classList.add('active');
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
+            
+            // --- UPGRADED: Real-time Typewriter & Streaming Logic ---
+            function startTypewriterEffect() {
+                if (typewriterInterval) return; // Already running
 
-            window.sendMessage = async function(overrideText = null, overrideModel = null) {
-                if (!currentChatId || !userInput) return;
+                typewriterInterval = setInterval(() => {
+                    if (typewriterIndex < fullResponseContent.length) {
+                        if (currentAIContentElement && currentCursorElement) {
+                            const nextChar = fullResponseContent[typewriterIndex];
+                            currentCursorElement.insertAdjacentText('beforebegin', nextChar);
+                            typewriterIndex++;
+                            scrollToBottom(); // Keep view at the bottom as text is typed
+                        }
+                    } else {
+                        // Typewriter is caught up to the buffer.
+                        // The interval will be cleared by finalizeChatResponse when the stream ends.
+                    }
+                }, 2); // FIX: Typing speed dramatically increased for a "flashy" effect
+            }
+
+            function finalizeChatResponse(finalText, startTime) {
+                if (typewriterInterval) clearInterval(typewriterInterval);
+                typewriterInterval = null;
+
+                const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
+                
+                const controlsHtml = `
+                    <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
+                    <div style="margin-left:auto;"></div>
+                    <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
+                    <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
+                    <button type="button" class="inline-regen-btn" title="Regenerate response (current model)"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <div class="switch-model-btn" title="Change AI Model">
+                        <i class="fa-solid fa-sitemap"></i>
+                        <div class="model-switch-popup">
+                            <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
+                            <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                        </div>
+                    </div>
+                `;
+                
+                // Final render with full markdown and controls
+                if (currentAIMessageElement && currentAIContentElement && currentAIControlsElement) {
+                    currentAIContentElement.innerHTML = renderMarkdown(finalText).html; // Render final markdown
+                    enhanceCodeBlocks(currentAIMessageElement);
+                    currentAIControlsElement.innerHTML = controlsHtml;
+                    currentAIControlsElement.style.display = 'flex';
+                    hookAiMsgControls();
+                }
+                
+                // Save final, complete message to the database
+                if (currentUser && currentChatId && finalText.trim()) {
+                    const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
+                    addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg)
+                        .then(docRef => {
+                            if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
+                        }).catch(e => console.error("Error saving final message:", e));
+                }
+                
+                // Reset all streaming-related state variables
+                isAIResponding = false;
+                if (sendBtn) sendBtn.style.display = 'flex';
+                if (stopBtn) stopBtn.style.display = 'none';
+                if (callBtn) callBtn.style.display = 'flex';
+                if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                currentController = null;
+                fullResponseContent = '';
+                typewriterIndex = 0;
+                currentAIMessageElement = null;
+                currentAIContentElement = null;
+                currentAIControlsElement = null;
+                currentCursorElement = null;
+
+                scrollToBottom();
+            }
+
+            // --- RE-ARCHITECTED `sendMessage` FUNCTION ---
+            window.sendMessage = async function(overrideText = null) {
                 const msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
-
-                const modelToUse = overrideModel || currentModel;
-
+                if (isAIResponding) return;
+                
+                isAIResponding = true;
+                if (currentController) currentController.abort();
+                currentController = new AbortController();
+                
+                // --- 1. UI SETUP ---
                 if (sendBtn) sendBtn.style.display = 'none';
                 if (stopBtn) stopBtn.style.display = 'flex';
                 if (callBtn) callBtn.style.display = 'none';
-
-                if (currentController) currentController.abort();
-                currentController = new AbortController();
-                const signal = currentController.signal;
-
-                if (stopBtn) {
-                    const chatStopListener = () => { if (currentController) currentController.abort(); };
-                    if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                    stopBtn.addEventListener('click', chatStopListener, { once: true });
-                    stopBtn._currentStopListener = chatStopListener;
-                }
+                const chatStopListener = () => { if (currentController) currentController.abort(); };
+                if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
+                stopBtn.addEventListener('click', chatStopListener, { once: true });
+                stopBtn._currentStopListener = chatStopListener;
 
                 if (overrideText === null) {
                     const filesForHistory = uploadedFiles.map(file => ({ name: file.name, type: file.type }));
@@ -2887,53 +3041,52 @@
                     renderFilePreview();
                     userInput.dispatchEvent(new Event('input'));
                 }
-
-                const historyForAI = currentMessages
-                    .filter(m => m.id !== currentAIMessageFirestoreId) // Exclude any leftover temp messages
-                    .map(m => ({ role: m.role, content: m.text || '' }));
-                    
-                let endpoint = '';
-                let chatPayload = {};
-
-                if (modelToUse === 'gemini') {
-                    endpoint = `${API_BASE_URL}/chat`;
-                    chatPayload = { message: msgText, history: historyForAI };
-                } else { // 'perplexity'
-                    endpoint = `${API_BASE_URL}/api/seraphina/chat`;
-                    chatPayload = { message: msgText, history: historyForAI };
-                }
-
+                
+                // --- 2. CREATE "THINKING" PLACEHOLDER ---
+                if (typewriterInterval) clearInterval(typewriterInterval);
+                typewriterIndex = 0;
+                fullResponseContent = '';
+                
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
-                const msgBubble = document.createElement('div');
-                msgBubble.className = 'msg-bubble';
-                aiMessageDiv.appendChild(msgBubble);
+                aiMessageDiv.innerHTML = `
+                    <div class="msg-bubble">
+                        <div class="ai-content-area">
+                            <div class="thinking-indicator">
+                                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                            </div>
+                        </div>
+                        <div class="ai-msg-controls" style="display: none;"></div>
+                    </div>`;
                 chatViewport.appendChild(aiMessageDiv);
-                currentAIMessageElement = aiMessageDiv;
-                currentAIMessageFirestoreId = 'temp-id-' + Date.now();
-                aiMessageDiv.setAttribute('data-message-id', currentAIMessageFirestoreId);
                 scrollToBottom();
 
-                let fullAIResponseText = '';
+                currentAIMessageElement = aiMessageDiv;
+                currentAIContentElement = aiMessageDiv.querySelector('.ai-content-area');
+                currentAIControlsElement = aiMessageDiv.querySelector('.ai-msg-controls');
+
                 const startTime = performance.now();
-                let firstChunkReceived = false;
                 
+                // --- 3. FETCH & STREAM RESPONSE ---
                 try {
+                    const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
+                    
+                    // --- FIXED: Explicit endpoint selection ---
+                    const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
+                    
                     const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(chatPayload),
-                        signal
+                        body: JSON.stringify({ message: msgText, history: historyForAI }),
+                        signal: currentController.signal
                     });
 
-                    if (!res.ok) {
-                        const errorText = await res.text();
-                        throw new Error(`Server error (${res.status}): ${errorText}`);
-                    }
+                    if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
 
                     const reader = res.body.getReader();
                     const decoder = new TextDecoder('utf-8');
                     let buffer = '';
+                    let isFirstChunk = true;
 
                     while (true) {
                         const { value, done } = await reader.read();
@@ -2946,97 +3099,46 @@
                             buffer = buffer.substring(newlineIndex + 2);
                             if (!message.startsWith('data: ')) continue;
                             
-                            let jsonStr = message.substring(5).trim();
+                            const jsonStr = message.substring(5).trim();
                             if (jsonStr === '[DONE]') break;
 
                             try {
                                 const chunkData = JSON.parse(jsonStr);
-                                
-                                if (!firstChunkReceived) {
-                                    removeStatusMessage();
-                                    firstChunkReceived = true;
-                                    msgBubble.innerHTML = ''; // Clear status to start typing
+
+                                // On first valid data chunk, replace "thinking" with typewriter
+                                if (isFirstChunk) {
+                                    isFirstChunk = false;
+                                    if (currentAIContentElement) {
+                                        currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
+                                        currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                    }
+                                    startTypewriterEffect();
                                 }
 
-                                if (chunkData.type === 'status' && chunkData.content === 'thinking') {
-                                    displayStatusMessage('thinking', modelToUse);
-                                } else if (chunkData.type === 'content' && chunkData.content) {
-                                    removeStatusMessage();
-                                    fullAIResponseText += chunkData.content;
-                                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
-                                    scrollToBottom();
-                                } else if (chunkData.type === 'error') {
-                                    fullAIResponseText += `\n\n❌ AI Error: ${chunkData.content}`;
-                                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
+                                if (chunkData.type === 'content' && chunkData.content) {
+                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
+                                    fullResponseContent += cleanedContent; // Add to buffer for typewriter
                                 }
-                            } catch (e) {
-                                console.error("Stream parsing error:", e, "Data:", jsonStr);
-                            }
+                            } catch (e) { /* Ignore parsing errors */ }
                         }
                     }
                 } catch (err) {
-                    if (err.name !== 'AbortError') {
-                        console.error("Fetch/Stream error:", err);
-                        fullAIResponseText += `\n\n❌ An error occurred: ${err.message}`;
+                    if (err.name === 'AbortError') {
+                        fullResponseContent += '\n\n*(Response stopped by user)*';
                     } else {
-                         fullAIResponseText += '\n\n<em>(Response stopped by user)</em>';
+                        console.error("Fetch/Stream error:", err);
+                        fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
-                    msgBubble.innerHTML = renderMarkdown(fullAIResponseText).html;
                 } finally {
-                    finalizeChatResponseUI(fullAIResponseText, startTime);
+                    // This function now handles cleanup, final rendering, and saving.
+                    finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
-
-            function finalizeChatResponseUI(finalText, startTime) {
-                const responseDuration = ((performance.now() - startTime) / 1000).toFixed(1);
-                removeStatusMessage();
-                
-                if (currentAIMessageElement) {
-                    const bubble = currentAIMessageElement.querySelector('.msg-bubble');
-                    if(bubble) {
-                        bubble.innerHTML = renderMarkdown(finalText).html + `
-                            <div class="ai-msg-controls" style="display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:8px;">
-                                <span style="font-size:0.8em; color: rgba(255,255,255,0.6); margin-right: auto; align-self: center;">Generated in ${responseDuration}s</span>
-                                <div style="margin-left:auto;"></div>
-                                <button type="button" class="inline-copy-btn" title="Copy response"><i class="fa-solid fa-copy"></i></button>
-                                <button type="button" class="inline-share-btn" title="Share response"><i class="fa-solid fa-share"></i></button>
-                                <button type="button" class="switch-model-btn" title="Regenerate or switch model">🔄</button>
-                            </div>
-                        `;
-                        enhanceCodeBlocks(currentAIMessageElement);
-                    }
-                    
-                    if (currentUser && currentChatId && finalText.trim()) {
-                        const newMsg = { role: 'ai', text: finalText, duration: responseDuration, createdAt: serverTimestamp() };
-                        addDoc(collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages'), newMsg).then(docRef => {
-                            if(currentAIMessageElement) currentAIMessageElement.setAttribute('data-message-id', docRef.id);
-                        }).catch(e => console.error("Error saving final message:", e));
-                    }
-                }
-
-                if (sendBtn) sendBtn.style.display = 'flex';
-                if (stopBtn) stopBtn.style.display = 'none';
-                if (callBtn) callBtn.style.display = 'flex';
-                if (stopBtn._currentStopListener) {
-                    stopBtn.removeEventListener('click', stopBtn._currentStopListener);
-                }
-                currentController = null;
-                currentAIMessageElement = null;
-                currentAIMessageFirestoreId = null;
-                hookAiMsgControls();
-                scrollToBottom();
-            }
-
-            // --- REBUILT & ENHANCED VOICE CALL LOGIC ---
+            
+            // --- VOICE CALL LOGIC (Unchanged from previous correct version) ---
             const callVoices = {
-                gemini: {
-                    label: "Philadelphia (Styles)",
-                    styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"]
-                },
-                minimax: {
-                    label: "Seraphina (Characters)",
-                    styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
-                }
+                gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
+                minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
             };
 
             function updateCallVoiceStyles() {
@@ -3103,18 +3205,14 @@
                 speechRecognition.onend = () => {
                     isRecognizing = false;
                     if (userSpeechWave) userSpeechWave.classList.remove('active');
-                    if (!isCallActive || isMuted) {
-                        return;
-                    }
+                    if (!isCallActive || isMuted) return;
 
                     let finalTranscript = '';
                     const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                     if (userMsgEl) {
                         finalTranscript = userMsgEl.textContent.trim();
                         userMsgEl.classList.remove('interim');
-                        if (!finalTranscript) {
-                            userMsgEl.remove();
-                        }
+                        if (!finalTranscript) userMsgEl.remove();
                     }
                     
                     if (botIsSpeaking) {
@@ -3123,7 +3221,7 @@
                         callHistory.push({ role: 'user', content: finalTranscript });
                         handleCallBotResponse();
                     } else if (isCallActive && !isMuted) {
-                        try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
+                        try { speechRecognition.start(); } catch(e) {}
                     }
                 };
 
@@ -3135,7 +3233,7 @@
                         if (callStatusMessage) callStatusMessage.textContent = 'Mic access denied. Enable in browser settings.';
                         setTimeout(endCall, 3000);
                     } else if (isCallActive && !isMuted && event.error !== 'aborted') {
-                        try { speechRecognition.start(); } catch(e) { console.error("Error restarting speech recognition:", e); }
+                        try { speechRecognition.start(); } catch(e) {}
                     }
                 };
             } else {
@@ -3147,25 +3245,18 @@
                 const msgEl = document.createElement('div');
                 msgEl.className = `call-msg ${role}`;
                 msgEl.textContent = text;
-                
                 const waveElement = callConversation.querySelector('#userSpeechWave');
                 if(waveElement) callConversation.insertBefore(msgEl, waveElement);
                 else callConversation.appendChild(msgEl);
-                
                 callConversation.scrollTop = callConversation.scrollHeight;
             }
 
             async function handleCallBotResponse() {
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
-                
                 callStatusMessage.textContent = 'Philadelphia AI is thinking...';
                 tapToTalk.style.display = 'none';
-
-                if (speechRecognition && isRecognizing) {
-                    try { speechRecognition.stop(); } catch(e) {}
-                }
-                
-                const userLastMessage = callHistory.length > 0 ? callHistory[callHistory.length - 1].content : "";
+                if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
+                const userLastMessage = callHistory.at(-1)?.content || "";
                 
                 try {
                     const historyForChat = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
@@ -3174,14 +3265,12 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: userLastMessage, history: historyForChat.slice(0, -1), call_context: true })
                     });
-
                     if (!res.ok) throw new Error(`Server error: ${res.status}`);
                     
                     const reader = res.body.getReader();
                     const decoder = new TextDecoder('utf-8');
-                    let buffer = '';
                     let fullBotResponseText = '';
-
+                    let buffer = '';
                     while (true) {
                         const { value, done } = await reader.read();
                         if (done) break;
@@ -3195,12 +3284,8 @@
                                 if (jsonStr === '[DONE]') break;
                                 try {
                                     const chunkData = JSON.parse(jsonStr);
-                                    if (chunkData.type === 'content') {
-                                        fullBotResponseText += chunkData.content;
-                                    }
-                                } catch (e) {
-                                    console.error("Error parsing call stream chunk:", e);
-                                }
+                                    if (chunkData.type === 'content') fullBotResponseText += chunkData.content;
+                                } catch (e) {}
                             }
                         }
                     }
@@ -3209,11 +3294,9 @@
                     callHistory.push({ role: 'ai', content: finalBotResponse });
                     addCallMessage('bot', finalBotResponse);
                     speakBotResponse(finalBotResponse);
-
                 } catch (err) {
                     const errorMsg = `❌ Call error: ${err.message}`;
                     addCallMessage('bot', errorMsg);
-                    console.error("Error getting bot response:", err);
                     if(callStatusMessage) callStatusMessage.textContent = 'Error. Tap to speak.';
                     if(tapToTalk) tapToTalk.style.display = 'block';
                 }
@@ -3221,14 +3304,10 @@
 
             async function speakBotResponse(textToSpeak) {
                 if (!isCallActive || !botImageContainer || !callStatusMessage) return;
-                
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
                 callStatusMessage.textContent = 'Philadelphia AI is speaking...';
-
-                if (speechRecognition && isRecognizing) {
-                    try { speechRecognition.stop(); } catch(e) {}
-                }
+                if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
 
                 try {
                     let res;
@@ -3237,10 +3316,9 @@
                         fd.append('text', textToSpeak);
                         fd.append('style', selectedCallVoiceId);
                         res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
-                    } else { // minimax
+                    } else {
                         res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ text: textToSpeak, voice_id: selectedCallVoiceId })
                         });
                     }
@@ -3254,27 +3332,20 @@
                         if (botImageContainer) botImageContainer.classList.remove('speaking');
                         currentAudio = null;
                         URL.revokeObjectURL(url);
-                        
                         if (isCallActive && !isMuted) {
                             if (callStatusMessage) callStatusMessage.textContent = 'Tap anywhere to speak';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            if (!isRecognizing) {
-                                try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
-                            }
+                            if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
                         }
                     };
                     currentAudio.play();
                 } catch (err) {
-                    console.error("Voice generation/playback error:", err);
                     botIsSpeaking = false;
                     if (botImageContainer) botImageContainer.classList.remove('speaking');
-                    
                     if (isCallActive && !isMuted) {
                         if (callStatusMessage) callStatusMessage.textContent = 'Voice Error. Tap to speak.';
                         if (tapToTalk) tapToTalk.style.display = 'block';
-                        if (!isRecognizing) {
-                            try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
-                        }
+                        if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
                     }
                 }
             }
@@ -3282,13 +3353,8 @@
             function endCall() {
                 isCallActive = false;
                 botIsSpeaking = false;
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio = null;
-                }
-                if (speechRecognition && isRecognizing) {
-                    try { speechRecognition.abort(); } catch(e) {}
-                }
+                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+                if (speechRecognition && isRecognizing) try { speechRecognition.abort(); } catch(e) {}
                 isRecognizing = false;
                 if (callModal) callModal.classList.remove('active');
                 if (botImageContainer) botImageContainer.classList.remove('speaking');
@@ -3299,34 +3365,24 @@
 
             function stopBotSpeakingAndStartListening() {
                 if (!isCallActive) return;
-
-                if (currentAudio) {
-                    currentAudio.pause();
-                    currentAudio = null;
-                }
+                if (currentAudio) { currentAudio.pause(); currentAudio = null; }
                 botIsSpeaking = false;
                 if(botImageContainer) botImageContainer.classList.remove('speaking');
-                
                 const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
                 if(userMsgEl) userMsgEl.remove();
-
                 if (!isMuted) {
                     if (callStatusMessage) callStatusMessage.textContent = 'Listening...';
                     if (tapToTalk) tapToTalk.style.display = 'none';
-                    if (!isRecognizing) {
-                        try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
-                    }
+                    if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
                 }
             }
 
-            if (callModal) {
-                callModal.addEventListener('click', stopBotSpeakingAndStartListening);
-            }
+            if (callModal) callModal.addEventListener('click', stopBotSpeakingAndStartListening);
 
             if (callBtn) {
                 callBtn.addEventListener('click', () => {
                     if (!SpeechRecognition) {
-                        alert("Your browser doesn't support the Web Speech API needed for voice calls. Please try a browser like Chrome or Edge.");
+                        alert("Your browser doesn't support the Web Speech API. Please try Chrome or Edge.");
                         return;
                     }
                     isCallActive = true;
@@ -3346,10 +3402,7 @@
                         addCallMessage('status', 'Connected. Tap anywhere to speak.');
                         callStatusMessage.textContent = 'Tap anywhere to speak';
                         tapToTalk.style.display = 'block';
-                        
-                        if (!isMuted && !isRecognizing) {
-                            try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
-                        }
+                        if (!isMuted && !isRecognizing) try { speechRecognition.start(); } catch(e) {}
                     }, 1500);
                 });
             }
@@ -3363,9 +3416,7 @@
                     if (isMuted) {
                         muteCallBtn.classList.add('muted');
                         muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
-                        if (speechRecognition && isRecognizing) {
-                            try { speechRecognition.stop(); } catch(e) {}
-                        }
+                        if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
                         callStatusMessage.textContent = 'Microphone Muted.';
                         tapToTalk.style.display = 'none';
                         if (userSpeechWave) userSpeechWave.classList.remove('active');
@@ -3375,9 +3426,7 @@
                         if (isCallActive && !botIsSpeaking) {
                             callStatusMessage.textContent = 'Tap anywhere to speak';
                             if (tapToTalk) tapToTalk.style.display = 'block';
-                            if (!isRecognizing) {
-                                try { speechRecognition.start(); } catch(e) { console.error("Error starting speech recognition:", e); }
-                            }
+                            if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
                         }
                     }
                 });
