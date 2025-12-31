@@ -435,7 +435,7 @@
             height: 12px;
             border-radius: 50%;
             background-color: var(--neon-blue);
-            animation: thinking-wave 1.0s infinite ease-in-out; /* FIX: Animation speed increased */
+            animation: thinking-wave 1.0s infinite ease-in-out; /* IMPROVEMENT: Animation speed increased from 1.5s */
             box-shadow: 0 0 10px var(--neon-blue);
         }
         .thinking-indicator .dot:nth-child(2) { animation-delay: -0.8s; }
@@ -1307,11 +1307,12 @@
 
         const $ = id => document.getElementById(id);
 
-        // --- FIXED: API ENDPOINT MANAGEMENT ---
+        // --- API ENDPOINT MANAGEMENT ---
         const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
         const API_ENDPOINTS = {
             gemini: `${API_BASE_URL}/chat`, // Philadelphia
-            perplexity: `${API_BASE_URL}/api/seraphina/chat` // Seraphina
+            perplexity: `${API_BASE_URL}/api/seraphina/chat`, // Seraphina
+            llama: `${API_BASE_URL}/api/llama/chat` // NEW: Llama Chat
         };
 
 
@@ -1498,6 +1499,7 @@
                                 <div class="model-switch-popup">
                                     <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                     <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                    <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
                                 </div>
                             </div>
                         </div>
@@ -1511,13 +1513,15 @@
 
             // --- MODEL SELECTION LOGIC ---
             function setCurrentModel(newModel) {
-                if (newModel !== 'gemini' && newModel !== 'perplexity') {
+                if (!['gemini', 'perplexity', 'llama'].includes(newModel)) {
                     newModel = 'gemini'; // Default fallback
                 }
                 currentModel = newModel;
                 localStorage.setItem('userPreferredModel', newModel);
                 if (brandTitle) {
-                    brandTitle.textContent = newModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
+                    if (newModel === 'gemini') brandTitle.textContent = 'Philadelphia AI';
+                    else if (newModel === 'perplexity') brandTitle.textContent = 'Seraphina AI';
+                    else if (newModel === 'llama') brandTitle.textContent = 'Llama Chat';
                 }
             }
 
@@ -1569,13 +1573,8 @@
             }
 
             if (userInput) {
-                 // FIX: Removed the 'Enter' keydown listener to prevent it from submitting the form.
-                 // Only the send button can now submit.
-                 userInput.addEventListener('keydown', (e) => {
-                    // The original 'Enter' key submission logic has been removed as requested.
-                    // The default behavior (new line) will now occur.
-                    // Shift+Enter will also create a new line by default.
-                });
+                 // The 'Enter' keydown listener has been removed to allow default newline behavior.
+                 // Sending is handled exclusively by the send button.
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1918,7 +1917,6 @@
                                 })
                                 .join('');
                             
-                            // FIX: Use full renderMarkdown for user messages to support code blocks
                             const userContent = renderMarkdown(msg.text || '').html;
 
                             innerHtml = `<div class="msg-bubble">
@@ -1950,6 +1948,7 @@
                                         <div class="model-switch-popup">
                                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
                                         </div>
                                     </div>
                                 </div>
@@ -2162,6 +2161,7 @@
                             <div class="model-switch-popup">
                                 <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                 <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
                             </div>
                         </div>
                     </div>
@@ -2354,8 +2354,17 @@
                     removeProcessingMessage();
                 }
             }
-
-            const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
+            
+            // UPDATE: Use new model definitions
+            const thenaModels = [
+                { value: 'v6', text: 'Thena V6 (General/Illustration)' },
+                { value: 'photoreal', text: 'Thena Photoreal (Realistic)' },
+                { value: 'movie', text: 'Thena Movie (Cinematic)' },
+                { value: 'anime_core', text: 'Thena Anime Core' },
+                { value: 'deepanime', text: 'Thena Deep Anime (Legacy)' },
+                { value: 'animelegacy', text: 'Thena Anime Legacy' },
+                { value: 'dreamcore', text: 'Thena Dreamcore (Legacy)' }
+            ];
             const comicStyles = ["anime", "american", "manga"];
 
             // *** COMIC VIEWER FUNCTIONS ***
@@ -2407,7 +2416,7 @@
                         <label for="tool-prompt">Image Prompt</label>
                         <textarea id="tool-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required aria-label="Image prompt"></textarea>
                         <label for="tool-style">Style (for Version1 only)</label>
-                        <select id="tool-style" aria-label="Image style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
+                        <select id="tool-style" aria-label="Image style">${thenaModels.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
@@ -2415,7 +2424,19 @@
                         const prompt = form.querySelector('#tool-prompt')?.value;
                         const style = form.querySelector('#tool-style')?.value;
                         if (!prompt) return "Please provide an image prompt.";
-                        const payload = { prompt: prompt, model: style, use_minimax };
+                        
+                        // UPDATE: Send full payload to match new backend
+                        const payload = { 
+                            prompt: prompt, 
+                            model: style, 
+                            use_minimax: use_minimax,
+                            creative: false,
+                            width: null,      // Let backend decide optimal resolution
+                            height: null,     // Let backend decide optimal resolution
+                            fastMode: false,
+                            denseMode: false
+                        };
+
                         await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
                         displayProcessingMessage('Generating your image...');
                         try {
@@ -2426,7 +2447,7 @@
                                 signal: currentController?.signal
                             });
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || res.statusText);
+                            if (!res.ok) throw new Error(data.error || data.detail || res.statusText);
                             removeProcessingMessage();
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
                             await showToolResponse('✅ Image generated! Check the floating image box to view or download.', true);
@@ -2955,7 +2976,7 @@
                         // Typewriter is caught up to the buffer.
                         // The interval will be cleared by finalizeChatResponse when the stream ends.
                     }
-                }, 2); // FIX: Typing speed dramatically increased for a "flashy" effect
+                }, 15); // IMPROVEMENT: Typing speed increased from 25ms to 15ms for a "flashier" effect
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -2975,6 +2996,7 @@
                         <div class="model-switch-popup">
                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
                         </div>
                     </div>
                 `;
@@ -3071,55 +3093,71 @@
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                     
-                    // --- FIXED: Explicit endpoint selection ---
-                    const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
-                    
-                    const res = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: msgText, history: historyForAI }),
-                        signal: currentController.signal
-                    });
+                    // --- NEW: Handle Llama non-streaming model ---
+                    if (currentModel === 'llama') {
+                        const res = await fetch(API_ENDPOINTS.llama, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt: msgText }), // Llama is stateless on the backend
+                            signal: currentController.signal
+                        });
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+                            throw new Error(`Llama API error (${res.status}): ${errorData.detail || errorData.content}`);
+                        }
+                        const data = await res.json();
+                        fullResponseContent = data.content || "I'm sorry, I couldn't get a response.";
+                        
+                    } else {
+                        // Existing streaming logic for Gemini and Perplexity
+                        const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
+                        const res = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: msgText, history: historyForAI }),
+                            signal: currentController.signal
+                        });
 
-                    if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
+                        if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
 
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder('utf-8');
-                    let buffer = '';
-                    let isFirstChunk = true;
+                        const reader = res.body.getReader();
+                        const decoder = new TextDecoder('utf-8');
+                        let buffer = '';
+                        let isFirstChunk = true;
 
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
 
-                        buffer += decoder.decode(value, { stream: true });
-                        let newlineIndex;
-                        while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
-                            const message = buffer.substring(0, newlineIndex).trim();
-                            buffer = buffer.substring(newlineIndex + 2);
-                            if (!message.startsWith('data: ')) continue;
-                            
-                            const jsonStr = message.substring(5).trim();
-                            if (jsonStr === '[DONE]') break;
+                            buffer += decoder.decode(value, { stream: true });
+                            let newlineIndex;
+                            while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                                const message = buffer.substring(0, newlineIndex).trim();
+                                buffer = buffer.substring(newlineIndex + 2);
+                                if (!message.startsWith('data: ')) continue;
+                                
+                                const jsonStr = message.substring(5).trim();
+                                if (jsonStr === '[DONE]') break;
 
-                            try {
-                                const chunkData = JSON.parse(jsonStr);
+                                try {
+                                    const chunkData = JSON.parse(jsonStr);
 
-                                // On first valid data chunk, replace "thinking" with typewriter
-                                if (isFirstChunk) {
-                                    isFirstChunk = false;
-                                    if (currentAIContentElement) {
-                                        currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
-                                        currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                    // On first valid data chunk, replace "thinking" with typewriter
+                                    if (isFirstChunk) {
+                                        isFirstChunk = false;
+                                        if (currentAIContentElement) {
+                                            currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
+                                            currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                        }
+                                        startTypewriterEffect();
                                     }
-                                    startTypewriterEffect();
-                                }
 
-                                if (chunkData.type === 'content' && chunkData.content) {
-                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
-                                    fullResponseContent += cleanedContent; // Add to buffer for typewriter
-                                }
-                            } catch (e) { /* Ignore parsing errors */ }
+                                    if (chunkData.type === 'content' && chunkData.content) {
+                                        const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
+                                        fullResponseContent += cleanedContent; // Add to buffer for typewriter
+                                    }
+                                } catch (e) { /* Ignore parsing errors */ }
+                            }
                         }
                     }
                 } catch (err) {
@@ -3130,12 +3168,12 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
-                    // This function now handles cleanup, final rendering, and saving.
+                    // This function now handles cleanup, final rendering, and saving for BOTH streaming and non-streaming calls.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
             
-            // --- VOICE CALL LOGIC (Unchanged from previous correct version) ---
+            // --- VOICE CALL LOGIC (Unchanged) ---
             const callVoices = {
                 gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
                 minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
