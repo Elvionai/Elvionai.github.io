@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -407,47 +407,39 @@
             word-break: break-word;
         }
         
-        /* This is the live typewriter cursor - UPGRADED */
+        /* This is the live typewriter cursor */
         .typewriter-cursor {
             display: inline-block;
             width: 10px;
             height: 1.2em;
             background: var(--neon-green);
-            animation: cursor-blink 0.7s infinite; /* Faster blink */
+            animation: cursor-blink 0.8s infinite;
             margin-left: 2px;
             vertical-align: bottom;
             border-radius: 2px;
-            box-shadow: 0 0 12px var(--neon-green), 0 0 5px #fff; /* More intense glow */
+            box-shadow: 0 0 8px var(--neon-green);
         }
         @keyframes cursor-blink {
             50% { opacity: 0; }
         }
 
-        /* "Thinking" animation container - NEW */
-        .thinking-wrapper {
-            display: inline-block;
-            padding: 10px 15px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 15px;
-            border: 1px solid var(--glass-border);
-        }
-
-        /* "Thinking" animation dots - UPGRADED */
+        /* New "thinking" animation before stream starts */
         .thinking-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
+            padding: 5px 0;
         }
         .thinking-indicator .dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
             background-color: var(--neon-blue);
-            animation: thinking-wave 1.2s infinite ease-in-out; /* Faster animation */
+            animation: thinking-wave 1.0s infinite ease-in-out; /* FASTER ANIMATION */
             box-shadow: 0 0 10px var(--neon-blue);
         }
-        .thinking-indicator .dot:nth-child(2) { animation-delay: -1.0s; }
-        .thinking-indicator .dot:nth-child(3) { animation-delay: -0.8s; }
+        .thinking-indicator .dot:nth-child(2) { animation-delay: -0.8s; }
+        .thinking-indicator .dot:nth-child(3) { animation-delay: -0.6s; }
         @keyframes thinking-wave {
             0%, 60%, 100% { transform: scale(0.6); opacity: 0.5; }
             30% { transform: scale(1.4); opacity: 1; }
@@ -1367,8 +1359,6 @@
 
         // Accumulator for the streaming response text
         let fullResponseContent = '';
-        // Index for the typewriter effect to track progress
-        let typewriterIndex = 0;
         
         // Reference to any active tool processing message (e.g., "Generating image...")
         let currentProcessingMessageElement = null; 
@@ -1577,14 +1567,13 @@
             }
 
             if (userInput) {
-                // *** FIX: REMOVED 'Enter' KEY SUBMISSION ***
-                // userInput.addEventListener('keydown', (e) => {
-                //    if (e.key === 'Enter' && !e.shiftKey) {
-                //        e.preventDefault();
-                //        sendMessage();
-                //    }
-                // });
-
+                 // FIX: Removed 'Enter' key submission listener
+                userInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault(); 
+                        // DO NOTHING - user must click send button
+                    }
+                });
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1677,7 +1666,7 @@
                     return;
                 }
                 currentUser = user;
-                const displayName = user.displayName || (user.email || '').split('@')[0];
+                const displayName = user.displayName || (user.email || '').split('@');
                 if (profileMenuUser) profileMenuUser.textContent = displayName;
                 if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
                 if (editName) editName.value = displayName;
@@ -1718,7 +1707,7 @@
                     chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderChatsListSidebar();
                     if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                        currentChatId = chats[0].id;
+                        currentChatId = chats.id;
                     }
                     subscribeToMessages(userId, currentChatId);
                 }, (error) => {
@@ -1840,11 +1829,14 @@
 
             const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
+            // FIX: Made inlineMarkdown safer to prevent HTML rendering
             function inlineMarkdown(t = '') {
-                let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
-                s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-                s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
-                s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                let s = String(t);
+                // The order is important: process code first, then other elements, escaping content within them.
+                s = s.replace(/`([^`]+?)`/g, (_, code) => `<code>${escapeHTML(code)}</code>`);
+                s = s.replace(/\*\*([^*]+?)\*\*/g, (_, content) => `<strong>${escapeHTML(content)}</strong>`);
+                s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, (match, prefix, content) => `${prefix}<em>${escapeHTML(content)}</em>`);
+                s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHTML(text)}</a>`);
                 return s.replace(/\n/g, '<br>');
             }
 
@@ -1862,7 +1854,9 @@
                     lastIndex = offset + match.length;
                     return match;
                 });
-                html += inlineMarkdown(text.slice(lastIndex));
+                const remainingText = text.slice(lastIndex);
+                // FIX: Ensure remaining text is also properly escaped before markdown processing
+                html += inlineMarkdown(remainingText);
                 return { html };
             }
 
@@ -1926,10 +1920,10 @@
                                     return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
                                 })
                                 .join('');
-
+                            // For user messages, we use renderMarkdown to handle potential code blocks they send
                             innerHtml = `<div class="msg-bubble">
                                 ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
-                                ${inlineMarkdown(msg.text || '')}
+                                ${renderMarkdown(msg.text || '').html}
                                 <div class="user-msg-controls">
                                     <button type="button" class="inline-edit-btn" title="Edit message"><i class="fa-solid fa-pen-to-square"></i></button>
                                     <button type="button" class="inline-copy-btn" title="Copy message"><i class="fa-solid fa-copy"></i></button>
@@ -2266,9 +2260,10 @@
                     }).join('');
                     div.innerHTML = `<div class="msg-bubble">
                         ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
-                        ${inlineMarkdown(text)}
+                        ${renderMarkdown(text).html}
                     </div>`; // Controls will be added by renderChatBox later
                     chatViewport.appendChild(div);
+                    enhanceCodeBlocks(div);
                     scrollToBottom();
                 }
 
@@ -2944,24 +2939,46 @@
                 if (toolFormModal) toolFormModal.classList.add('active');
             }
             
-            // --- UPGRADED: Real-time Typewriter & Streaming Logic ---
+            // --- UPGRADED: Real-time Word-by-Word Typewriter & Streaming Logic ---
             function startTypewriterEffect() {
                 if (typewriterInterval) return; // Already running
 
-                // *** FIX: FASTER TYPING INTERVAL ***
+                let lastTypedIndex = 0; // Tracks the typewriter's position in fullResponseContent
+
                 typewriterInterval = setInterval(() => {
-                    if (typewriterIndex < fullResponseContent.length) {
-                        if (currentAIContentElement && currentCursorElement) {
-                            const nextChar = fullResponseContent[typewriterIndex];
-                            currentCursorElement.insertAdjacentText('beforebegin', nextChar);
-                            typewriterIndex++;
-                            scrollToBottom(); // Keep view at the bottom as text is typed
+                    if (lastTypedIndex < fullResponseContent.length) {
+                        // Find the end of the next word (or chunk of text)
+                        let nextSpace = fullResponseContent.indexOf(' ', lastTypedIndex + 1);
+                        let nextNewline = fullResponseContent.indexOf('\n', lastTypedIndex + 1);
+
+                        // Determine the next boundary
+                        let boundary = -1;
+                        if (nextSpace > -1 && nextNewline > -1) {
+                            boundary = Math.min(nextSpace, nextNewline);
+                        } else if (nextSpace > -1) {
+                            boundary = nextSpace;
+                        } else if (nextNewline > -1) {
+                            boundary = nextNewline;
                         }
-                    } else {
-                        // Typewriter is caught up to the buffer.
-                        // The interval will be cleared by finalizeChatResponse when the stream ends.
+
+                        let wordEndIndex;
+                        if (boundary > -1) {
+                            wordEndIndex = boundary + 1; // Include the whitespace
+                        } else {
+                            // This must be the final part of the response
+                            wordEndIndex = fullResponseContent.length;
+                        }
+
+                        const nextWord = fullResponseContent.substring(lastTypedIndex, wordEndIndex);
+                        
+                        if (currentCursorElement && nextWord) {
+                            // Insert the next word before the cursor
+                            currentCursorElement.insertAdjacentText('beforebegin', nextWord);
+                            lastTypedIndex = wordEndIndex;
+                            scrollToBottom();
+                        }
                     }
-                }, 10); // Typing speed in milliseconds per character - REDUCED FROM 20
+                }, 75); // Speed in milliseconds per word
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -3011,7 +3028,6 @@
                 if (stopBtn._currentStopListener) stopBtn.removeEventListener('click', stopBtn._currentStopListener);
                 currentController = null;
                 fullResponseContent = '';
-                typewriterIndex = 0;
                 currentAIMessageElement = null;
                 currentAIContentElement = null;
                 currentAIControlsElement = null;
@@ -3022,10 +3038,18 @@
 
             // --- RE-ARCHITECTED `sendMessage` FUNCTION ---
             window.sendMessage = async function(overrideText = null) {
-                const msgText = overrideText ?? userInput.value.trim();
+                let msgText = overrideText ?? userInput.value.trim();
                 if (!msgText && uploadedFiles.length === 0) return;
                 if (isAIResponding) return;
                 
+                // FIX: Auto-wrap code before sending
+                const lines = msgText.split('\n');
+                const hasCodeChars = /[{};=()<>\[\]]/.test(msgText);
+                const hasIndentation = lines.some(line => line.trim().length > 0 && (line.startsWith('  ') || line.startsWith('\t')));
+                if (lines.length > 2 && (hasCodeChars || hasIndentation)) {
+                    msgText = '```\n' + msgText + '\n```';
+                }
+
                 isAIResponding = true;
                 if (currentController) currentController.abort();
                 currentController = new AbortController();
@@ -3050,19 +3074,15 @@
                 
                 // --- 2. CREATE "THINKING" PLACEHOLDER ---
                 if (typewriterInterval) clearInterval(typewriterInterval);
-                typewriterIndex = 0;
                 fullResponseContent = '';
                 
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = "message-group ai";
-                // *** FIX: ADDED WRAPPER TO THINKING INDICATOR ***
                 aiMessageDiv.innerHTML = `
                     <div class="msg-bubble">
                         <div class="ai-content-area">
-                            <div class="thinking-wrapper">
-                                <div class="thinking-indicator">
-                                    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                                </div>
+                            <div class="thinking-indicator">
+                                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
                             </div>
                         </div>
                         <div class="ai-msg-controls" style="display: none;"></div>
@@ -3080,7 +3100,6 @@
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                     
-                    // --- FIXED: Explicit endpoint selection ---
                     const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
                     
                     const res = await fetch(endpoint, {
