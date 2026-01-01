@@ -399,6 +399,18 @@
         .model-switch-popup button:not(:last-child) {
             border-bottom: 1px solid var(--glass-border);
         }
+        /* --- ENHANCEMENT: Style for the active model button --- */
+        .model-switch-popup button.active-model {
+            color: var(--neon-green);
+            font-weight: bold;
+            background: rgba(0, 255, 136, 0.1);
+            pointer-events: none; /* Cannot switch to the model you're already on */
+        }
+        .model-switch-popup button.active-model::after {
+            content: '✓';
+            margin-left: auto;
+        }
+
 
         /* --- UPGRADED --- Typing & Processing Status Styles */
         .message-group.ai .msg-bubble .ai-content-area {
@@ -1312,7 +1324,7 @@
         const API_ENDPOINTS = {
             gemini: `${API_BASE_URL}/chat`, // Philadelphia
             perplexity: `${API_BASE_URL}/api/seraphina/chat`, // Seraphina
-            llama: `${API_BASE_URL}/api/llama/chat` // NEW: Llama Chat
+            bobby: `${API_BASE_URL}/api/llama/chat` // IMPROVEMENT: Renamed from 'llama' to 'bobby'
         };
 
 
@@ -1499,7 +1511,7 @@
                                 <div class="model-switch-popup">
                                     <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                     <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                    <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                                    <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                                 </div>
                             </div>
                         </div>
@@ -1513,7 +1525,7 @@
 
             // --- MODEL SELECTION LOGIC ---
             function setCurrentModel(newModel) {
-                if (!['gemini', 'perplexity', 'llama'].includes(newModel)) {
+                if (!['gemini', 'perplexity', 'bobby'].includes(newModel)) {
                     newModel = 'gemini'; // Default fallback
                 }
                 currentModel = newModel;
@@ -1521,7 +1533,7 @@
                 if (brandTitle) {
                     if (newModel === 'gemini') brandTitle.textContent = 'Philadelphia AI';
                     else if (newModel === 'perplexity') brandTitle.textContent = 'Seraphina AI';
-                    else if (newModel === 'llama') brandTitle.textContent = 'Llama Chat (Bobby)'; // Naming Bobby in the UI
+                    else if (newModel === 'bobby') brandTitle.textContent = 'Bobby'; // IMPROVEMENT: Renamed model in UI
                 }
             }
 
@@ -1827,14 +1839,23 @@
                     chatsListEl.appendChild(container);
                 });
             }
-
+            
+            // IMPROVEMENT: Centralized HTML escaping to prevent XSS.
             const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
-            function inlineMarkdown(t = '') {
-                let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
+            // IMPROVEMENT: This function now safely handles user input by escaping HTML first.
+            function inlineMarkdown(rawText = '') {
+                // 1. Escape the entire string to prevent any HTML injection.
+                let s = escapeHTML(String(rawText));
+                
+                // 2. Now, apply markdown-to-HTML replacements on the *safe* string.
+                // The content ($1, $2) is already escaped, but the tags (<strong>, etc.) are added as raw HTML.
+                s = s.replace(/`([^`]+?)`/g, '<code>$1</code>');
                 s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
                 s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
                 s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                
+                // 3. Finally, replace newlines with <br> tags.
                 return s.replace(/\n/g, '<br>');
             }
 
@@ -1845,14 +1866,14 @@
                 text = text || '';
                 text.replace(codeBlockRegex, (match, lang, code, offset) => {
                     const before = text.slice(lastIndex, offset);
-                    html += inlineMarkdown(before);
+                    html += inlineMarkdown(before); // Use the new, safe inlineMarkdown function
                     const language = (lang || '').toLowerCase().trim();
                     const safeCode = escapeHTML(code);
                     html += `<pre data-lang="${language || 'plaintext'}"><button class="copy-btn"><i class='fa-solid fa-copy'></i> Copy</button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
                     lastIndex = offset + match.length;
                     return match;
                 });
-                html += inlineMarkdown(text.slice(lastIndex));
+                html += inlineMarkdown(text.slice(lastIndex)); // Process the final part safely
                 return { html };
             }
 
@@ -1917,6 +1938,7 @@
                                 })
                                 .join('');
                             
+                            // IMPROVEMENT: userContent is now safely rendered using the updated function
                             const userContent = renderMarkdown(msg.text || '').html;
 
                             innerHtml = `<div class="msg-bubble">
@@ -1930,7 +1952,7 @@
                         } else {
                             let content;
                             if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-                                content = msg.text;
+                                content = msg.text; // Assume media HTML from tools is safe
                             } else {
                                 content = renderMarkdown(msg.text || '').html;
                             }
@@ -1948,7 +1970,7 @@
                                         <div class="model-switch-popup">
                                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                                            <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                                         </div>
                                     </div>
                                 </div>
@@ -2028,6 +2050,13 @@
                     
                     if (popup) { 
                         popup.querySelectorAll('button').forEach(button => {
+                            // ENHANCEMENT: Highlight the currently active model
+                            if(button.dataset.model === currentModel) {
+                                button.classList.add('active-model');
+                            } else {
+                                button.classList.remove('active-model');
+                            }
+                            
                             button.onclick = (ev) => {
                                 ev.stopPropagation();
                                 const newModel = ev.currentTarget.dataset.model;
@@ -2161,7 +2190,7 @@
                             <div class="model-switch-popup">
                                 <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                 <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                                <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                             </div>
                         </div>
                     </div>
@@ -3039,7 +3068,7 @@
                         <div class="model-switch-popup">
                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Llama</button>
+                            <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                         </div>
                     </div>
                 `;
@@ -3136,17 +3165,17 @@
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                     
-                    // --- NEW: Handle Llama non-streaming model ---
-                    if (currentModel === 'llama') {
-                        const res = await fetch(API_ENDPOINTS.llama, {
+                    // --- NEW: Handle Bobby (formerly Llama) non-streaming model ---
+                    if (currentModel === 'bobby') {
+                        const res = await fetch(API_ENDPOINTS.bobby, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prompt: msgText }), // Llama is stateless on the backend
+                            body: JSON.stringify({ prompt: msgText }), // Bobby is stateless on the backend
                             signal: currentController.signal
                         });
                         if (!res.ok) {
                             const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-                            throw new Error(`Llama API error (${res.status}): ${errorData.detail || errorData.content}`);
+                            throw new Error(`Bobby API error (${res.status}): ${errorData.detail || errorData.content}`);
                         }
                         const data = await res.json();
                         fullResponseContent = data.content || "I'm sorry, I couldn't get a response.";
