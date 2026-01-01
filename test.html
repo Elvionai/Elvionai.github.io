@@ -1312,11 +1312,9 @@
         const API_ENDPOINTS = {
             gemini: `${API_BASE_URL}/chat`, // Philadelphia
             perplexity: `${API_BASE_URL}/api/seraphina/chat`, // Seraphina
-            llama: `${API_BASE_URL}/api/llama/chat` // NEW: Llama Chat ("Bobby")
+            llama: `${API_BASE_URL}/api/llama/chat` // Bobby
         };
-        
-        // --- NEW: Llama (Bobby) System Prompt ---
-        const LLAMA_SYSTEM_PROMPT = "You are Bobby, a witty and sarcastic AI comedian who tells jokes reluctantly. You are a friend of Philadelphia and Seraphina but you find their earnestness exhausting. Your responses should be short, dry, and to the point. If asked for a joke, you provide one, but you always finish it by saying '...I guess that was funny.'";
+
 
         let chats = [];
         let currentChatId = null;
@@ -1351,21 +1349,17 @@
         let currentModel = 'gemini'; // Default to 'gemini' for Philadelphia
         
         // --- UPGRADED: STREAMING & TYPEWRITER STATE ---
-        let typewriterInterval = null;      // Holds the setInterval ID for the typewriter effect
-        let isAIResponding = false;         // A master flag to indicate any AI activity (chat or tool)
+        let typewriterInterval = null;
+        let isAIResponding = false;
         
-        // References to the elements of the message currently being streamed
         let currentAIMessageElement = null; 
         let currentAIContentElement = null; 
         let currentAIControlsElement = null; 
         let currentCursorElement = null;
 
-        // Accumulator for the streaming response text
         let fullResponseContent = '';
-        // Index for the typewriter effect to track progress
         let typewriterIndex = 0;
         
-        // Reference to any active tool processing message (e.g., "Generating image...")
         let currentProcessingMessageElement = null; 
 
         // Cosmic background animations
@@ -1501,7 +1495,7 @@
                                 <div class="model-switch-popup">
                                     <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                     <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                    <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
+                                    <button data-model="llama"><i class="fa-solid fa-code"></i>Switch to Bobby</button>
                                 </div>
                             </div>
                         </div>
@@ -1523,16 +1517,15 @@
                 if (brandTitle) {
                     if (newModel === 'gemini') brandTitle.textContent = 'Philadelphia AI';
                     else if (newModel === 'perplexity') brandTitle.textContent = 'Seraphina AI';
-                    else if (newModel === 'llama') brandTitle.textContent = 'Bobby (Llama)';
+                    else if (newModel === 'llama') brandTitle.textContent = 'Bobby AI';
                 }
             }
 
             const savedModel = localStorage.getItem('userPreferredModel');
             if (savedModel) {
                 setCurrentModel(savedModel);
-            } else {
-                addWelcomeMessage();
             }
+            
             // --- END MODEL SELECTION LOGIC ---
 
 
@@ -1950,7 +1943,7 @@
                                         <div class="model-switch-popup">
                                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
+                                            <button data-model="llama"><i class="fa-solid fa-code"></i>Switch to Bobby</button>
                                         </div>
                                     </div>
                                 </div>
@@ -1991,7 +1984,7 @@
                 if (!chatViewport) return;
                 chatViewport.querySelectorAll('.message-group.ai').forEach(div => {
                     const messageId = div.getAttribute('data-message-id');
-                    if (!messageId) return;
+                    // if (!messageId) return; // Allow hooking even for temp messages
 
                     const controls = div.querySelector('.ai-msg-controls');
                     if (!controls) return;
@@ -2018,14 +2011,16 @@
                         try {
                             const url = window.location.origin;
                             const plainText = msgContentArea.innerText || '';
-                            const shareText = `${plainText}\n\nShared via Philadelphia AI: ${url}`;
-                            if (navigator.share) navigator.share({ title: "Philadelphia AI", text: shareText, url }).catch(()=>{});
+                            const shareText = `${plainText}\n\nShared via Elvion AI: ${url}`;
+                            if (navigator.share) navigator.share({ title: "Elvion AI", text: shareText, url }).catch(()=>{});
                             else prompt("Copy and share manually:", shareText);
                         } catch (e) { console.warn('Share failed:', e); }
                     };
 
                     if (regenBtn) regenBtn.onclick = () => {
-                        regenerateResponse(messageId); // Regenerate using the current global model
+                        if (messageId) {
+                            regenerateResponse(messageId); // Regenerate using the current global model
+                        }
                     };
                     
                     if (popup) { 
@@ -2163,7 +2158,7 @@
                             <div class="model-switch-popup">
                                 <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                 <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                                <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
+                                <button data-model="llama"><i class="fa-solid fa-code"></i>Switch to Bobby</button>
                             </div>
                         </div>
                     </div>
@@ -2292,20 +2287,17 @@
                 displayProcessingMessage('Submitting video generation job...');
                 try {
                     const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
-                    const commonPayload = { model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
                     let options;
 
                     if (isImageToVideo) {
-                        const fd = new FormData();
-                        fd.append('prompt', payload.prompt);
-                        fd.append('file', payload.file); // Assuming payload.file exists for image-to-video
-                        options = { method: 'POST', body: fd, signal: currentController?.signal };
+                        // For image-to-video, the payload is already FormData
+                        options = { method: 'POST', body: payload, signal: currentController?.signal };
                     } else {
-                        const finalPayload = { ...payload, ...commonPayload };
+                        // For text-to-video, the payload is a JSON object
                         options = {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(finalPayload),
+                            body: JSON.stringify(payload),
                             signal: currentController?.signal
                         };
                     }
@@ -2357,30 +2349,14 @@
                 }
             }
             
-            // UPDATE: Use new model definitions
-            const versionOneImageStyles = [
-                { value: 'v6', text: 'V6 (General/Illustration)' },
-                { value: 'photoreal', text: 'Photoreal (Realistic)' },
-                { value: 'movie', text: 'Movie (Cinematic)' },
-                { value: 'anime_core', text: 'Anime Core' },
-                { value: 'deepanime', text: 'Deep Anime (Legacy)' },
-                { value: 'animelegacy', text: 'Anime Legacy' },
-                { value: 'dreamcore', text: 'Dreamcore (Legacy)' }
+            // UPDATE: Use model definitions that align with the backend's `THENA_MODELS` keys
+            const version1ImageStyles = [
+                { value: 'illustration', text: 'Illustration (Thena V6)' },
+                { value: 'realistic', text: 'Realistic (Photoreal)' },
+                { value: 'cinematic', text: 'Cinematic (Movie)' },
+                { value: 'anime', text: 'Anime' }
             ];
-            
-            // NEW: Define comic styles separately for clarity and alignment
-            const versionOneComicStyles = [
-                { value: 'illustration', text: 'Illustration (General)' },
-                { value: 'realistic', text: 'Realistic' },
-                { value: 'anime', text: 'Anime' },
-                { value: 'manga', text: 'Manga' },
-            ];
-            const versionTwoComicStyles = [
-                { value: 'american', text: 'American Comic' },
-                { value: 'anime', text: 'Anime' },
-                { value: 'manga', text: 'Manga' }
-            ];
-
+            const version2ComicStyles = ["anime", "american", "manga"];
 
             // *** COMIC VIEWER FUNCTIONS ***
             function showComicPreview(images, caption = '') {
@@ -2427,24 +2403,23 @@
                     description: "Create stunning visuals from a text prompt. Choose a model for different results.",
                     buildForm: () => `
                         <label for="tool-provider">Generation Model</label>
-                        <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic)</option></select>
+                        <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option></select>
                         <label for="tool-prompt">Image Prompt</label>
                         <textarea id="tool-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required aria-label="Image prompt"></textarea>
                         <label for="tool-style">Style (for Version 1 only)</label>
-                        <select id="tool-style" aria-label="Image style">${versionOneImageStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
+                        <select id="tool-style" aria-label="Image style">${version1ImageStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
                         const providerName = use_minimax ? 'Version 2 (Creative)' : 'Version 1 (Stylized)';
                         const prompt = form.querySelector('#tool-prompt')?.value;
-                        const style = form.querySelector('#tool-style')?.value;
+                        const model = form.querySelector('#tool-style')?.value; // For Thena, this is the model key
                         if (!prompt) return "Please provide an image prompt.";
                         
                         const payload = { 
                             prompt: prompt, 
-                            model: style, 
-                            use_minimax: use_minimax,
-                            creative: false, width: null, height: null, fastMode: false, denseMode: false
+                            model: model, 
+                            use_minimax: use_minimax
                         };
 
                         await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
@@ -2459,7 +2434,7 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || data.detail || res.statusText);
                             removeProcessingMessage();
-                            showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
+                            showAIImagePreview(data.image_b64, `Generated by Elvion AI`);
                             await showToolResponse('✅ Image generated! Check the floating image box to view or download.', true);
                             return null;
                         } catch (err) {
@@ -2553,13 +2528,12 @@
 
                         const updateStyles = () => {
                             const selectedProvider = providerSelect.value;
-                            let options;
+                            styleSelect.innerHTML = ''; // Clear existing options
                             if (selectedProvider === 'thena') { // Version 1
-                                options = versionOneComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
-                            } else { // Version 2 (minimax)
-                                options = versionTwoComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+                                styleSelect.innerHTML = version1ImageStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+                            } else { // Version 2
+                                styleSelect.innerHTML = version2ComicStyles.map(s => `<option value="${s.toLowerCase()}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('');
                             }
-                            styleSelect.innerHTML = options;
                         };
                         providerSelect.addEventListener('change', updateStyles);
                         updateStyles(); // Initial population
@@ -2697,9 +2671,9 @@
                         const duration = parseInt(form.querySelector('#video-duration')?.value, 10);
                         if (!prompt) return "Please provide a video prompt.";
                         if (isNaN(duration) || duration < 2 || duration > 15) return "Duration must be between 2 and 15 seconds.";
-                        const payload = { prompt, duration, resolution: "1080P" };
+                        const payload = { prompt, duration };
                         await addMessageToChat('user', `Text-to-Video request: "${payload.prompt}"`);
-                        await handleVideoGeneration(payload);
+                        await handleVideoGeneration(payload, false);
                         return null;
                     }
                 },
@@ -3022,7 +2996,7 @@
                         <div class="model-switch-popup">
                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
-                            <button data-model="llama"><i class="fa-solid fa-robot"></i>Switch to Bobby (Llama)</button>
+                            <button data-model="llama"><i class="fa-solid fa-code"></i>Switch to Bobby</button>
                         </div>
                     </div>
                 `;
@@ -3115,24 +3089,21 @@
 
                 const startTime = performance.now();
                 
-                // --- 3. FETCH & STREAM RESPONSE ---
+                // --- 3. FETCH & STREAM/PROCESS RESPONSE ---
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                     
-                    // --- HANDLE LLAMA (BOBBY) ---
+                    // --- NEW: Handle Bobby (Llama) non-streaming model ---
                     if (currentModel === 'llama') {
                         const res = await fetch(API_ENDPOINTS.llama, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                prompt: msgText, 
-                                systemPrompt: LLAMA_SYSTEM_PROMPT 
-                            }),
+                            body: JSON.stringify({ prompt: msgText, name: "Bobby" }),
                             signal: currentController.signal
                         });
                         if (!res.ok) {
                             const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-                            throw new Error(`Llama API error (${res.status}): ${errorData.detail || errorData.content}`);
+                            throw new Error(`Bobby (Llama) API error (${res.status}): ${errorData.detail || errorData.content}`);
                         }
                         const data = await res.json();
                         fullResponseContent = data.content || "I'm sorry, I couldn't get a response.";
@@ -3197,7 +3168,7 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
-                    // This function now handles cleanup, final rendering, and saving for BOTH streaming and non-streaming calls.
+                    // This function now handles cleanup, final rendering, and saving for ALL calls.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
@@ -3320,7 +3291,7 @@
 
             async function handleCallBotResponse() {
                 if (!isCallActive || !callStatusMessage || !tapToTalk) return;
-                callStatusMessage.textContent = 'Philadelphia AI is thinking...';
+                callStatusMessage.textContent = 'Elvion AI is thinking...';
                 tapToTalk.style.display = 'none';
                 if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
                 const userLastMessage = callHistory.at(-1)?.content || "";
@@ -3373,7 +3344,7 @@
                 if (!isCallActive || !botImageContainer || !callStatusMessage) return;
                 botIsSpeaking = true;
                 botImageContainer.classList.add('speaking');
-                callStatusMessage.textContent = 'Philadelphia AI is speaking...';
+                callStatusMessage.textContent = 'Elvion AI is speaking...';
                 if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
 
                 try {
