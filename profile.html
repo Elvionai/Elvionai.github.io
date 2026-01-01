@@ -399,6 +399,18 @@
         .model-switch-popup button:not(:last-child) {
             border-bottom: 1px solid var(--glass-border);
         }
+        /* --- ENHANCEMENT: Style for the active model button --- */
+        .model-switch-popup button.active-model {
+            color: var(--neon-green);
+            font-weight: bold;
+            background: rgba(0, 255, 136, 0.1);
+            pointer-events: none; /* Cannot switch to the model you're already on */
+        }
+        .model-switch-popup button.active-model::after {
+            content: '✓';
+            margin-left: auto;
+        }
+
 
         /* --- UPGRADED --- Typing & Processing Status Styles */
         .message-group.ai .msg-bubble .ai-content-area {
@@ -435,7 +447,7 @@
             height: 12px;
             border-radius: 50%;
             background-color: var(--neon-blue);
-            animation: thinking-wave 1.0s infinite ease-in-out; /* FIX: Animation speed increased */
+            animation: thinking-wave 1.0s infinite ease-in-out; /* IMPROVEMENT: Animation speed increased from 1.5s */
             box-shadow: 0 0 10px var(--neon-blue);
         }
         .thinking-indicator .dot:nth-child(2) { animation-delay: -0.8s; }
@@ -1307,11 +1319,12 @@
 
         const $ = id => document.getElementById(id);
 
-        // --- FIXED: API ENDPOINT MANAGEMENT ---
+        // --- API ENDPOINT MANAGEMENT ---
         const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
         const API_ENDPOINTS = {
             gemini: `${API_BASE_URL}/chat`, // Philadelphia
-            perplexity: `${API_BASE_URL}/api/seraphina/chat` // Seraphina
+            perplexity: `${API_BASE_URL}/api/seraphina/chat`, // Seraphina
+            bobby: `${API_BASE_URL}/api/llama/chat` // IMPROVEMENT: Renamed from 'llama' to 'bobby'
         };
 
 
@@ -1498,6 +1511,7 @@
                                 <div class="model-switch-popup">
                                     <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                     <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                    <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                                 </div>
                             </div>
                         </div>
@@ -1511,13 +1525,15 @@
 
             // --- MODEL SELECTION LOGIC ---
             function setCurrentModel(newModel) {
-                if (newModel !== 'gemini' && newModel !== 'perplexity') {
+                if (!['gemini', 'perplexity', 'bobby'].includes(newModel)) {
                     newModel = 'gemini'; // Default fallback
                 }
                 currentModel = newModel;
                 localStorage.setItem('userPreferredModel', newModel);
                 if (brandTitle) {
-                    brandTitle.textContent = newModel === 'gemini' ? 'Philadelphia AI' : 'Seraphina AI';
+                    if (newModel === 'gemini') brandTitle.textContent = 'Philadelphia AI';
+                    else if (newModel === 'perplexity') brandTitle.textContent = 'Seraphina AI';
+                    else if (newModel === 'bobby') brandTitle.textContent = 'Bobby'; // IMPROVEMENT: Renamed model in UI
                 }
             }
 
@@ -1569,13 +1585,8 @@
             }
 
             if (userInput) {
-                 // FIX: Removed the 'Enter' keydown listener to prevent it from submitting the form.
-                 // Only the send button can now submit.
-                 userInput.addEventListener('keydown', (e) => {
-                    // The original 'Enter' key submission logic has been removed as requested.
-                    // The default behavior (new line) will now occur.
-                    // Shift+Enter will also create a new line by default.
-                });
+                 // The 'Enter' keydown listener has been removed to allow default newline behavior.
+                 // Sending is handled exclusively by the send button.
                 const autoResize = () => {
                     if (!userInput) return;
                     userInput.style.height = 'auto'; // Reset height
@@ -1828,14 +1839,23 @@
                     chatsListEl.appendChild(container);
                 });
             }
-
+            
+            // IMPROVEMENT: Centralized HTML escaping to prevent XSS.
             const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
-            function inlineMarkdown(t = '') {
-                let s = String(t).replace(/`([^`]+?)`/g, (_, a) => `<code>${escapeHTML(a)}</code>`);
+            // IMPROVEMENT: This function now safely handles user input by escaping HTML first.
+            function inlineMarkdown(rawText = '') {
+                // 1. Escape the entire string to prevent any HTML injection.
+                let s = escapeHTML(String(rawText));
+                
+                // 2. Now, apply markdown-to-HTML replacements on the *safe* string.
+                // The content ($1, $2) is already escaped, but the tags (<strong>, etc.) are added as raw HTML.
+                s = s.replace(/`([^`]+?)`/g, '<code>$1</code>');
                 s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
                 s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
                 s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                
+                // 3. Finally, replace newlines with <br> tags.
                 return s.replace(/\n/g, '<br>');
             }
 
@@ -1846,14 +1866,14 @@
                 text = text || '';
                 text.replace(codeBlockRegex, (match, lang, code, offset) => {
                     const before = text.slice(lastIndex, offset);
-                    html += inlineMarkdown(before);
+                    html += inlineMarkdown(before); // Use the new, safe inlineMarkdown function
                     const language = (lang || '').toLowerCase().trim();
                     const safeCode = escapeHTML(code);
                     html += `<pre data-lang="${language || 'plaintext'}"><button class="copy-btn"><i class='fa-solid fa-copy'></i> Copy</button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
                     lastIndex = offset + match.length;
                     return match;
                 });
-                html += inlineMarkdown(text.slice(lastIndex));
+                html += inlineMarkdown(text.slice(lastIndex)); // Process the final part safely
                 return { html };
             }
 
@@ -1918,7 +1938,7 @@
                                 })
                                 .join('');
                             
-                            // FIX: Use full renderMarkdown for user messages to support code blocks
+                            // IMPROVEMENT: userContent is now safely rendered using the updated function
                             const userContent = renderMarkdown(msg.text || '').html;
 
                             innerHtml = `<div class="msg-bubble">
@@ -1932,7 +1952,7 @@
                         } else {
                             let content;
                             if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video'))) {
-                                content = msg.text;
+                                content = msg.text; // Assume media HTML from tools is safe
                             } else {
                                 content = renderMarkdown(msg.text || '').html;
                             }
@@ -1950,6 +1970,7 @@
                                         <div class="model-switch-popup">
                                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                            <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                                         </div>
                                     </div>
                                 </div>
@@ -2029,6 +2050,13 @@
                     
                     if (popup) { 
                         popup.querySelectorAll('button').forEach(button => {
+                            // ENHANCEMENT: Highlight the currently active model
+                            if(button.dataset.model === currentModel) {
+                                button.classList.add('active-model');
+                            } else {
+                                button.classList.remove('active-model');
+                            }
+                            
                             button.onclick = (ev) => {
                                 ev.stopPropagation();
                                 const newModel = ev.currentTarget.dataset.model;
@@ -2162,6 +2190,7 @@
                             <div class="model-switch-popup">
                                 <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                                 <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                                <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                             </div>
                         </div>
                     </div>
@@ -2354,9 +2383,32 @@
                     removeProcessingMessage();
                 }
             }
+            
+            // UPDATE: Renamed thenaModels to be user-friendly, without "Thena" in visible text
+            const thenaImageStyles = [ // Used for image generation
+                { value: 'v6', text: 'V1: General/Illustration (Recommended)' },
+                { value: 'photoreal', text: 'V1: Photoreal (Realistic)' },
+                { value: 'movie', text: 'V1: Cinematic' },
+                { value: 'anime_core', text: 'V1: Anime Core' },
+                { value: 'deepanime', text: 'V1: Deep Anime (Legacy)' },
+                { value: 'animelegacy', text: 'V1: Classic Anime (Legacy)' },
+                { value: 'dreamcore', text: 'V1: Dreamcore (Legacy)' }
+            ];
 
-            const thenaModels = ["photoreal", "ultrarealistic", "anime", "deepanime", "animelegacy", "dreamcore"];
-            const comicStyles = ["anime", "american", "manga"];
+            const thenaComicStyles = [ // Using a subset or all of thenaImageStyles for comics
+                { value: 'v6', text: 'V1: General/Illustration' },
+                { value: 'photoreal', text: 'V1: Photoreal' },
+                { value: 'movie', text: 'V1: Cinematic' },
+                { value: 'anime_core', text: 'V1: Anime Core' },
+                // Can add more as needed, or dynamically filter from thenaImageStyles
+            ];
+            
+            // Generic styles for "Version 2" (MiniMax) - keeping this simple for now
+            const minimaxComicStyles = [
+                { value: 'anime', text: 'Anime' },
+                { value: 'american', text: 'American Comic' },
+                { value: 'manga', text: 'Manga' }
+            ];
 
             // *** COMIC VIEWER FUNCTIONS ***
             function showComicPreview(images, caption = '') {
@@ -2403,11 +2455,14 @@
                     description: "Create stunning visuals from a text prompt. Choose a model for different results.",
                     buildForm: () => `
                         <label for="tool-provider">Generation Model</label>
-                        <select id="tool-provider" aria-label="Image generation model"><option value="thena">Version 1 (Stylized, Fast & Recommended)</option><option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option></select>
+                        <select id="tool-provider" aria-label="Image generation model">
+                            <option value="thena">Version 1 (Stylized, Fast & Recommended)</option>
+                            <option value="minimax">Version 2 (Creative, Realistic, good for text in images)</option>
+                        </select>
                         <label for="tool-prompt">Image Prompt</label>
                         <textarea id="tool-prompt" placeholder="A futuristic cityscape, vibrant neon signs, flying cars" required aria-label="Image prompt"></textarea>
-                        <label for="tool-style">Style (for Version1 only)</label>
-                        <select id="tool-style" aria-label="Image style">${thenaModels.map(s => `<option value="${s.toLowerCase()}">${s}</option>`).join('')}</select>
+                        <label for="tool-style">Style (for Version 1 only)</label>
+                        <select id="tool-style" aria-label="Image style">${thenaImageStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-sparkles"></i> Generate</button>`,
                     handleSubmit: async (form) => {
                         const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
@@ -2415,7 +2470,18 @@
                         const prompt = form.querySelector('#tool-prompt')?.value;
                         const style = form.querySelector('#tool-style')?.value;
                         if (!prompt) return "Please provide an image prompt.";
-                        const payload = { prompt: prompt, model: style, use_minimax };
+                        
+                        const payload = { 
+                            prompt: prompt, 
+                            model: style, // This 'model' field is for Thena's internal model ID, if use_minimax is false
+                            use_minimax: use_minimax,
+                            creative: false,
+                            width: null,      
+                            height: null,     
+                            fastMode: false,
+                            denseMode: false
+                        };
+
                         await addMessageToChat('user', `Image generation request: "${payload.prompt}" (using ${providerName})`);
                         displayProcessingMessage('Generating your image...');
                         try {
@@ -2426,7 +2492,7 @@
                                 signal: currentController?.signal
                             });
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.error || res.statusText);
+                            if (!res.ok) throw new Error(data.error || data.detail || res.statusText);
                             removeProcessingMessage();
                             showAIImagePreview(data.image_b64, `Generated by Philadelphia AI`);
                             await showToolResponse('✅ Image generated! Check the floating image box to view or download.', true);
@@ -2444,7 +2510,7 @@
                     description: "Upload a photo and describe the changes you want to make.",
                     buildForm: () => `
                         <label for="tool-prompt">Edit Instruction</label><textarea id="tool-prompt" placeholder="Change the background to a sunny beach" required aria-label="Edit instruction"></textarea>
-                        <label for="tool-file">Image to Edit</label><input type="file" id="tool-file" accept="image/*" required aria-label="Image to edit">
+                        <label for="tool-file">Image to Edit</label><input type="file" id="tool-file" accept="image/*" required style="display:block;margin-top:10px;" aria-label="Image to edit">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-wand-magic-sparkles"></i> Apply Edit</button>`,
                     handleSubmit: async (form) => {
                         const file = form.querySelector('#tool-file')?.files[0];
@@ -2507,24 +2573,51 @@
                     buildForm: () => `
                         <label for="tool-provider">Generation Model</label>
                         <select id="tool-provider" aria-label="Comic generation model">
-                            <option value="minimax">Version 2 (Creative, MiniMax)</option>
                             <option value="thena">Version 1 (Stylized, Recommended)</option>
+                            <option value="minimax">Version 2 (Creative, MiniMax)</option>
                         </select>
                         <label for="tool-story">Comic Story</label><textarea id="tool-story" placeholder="[DIALOGUE] Are you seeing this?&#10;[NARRATION] Lilo and switch were once best friends..." required aria-label="Comic story"></textarea>
-                        <label for="tool-style">Comic Style</label>
-                        <select id="tool-style" aria-label="Comic style">
-                            ${comicStyles.map(s => `<option value="${s.toLowerCase()}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('')}
-                        </select>
+                        <label for="tool-style">Comic Art Style</label>
+                        <select id="tool-style" aria-label="Comic style"></select> <!-- This will be dynamically populated -->
                         <label for="tool-panels">Number of Panels</label><input type="number" id="tool-panels" value="3" min="1" max="6" aria-label="Number of panels for comic"/>
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
+                    onFormReady: () => {
+                        const providerSelect = $('tool-provider');
+                        const styleSelect = $('tool-style');
+
+                        const updateComicStyles = () => {
+                            const selectedProvider = providerSelect.value;
+                            let optionsHtml = '';
+                            if (selectedProvider === 'thena') {
+                                optionsHtml = thenaComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+                            } else { // minimax
+                                optionsHtml = minimaxComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+                            }
+                            styleSelect.innerHTML = optionsHtml;
+                        };
+
+                        providerSelect.addEventListener('change', updateComicStyles);
+                        updateComicStyles(); // Initialize on load
+                    },
                     handleSubmit: async (form) => {
                         const modelProvider = form.querySelector('#tool-provider')?.value;
                         const story = form.querySelector('#tool-story')?.value;
-                        const style = form.querySelector('#tool-style')?.value;
+                        const selectedStyle = form.querySelector('#tool-style')?.value; 
                         const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
                         if (!story) return "Please provide a comic story.";
-                        const payload = { story, style, panels, user: currentUser?.displayName || "User", model_provider: modelProvider };
-                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Provider: ${modelProvider}, Style: ${style})`);
+                        if (!selectedStyle) return "Please select a comic art style.";
+
+                        let payload = { story, panels, user: currentUser?.displayName || "User", model_provider: modelProvider };
+
+                        if (modelProvider === 'thena') {
+                            payload.thena_model_key = selectedStyle; 
+                            // Add a generic style to 'style' field for backend, if backend needs a fallback or simpler string
+                            payload.style = thenaComicStyles.find(s => s.value === selectedStyle)?.text.replace('V1: ', '').trim().toLowerCase() || 'illustration'; 
+                        } else { // minimax
+                            payload.style = selectedStyle; 
+                        }
+                        
+                        await addMessageToChat('user', `Comic creation request: "${story.substring(0, 50)}..." (Provider: ${modelProvider === 'thena' ? 'Version 1' : 'Version 2'}, Style: ${selectedStyle})`);
                         displayProcessingMessage('Generating your comic panels...');
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
@@ -2955,7 +3048,7 @@
                         // Typewriter is caught up to the buffer.
                         // The interval will be cleared by finalizeChatResponse when the stream ends.
                     }
-                }, 2); // FIX: Typing speed dramatically increased for a "flashy" effect
+                }, 15); // IMPROVEMENT: Typing speed increased from 25ms to 15ms for a "flashier" effect
             }
 
             function finalizeChatResponse(finalText, startTime) {
@@ -2975,6 +3068,7 @@
                         <div class="model-switch-popup">
                             <button data-model="gemini"><i class="fa-solid fa-feather-alt"></i>Switch to Philadelphia</button>
                             <button data-model="perplexity"><i class="fa-solid fa-star-of-life"></i>Switch to Seraphina</button>
+                            <button data-model="bobby"><i class="fa-solid fa-robot"></i>Switch to Bobby</button>
                         </div>
                     </div>
                 `;
@@ -3071,55 +3165,71 @@
                 try {
                     const historyForAI = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
                     
-                    // --- FIXED: Explicit endpoint selection ---
-                    const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
-                    
-                    const res = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: msgText, history: historyForAI }),
-                        signal: currentController.signal
-                    });
+                    // --- NEW: Handle Bobby (formerly Llama) non-streaming model ---
+                    if (currentModel === 'bobby') {
+                        const res = await fetch(API_ENDPOINTS.bobby, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt: msgText }), // Bobby is stateless on the backend
+                            signal: currentController.signal
+                        });
+                        if (!res.ok) {
+                            const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+                            throw new Error(`Bobby API error (${res.status}): ${errorData.detail || errorData.content}`);
+                        }
+                        const data = await res.json();
+                        fullResponseContent = data.content || "I'm sorry, I couldn't get a response.";
+                        
+                    } else {
+                        // Existing streaming logic for Gemini and Perplexity
+                        const endpoint = API_ENDPOINTS[currentModel] || API_ENDPOINTS.gemini;
+                        const res = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: msgText, history: historyForAI }),
+                            signal: currentController.signal
+                        });
 
-                    if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
+                        if (!res.ok) throw new Error(`Server error (${res.status}): ${await res.text()}`);
 
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder('utf-8');
-                    let buffer = '';
-                    let isFirstChunk = true;
+                        const reader = res.body.getReader();
+                        const decoder = new TextDecoder('utf-8');
+                        let buffer = '';
+                        let isFirstChunk = true;
 
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
+                        while (true) {
+                            const { value, done } = await reader.read();
+                            if (done) break;
 
-                        buffer += decoder.decode(value, { stream: true });
-                        let newlineIndex;
-                        while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
-                            const message = buffer.substring(0, newlineIndex).trim();
-                            buffer = buffer.substring(newlineIndex + 2);
-                            if (!message.startsWith('data: ')) continue;
-                            
-                            const jsonStr = message.substring(5).trim();
-                            if (jsonStr === '[DONE]') break;
+                            buffer += decoder.decode(value, { stream: true });
+                            let newlineIndex;
+                            while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                                const message = buffer.substring(0, newlineIndex).trim();
+                                buffer = buffer.substring(newlineIndex + 2);
+                                if (!message.startsWith('data: ')) continue;
+                                
+                                const jsonStr = message.substring(5).trim();
+                                if (jsonStr === '[DONE]') break;
 
-                            try {
-                                const chunkData = JSON.parse(jsonStr);
+                                try {
+                                    const chunkData = JSON.parse(jsonStr);
 
-                                // On first valid data chunk, replace "thinking" with typewriter
-                                if (isFirstChunk) {
-                                    isFirstChunk = false;
-                                    if (currentAIContentElement) {
-                                        currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
-                                        currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                    // On first valid data chunk, replace "thinking" with typewriter
+                                    if (isFirstChunk) {
+                                        isFirstChunk = false;
+                                        if (currentAIContentElement) {
+                                            currentAIContentElement.innerHTML = '<span class="typewriter-cursor"></span>';
+                                            currentCursorElement = currentAIContentElement.querySelector('.typewriter-cursor');
+                                        }
+                                        startTypewriterEffect();
                                     }
-                                    startTypewriterEffect();
-                                }
 
-                                if (chunkData.type === 'content' && chunkData.content) {
-                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
-                                    fullResponseContent += cleanedContent; // Add to buffer for typewriter
-                                }
-                            } catch (e) { /* Ignore parsing errors */ }
+                                    if (chunkData.type === 'content' && chunkData.content) {
+                                        const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
+                                        fullResponseContent += cleanedContent; // Add to buffer for typewriter
+                                    }
+                                } catch (e) { /* Ignore parsing errors */ }
+                            }
                         }
                     }
                 } catch (err) {
@@ -3130,12 +3240,12 @@
                         fullResponseContent += `\n\n❌ An error occurred: ${err.message}`;
                     }
                 } finally {
-                    // This function now handles cleanup, final rendering, and saving.
+                    // This function now handles cleanup, final rendering, and saving for BOTH streaming and non-streaming calls.
                     finalizeChatResponse(fullResponseContent, startTime);
                 }
             };
             
-            // --- VOICE CALL LOGIC (Unchanged from previous correct version) ---
+            // --- VOICE CALL LOGIC (Unchanged) ---
             const callVoices = {
                 gemini: { label: "Philadelphia (Styles)", styles: ["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
                 minimax: { label: "Seraphina (Characters)", styles: ["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
