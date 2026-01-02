@@ -3,262 +3,378 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elvion AI | Student Assignment Portal</title>
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <title>ELVION | Secure Assignment Portal</title>
     <style>
         :root {
             --neon-blue: #00f3ff;
-            --neon-purple: #bc13fe;
-            --bg-dark: #0a0b10;
+            --neon-green: #0aff0a;
+            --neon-red: #ff003c;
+            --bg-dark: #050505;
             --glass: rgba(255, 255, 255, 0.05);
-            --error: #ff4b2b;
-            --success: #00e676;
+            --border: 1px solid rgba(0, 243, 255, 0.2);
         }
 
+        * { box-sizing: border-box; font-family: 'Courier New', monospace; }
+        
         body {
-            background: var(--bg-dark);
-            color: white;
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-dark);
+            color: #eee;
             margin: 0;
-            overflow-x: hidden;
-            background: radial-gradient(circle at top right, #1a1b25, #0a0b10);
-        }
-
-        .portal-container {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 30px;
-            background: var(--glass);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(0, 243, 255, 0.2);
-            border-radius: 20px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-        }
-
-        h1, h2 {
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--neon-blue);
-            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
-        }
-
-        .student-selector {
-            margin-bottom: 30px;
-            padding: 15px;
-            border-bottom: 1px solid var(--neon-purple);
-        }
-
-        select, input {
-            background: #1a1b25;
-            color: white;
-            border: 1px solid var(--neon-blue);
-            padding: 10px;
-            border-radius: 5px;
-            outline: none;
-        }
-
-        .mcq-section {
-            background: rgba(255, 255, 255, 0.03);
             padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+            overflow-x: hidden;
+            transition: filter 0.3s;
         }
 
-        .question-block { margin-bottom: 20px; }
-
-        #editor-container {
-            background: white;
-            color: black;
-            height: 350px;
-            border-radius: 0 0 10px 10px;
-        }
-
-        .stats-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-
-        .ai-panel {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid var(--neon-purple);
-            border-radius: 10px;
-            background: rgba(188, 19, 254, 0.05);
-        }
-
-        #suggestions-list { color: var(--neon-blue); font-size: 0.9em; }
-
-        button {
-            cursor: pointer;
-            transition: 0.3s;
-            padding: 12px 25px;
-            border-radius: 5px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        #submit-btn {
-            background: grey;
-            color: black;
-            border: none;
-            width: 100%;
-            margin-top: 20px;
-            cursor: not-allowed;
-        }
-
-        #submit-btn.ready {
-            background: var(--success);
-            box-shadow: 0 0 20px var(--success);
-            cursor: pointer;
-        }
-
-        /* Anti-Cheat Overlay */
-        #lock-screen {
+        /* --- LOCKDOWN SCREEN --- */
+        #lockdown-overlay {
             display: none;
             position: fixed;
-            top:0; left:0; width:100%; height:100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: black;
-            color: var(--error);
-            z-index: 10000;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--neon-red);
             text-align: center;
-            padding-top: 20%;
         }
+        #lockdown-overlay h1 { font-size: 3rem; text-shadow: 0 0 20px var(--neon-red); }
+
+        /* --- MAIN UI --- */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            opacity: 0; /* Hidden until student selected */
+            animation: fadeIn 1s forwards;
+            display: none; /* Hidden strictly until login */
+        }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* --- LOGIN SECTION --- */
+        #login-screen {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        select, button, input {
+            background: var(--bg-dark);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            margin: 10px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+            transition: 0.3s;
+        }
+
+        button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        button:disabled { border-color: #555; color: #555; box-shadow: none; cursor: not-allowed; }
+
+        /* --- SECTIONS --- */
+        .panel {
+            background: var(--glass);
+            border: var(--border);
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+            position: relative;
+        }
+        
+        h2 { color: var(--neon-blue); border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        /* --- MCQ STYLES --- */
+        .mcq-option {
+            display: block;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #333;
+            cursor: pointer;
+        }
+        .mcq-option:hover { border-color: var(--neon-blue); }
+        input[type="radio"] { margin-right: 10px; }
+
+        /* --- WRITING EDITOR --- */
+        #editor-wrapper { position: relative; }
+        
+        #student-editor {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border: 1px solid #333;
+            color: #ddd;
+            padding: 20px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+        
+        #student-editor:focus { border-color: var(--neon-blue); }
+
+        /* --- AI HUD --- */
+        #ai-hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 10px;
+            background: #0a0a0a;
+            border-left: 3px solid var(--neon-red); /* Default Red (Scanning/Thinking) */
+            transition: 0.5s;
+        }
+        
+        .hud-status { font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .hud-status.green { color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+        .hud-status.red { color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red); }
+
+        #ai-suggestions {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        /* --- TIMER & WORD COUNT --- */
+        .meta-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+        #timer { color: var(--neon-red); }
+        
+        .word-count-box {
+            padding: 5px 15px;
+            border: 1px solid #333;
+        }
+        .count-valid { border-color: var(--neon-green); color: var(--neon-green); }
+        .count-invalid { border-color: var(--neon-red); color: var(--neon-red); }
+
     </style>
 </head>
 <body>
 
-<div id="lock-screen">
-    <h1>UNAUTHORIZED ACCESS DETECTED</h1>
-    <p>You left the assignment page. This session is now locked and invalidated.</p>
-</div>
-
-<div class="portal-container">
-    <header>
-        <h2>Elvion AI Innovations: Assignment Portal</h2>
-        <div class="student-selector">
-            <label>Current Student: </label>
-            <select id="student-name">
-                <option value="">-- Select Your Name --</option>
-                <option value="El Rohi">El Rohi</option>
-                <option value="Kingspraise">Kingspraise</option>
-            </select>
-        </div>
-    </header>
-
-    <section class="mcq-section">
-        <h3>Section A: Debate Mastery</h3>
-        <div class="question-block">
-            <p>1. According to the notes, what is the correct order for "The Vocative" greeting?</p>
-            <input type="radio" name="q1" value="a"> A. Judges, Chairman, Students<br>
-            [span_4](start_span)<input type="radio" name="q1" value="b"> B. Mr. Chairman, Panel of Judges, Timekeeper, Co-debaters[span_4](end_span)<br>
-            <input type="radio" name="q1" value="c"> C. Fellow Students, Judges, Chairman
-        </div>
-        
-        <div class="question-block">
-            <p>2. Which word should you use to show a contrasting argument (Rebuttal)?</p>
-            <input type="radio" name="q2" value="a"> A. Furthermore<br>
-            <input type="radio" name="q2" value="b"> B. In addition<br>
-            [span_5](start_span)<input type="radio" name="q2" value="c"> C. Conversely[span_5](end_span)
-        </div>
-    </section>
-
-    <section class="writing-section">
-        <h3>Section B: Applied Writing</h3>
-        <p><strong>Prompt:</strong> Write a letter to your brother describing the heavy rain damage and asking for help. (Min 100 words) [span_6](start_span)</p>
-        
-        <div id="toolbar">
-            <button class="ql-bold">B</button>
-            <button class="ql-italic">I</button>
-            <button class="ql-underline">U</button>
-        </div>
-        <div id="editor-container"></div>
-
-        <div class="stats-bar">
-            <span id="word-count-display">Words: 0 / 100</span>
-            <span id="status-light" style="color: var(--error);">● Requirement Not Met</span>
-        </div>
-    </section>
-
-    <div class="ai-panel">
-        <h4><span style="color: var(--neon-purple);">Bobby AI</span> - Grammar Scan</h4>
-        <button id="check-style-btn" style="background: var(--neon-purple); border:none; color:white;">Run Scan</button>
-        <ul id="suggestions-list">
-            <li>Awaiting input... Bobby will highlight spelling/grammar errors here.</li>
-        </ul>
+    <div id="lockdown-overlay">
+        <h1>⛔ ACCESS DENIED ⛔</h1>
+        <p>VIOLATION DETECTED: PAGE FOCUS LOST.</p>
+        <p>This session has been terminated permanently.</p>
+        <p>Identity Logged.</p>
     </div>
 
-    <button id="submit-btn">Submit Assignment</button>
-</div>
-
-<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-<script>
-    const API_BOBBY = 'https://web-production-9a18.up.railway.app/api/llama/chat';
-    let quill = new Quill('#editor-container', { theme: 'snow' });
-    let isAuthorized = true;
-
-    // --- ANTI-CHEAT ENGINE ---
-    window.addEventListener('blur', () => {
-        isAuthorized = false;
-        document.getElementById('lock-screen').style.display = 'block';
-        // In a real app, you'd send a "Fail" signal to your server here
-    });
-
-    // --- WORD COUNT & VALIDATION ---
-    quill.on('text-change', function() {
-        let text = quill.getText().trim();
-        let wordCount = text.length > 0 ? text.split(/\s+/).length : 0;
+    <div id="login-screen">
+        <h1 style="color:var(--neon-blue); text-shadow:0 0 20px var(--neon-blue);">ELVION ACADEMY</h1>
+        <p>SECURE ASSIGNMENT PROTOCOL</p>
         
-        document.getElementById('word-count-display').innerText = `Words: ${wordCount} / 100`;
+        <select id="student-select">
+            <option value="" disabled selected>-- IDENTIFY YOURSELF --</option>
+            <option value="El Rohi">El Rohi</option>
+            <option value="Kingspraise">Kingspraise</option>
+        </select>
         
+        <button onclick="startAssignment()">INITIALIZE SESSION</button>
+    </div>
+
+    <div class="container" id="main-interface">
+        
+        <div class="meta-bar">
+            <div id="student-display">CANDIDATE: <span style="color:var(--neon-blue)">UNKNOWN</span></div>
+            <div id="timer">TIME REMAINING: 45:00</div>
+        </div>
+
+        <form id="assignment-form" onsubmit="handleFinalSubmit(event)">
+
+            <div class="panel">
+                <h2>PART I: DEBATE MECHANICS (Based on Class Notes)</h2>
+                
+                <p>1. [span_0](start_span)According to the "Vocative" rules, what is the correct order of address?[span_0](end_span)</p>
+                <label class="mcq-option"><input type="radio" name="q1" value="wrong"> My Co-debaters, Chairman, Judges</label>
+                <label class="mcq-option"><input type="radio" name="q1" value="correct"> Chairman, Panel of Judges, Timekeeper, Co-debaters</label>
+                <label class="mcq-option"><input type="radio" name="q1" value="wrong"> Panel of Judges, Chairman, Audience</label>
+
+                <p>2. [span_1](start_span)In an Informal Letter, the subscription (closing) should be:[span_1](end_span)</p>
+                <label class="mcq-option"><input type="radio" name="q2" value="wrong"> "Yours Faithfully," followed by full name</label>
+                <label class="mcq-option"><input type="radio" name="q2" value="correct"> "Yours sincerely," followed by first name only</label>
+                <label class="mcq-option"><input type="radio" name="q2" value="wrong"> "Best Regards," followed by signature</label>
+
+                <p>3. [span_2](start_span)What is a "Rebuttal" in a debate?[span_2](end_span)</p>
+                <label class="mcq-option"><input type="radio" name="q3" value="wrong"> The introduction of your team</label>
+                <label class="mcq-option"><input type="radio" name="q3" value="correct"> Explaining why the opposing side is wrong</label>
+                <label class="mcq-option"><input type="radio" name="q3" value="wrong"> The final vote count</label>
+            </div>
+
+            <div class="panel">
+                <h2>PART II: INFORMAL LETTER WRITING</h2>
+                <div style="background: rgba(0,0,0,0.5); padding: 15px; border-left: 3px solid var(--neon-blue); margin-bottom: 15px;">
+                    [span_3](start_span)<strong>PROMPT:</strong>[span_3](end_span) A heavy rain recently destroyed parts of your house. Write a letter to your brother (who lives in another state). Describe the damage and politely ask for assistance.
+                    <br><br>
+                    <em>Requirements: Address/Salutation, 2-sentence intro, body paragraph (min 100 words).</em>
+                </div>
+
+                <div id="editor-wrapper">
+                    <textarea id="student-editor" placeholder="Begin typing your letter here..."></textarea>
+                    <div class="word-count-box count-invalid" id="word-counter">WORDS: 0 / 100</div>
+                </div>
+
+                <div id="ai-hud">
+                    <div>
+                        <span id="ai-status-light" class="hud-status red">● AI SYSTEM: ANALYZING</span>
+                        <div id="ai-suggestions">Waiting for input...</div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" id="submit-btn" disabled>SUBMIT ASSIGNMENT</button>
+
+        </form>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const TARGET_WORDS = 100; // Requirement from prompt
+        const ENDPOINT = 'https://web-production-9a18.up.railway.app/api/llama/chat'; // User's "Bobby" endpoint
+        let isLocked = false;
+        let typingTimer;
+
+        // --- LOCKDOWN LOGIC ---
+        // Triggers if visibility changes (tab switch/minimize) or window blurs
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden && !isLocked) triggerLockdown();
+        });
+        window.onblur = () => { if(!isLocked && document.getElementById('main-interface').style.display === 'block') triggerLockdown(); };
+
+        function triggerLockdown() {
+            isLocked = true;
+            document.body.innerHTML = ""; // Clear DOM
+            document.body.appendChild(document.getElementById('lockdown-overlay'));
+            document.getElementById('lockdown-overlay').style.display = 'flex';
+        }
+
+        // --- INITIALIZATION ---
+        function startAssignment() {
+            const student = document.getElementById('student-select').value;
+            if (!student) { alert("IDENTIFY YOURSELF."); return; }
+
+            // Switch Views
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-interface').style.display = 'block';
+            document.getElementById('student-display').innerHTML = `CANDIDATE: <span style="color:var(--neon-blue)">${student.toUpperCase()}</span>`;
+
+            // Start Timer
+            startTimer(45 * 60);
+        }
+
+        // --- TIMER ---
+        function startTimer(duration) {
+            let timer = duration, minutes, seconds;
+            setInterval(function () {
+                if(isLocked) return;
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                document.getElementById('timer').textContent = "TIME REMAINING: " + minutes + ":" + seconds;
+                if (--timer < 0) {
+                    alert("TIME EXPIRED. SUBMITTING NOW.");
+                    handleFinalSubmit();
+                }
+            }, 1000);
+        }
+
+        // --- WORD COUNT & SUBMISSION CHECK ---
+        const editor = document.getElementById('student-editor');
+        const counter = document.getElementById('word-counter');
         const submitBtn = document.getElementById('submit-btn');
-        const statusLight = document.getElementById('status-light');
 
-        if (wordCount >= 100) {
-            submitBtn.classList.add('ready');
-            submitBtn.disabled = false;
-            statusLight.style.color = 'var(--success)';
-            statusLight.innerText = '● Ready to Submit';
-        } else {
-            submitBtn.classList.remove('ready');
-            submitBtn.disabled = true;
-            statusLight.style.color = 'var(--error)';
-            statusLight.innerText = '● Requirement Not Met';
+        editor.addEventListener('input', () => {
+            // Word Count
+            const text = editor.value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            counter.innerText = `WORDS: ${words} / ${TARGET_WORDS}`;
+
+            if (words >= TARGET_WORDS) {
+                counter.className = "word-count-box count-valid";
+                submitBtn.disabled = false;
+            } else {
+                counter.className = "word-count-box count-invalid";
+                submitBtn.disabled = true;
+            }
+
+            // AI Debounce (Wait 2s after typing stops to fetch)
+            clearTimeout(typingTimer);
+            updateAIStatus("red", "TYPING...");
+            typingTimer = setTimeout(() => fetchAISuggestions(text), 2000);
+        });
+
+        // --- AI INTEGRATION (BOBBY) ---
+        function updateAIStatus(color, text) {
+            const light = document.getElementById('ai-status-light');
+            const hud = document.getElementById('ai-hud');
+            light.className = `hud-status ${color}`;
+            light.innerText = `● AI SYSTEM: ${text}`;
+            hud.style.borderLeftColor = color === 'green' ? 'var(--neon-green)' : 'var(--neon-red)';
         }
-    });
 
-    // --- AI PROOFREADER (BOBBY) ---
-    document.getElementById('check-style-btn').addEventListener('click', async () => {
-        const text = quill.getText();
-        const list = document.getElementById('suggestions-list');
-        list.innerHTML = "<li>Bobby is scanning...</li>";
+        async function fetchAISuggestions(text) {
+            if (text.length < 10) return;
 
-        try {
-            const response = await fetch(API_BOBBY, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: `Do not rewrite the text. List only spelling and grammar errors found in this text: "${text}"` 
-                })
-            });
-            const data = await response.json();
-            // Assuming response comes in data.response or data.message
-            list.innerHTML = `<li>${data.response || "No errors found. Good job!"}</li>`;
-        } catch (error) {
-            list.innerHTML = "<li>Error connecting to Bobby AI.</li>";
+            updateAIStatus("red", "SCANNING...");
+            
+            // System prompt instructions strictly forbidding writing
+            const systemPrompt = "You are a strict spelling and grammar checker for a school assignment. Do NOT write content. Do NOT finish sentences. Only list spelling errors or grammar fixes concisely. If the text is perfect, just say 'Green light'.";
+            
+            try {
+                // Constructing payload for Bobby API
+                const payload = {
+                    message: `${systemPrompt}\n\nStudent Text:\n${text}`
+                };
+
+                const response = await fetch(ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                // Assuming standard API response structure (adjust based on actual Bobby output)
+                // If Bobby returns { response: "..." } or similar
+                let feedback = data.response || data.message || "System error.";
+
+                // Logic to determine Green/Red status based on AI sentiment
+                if (feedback.toLowerCase().includes("green light") || feedback.length < 50) {
+                     updateAIStatus("green", "OPTIMAL");
+                } else {
+                     updateAIStatus("red", "ISSUES DETECTED");
+                }
+                
+                document.getElementById('ai-suggestions').innerText = feedback;
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('ai-suggestions').innerText = "AI CONNECTION OFFLINE.";
+            }
         }
-    });
 
-    document.getElementById('submit-btn').addEventListener('click', () => {
-        if(!isAuthorized) return;
-        const student = document.getElementById('student-name').value;
-        if(!student) {
-            alert("Please select your name first!");
-            return;
+        // --- SUBMISSION ---
+        function handleFinalSubmit(e) {
+            if(e) e.preventDefault();
+            
+            if(confirm("Are you sure you want to submit? This will end the session.")) {
+                isLocked = true; // Prevent lockdown trigger during submit
+                document.body.innerHTML = `<div style="display:flex; height:100vh; justify-content:center; align-items:center; flex-direction:column;">
+                    <h1 style="color:var(--neon-green)">ASSIGNMENT UPLOADED</h1>
+                    <p>Good job, ${document.getElementById('student-select').value}.</p>
+                    <p>You may now close this tab.</p>
+                </div>`;
+            }
         }
-        alert(`Congratulations ${student}! Assignment submitted successfully.`);
-    });
-</script>
+
+    </script>
 </body>
 </html>
