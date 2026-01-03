@@ -4,209 +4,250 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Debate Speech - El Rohi</title>
+    <!-- HTML2Canvas Library for the Download Button -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Permanent+Marker&family=Kalam:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Kalam:wght@700&family=Permanent+Marker&display=swap');
 
         body {
             margin: 0;
-            padding: 0;
+            padding: 20px;
             background-color: #2c3e50;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
             font-family: 'Crimson Text', serif;
         }
 
-        /* The 9:16 Container */
-        .page-container {
+        /* The Paper Container */
+        .paper {
             width: 100%;
-            max-width: 450px; /* Base width for mobile */
-            aspect-ratio: 9/16;
-            background-color: #fdfbf7; /* Off-white paper */
+            max-width: 600px; /* Slightly wider for speech text */
+            min-height: 850px;
+            background-color: #fff;
             position: relative;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            padding: 40px;
+            padding: 40px 40px 40px 60px; /* Left padding larger for margin line */
             box-sizing: border-box;
-            overflow: hidden;
+            
+            /* Lined Paper CSS Pattern */
             background-image: 
-                linear-gradient(#e1e1e1 1px, transparent 1px),
-                linear-gradient(90deg, #e1e1e1 1px, transparent 1px);
-            background-size: 100% 2rem, 100% 100%; /* Lined paper effect */
-            background-position: 0 0;
-            display: flex;
-            flex-direction: column;
+                linear-gradient(90deg, transparent 49px, #ffcccc 49px, #ffcccc 51px, transparent 51px), /* Red Margin Line */
+                linear-gradient(#e1e1e1 1px, transparent 1px); /* Blue Horizontal Lines */
+            background-size: 100% 100%, 100% 28px; /* Line height matches text */
+            background-attachment: local;
         }
 
-        /* Paper Header */
-        .header {
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-
-        .student-info h1 {
-            font-size: 18px;
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #333;
-        }
-
-        .student-info p {
-            margin: 0;
-            font-size: 14px;
-            font-style: italic;
-            color: #555;
-        }
-
-        /* The Speech Text */
+        /* Text Styles */
         .content {
-            font-size: 14px;
-            line-height: 1.8; /* Matches lines roughly */
-            color: #1a1a1a;
-            text-align: justify;
+            font-size: 17px;
+            line-height: 28px; /* Must match background-size height */
+            color: #202050; /* Dark Blue Ink */
             z-index: 2;
+            text-align: justify;
         }
 
-        /* Teacher's Markup Styles */
-        .correction-pen {
+        .header-info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-decoration: underline;
+            text-underline-offset: 5px;
+        }
+
+        /* Teacher's Corrections */
+        .red-pen {
             font-family: 'Kalam', cursive;
-            color: #c0392b; /* Teacher Red */
+            color: #d63031; /* Teacher Red */
             font-weight: 700;
         }
 
         .strike {
             text-decoration: line-through;
-            text-decoration-color: #c0392b;
+            text-decoration-color: #d63031;
             text-decoration-thickness: 2px;
-            opacity: 0.7;
         }
 
-        .insert {
+        .double-strike {
+            text-decoration: line-through;
+            text-decoration-style: double;
+            text-decoration-color: #d63031;
+        }
+
+        .insert-caret {
             position: relative;
+            display: inline-block;
+            margin: 0 2px;
+        }
+        
+        .insert-caret::before {
+            content: '^';
+            color: #d63031;
+            font-weight: bold;
             display: inline-block;
         }
 
-        .insert::after {
-            content: attr(data-content);
+        .insert-caret::after {
+            content: attr(data-text);
             position: absolute;
-            top: -15px;
-            left: 0;
-            font-size: 12px;
+            top: -20px;
+            left: -10px;
             font-family: 'Kalam', cursive;
-            color: #c0392b;
+            color: #d63031;
+            font-size: 14px;
             white-space: nowrap;
         }
 
-        .note {
-            font-size: 12px;
-            font-family: 'Kalam', cursive;
-            color: #c0392b;
-            display: block;
-            margin-top: -5px;
-            margin-bottom: 5px;
-        }
-
-        .circle-word {
-            border: 2px solid #c0392b;
-            border-radius: 50% 30% 40% 20%;
+        .circle-error {
+            border: 2px solid #d63031;
+            border-radius: 50% 40%;
             padding: 0 4px;
         }
 
-        /* The Score Stamp */
+        /* Score Stamp */
         .score-stamp {
             position: absolute;
-            top: 30px;
-            right: 30px;
+            top: 40px;
+            right: 40px; /* Top right for grading papers usually */
             width: 100px;
             height: 100px;
-            border: 4px solid #c0392b;
+            border: 4px solid #d63031;
             border-radius: 50%;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             font-family: 'Permanent Marker', cursive;
             font-size: 32px;
-            color: #c0392b;
+            color: #d63031;
             transform: rotate(-15deg);
-            background-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.85);
             box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
             z-index: 10;
         }
         
-        .score-stamp span {
-            font-size: 16px;
-            margin-top: 5px;
-        }
-
-        /* Teacher's Footer Comment */
-        .teacher-comment {
-            margin-top: auto;
-            border-top: 1px solid #c0392b;
-            padding-top: 10px;
+        .score-grade {
+            font-size: 14px;
             font-family: 'Kalam', cursive;
-            color: #c0392b;
-            font-size: 13px;
-            line-height: 1.4;
+            margin-top: -2px;
         }
 
-        /* Mobile Optimization for Screenshots */
-        @media only screen and (min-width: 600px) {
-            .page-container {
-                transform: scale(1.2); /* Make it bigger on desktop for better screenshot */
-            }
+        /* Download Button Styling */
+        .btn-container {
+            margin-top: 20px;
+            text-align: center;
+            padding-bottom: 20px;
         }
+
+        .download-btn {
+            background-color: #2980b9;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: sans-serif;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .download-btn:active {
+            transform: scale(0.95);
+        }
+
+        .teacher-note {
+            margin-top: 40px;
+            padding-top: 10px;
+            border-top: 2px dashed #d63031;
+            font-family: 'Kalam', cursive;
+            color: #d63031;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
     </style>
 </head>
 <body>
 
-    <div class="page-container" id="capture">
+    <!-- The Paper Area to Capture -->
+    <div class="paper" id="speech-content">
         
-        <!-- The Score -->
+        <!-- Score -->
         <div class="score-stamp">
-            8.5<span style="font-size: 14px; margin-left: 2px;">/10</span>
+            8.5<span style="font-size:20px;">/10</span>
+            <span class="score-grade">Very Good!</span>
         </div>
 
-        <!-- Header -->
-        <div class="header">
-            <div class="student-info">
-                <h1>Class Debate</h1>
-                <p>Speaker: El-rohi Babalola</p>
-                <p>Motion: Against Technology in Class</p>
-            </div>
-        </div>
-
-        <!-- Body Text with Corrections -->
         <div class="content">
+            
+            <div class="header-info">
+                Debate Motion: Technology is a Distraction
+            </div>
+
             <p>
-                Good day honorable chairman, dearest principal, esteemed panel of judges, trusted timekeeper, my co-debaters, and my fellow students. My name is El-rohi Babalola and I am here to support the motion that says technology in the classroom is more of a distraction than a tool.
+                Good day honorable chairman, dearest principal, esteemed panel of judges, trusted timekeeper, my co-debaters and my fellow students<span class="red-pen">.</span> My name is El-rohi Babalola and I am here to support the motion that says technology in the classroom is more of a distraction than a tool.
             </p>
+
             <p>
-                Firstly, if technology was used by students in school nobody would ever pass <span class="strike">in</span> their examination because <span class="insert correction-pen" data-content="the"></span>majority of them would be distracted by their devices as they will either play games or just watch videos and take photos of themselves. The teachers may not be able to stop them because they might quickly change their video and act innocent, <span class="insert correction-pen" data-content="causing"></span><span class="strike">making</span> the teachers to notice nothing.
+                Firstly, if technology was used by students in school nobody would ever pass <span class="strike">in</span> their examination because <span class="insert-caret" data-text="the"></span> majority of them would be distracted by their devices as they will either play games or just watch videos and take photos of themselves. The teachers may not be able to stop them because they might quickly change their video and act innocent<span class="red-pen">,</span> <span class="strike">making</span> <span class="red-pen">causing</span> the teachers to notice nothing.
             </p>
+
             <p>
-                <span class="strike">In addition to</span> <span class="correction-pen">Furthermore,</span> parents would take their children out of school and students may start being <span class="insert correction-pen" data-content="homeschooled"></span><span class="strike">home schooled</span> ruining friendship for children which can make them emotionally unstable<span class="correction-pen">,</span> which is very bad. Parents may go as far as <span class="circle-word">Sueing</span> <span class="correction-pen">(Suing)</span> the school and asking for their money back. <span class="strike">this</span> <span class="correction-pen">This</span> could even cause quarrel and conflict between adults and children.
+                In addition <span class="strike">to</span><span class="red-pen">,</span> parents would take their children out of school and students may start being <span class="circle-error">home schooled</span> <span class="red-pen">(homeschooled)</span> ruining friendship for children which can make them emotionally unstable<span class="red-pen">,</span> which is very bad. Parents may go as far as <span class="circle-error">Sueing</span> <span class="red-pen">suing</span> the school and asking for their money back<span class="red-pen">.</span> <span class="strike">this</span> <span class="red-pen">This</span> could even cause quarrel and conflict between adults and children.
             </p>
+
             <p>
-                <span class="strike">In condition,</span> <span class="correction-pen">Consequently,</span> Teaching would no longer be a useful job as nobody will get money, and no one learns anything meaning no profit. Also, if this continues in the future <span class="strike">mad people and brainless people</span> <span class="correction-pen" style="font-size:12px;">(uneducated/illiterate)</span> would own the world.
+                <span class="circle-error">In condition</span> <span class="red-pen">(Consequently)</span>, Teaching would no longer be a useful job as nobody will get money, and no one learns anything meaning no profit. Also, if this continues in the future <span class="double-strike">mad people and brainless people</span> <span class="red-pen">illiterates</span> would own the world.
             </p>
+
             <p>
                 In conclusion, I hope I have been able to prove to you that technology in school has very terrible consequences.
             </p>
-            <p style="text-align: center; font-weight: bold; margin-top: 15px;">THANK YOU</p>
-        </div>
 
-        <!-- Teacher's Feedback at Bottom -->
-        <div class="teacher-comment">
-            <strong>Teacher's Remark:</strong><br>
-            Powerful delivery, El-rohi! You have strong arguments and great passion. Be careful not to exaggerate too much (e.g., "brainless people"), as it weakens your logic. Watch your spelling and transitional phrases. Keep it up!
-        </div>
+            <p style="text-align: center; margin-top: 20px; font-weight: bold;">
+                THANK YOU
+            </p>
 
+            <!-- Teacher Note -->
+            <div class="teacher-note">
+                <strong>Teacher's Comment:</strong><br>
+                El-rohi, this is a passionate debate speech! You have very clear points. <br>
+                1. Be careful with your word choice—"In condition" should be "Consequently". <br>
+                2. Avoid insults like "brainless people" in a formal debate; use "uneducated" instead.<br>
+                3. Watch your punctuation between sentences.
+            </div>
+
+        </div>
     </div>
+
+    <!-- Download Section -->
+    <div class="btn-container">
+        <button class="download-btn" onclick="downloadImage()">Download Speech as Image</button>
+        <p style="color:white; font-size:12px; margin-top:10px;">(If button fails, take a screenshot)</p>
+    </div>
+
+    <script>
+        function downloadImage() {
+            const element = document.getElementById('speech-content');
+            
+            // Use html2canvas to take a picture of the div
+            html2canvas(element, {
+                scale: 2, // High resolution
+                useCORS: true,
+                backgroundColor: null,
+                logging: false
+            }).then(canvas => {
+                // Create a dummy link to download
+                const link = document.createElement('a');
+                link.download = 'El-Rohi-Speech.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+    </script>
 
 </body>
 </html>
