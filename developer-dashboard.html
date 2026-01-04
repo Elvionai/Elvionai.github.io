@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Developer Dashboard | Elvion AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Generate and manage your API keys for Elvion AI.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --cyan: #00ffff;
+      --blue: #0090ff;
+      --card-bg: rgba(18,26,48,0.97);
+      --border-glow: 0 0 11px var(--cyan), 0 0 24px var(--blue);
+      --radius: 16px;
+      --text: #e0e0e0;
+      --white: #fff;
+      --muted: #b3b3b3;
+    }
+    html, body { height: 100%; margin: 0; }
+    body {
+      min-height: 100vh; font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle, #23233a 65%, #0a1128 100%);
+      color: var(--text); display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    #stars-container {
+      position: fixed; width: 100vw; height: 100vh; top: 0; left: 0; z-index: 0; pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      background: rgba(255,255,255,0.7);
+      border-radius: 50%;
+      opacity: 0;
+      animation: twinkle 4.5s infinite linear;
+    }
+    @keyframes twinkle { 0%,100%{opacity:0.16;} 52%{opacity:1;}}
+    .dashboard-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--border-glow);
+      padding: 28px;
+      width: 100%;
+      max-width: 600px;
+      z-index: 1;
+      animation: fadeIn .7s;
+    }
+    @keyframes fadeIn {from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);}}
+    .header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+    .logo-img {
+      width: 46px; height: 46px; border-radius: 50%;
+      object-fit:cover; background:#fff;
+      animation: logoPulse 3.3s infinite alternate;
+      box-shadow: 0 0 0 #00ffff;
+    }
+    @keyframes logoPulse {0%{box-shadow: 0 0 11px #00e2ff,0 0 24px #70fff7;}100%{box-shadow:0 0 19px #007c97,0 0 33px #00ceff60;}}
+    .site-heading {
+      font-family:'Orbitron',sans-serif;
+      font-size:1.3em;
+      font-weight:800;
+      letter-spacing:.5px;
+      background: linear-gradient(90deg, var(--cyan), #fff, var(--blue));
+      background-size:200% auto; -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      animation: shine 4s linear infinite;
+      text-shadow: var(--border-glow);
+    }
+    @keyframes shine {to{background-position:200% center;}}
+    .welcome-message { color: #aee; font-size: 1.1em; margin: -15px 0 25px 0; border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: 20px; }
+    .submit-btn {
+      width: 100%; background: linear-gradient(90deg, var(--cyan), var(--blue));
+      color: #102040; border: none; border-radius: 13px; padding: 12px 0;
+      font-size: 1.1em; font-family: 'Orbitron',sans-serif; font-weight: 700;
+      margin-top: 2px; cursor: pointer; box-shadow: var(--border-glow); transition: background .13s, box-shadow .13s, transform .12s;
+      text-transform: uppercase; letter-spacing:.04em;
+    }
+    .submit-btn:hover { background: var(--blue); box-shadow: var(--border-glow); transform: scale(1.034);}
+    .api-key-section h3 { font-family:'Orbitron',sans-serif; color: var(--cyan); margin-top: 30px; }
+    .api-key-container {
+        display: flex; align-items: center;
+        background: #18181f;
+        border: 1.3px solid #23233a;
+        border-radius: 10px;
+        padding: 5px 5px 5px 15px;
+        margin-top: 10px;
+    }
+    #api-key-display {
+        flex-grow: 1;
+        font-family: monospace;
+        color: #f5f5f5;
+        font-size: 1em;
+        overflow-wrap: break-word;
+    }
+    #copy-key-btn {
+        background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1em; padding: 10px;
+        transition: color 0.2s, transform 0.2s;
+    }
+    #copy-key-btn:hover { color: var(--cyan); transform: scale(1.2); }
+    .status-message { color: #ffd700; font-size: .97em; margin-top: 15px; min-height: 19px; }
+    .logout-btn {
+      position: fixed; top: 20px; right: 20px; z-index: 10;
+      background: none; border: none; color: var(--cyan); cursor: pointer; text-decoration: underline; font-size: 1em;
+    }
+  </style>
+</head>
+<body>
+<div id="stars-container"></div>
+<button id="logout-btn">Log Out</button>
+
+<div class="dashboard-card">
+    <div class="header">
+        <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" class="logo-img" alt="Elvion AI Logo">
+        <h1 class="site-heading">Developer Dashboard</h1>
+    </div>
+    <p id="welcome-message" class="welcome-message">Loading user...</p>
+    
+    <p>Generate your API key below to integrate Elvion AI's powerful text and image generation capabilities into your applications.</p>
+
+    <button id="generate-key-btn" class="submit-btn">Generate New API Key</button>
+    <div class="status-message" id="generation-status"></div>
+
+    <div class="api-key-section">
+        <h3>Your API Key</h3>
+        <div class="api-key-container">
+            <code id="api-key-display">Click the button above to generate your key.</code>
+            <button id="copy-key-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
+        </div>
+        <p><small>Store this key securely. For security reasons, you will not be able to see it again after you leave this page.</small></p>
+    </div>
+</div>
+
+<script type="module">
+  // STAR ANIMATION
+  document.addEventListener('DOMContentLoaded',()=>{
+    const starsContainer = document.getElementById('stars-container');
+    const numStars = 80, minSize=1, maxSize=2.5;
+    for(let i=0; i<numStars; i++) {
+      const star=document.createElement('div');
+      star.className='star';
+      const size = Math.random()*(maxSize-minSize)+minSize;
+      star.style.width=size+'px';
+      star.style.height=size+'px';
+      star.style.left=Math.random()*100+'%';
+      star.style.top=Math.random()*100+'%';
+      star.style.animationDelay=(Math.random()*3.5)+'s';
+      star.style.animationDuration=(2+Math.random()*1.3)+'s';
+      starsContainer.appendChild(star);
+    }
+  });
+
+  // FIREBASE IMPORTS
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  
+  // --- IMPORTANT ---: REPLACE WITH YOUR DEPLOYED BACKEND URL
+  const BACKEND_URL = "https://web-production-9a18.up.railway.app/"; 
+  
+  const firebaseConfig = {
+    apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+    authDomain: "elvionai.firebaseapp.com",
+    projectId: "elvionai",
+    storageBucket: "elvionai.appspot.com",
+    messagingSenderId: "161078300830",
+    appId: "1:161078300830:web:f460df8591704eb0e96b8f"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // GET ELEMENTS
+  const welcomeMessage = document.getElementById('welcome-message');
+  const generateKeyButton = document.getElementById('generate-key-btn');
+  const apiKeyDisplay = document.getElementById('api-key-display');
+  const copyKeyButton = document.getElementById('copy-key-btn');
+  const generationStatus = document.getElementById('generation-status');
+  const logoutButton = document.getElementById('logout-btn');
+
+  // SECURITY GATEKEEPER
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      // User is signed in.
+      welcomeMessage.textContent = `Authenticated as ${user.email}`;
+
+      generateKeyButton.addEventListener('click', async () => {
+        generateKeyButton.disabled = true;
+        generationStatus.textContent = 'Generating... Please wait.';
+        generationStatus.style.color = 'var(--cyan)';
+        
+        try {
+          const token = await user.getIdToken();
+          const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
+            method: 'POST',
+            headers: { 'X-Firebase-Token': token }
+          });
+          const data = await response.json();
+
+          if (response.ok) {
+            apiKeyDisplay.textContent = data.api_key;
+            generationStatus.textContent = 'Key generated successfully!';
+          } else {
+            throw new Error(data.detail || 'Failed to generate key.');
+          }
+        } catch (error) {
+          console.error('Error generating API key:', error);
+          generationStatus.textContent = error.message;
+          generationStatus.style.color = '#ffd700';
+        } finally {
+          generateKeyButton.disabled = false;
+        }
+      });
+
+      copyKeyButton.addEventListener('click', () => {
+        const key = apiKeyDisplay.textContent;
+        if (key && !key.startsWith('Click')) {
+          navigator.clipboard.writeText(key).then(() => {
+            copyKeyButton.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                copyKeyButton.innerHTML = '<i class="far fa-copy"></i>';
+            }, 2000);
+          });
+        }
+      });
+
+      logoutButton.addEventListener('click', () => {
+        auth.signOut();
+      });
+
+    } else {
+      // No user is signed in. Redirect to login.
+      window.location.href = 'deveoper-login.html';
+    }
+  });
+</script>
+</body>
+</html>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
