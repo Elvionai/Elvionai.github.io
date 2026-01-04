@@ -75,7 +75,8 @@
       margin-top: 2px; cursor: pointer; box-shadow: var(--border-glow); transition: background .13s, box-shadow .13s, transform .12s;
       text-transform: uppercase; letter-spacing:.04em;
     }
-    .submit-btn:hover { background: var(--blue); box-shadow: var(--border-glow); transform: scale(1.034);}
+    .submit-btn:hover:not(:disabled) { background: var(--blue); box-shadow: var(--border-glow); transform: scale(1.034);}
+    .submit-btn:disabled { cursor: not-allowed; background: #555; box-shadow: none; transform: none; }
     .api-key-section h3 { font-family:'Orbitron',sans-serif; color: var(--cyan); margin-top: 30px; }
     .api-key-container {
         display: flex; align-items: center;
@@ -97,23 +98,44 @@
         transition: color 0.2s, transform 0.2s;
     }
     #copy-key-btn:hover { color: var(--cyan); transform: scale(1.2); }
-    .status-message { color: #ffd700; font-size: .97em; margin-top: 15px; min-height: 19px; }
-    .logout-btn {
-      position: fixed; top: 20px; right: 20px; z-index: 10;
-      background: none; border: none; color: var(--cyan); cursor: pointer; text-decoration: underline; font-size: 1em;
+    .status-message { font-size: .97em; margin-top: 15px; min-height: 19px; transition: color 0.3s; }
+    .nav-menu {
+        position: fixed; top: 20px; left: 20px; z-index: 10;
+        display: flex; gap: 20px;
     }
+    .nav-menu a, #logout-btn {
+        color: var(--cyan);
+        text-decoration: none;
+        font-size: 1em;
+        transition: color 0.2s, text-shadow 0.2s;
+    }
+    .nav-menu a:hover, #logout-btn:hover {
+        color: var(--white);
+        text-shadow: 0 0 5px var(--cyan);
+    }
+    #logout-btn { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; padding: 0;}
+    .nav-container { position: fixed; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 20px; }
   </style>
 </head>
 <body>
 <div id="stars-container"></div>
-<button id="logout-btn">Log Out</button>
+
+<div class="nav-menu">
+    <a href="https://elvionai.com.ng/">Home</a>
+    <a href="https://elvionai.com.ng/university.html">University</a>
+    <a href="https://elvionai.com.ng/pricing.html">Pricing</a>
+</div>
+
+<div class="nav-container">
+    <button id="logout-btn">Log Out</button>
+</div>
 
 <div class="dashboard-card">
     <div class="header">
         <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" class="logo-img" alt="Elvion AI Logo">
         <h1 class="site-heading">Developer Dashboard</h1>
     </div>
-    <p id="welcome-message" class="welcome-message">Loading user...</p>
+    <p id="welcome-message" class="welcome-message">Authenticating...</p>
     
     <p>Generate your API key below to integrate Elvion AI's powerful text and image generation capabilities into your applications.</p>
 
@@ -150,11 +172,11 @@
   });
 
   // FIREBASE IMPORTS
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   
   // --- IMPORTANT ---: REPLACE WITH YOUR DEPLOYED BACKEND URL
-  const BACKEND_URL = "https://web-production-9a18.up.railway.app/"; 
+  const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
   
   const firebaseConfig = {
     apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
@@ -176,36 +198,45 @@
   const logoutButton = document.getElementById('logout-btn');
 
   // SECURITY GATEKEEPER
-  auth.onAuthStateChanged(user => {
+  onAuthStateChanged(auth, user => {
     if (user) {
       // User is signed in.
       welcomeMessage.textContent = `Authenticated as ${user.email}`;
 
       generateKeyButton.addEventListener('click', async () => {
         generateKeyButton.disabled = true;
-        generationStatus.textContent = 'Generating... Please wait.';
+        generateKeyButton.textContent = 'GENERATING...';
+        generationStatus.textContent = 'Contacting server...';
         generationStatus.style.color = 'var(--cyan)';
         
         try {
           const token = await user.getIdToken();
-          const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
+          
+          // --- CORRECTED & SAFE FETCH ---
+          // This removes any trailing slash from the URL to prevent the double-slash error.
+          const cleanBackendUrl = BACKEND_URL.replace(/\/$/, "");
+          const response = await fetch(`${cleanBackendUrl}/api/user/create-api-key`, {
             method: 'POST',
             headers: { 'X-Firebase-Token': token }
           });
+          
           const data = await response.json();
 
           if (response.ok) {
             apiKeyDisplay.textContent = data.api_key;
             generationStatus.textContent = 'Key generated successfully!';
+            generationStatus.style.color = '#28a745';
           } else {
-            throw new Error(data.detail || 'Failed to generate key.');
+            // Throw an error with the detail from the backend
+            throw new Error(data.detail || 'An unknown error occurred on the server.');
           }
         } catch (error) {
           console.error('Error generating API key:', error);
-          generationStatus.textContent = error.message;
-          generationStatus.style.color = '#ffd700';
+          generationStatus.textContent = `Error: ${error.message}`;
+          generationStatus.style.color = '#ffd700'; // Yellow for warning/error
         } finally {
           generateKeyButton.disabled = false;
+          generateKeyButton.textContent = 'Generate New API Key';
         }
       });
 
@@ -214,20 +245,23 @@
         if (key && !key.startsWith('Click')) {
           navigator.clipboard.writeText(key).then(() => {
             copyKeyButton.innerHTML = '<i class="fas fa-check"></i>';
+            generationStatus.textContent = 'API Key copied to clipboard!';
+            generationStatus.style.color = '#28a745';
             setTimeout(() => {
                 copyKeyButton.innerHTML = '<i class="far fa-copy"></i>';
-            }, 2000);
+            }, 2500);
           });
         }
       });
 
       logoutButton.addEventListener('click', () => {
-        auth.signOut();
+        signOut(auth);
       });
 
     } else {
-      // No user is signed in. Redirect to login.
-      window.location.href = 'deveoper-login.html';
+      // No user is signed in. Redirect to your login page.
+      // Make sure the filename matches your actual login page file.
+      window.location.href = 'developer-login.html'; 
     }
   });
 </script>
