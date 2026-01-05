@@ -7,7 +7,6 @@
   <meta name="description" content="Manage your API keys, wallet, and usage for the Elvion AI Developer Platform.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://checkout.squadco.com/widget/squad.js"></script>
   <style>
     :root {
       --cyan: #00ffff; --blue: #0090ff; --red: #ff4d4d; --green: #28a745; --orange: #ffae42;
@@ -127,6 +126,14 @@
         <div class="section-card full-width" id="admin-panel" hidden>
             <h3 class="section-header" style="color: var(--orange);">Admin Office</h3>
             <div class="stat-grid" id="admin-stats-grid"><div class="loader"></div></div>
+            
+            <!-- THE NEW ADMIN CREDITS BLOCK -->
+            <div style="text-align: center; border-top: 1px solid #444; margin-top: 20px; padding-top: 20px;">
+                <p style="color: var(--muted);">If your balance is zero, use this one-time tool.</p>
+                <button id="grant-credits-btn" class="submit-btn" style="background: var(--orange);">Grant Admin Credits</button>
+                <div class="status-message" id="grant-credits-status"></div>
+            </div>
+            <!-- END OF NEW BLOCK -->
         </div>
     </div>
 </div>
@@ -169,7 +176,7 @@
   };
   
   // ==========================================================================
-  // --- INITIALIZATION & AUTHENTICATION (DEFINITIVE FIX) ---
+  // --- INITIALIZATION & AUTHENTICATION ---
   // ==========================================================================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -179,22 +186,15 @@
   
   let currentUser, userToken, currentUserBalance;
 
-  // **DEFINITIVE FIX**: Use onIdTokenChanged. This only fires when the user is
-  // fully authenticated and a fresh token is available. This prevents race conditions.
   onIdTokenChanged(auth, async (user) => {
     if (user) {
-      // User is signed in and token is ready.
       currentUser = user;
       document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
       
       try {
-        // Force refresh to get the absolute latest token from Firebase.
         userToken = await user.getIdToken(true); 
-        
-        // Now that we have a guaranteed fresh token, load all dashboard data.
         await loadDashboardData();
         
-        // Conditionally show admin panel after data is loaded.
         if (user.email === ADMIN_EMAIL) {
             document.getElementById('admin-panel').hidden = false;
             fetchAdminStats();
@@ -206,7 +206,6 @@
       }
       
     } else {
-      // No user is signed in. Redirect to the login page.
       window.location.href = 'developer-login.html';
     }
   });
@@ -277,7 +276,7 @@
   }
 
   // ==========================================================================
-  // --- UI & EVENT HANDLERS (FIXED) ---
+  // --- UI & EVENT HANDLERS ---
   // ==========================================================================
 
   function renderBalance(balance) {
@@ -314,7 +313,6 @@
     });
   }
 
-  // **DEFINITIVE FIX**: The frontend credit check is removed. The backend handles everything.
   generateKeyButton.addEventListener('click', async () => {
     generateKeyButton.disabled = true;
     generateKeyButton.textContent = 'GENERATING...';
@@ -335,8 +333,6 @@
       generationStatus.textContent = 'Key generated successfully! Copy it now.';
       generationStatus.style.color = 'var(--green)';
       
-      // Refresh the dashboard to show the new key and updated balance.
-      // This is crucial for admins to see their balance update if it was 0.
       loadDashboardData();
 
     } catch (error) {
@@ -378,16 +374,57 @@
     }
   });
 
+  // NEW EVENT LISTENER FOR THE ADMIN "MAGIC BUTTON"
+  document.getElementById('grant-credits-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('grant-credits-btn');
+    const status = document.getElementById('grant-credits-status');
+
+    if (!confirm('This will set your admin account balance to 100,000 credits. Proceed?')) return;
+
+    btn.disabled = true;
+    btn.textContent = 'PROCESSING...';
+    status.textContent = 'Sending request to server...';
+    status.style.color = 'var(--cyan)';
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/grant-credits`, {
+            method: 'POST',
+            headers: { 'X-Firebase-Token': userToken }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
+
+        status.textContent = data.message;
+        status.style.color = 'var(--green)';
+        
+        // Refresh the entire dashboard to show the new balance everywhere
+        await loadDashboardData();
+
+    } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+        status.style.color = 'var(--red)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Grant Admin Credits';
+    }
+  });
+
   document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
   // ==========================================================================
-  // --- PAYMENT FLOW LOGIC (ROBUST VERSION) ---
+  // --- PAYMENT FLOW LOGIC (ROBUST & SECURE VERSION) ---
   // ==========================================================================
   
   window.openModal = (id) => document.getElementById(id).style.display = 'flex';
   window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
-  fundWalletBtn.addEventListener('click', () => openModal('payment-modal'));
+  fundWalletBtn.addEventListener('click', () => {
+      // Reset the modal state every time it's opened
+      document.getElementById('payment-amount').value = 1000;
+      paymentStatus.textContent = '';
+      proceedToPaymentBtn.disabled = false;
+      openModal('payment-modal');
+  });
 
   proceedToPaymentBtn.addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('payment-amount').value);
@@ -398,83 +435,106 @@
     }
     
     proceedToPaymentBtn.disabled = true;
-    paymentStatus.textContent = 'Initiating payment...';
+    paymentStatus.textContent = 'Initializing secure transaction...';
     paymentStatus.style.color = 'var(--cyan)';
 
+    let transactionRef; // Define here to be accessible in the whole function scope
+
     try {
+        // Step 1: Ask our backend to create a transaction record
         const response = await fetch(`${BACKEND_URL}/api/payments/initiate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
             body: JSON.stringify({ amount: amount })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Failed to start payment.');
+        if (!response.ok) throw new Error(data.detail || 'Failed to initiate payment with backend.');
+        
+        transactionRef = data.transaction_ref; // Store the official transaction reference from our backend
+        paymentStatus.textContent = 'Redirecting to payment gateway...';
 
+        // Step 2: Open the Squad widget with the reference from our backend
         const squadInstance = new Squad({
             onClose: () => {
+                console.log("Payment widget closed.");
+                // We ALWAYS verify, even on close, in case the payment went through
+                // but the success callback didn't fire (e.g., user's internet flickered).
                 closeModal('payment-modal');
-                verifyPayment(data.transaction_ref);
+                verifyPayment(transactionRef);
             },
-            onSuccess: (response) => {
+            onSuccess: () => {
+                // This is the ideal scenario.
+                console.log("Payment successful callback received.");
                 closeModal('payment-modal');
-                verifyPayment(response.trans_ref || data.transaction_ref);
+                verifyPayment(transactionRef);
             },
-            key: SQUAD_PUBLIC_KEY, email: currentUser.email, amount: amount * 100,
-            currency_code: "NGN", transaction_ref: data.transaction_ref
+            key: SQUAD_PUBLIC_KEY,
+            email: currentUser.email,
+            amount: amount * 100, // Amount must be in kobo
+            currency: "NGN", // Squad's docs now use 'currency'
+            transaction_ref: transactionRef
         });
-        squadInstance.setup(); squadInstance.open();
+        squadInstance.setup();
+        squadInstance.open();
+
     } catch (error) {
         paymentStatus.textContent = `Error: ${error.message}`;
         paymentStatus.style.color = 'var(--red)';
-    } finally {
         proceedToPaymentBtn.disabled = false;
     }
   });
 
   async function verifyPayment(transactionRef) {
+      if (!transactionRef) {
+          console.log("Verification skipped: No transaction reference found.");
+          return;
+      }
+      
       openModal('status-modal');
       const statusTitle = document.getElementById('status-modal-title');
       const statusMessage = document.getElementById('status-modal-message');
       statusTitle.textContent = 'Verifying Your Payment...';
       statusTitle.style.color = 'var(--cyan)';
-      statusMessage.textContent = `Please wait while we confirm transaction: ${transactionRef.substring(0, 20)}...`;
+      statusMessage.textContent = `Please wait while we confirm your transaction...`;
 
       try {
+          // Step 3: Ask our backend to verify the transaction with Squad
           const response = await fetch(`${BACKEND_URL}/api/payments/verify?transaction_ref=${transactionRef}`, {
+              method: 'GET', // Verification is a GET request
               headers: { 'X-Firebase-Token': userToken }
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.detail || 'Verification failed.');
+          if (!response.ok) throw new Error(data.detail || 'Verification request failed.');
           
           if (data.status === 'already_credited') {
              statusTitle.textContent = 'Already Processed';
+             statusTitle.style.color = 'var(--cyan)';
              statusMessage.textContent = data.message;
           } else {
-             statusTitle.textContent = 'Success!';
+             statusTitle.textContent = 'Payment Successful!';
              statusTitle.style.color = 'var(--green)';
-             statusMessage.textContent = `${data.message} ${data.credits_added} credits added.`;
+             statusMessage.textContent = `${data.message} ${data.credits_added} credits have been added to your wallet.`;
           }
+          // ALWAYS reload dashboard data after any potential balance change.
           loadDashboardData();
+
       } catch (error) {
           statusTitle.textContent = 'Verification Failed';
           statusTitle.style.color = 'var(--red)';
-          statusMessage.textContent = `Error: ${error.message}. If debited, contact support.`;
+          statusMessage.textContent = `Error: ${error.message}. If you were debited, please contact support with your transaction reference.`;
       } finally {
-        setTimeout(() => closeModal('status-modal'), 7000);
+        // Close the status modal after a delay so the user can read the message.
+        setTimeout(() => closeModal('status-modal'), 8000);
       }
   }
 
-  // Star Animation
+  // Star Animation & URL cleanup
   document.addEventListener('DOMContentLoaded', () => {
-    // Check for payment verification in URL params
+    // Check for payment verification in URL params from older redirect flows and clean them
     const urlParams = new URLSearchParams(window.location.search);
-    const tx_ref_from_url = urlParams.get('transaction_ref');
-    if (tx_ref_from_url) {
+    if (urlParams.has('transaction_ref') || urlParams.has('payment')) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      onIdTokenChanged(auth, user => {
-        if (user) verifyPayment(tx_ref_from_url);
-      });
     }
 
     // Create stars
