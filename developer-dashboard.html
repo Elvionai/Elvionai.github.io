@@ -15,7 +15,6 @@
       --red: #ff4d4d;
       --green: #28a745;
       --orange: #ffae42;
-      --purple: #c88cff;
       --card-bg: rgba(18,26,48,0.97);
       --section-bg: rgba(24, 24, 31, 0.7);
       --border-glow: 0 0 11px var(--cyan), 0 0 24px var(--blue);
@@ -83,9 +82,11 @@
     .key-status.active { background-color: rgba(40, 167, 69, 0.2); color: var(--green); }
     .key-status.revoked { background-color: rgba(255, 77, 77, 0.2); color: var(--red); }
     .revoke-btn { background: none; border: 1px solid var(--red); color: var(--red); font-size: 0.85em; padding: 5px 10px; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
-    .revoke-btn:hover { background: var(--red); color: var(--white); }
+    .revoke-btn:hover:not(:disabled) { background: var(--red); color: var(--white); }
+    .revoke-btn:disabled { border-color: #555; color: #555; cursor: not-allowed; }
 
     /* Admin & Metrics */
+    #admin-panel .section-header { color: var(--orange); border-bottom-color: rgba(255, 174, 66, 0.2); }
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
     .stat-item { text-align: center; }
     .stat-value { font-size: 1.8em; font-family: 'Orbitron'; color: var(--white); }
@@ -94,21 +95,19 @@
     /* Buttons & Loaders */
     .submit-btn { background: linear-gradient(90deg, var(--cyan), var(--blue)); color: #102040; border: none; border-radius: 10px; padding: 12px 20px; font-size: 1em; font-family: 'Orbitron',sans-serif; font-weight: 700; cursor: pointer; box-shadow: var(--border-glow); transition: all .15s; text-transform: uppercase; letter-spacing:.04em; }
     .submit-btn:hover:not(:disabled) { transform: scale(1.03); }
-    .submit-btn:disabled { cursor: not-allowed; background: #555; box-shadow: none; transform: none; }
-    .secondary-btn { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 10px; padding: 12px 20px; font-size: 1em; font-family: 'Orbitron',sans-serif; font-weight: 700; cursor: pointer; transition: all .15s; }
-    .secondary-btn:hover:not(:disabled) { background: var(--cyan); color: #102040; }
+    .submit-btn:disabled { cursor: not-allowed; background: #555; box-shadow: none; transform: none; color: #999; }
     
     .status-message { font-size: .97em; margin-top: 15px; min-height: 19px; transition: color 0.3s; }
-    .loader { width: 32px; height: 32px; border: 4px solid var(--cyan); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; margin: 20px auto; display: block; }
+    .loader { width: 32px; height: 32px; border: 4px solid var(--cyan); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; margin: 20px auto; }
     .loader-small { width: 1em; height: 1em; border: 2px solid var(--cyan); border-bottom-color: transparent; }
     @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* Modals for Payment & Status */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; }
-    .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--radius); box-shadow: var(--border-glow); text-align: center; max-width: 400px; animation: fadeIn 0.3s; }
+    .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--radius); box-shadow: var(--border-glow); text-align: center; max-width: 400px; animation: fadeIn 0.3s; position: relative; }
     .modal-content h3 { margin-top: 0; font-family: 'Orbitron'; color: var(--cyan); }
-    #payment-amount { width: 100%; padding: 10px; background: #101018; border: 1px solid #23233a; border-radius: 8px; color: var(--white); font-size: 1.2em; margin-top: 15px; margin-bottom: 20px; }
-    .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--white); font-size: 1.5em; cursor: pointer; }
+    #payment-amount { width: 100%; box-sizing: border-box; padding: 10px; background: #101018; border: 1px solid #23233a; border-radius: 8px; color: var(--white); font-size: 1.2em; margin-top: 15px; margin-bottom: 20px; }
+    .close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--white); font-size: 1.8em; cursor: pointer; line-height: 1; }
 
     /* Nav */
     .nav-container { position: fixed; top: 20px; right: 20px; z-index: 10; }
@@ -117,7 +116,8 @@
 
     @media (max-width: 768px) {
       .grid-container { grid-template-columns: 1fr; }
-      body { padding: 20px 10px; }
+      body { padding: 20px 10px; align-items: flex-start; }
+      .dashboard-container { padding: 20px; }
     }
   </style>
 </head>
@@ -142,7 +142,7 @@
         <!-- Wallet Section -->
         <div class="section-card">
             <h3 class="section-header">My Wallet</h3>
-            <p>Your current credit balance.</p>
+            <p id="wallet-description">Your current credit balance.</p>
             <div id="balance-display"><div class="loader loader-small"></div></div>
             <div id="wallet-actions">
                 <button id="fund-wallet-btn" class="submit-btn">Fund Wallet</button>
@@ -152,7 +152,7 @@
         <!-- Key Generation Section -->
         <div class="section-card">
             <h3 class="section-header">Generate New Key</h3>
-            <p>Create a new API key for your applications. <span id="key-cost"></span></p>
+            <p id="key-gen-description">Create a new API key for your applications. <span id="key-cost"></span></p>
             <button id="generate-key-btn" class="submit-btn">Generate API Key</button>
             <div class="status-message" id="generation-status"></div>
             <div class="api-key-container" id="new-key-container">
@@ -196,9 +196,8 @@
 
         <!-- NEW: Admin Panel (Hidden by default) -->
         <div class="section-card full-width" id="admin-panel" hidden>
-            <h3 class="section-header" style="color: var(--orange);">Admin Office</h3>
+            <h3 class="section-header">Admin Office</h3>
             <div class="stat-grid" id="admin-stats-grid">
-                <!-- Admin stats will be loaded here by JavaScript -->
                 <div class="loader"></div>
             </div>
         </div>
@@ -227,19 +226,15 @@
 </div>
 
 <script type="module">
-  // FIREBASE IMPORTS
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  
   // ==========================================================================
   // --- CONFIGURATION ---
   // ==========================================================================
   const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
-  const SQUAD_PUBLIC_KEY = "sandbox_pk_8109e4303e01a9043777f464e46d91055cfc26e8a527"; // YOUR SQUAD PUBLIC KEY
+  const SQUAD_PUBLIC_KEY = "sandbox_pk_8109e4303e01a9043777f464e46d91055cfc26e8a527";
   const ADMIN_EMAIL = "Koladhino@gmail.com";
   const API_KEY_GENERATION_COST = 100;
   
-  // IMPORTANT: Replace this with your actual Firebase project configuration
+  // Use your actual Firebase project configuration
   const firebaseConfig = {
     apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
     authDomain: "elvionai.firebaseapp.com",
@@ -252,28 +247,30 @@
   // ==========================================================================
   // --- INITIALIZATION & AUTHENTICATION ---
   // ==========================================================================
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   
-  let currentUser, userToken;
+  let currentUser, userToken, isUserAdmin = false, currentUserBalance = 0;
 
-  // Gatekeeper: Redirects to login if user is not authenticated
   onAuthStateChanged(auth, user => {
     if (user) {
       currentUser = user;
       document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
+      isUserAdmin = user.email === ADMIN_EMAIL; // Check if the user is an admin
+      
       user.getIdToken().then(token => {
         userToken = token;
-        // Main function to load all user data
         loadDashboardData();
-        // Check if user is an admin
-        if (user.email === ADMIN_EMAIL) {
+        if (isUserAdmin) {
             document.getElementById('admin-panel').hidden = false;
             fetchAdminStats();
         }
       });
     } else {
-      window.location.href = 'developer-login.html'; // Or your login page
+      window.location.href = 'developer-login.html';
     }
   });
 
@@ -295,12 +292,9 @@
   const paymentStatus = document.getElementById('payment-status');
   
   // ==========================================================================
-  // --- CORE FUNCTIONS ---
+  // --- CORE & UI RENDERING FUNCTIONS ---
   // ==========================================================================
 
-  /**
-   * Main function to fetch and render all dynamic data on the dashboard.
-   */
   async function loadDashboardData() {
     if (!userToken) return;
     renderBalance('<div class="loader loader-small"></div>');
@@ -313,9 +307,8 @@
       if (!response.ok) throw new Error('Failed to fetch dashboard data.');
       
       const data = await response.json();
-      renderBalance(data.balance);
-      renderKeyList(data.keys);
-      document.getElementById('key-cost').textContent = `(Cost: ${API_KEY_GENERATION_COST} Credits)`;
+      currentUserBalance = data.balance; // Store balance globally
+      renderDashboardUI(data.balance, data.keys);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -324,52 +317,25 @@
     }
   }
   
-  /**
-   * Fetches and displays the platform-wide statistics for the admin.
-   */
-  async function fetchAdminStats() {
-    const grid = document.getElementById('admin-stats-grid');
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/stats`, {
-            headers: { 'X-Firebase-Token': userToken }
-        });
-        if (!response.ok) throw new Error('Failed to fetch admin stats.');
-        const stats = await response.json();
-        
-        grid.innerHTML = `
-            <div class="stat-item">
-                <div class="stat-value">${stats.total_registered_users || 0}</div>
-                <div class="stat-label">Total Users</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${stats.total_api_keys_generated || 0}</div>
-                <div class="stat-label">Keys Generated</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">${stats.total_active_user_credits || 0}</div>
-                <div class="stat-label">Total User Credits</div>
-            </div>
-             <div class="stat-item">
-                <div class="stat-value">${stats.users_who_generated_keys || 0}</div>
-                <div class="stat-label">Users With Keys</div>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Error fetching admin stats:', error);
-        grid.innerHTML = `<p style="color: var(--red);">Could not load admin statistics.</p>`;
+  function renderDashboardUI(balance, keys) {
+    // Role-Aware UI Updates
+    if (isUserAdmin) {
+      balanceDisplay.innerHTML = `Admin Access <i class="fas fa-infinity" style="font-size: 0.7em;"></i>`;
+      document.getElementById('wallet-description').textContent = "You have unlimited credits and free API access.";
+      fundWalletBtn.disabled = true;
+      fundWalletBtn.style.cursor = 'not-allowed';
+      document.getElementById('key-gen-description').innerHTML = `Generate keys for testing or other users. <span id="key-cost" style="color: var(--green);">Free for Admins</span>`;
+    } else {
+      balanceDisplay.innerHTML = `${balance.toLocaleString()} <span style="font-size: 0.5em; color: var(--muted);">Credits</span>`;
+       document.getElementById('wallet-description').textContent = "Your current credit balance.";
+      fundWalletBtn.disabled = false;
+      document.getElementById('key-gen-description').innerHTML = `Create a new API key for your applications. <span id="key-cost" style="color: var(--orange);">(Cost: ${API_KEY_GENERATION_COST} Credits)</span>`;
     }
-  }
-
-  // ==========================================================================
-  // --- UI RENDERING FUNCTIONS ---
-  // ==========================================================================
-
-  function renderBalance(balance) {
-    balanceDisplay.innerHTML = `${balance.toLocaleString()} <span style="font-size: 0.5em; color: var(--muted);">Credits</span>`;
+    renderKeyList(keys);
   }
 
   function renderKeyList(keys) {
-    apiKeyListDiv.innerHTML = ''; // Clear loader
+    apiKeyListDiv.innerHTML = '';
     keyListInfo.textContent = `You have generated ${keys.length} API key(s).`;
     if (keys.length === 0) {
       apiKeyListDiv.innerHTML = '<p style="color: var(--muted);">You have not generated any API keys yet.</p>';
@@ -395,18 +361,47 @@
     });
   }
 
+  async function fetchAdminStats() {
+    const grid = document.getElementById('admin-stats-grid');
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/stats`, {
+            headers: { 'X-Firebase-Token': userToken }
+        });
+        if (!response.ok) throw new Error('Failed to fetch admin stats.');
+        const stats = await response.json();
+        
+        grid.innerHTML = `
+            <div class="stat-item"><div class="stat-value">${stats.total_registered_users || 0}</div><div class="stat-label">Total Users</div></div>
+            <div class="stat-item"><div class="stat-value">${stats.total_api_keys_generated || 0}</div><div class="stat-label">Keys Generated</div></div>
+            <div class="stat-item"><div class="stat-value">${stats.total_user_credits_in_wallets || 0}</div><div class="stat-label">User Credits</div></div>
+            <div class="stat-item"><div class="stat-value">${stats.total_revenue_credited || 0}</div><div class="stat-label">Total Revenue (₦)</div></div>
+        `;
+    } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        grid.innerHTML = `<p style="color: var(--red);">Could not load admin statistics.</p>`;
+    }
+  }
+
   // ==========================================================================
   // --- EVENT HANDLERS ---
   // ==========================================================================
 
-  // Generate a new API key
   generateKeyButton.addEventListener('click', async () => {
+    generationStatus.textContent = 'Contacting server...';
+    generationStatus.style.color = 'var(--cyan)';
+    newKeyContainer.style.display = 'none';
+
+    // --- THE FIX ---
+    // Only perform the frontend credit check if the user is NOT an admin.
+    if (!isUserAdmin && currentUserBalance < API_KEY_GENERATION_COST) {
+        generationStatus.textContent = `Error: Insufficient credits. Generating a key costs ${API_KEY_GENERATION_COST}, but your balance is ${currentUserBalance}.`;
+        generationStatus.style.color = 'var(--red)';
+        return;
+    }
+    
     generateKeyButton.disabled = true;
     generateKeyButton.textContent = 'GENERATING...';
-    generationStatus.style.color = 'var(--cyan)';
-    generationStatus.textContent = 'Contacting server...';
-    newKeyContainer.style.display = 'none';
-    
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
         method: 'POST',
@@ -417,11 +412,10 @@
 
       apiKeyDisplay.textContent = data.api_key;
       newKeyContainer.style.display = 'flex';
-      generationStatus.textContent = 'Key generated successfully! Copy it now.';
+      generationStatus.textContent = data.message;
       generationStatus.style.color = 'var(--green)';
       
-      // Refresh the whole dashboard to show new key and updated balance
-      loadDashboardData();
+      loadDashboardData(); // Refresh to show new key and updated balance
 
     } catch (error) {
       console.error('Error generating API key:', error);
@@ -433,7 +427,6 @@
     }
   });
   
-  // Copy new API key to clipboard
   copyKeyButton.addEventListener('click', () => {
     navigator.clipboard.writeText(apiKeyDisplay.textContent).then(() => {
       copyKeyButton.innerHTML = '<i class="fas fa-check"></i>';
@@ -442,14 +435,14 @@
     });
   });
 
-  // Handle revoking a key (using event delegation)
   apiKeyListDiv.addEventListener('click', async (event) => {
-    if (event.target && event.target.matches('.revoke-btn')) {
-      const keyToRevoke = event.target.getAttribute('data-key');
-      if (!confirm('Are you sure you want to revoke this API key? This action is irreversible and will immediately disable the key.')) return;
+    const revokeBtn = event.target.closest('.revoke-btn');
+    if (revokeBtn) {
+      const keyToRevoke = revokeBtn.getAttribute('data-key');
+      if (!confirm('Are you sure you want to revoke this API key? This action is irreversible.')) return;
       
-      event.target.disabled = true;
-      event.target.textContent = 'Revoking...';
+      revokeBtn.disabled = true;
+      revokeBtn.textContent = '...';
       
       try {
         const response = await fetch(`${BACKEND_URL}/api/user/revoke-api-key`, {
@@ -460,34 +453,28 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Failed to revoke key.');
         
-        // Refresh the list to show the key as "Revoked"
         loadDashboardData();
 
       } catch (error) {
         console.error('Error revoking key:', error);
         alert(`Error: ${error.message}`);
-        event.target.disabled = false;
-        event.target.textContent = 'Revoke';
+        revokeBtn.disabled = false;
+        revokeBtn.textContent = 'Revoke';
       }
     }
   });
 
-  // Handle logout
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    signOut(auth);
-  });
+  document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
   // ==========================================================================
   // --- PAYMENT FLOW LOGIC ---
   // ==========================================================================
   
-  // Show/hide modals
   window.openModal = (id) => document.getElementById(id).style.display = 'flex';
   window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
   fundWalletBtn.addEventListener('click', () => openModal('payment-modal'));
 
-  // Step 1: Initiate Payment
   proceedToPaymentBtn.addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('payment-amount').value);
     if (isNaN(amount) || amount < 100) {
@@ -509,26 +496,22 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Failed to start payment.');
 
-        // Use Squad's popup checkout
         const squadInstance = new Squad({
             onClose: () => {
-                console.log('Payment modal closed.');
-                // We will verify when the user returns to the page anyway
-                paymentStatus.textContent = "Payment window closed. We will verify your transaction shortly.";
+                // If Squad sends a trans_ref, we can try to verify.
+                const urlParams = new URLSearchParams(window.location.search);
+                const tx_ref = urlParams.get('transaction_ref');
+                if (tx_ref) verifyPayment(tx_ref);
             },
-            onLoad: () => console.log('Squad widget loaded.'),
             onSuccess: (response) => {
-                // The 'response' object here contains the transaction_ref
-                console.log('Squad Success:', response);
-                // The 'callback_url' will handle verification, but we can also trigger it here
                 closeModal('payment-modal');
                 verifyPayment(response.trans_ref);
             },
             key: SQUAD_PUBLIC_KEY,
             email: currentUser.email,
-            amount: amount * 100, // Amount in kobo
+            amount: amount * 100,
             currency_code: "NGN",
-            transaction_ref: data.transaction_ref // Use ref from our backend
+            transaction_ref: data.transaction_ref
         });
         squadInstance.setup();
         squadInstance.open();
@@ -541,20 +524,18 @@
     }
   });
 
-  // Step 2: Verify Payment (triggered on page load if transaction_ref is in URL)
   document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tx_ref = urlParams.get('transaction_ref');
     
     if (tx_ref) {
-      // Clean the URL to avoid re-triggering on refresh
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-      
-      // Wait for authentication to complete before verifying
+      window.history.replaceState({}, document.title, window.location.pathname);
       onAuthStateChanged(auth, user => {
         if (user) {
-          verifyPayment(tx_ref);
+          user.getIdToken().then(token => {
+              userToken = token;
+              verifyPayment(tx_ref);
+          });
         }
       });
     }
@@ -566,6 +547,7 @@
       const statusMessage = document.getElementById('status-modal-message');
       statusTitle.textContent = 'Verifying Your Payment...';
       statusMessage.textContent = `Please wait while we confirm transaction: ${transactionRef}`;
+      statusTitle.style.color = 'var(--cyan)';
 
       try {
           const response = await fetch(`${BACKEND_URL}/api/payments/verify?transaction_ref=${transactionRef}`, {
@@ -578,34 +560,42 @@
           statusTitle.style.color = 'var(--green)';
           statusMessage.textContent = `${data.message} ${data.credits_added} credits have been added. Your new balance is ${data.new_balance}.`;
           
-          // Refresh dashboard data
           loadDashboardData();
 
       } catch (error) {
           statusTitle.textContent = 'Verification Failed';
           statusTitle.style.color = 'var(--red)';
-          statusMessage.textContent = `Error: ${error.message}. If you have been debited, please contact support with your transaction reference.`;
+          statusMessage.textContent = `Error: ${error.message}. If debited, please contact support.`;
       } finally {
-        // Automatically close modal after a few seconds
         setTimeout(() => closeModal('status-modal'), 7000);
       }
   }
 
-  // STAR ANIMATION
-  document.addEventListener('DOMContentLoaded',()=>{
+  // Star Animation
+  document.addEventListener('DOMContentLoaded', () => {
     const starsContainer = document.getElementById('stars-container');
-    const numStars = 80, minSize=1, maxSize=2.5;
-    for(let i=0; i<numStars; i++) {
-      const star=document.createElement('div');
-      star.className='star';
-      const size = Math.random()*(maxSize-minSize)+minSize;
-      star.style.width=size+'px'; star.style.height=size+'px';
-      star.style.left=Math.random()*100+'%'; star.style.top=Math.random()*100+'%';
-      star.style.animationDelay=(Math.random()*3.5)+'s';
-      star.style.animationDuration=(2+Math.random()*1.3)+'s';
+    for(let i=0; i < 80; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      const size = Math.random() * 2.5 + 1;
+      star.style.width = `${size}px`; star.style.height = `${size}px`;
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.animationDelay = `${Math.random() * 4}s`;
+      star.style.animationDuration = `${Math.random() * 2 + 3}s`;
       starsContainer.appendChild(star);
     }
   });
 </script>
 </body>
 </html>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
