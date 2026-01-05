@@ -188,12 +188,13 @@
       document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
       
       try {
-        userToken = await user.getIdToken(true); // Force refresh to get the latest token
+        // Force refresh to get the absolute latest token from Firebase.
+        userToken = await user.getIdToken(true); 
         
         // Now that we have a guaranteed fresh token, load all dashboard data.
-        loadDashboardData();
+        await loadDashboardData();
         
-        // Conditionally show admin panel
+        // Conditionally show admin panel after data is loaded.
         if (user.email === ADMIN_EMAIL) {
             document.getElementById('admin-panel').hidden = false;
             fetchAdminStats();
@@ -201,7 +202,6 @@
 
       } catch (error) {
         console.error("Error getting ID token:", error);
-        // Handle case where token refresh fails if necessary
         document.getElementById('welcome-message').textContent = 'Authentication error. Please re-login.';
       }
       
@@ -223,8 +223,6 @@
   const apiKeyListDiv = document.getElementById('api-key-list');
   const keyListInfo = document.getElementById('key-list-info');
   const fundWalletBtn = document.getElementById('fund-wallet-btn');
-  const paymentModal = document.getElementById('payment-modal');
-  const statusModal = document.getElementById('status-modal');
   const proceedToPaymentBtn = document.getElementById('proceed-to-payment-btn');
   const paymentStatus = document.getElementById('payment-status');
   
@@ -247,12 +245,12 @@
       currentUserBalance = data.balance;
       renderBalance(data.balance);
       renderKeyList(data.keys);
-      document.getElementById('key-cost').textContent = `(Cost: ${API_KEY_GENERATION_COST} Credits)`;
+      document.getElementById('key-cost').textContent = `(Cost: ${currentUser && currentUser.email === ADMIN_EMAIL ? 'FREE for Admins' : `${API_KEY_GENERATION_COST} Credits`})`;
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       balanceDisplay.innerHTML = `<span style="color:var(--red); font-size: 0.5em;">Error: ${error.message}</span>`;
-      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load your API keys.</p>`;
+      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load your API keys. Please try refreshing.</p>`;
     }
   }
   
@@ -316,7 +314,7 @@
     });
   }
 
-  // **DEFINITIVE FIX**: The frontend credit check is removed. The backend now handles everything.
+  // **DEFINITIVE FIX**: The frontend credit check is removed. The backend handles everything.
   generateKeyButton.addEventListener('click', async () => {
     generateKeyButton.disabled = true;
     generateKeyButton.textContent = 'GENERATING...';
@@ -415,7 +413,6 @@
         const squadInstance = new Squad({
             onClose: () => {
                 closeModal('payment-modal');
-                // Even if closed, we should try to verify in case they paid and closed early.
                 verifyPayment(data.transaction_ref);
             },
             onSuccess: (response) => {
@@ -431,18 +428,6 @@
         paymentStatus.style.color = 'var(--red)';
     } finally {
         proceedToPaymentBtn.disabled = false;
-    }
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tx_ref_from_url = urlParams.get('transaction_ref');
-    if (tx_ref_from_url) {
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-      onIdTokenChanged(auth, user => {
-        if (user) verifyPayment(tx_ref_from_url);
-      });
     }
   });
 
@@ -481,6 +466,18 @@
 
   // Star Animation
   document.addEventListener('DOMContentLoaded', () => {
+    // Check for payment verification in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const tx_ref_from_url = urlParams.get('transaction_ref');
+    if (tx_ref_from_url) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      onIdTokenChanged(auth, user => {
+        if (user) verifyPayment(tx_ref_from_url);
+      });
+    }
+
+    // Create stars
     const starsContainer = document.getElementById('stars-container');
     for(let i=0; i < 80; i++) {
       const star = document.createElement('div');
