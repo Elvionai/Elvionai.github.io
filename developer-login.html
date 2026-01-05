@@ -172,20 +172,26 @@
   }
 
   // ==========================================================================
-  // --- AUTHENTICATION LOGIC ---
+  // --- AUTHENTICATION LOGIC (DEFINITIVE FIX) ---
   // ==========================================================================
 
-  // **CRITICAL FIX**: This listener checks if a user is already signed in.
-  // If so, and their email is verified, it redirects them away from the login page.
+  // **THE FIX**: This listener is the single source of truth for redirection.
+  // It fires when the page loads, and again after any successful sign-in.
   onAuthStateChanged(auth, user => {
-    if (user && user.emailVerified) {
-        console.log("User already logged in and verified. Redirecting to dashboard...");
-        window.location.href = REDIRECT_URL;
-    } else if (user) {
-        // User is logged in but hasn't verified their email. Don't redirect.
-        console.log("User is logged in but email is not verified.");
+    // A user object exists if they are logged in.
+    if (user) {
+        // For OAuth providers (Google, Twitter), email is verified by default.
+        // For email/password, we must check if they have clicked the verification link.
+        if (user.emailVerified) {
+            console.log("User is logged in and verified. Redirecting to dashboard...");
+            window.location.href = REDIRECT_URL;
+        } else {
+            // This case handles users who signed up with email but haven't verified yet.
+            // We keep them on the login page and show a message.
+            setStatus('loginStatus', 'Please verify your email before logging in. Check your inbox.', 'var(--orange)');
+        }
     } else {
-        // No user is logged in. The page remains as is.
+        // No user is logged in. The page remains as is, allowing them to sign in.
         console.log("No user is logged in.");
     }
   });
@@ -196,20 +202,22 @@
     el.style.color = color;
   }
 
+  // **THE FIX**: This function now only handles the sign-in process.
+  // It does NOT redirect. The onAuthStateChanged listener handles redirection.
   async function handleOAuth(provider, statusElementId) {
-    setStatus(statusElementId, 'Redirecting...');
+    setStatus(statusElementId, 'Opening provider sign-in...');
     try {
       const result = await signInWithPopup(auth, provider);
-      // Create a user document in Firestore on first login/signup
+      // After popup success, onAuthStateChanged will automatically fire and handle the redirect.
+      // We can still create the user doc here for good measure.
       await setDoc(doc(db, "users", result.user.uid), {
         name: result.user.displayName,
         email: result.user.email,
         createdAt: new Date()
-      }, { merge: true }); // 'merge: true' prevents overwriting data
-      window.location.href = REDIRECT_URL;
+      }, { merge: true });
     } catch (error) {
       if (error.code === 'auth/popup-closed-by-user') {
-        setStatus(statusElementId, '');
+        setStatus(statusElementId, ''); // Clear message if user closes popup
       } else {
         setStatus(statusElementId, error.message, 'var(--red)');
       }
@@ -252,10 +260,10 @@
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      if (userCredential.user.emailVerified) {
-        window.location.href = REDIRECT_URL;
-      } else {
-        setStatus('loginStatus', 'Please verify your email before logging in. Check your inbox.', 'var(--orange)');
+      // After a successful sign-in, the onAuthStateChanged listener will handle the redirect
+      // if the email is verified. If not, it will show the verification message.
+      if (!userCredential.user.emailVerified) {
+         setStatus('loginStatus', 'Please verify your email before logging in. Check your inbox.', 'var(--orange)');
       }
     } catch (error) {
       setStatus('loginStatus', error.message, 'var(--red)');
