@@ -169,35 +169,50 @@
   };
   
   // ==========================================================================
-  // --- INITIALIZATION & AUTHENTICATION ---
+  // --- INITIALIZATION & AUTHENTICATION (DEFINITIVE FIX) ---
   // ==========================================================================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   
   let currentUser, userToken, currentUserBalance;
 
-  onAuthStateChanged(auth, user => {
+  // **DEFINITIVE FIX**: Use onIdTokenChanged. This only fires when the user is
+  // fully authenticated and a fresh token is available. This prevents race conditions.
+  onIdTokenChanged(auth, async (user) => {
     if (user) {
+      // User is signed in and token is ready.
       currentUser = user;
       document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
-      user.getIdToken().then(token => {
-        userToken = token;
+      
+      try {
+        userToken = await user.getIdToken(true); // Force refresh to get the latest token
+        
+        // Now that we have a guaranteed fresh token, load all dashboard data.
         loadDashboardData();
+        
+        // Conditionally show admin panel
         if (user.email === ADMIN_EMAIL) {
             document.getElementById('admin-panel').hidden = false;
             fetchAdminStats();
         }
-      });
+
+      } catch (error) {
+        console.error("Error getting ID token:", error);
+        // Handle case where token refresh fails if necessary
+        document.getElementById('welcome-message').textContent = 'Authentication error. Please re-login.';
+      }
+      
     } else {
+      // No user is signed in. Redirect to the login page.
       window.location.href = 'developer-login.html';
     }
   });
 
   // ==========================================================================
-  // --- DOM & CORE FUNCTIONS ---
+  // --- DOM ELEMENTS & CORE FUNCTIONS ---
   // ==========================================================================
   const balanceDisplay = document.getElementById('balance-display');
   const generateKeyButton = document.getElementById('generate-key-btn');
@@ -222,9 +237,13 @@
       const response = await fetch(`${BACKEND_URL}/api/user/keys-and-balance`, {
         headers: { 'X-Firebase-Token': userToken }
       });
-      if (!response.ok) throw new Error('Failed to fetch dashboard data.');
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || 'Failed to fetch dashboard data.');
+      }
       
       const data = await response.json();
+      
       currentUserBalance = data.balance;
       renderBalance(data.balance);
       renderKeyList(data.keys);
@@ -232,7 +251,7 @@
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      balanceDisplay.innerHTML = '<span style="color:var(--red); font-size: 0.5em;">Error</span>';
+      balanceDisplay.innerHTML = `<span style="color:var(--red); font-size: 0.5em;">Error: ${error.message}</span>`;
       apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load your API keys.</p>`;
     }
   }
@@ -250,7 +269,7 @@
         grid.innerHTML = `
             <div class="stat-item"><div class="stat-value">${stats.total_registered_users || 0}</div><div class="stat-label">Total Users</div></div>
             <div class="stat-item"><div class="stat-value">${stats.total_api_keys_generated || 0}</div><div class="stat-label">Keys Generated</div></div>
-            <div class="stat-item"><div class="stat-value">${stats.total_user_credits_in_wallets || 0}</div><div class="stat-label">Total User Credits</div></div>
+            <div class="stat-item"><div class="stat-value">${(stats.total_user_credits_in_wallets || 0).toLocaleString()}</div><div class="stat-label">User Credits</div></div>
             <div class="stat-item"><div class="stat-value">₦${(stats.total_revenue_credited || 0).toLocaleString()}</div><div class="stat-label">Total Revenue</div></div>
         `;
     } catch (error) {
@@ -260,13 +279,15 @@
   }
 
   // ==========================================================================
-  // --- UI & EVENT HANDLERS ---
+  // --- UI & EVENT HANDLERS (FIXED) ---
   // ==========================================================================
 
   function renderBalance(balance) {
-    balanceDisplay.innerHTML = (typeof balance === 'number')
-      ? `${balance.toLocaleString()} <span style="font-size: 0.5em; color: var(--muted);">Credits</span>`
-      : balance;
+    if (typeof balance === 'number') {
+        balanceDisplay.innerHTML = `${balance.toLocaleString()} <span style="font-size: 0.5em; color: var(--muted);">Credits</span>`;
+    } else {
+        balanceDisplay.innerHTML = balance;
+    }
   }
 
   function renderKeyList(keys) {
@@ -295,24 +316,13 @@
     });
   }
 
-  // Generate a new API key (CORRECTED with admin check)
+  // **DEFINITIVE FIX**: The frontend credit check is removed. The backend now handles everything.
   generateKeyButton.addEventListener('click', async () => {
     generateKeyButton.disabled = true;
     generateKeyButton.textContent = 'GENERATING...';
     generationStatus.textContent = 'Contacting server...';
     generationStatus.style.color = 'var(--cyan)';
     newKeyContainer.style.display = 'none';
-
-    const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
-    
-    // Frontend credit check: ONLY apply if the user is NOT an admin.
-    if (!isAdmin && currentUserBalance < API_KEY_GENERATION_COST) {
-        generationStatus.textContent = `Error: Insufficient credits. Generating a key costs ${API_KEY_GENERATION_COST}, but your balance is ${currentUserBalance}. Please fund your wallet.`;
-        generationStatus.style.color = 'var(--red)';
-        generateKeyButton.disabled = false;
-        generateKeyButton.textContent = 'Generate New API Key';
-        return;
-    }
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
@@ -326,8 +336,13 @@
       newKeyContainer.style.display = 'flex';
       generationStatus.textContent = 'Key generated successfully! Copy it now.';
       generationStatus.style.color = 'var(--green)';
+      
+      // Refresh the dashboard to show the new key and updated balance.
+      // This is crucial for admins to see their balance update if it was 0.
       loadDashboardData();
+
     } catch (error) {
+      console.error('Error generating API key:', error);
       generationStatus.textContent = `Error: ${error.message}`;
       generationStatus.style.color = 'var(--red)';
     } finally {
@@ -348,8 +363,7 @@
     if (event.target && event.target.matches('.revoke-btn')) {
       const keyToRevoke = event.target.getAttribute('data-key');
       if (!confirm('Are you sure you want to revoke this API key? This action is irreversible.')) return;
-      event.target.disabled = true;
-      event.target.textContent = 'Revoking...';
+      event.target.disabled = true; event.target.textContent = 'Revoking...';
       try {
         const response = await fetch(`${BACKEND_URL}/api/user/revoke-api-key`, {
           method: 'POST',
@@ -361,8 +375,7 @@
         loadDashboardData();
       } catch (error) {
         alert(`Error: ${error.message}`);
-        event.target.disabled = false;
-        event.target.textContent = 'Revoke';
+        event.target.disabled = false; event.target.textContent = 'Revoke';
       }
     }
   });
@@ -370,7 +383,7 @@
   document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
   // ==========================================================================
-  // --- PAYMENT FLOW LOGIC ---
+  // --- PAYMENT FLOW LOGIC (ROBUST VERSION) ---
   // ==========================================================================
   
   window.openModal = (id) => document.getElementById(id).style.display = 'flex';
@@ -409,15 +422,10 @@
                 closeModal('payment-modal');
                 verifyPayment(response.trans_ref || data.transaction_ref);
             },
-            key: SQUAD_PUBLIC_KEY,
-            email: currentUser.email,
-            amount: amount * 100, // Amount in kobo
-            currency_code: "NGN",
-            transaction_ref: data.transaction_ref
+            key: SQUAD_PUBLIC_KEY, email: currentUser.email, amount: amount * 100,
+            currency_code: "NGN", transaction_ref: data.transaction_ref
         });
-        squadInstance.setup();
-        squadInstance.open();
-
+        squadInstance.setup(); squadInstance.open();
     } catch (error) {
         paymentStatus.textContent = `Error: ${error.message}`;
         paymentStatus.style.color = 'var(--red)';
@@ -429,11 +437,10 @@
   document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tx_ref_from_url = urlParams.get('transaction_ref');
-    
     if (tx_ref_from_url) {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      onAuthStateChanged(auth, user => {
+      onIdTokenChanged(auth, user => {
         if (user) verifyPayment(tx_ref_from_url);
       });
     }
@@ -472,8 +479,8 @@
       }
   }
 
-  // STAR ANIMATION
-  document.addEventListener('DOMContentLoaded',()=>{
+  // Star Animation
+  document.addEventListener('DOMContentLoaded', () => {
     const starsContainer = document.getElementById('stars-container');
     for(let i=0; i < 80; i++) {
       const star = document.createElement('div');
