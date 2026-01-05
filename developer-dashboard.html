@@ -4,16 +4,20 @@
   <meta charset="UTF-8">
   <title>Developer Dashboard | Elvion AI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Generate and manage your API keys for Elvion AI.">
+  <meta name="description" content="Manage your API keys, wallet, and usage for the Elvion AI Developer Platform.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://checkout.squadco.com/widget/squad.js"></script>
   <style>
     :root {
       --cyan: #00ffff;
       --blue: #0090ff;
       --red: #ff4d4d;
       --green: #28a745;
+      --orange: #ffae42;
+      --purple: #c88cff;
       --card-bg: rgba(18,26,48,0.97);
+      --section-bg: rgba(24, 24, 31, 0.7);
       --border-glow: 0 0 11px var(--cyan), 0 0 24px var(--blue);
       --radius: 16px;
       --text: #e0e0e0;
@@ -24,8 +28,8 @@
     body {
       min-height: 100vh; font-family: 'Inter', sans-serif;
       background: radial-gradient(circle, #23233a 65%, #0a1128 100%);
-      color: var(--text); display: flex; align-items: center; justify-content: center;
-      position: relative; padding: 20px;
+      color: var(--text); display: flex; align-items: flex-start; justify-content: center;
+      position: relative; padding: 40px 20px; overflow-y: auto;
     }
     #stars-container {
       position: fixed; width: 100vw; height: 100vh; top: 0; left: 0; z-index: 0; pointer-events: none;
@@ -35,51 +39,43 @@
       opacity: 0; animation: twinkle 4.5s infinite linear;
     }
     @keyframes twinkle { 0%,100%{opacity:0.16;} 52%{opacity:1;}}
-    .dashboard-card {
+
+    .dashboard-container {
       background: var(--card-bg); border-radius: var(--radius);
       box-shadow: var(--border-glow); padding: 28px; width: 100%;
-      max-width: 800px; z-index: 1; animation: fadeIn .7s;
+      max-width: 900px; z-index: 1; animation: fadeIn .7s; margin-bottom: 40px;
     }
     @keyframes fadeIn {from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);}}
-    .header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-    .logo-img {
-      width: 46px; height: 46px; border-radius: 50%;
-      object-fit:cover; background:#fff; animation: logoPulse 3.3s infinite alternate;
-      box-shadow: 0 0 0 #00ffff;
-    }
+    
+    .header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: 20px;}
+    .logo-img { width: 46px; height: 46px; border-radius: 50%; object-fit:cover; background:#fff; animation: logoPulse 3.3s infinite alternate; box-shadow: 0 0 0 #00ffff;}
     @keyframes logoPulse {0%{box-shadow: 0 0 11px #00e2ff,0 0 24px #70fff7;}100%{box-shadow:0 0 19px #007c97,0 0 33px #00ceff60;}}
-    .site-heading {
-      font-family:'Orbitron',sans-serif; font-size:1.3em; font-weight:800;
-      background: linear-gradient(90deg, var(--cyan), #fff, var(--blue));
-      background-size:200% auto; -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent; animation: shine 4s linear infinite;
-      text-shadow: var(--border-glow);
-    }
+    .site-heading { font-family:'Orbitron',sans-serif; font-size:1.3em; font-weight:800; background: linear-gradient(90deg, var(--cyan), #fff, var(--blue)); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: shine 4s linear infinite; text-shadow: var(--border-glow);}
     @keyframes shine {to{background-position:200% center;}}
-    .welcome-message { color: #aee; font-size: 1.1em; margin: -15px 0 25px 0; border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: 20px; }
-    .submit-btn {
-      background: linear-gradient(90deg, var(--cyan), var(--blue));
-      color: #102040; border: none; border-radius: 10px; padding: 12px 20px;
-      font-size: 1em; font-family: 'Orbitron',sans-serif; font-weight: 700;
-      cursor: pointer; box-shadow: var(--border-glow); transition: all .15s;
-      text-transform: uppercase; letter-spacing:.04em;
-    }
-    .submit-btn:hover:not(:disabled) { transform: scale(1.03); }
-    .submit-btn:disabled { cursor: not-allowed; background: #555; box-shadow: none; transform: none; }
     
-    .section-header { font-family:'Orbitron',sans-serif; color: var(--cyan); margin-top: 30px; border-bottom: 1px solid rgba(0,255,255,0.1); padding-bottom: 10px; }
+    .welcome-message { color: #aee; font-size: 1.1em; margin-top: -15px; margin-bottom: 25px; }
     
-    #new-key-section { background: #18181f; padding: 20px; border-radius: 10px; margin-top: 15px; border: 1px solid #23233a;}
+    .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+    .section-card { background: var(--section-bg); padding: 20px; border-radius: 10px; border: 1px solid #23233a; }
+    .section-header { font-family:'Orbitron',sans-serif; color: var(--cyan); margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid rgba(0,255,255,0.1); padding-bottom: 10px; }
+    
+    /* Wallet Section */
+    #balance-display { font-size: 2.5em; font-weight: 700; color: var(--white); font-family: 'Orbitron', sans-serif; }
+    #balance-display .loader-small { display: inline-block; }
+    #wallet-actions { display: flex; gap: 10px; margin-top: 15px; }
+
+    /* Key Generation Section */
     .api-key-container { display: none; align-items: center; background: #101018; border: 1.3px solid #23233a; border-radius: 10px; padding: 5px 5px 5px 15px; margin-top: 15px; }
     #api-key-display { flex-grow: 1; font-family: monospace; color: #f5f5f5; font-size: 1em; overflow-wrap: break-word; }
     #copy-key-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1em; padding: 10px; transition: all 0.2s; }
     #copy-key-btn:hover { color: var(--cyan); transform: scale(1.2); }
-    
-    .status-message { font-size: .97em; margin-top: 15px; min-height: 19px; transition: color 0.3s; }
-    
+    #key-cost { font-size: 0.9em; color: var(--orange); }
+
+    /* Key List Section */
+    .full-width { grid-column: 1 / -1; }
     #key-list-info { color: var(--muted); margin: 15px 0; }
-    #api-key-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    .key-item { display: flex; align-items: center; justify-content: space-between; background: #18181f; padding: 10px 15px; border-radius: 8px; border: 1px solid #23233a; }
+    #api-key-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 10px; }
+    .key-item { display: flex; align-items: center; justify-content: space-between; background: rgba(10,10,15,0.5); padding: 10px 15px; border-radius: 8px; border: 1px solid #23233a; }
     .key-details span { display: block; }
     .key-string { font-family: monospace; color: var(--white); }
     .key-date { font-size: 0.85em; color: var(--muted); margin-top: 4px; }
@@ -88,13 +84,41 @@
     .key-status.revoked { background-color: rgba(255, 77, 77, 0.2); color: var(--red); }
     .revoke-btn { background: none; border: 1px solid var(--red); color: var(--red); font-size: 0.85em; padding: 5px 10px; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
     .revoke-btn:hover { background: var(--red); color: var(--white); }
+
+    /* Admin & Metrics */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 1.8em; font-family: 'Orbitron'; color: var(--white); }
+    .stat-label { font-size: 0.9em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Buttons & Loaders */
+    .submit-btn { background: linear-gradient(90deg, var(--cyan), var(--blue)); color: #102040; border: none; border-radius: 10px; padding: 12px 20px; font-size: 1em; font-family: 'Orbitron',sans-serif; font-weight: 700; cursor: pointer; box-shadow: var(--border-glow); transition: all .15s; text-transform: uppercase; letter-spacing:.04em; }
+    .submit-btn:hover:not(:disabled) { transform: scale(1.03); }
+    .submit-btn:disabled { cursor: not-allowed; background: #555; box-shadow: none; transform: none; }
+    .secondary-btn { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); border-radius: 10px; padding: 12px 20px; font-size: 1em; font-family: 'Orbitron',sans-serif; font-weight: 700; cursor: pointer; transition: all .15s; }
+    .secondary-btn:hover:not(:disabled) { background: var(--cyan); color: #102040; }
     
-    .loader { width: 24px; height: 24px; border: 3px solid var(--cyan); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; margin: 20px auto; display: block; }
+    .status-message { font-size: .97em; margin-top: 15px; min-height: 19px; transition: color 0.3s; }
+    .loader { width: 32px; height: 32px; border: 4px solid var(--cyan); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; margin: 20px auto; display: block; }
+    .loader-small { width: 1em; height: 1em; border: 2px solid var(--cyan); border-bottom-color: transparent; }
     @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    .nav-container { position: fixed; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 20px; }
+    /* Modals for Payment & Status */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; }
+    .modal-content { background: var(--card-bg); padding: 30px; border-radius: var(--radius); box-shadow: var(--border-glow); text-align: center; max-width: 400px; animation: fadeIn 0.3s; }
+    .modal-content h3 { margin-top: 0; font-family: 'Orbitron'; color: var(--cyan); }
+    #payment-amount { width: 100%; padding: 10px; background: #101018; border: 1px solid #23233a; border-radius: 8px; color: var(--white); font-size: 1.2em; margin-top: 15px; margin-bottom: 20px; }
+    .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--white); font-size: 1.5em; cursor: pointer; }
+
+    /* Nav */
+    .nav-container { position: fixed; top: 20px; right: 20px; z-index: 10; }
     #logout-btn { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; padding: 0; color: var(--cyan); text-decoration: none; font-size: 1em; transition: all 0.2s; }
     #logout-btn:hover { color: var(--white); text-shadow: 0 0 5px var(--cyan); }
+
+    @media (max-width: 768px) {
+      .grid-container { grid-template-columns: 1fr; }
+      body { padding: 20px 10px; }
+    }
   </style>
 </head>
 <body>
@@ -104,33 +128,469 @@
     <button id="logout-btn">Log Out &rarr;</button>
 </div>
 
-<div class="dashboard-card">
+<!-- Main Dashboard Card -->
+<div class="dashboard-container">
     <div class="header">
         <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" class="logo-img" alt="Elvion AI Logo">
-        <h1 class="site-heading">Developer Dashboard</h1>
-    </div>
-    <p id="welcome-message" class="welcome-message">Authenticating...</p>
-    
-    <h3 class="section-header">Generate New Key</h3>
-    <div id="new-key-section">
-        <p>Generate a new API key to integrate Elvion AI's powerful models into your applications.</p>
-        <button id="generate-key-btn" class="submit-btn">Generate API Key</button>
-        <div class="status-message" id="generation-status"></div>
-        <div class="api-key-container" id="new-key-container">
-            <code id="api-key-display"></code>
-            <button id="copy-key-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
+        <div>
+            <h1 class="site-heading">Developer Dashboard</h1>
+            <p id="welcome-message" class="welcome-message">Authenticating...</p>
         </div>
-        <p style="font-size: 0.9em; color: var(--muted); margin-top: 10px;" id="new-key-warning" hidden><small>Store this key securely. For security reasons, you will not be able to see it again after you leave this page.</small></p>
     </div>
+    
+    <div class="grid-container">
+        <!-- Wallet Section -->
+        <div class="section-card">
+            <h3 class="section-header">My Wallet</h3>
+            <p>Your current credit balance.</p>
+            <div id="balance-display"><div class="loader loader-small"></div></div>
+            <div id="wallet-actions">
+                <button id="fund-wallet-btn" class="submit-btn">Fund Wallet</button>
+            </div>
+        </div>
 
-    <h3 class="section-header">Your API Keys</h3>
-    <p id="key-list-info">Loading your keys...</p>
-    <div id="api-key-list">
+        <!-- Key Generation Section -->
+        <div class="section-card">
+            <h3 class="section-header">Generate New Key</h3>
+            <p>Create a new API key for your applications. <span id="key-cost"></span></p>
+            <button id="generate-key-btn" class="submit-btn">Generate API Key</button>
+            <div class="status-message" id="generation-status"></div>
+            <div class="api-key-container" id="new-key-container">
+                <code id="api-key-display"></code>
+                <button id="copy-key-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
+            </div>
+        </div>
+
+        <!-- NEW: User Metrics Section -->
+        <div class="section-card full-width" id="user-metrics-section">
+            <h3 class="section-header">Usage Metrics</h3>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="metric-total-calls">...</div>
+                    <div class="stat-label">Total API Calls</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="metric-seraphina-calls">...</div>
+                    <div class="stat-label">Seraphina Calls</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="metric-bobby-calls">...</div>
+                    <div class="stat-label">Bobby Calls</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="metric-image-calls">...</div>
+                    <div class="stat-label">Image Generations</div>
+                </div>
+            </div>
+            <small style="display: block; text-align: center; margin-top: 15px; color: var(--muted);">Usage statistics are for illustrative purposes. Backend endpoint for metrics is pending.</small>
+        </div>
+
+        <!-- API Key List Section -->
+        <div class="section-card full-width">
+            <h3 class="section-header">Your API Keys</h3>
+            <p id="key-list-info">Loading your keys...</p>
+            <div id="api-key-list">
+                <div class="loader"></div>
+            </div>
+        </div>
+
+        <!-- NEW: Admin Panel (Hidden by default) -->
+        <div class="section-card full-width" id="admin-panel" hidden>
+            <h3 class="section-header" style="color: var(--orange);">Admin Office</h3>
+            <div class="stat-grid" id="admin-stats-grid">
+                <!-- Admin stats will be loaded here by JavaScript -->
+                <div class="loader"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="payment-modal">
+    <div class="modal-content">
+        <button class="close-btn" onclick="closeModal('payment-modal')">&times;</button>
+        <h3>Fund Your Wallet</h3>
+        <p>Enter the amount in Naira (₦) you wish to add. 1 credit = 1 Naira.</p>
+        <input type="number" id="payment-amount" min="100" value="1000" placeholder="e.g., 1000">
+        <button id="proceed-to-payment-btn" class="submit-btn">Proceed to Payment</button>
+        <div class="status-message" id="payment-status"></div>
+    </div>
+</div>
+
+<!-- Status/Verification Modal -->
+<div class="modal-overlay" id="status-modal">
+    <div class="modal-content">
+        <h3 id="status-modal-title">Processing...</h3>
         <div class="loader"></div>
+        <p id="status-modal-message">Please wait, we are processing your request.</p>
     </div>
 </div>
 
 <script type="module">
+  // FIREBASE IMPORTS
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  
+  // ==========================================================================
+  // --- CONFIGURATION ---
+  // ==========================================================================
+  const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
+  const SQUAD_PUBLIC_KEY = "sandbox_pk_8109e4303e01a9043777f464e46d91055cfc26e8a527"; // YOUR SQUAD PUBLIC KEY
+  const ADMIN_EMAIL = "Koladhino@gmail.com";
+  const API_KEY_GENERATION_COST = 100;
+  
+  // IMPORTANT: Replace this with your actual Firebase project configuration
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+  
+  // ==========================================================================
+  // --- INITIALIZATION & AUTHENTICATION ---
+  // ==========================================================================
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  
+  let currentUser, userToken;
+
+  // Gatekeeper: Redirects to login if user is not authenticated
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      currentUser = user;
+      document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
+      user.getIdToken().then(token => {
+        userToken = token;
+        // Main function to load all user data
+        loadDashboardData();
+        // Check if user is an admin
+        if (user.email === ADMIN_EMAIL) {
+            document.getElementById('admin-panel').hidden = false;
+            fetchAdminStats();
+        }
+      });
+    } else {
+      window.location.href = 'developer-login.html'; // Or your login page
+    }
+  });
+
+  // ==========================================================================
+  // --- DOM ELEMENTS ---
+  // ==========================================================================
+  const balanceDisplay = document.getElementById('balance-display');
+  const generateKeyButton = document.getElementById('generate-key-btn');
+  const generationStatus = document.getElementById('generation-status');
+  const newKeyContainer = document.getElementById('new-key-container');
+  const apiKeyDisplay = document.getElementById('api-key-display');
+  const copyKeyButton = document.getElementById('copy-key-btn');
+  const apiKeyListDiv = document.getElementById('api-key-list');
+  const keyListInfo = document.getElementById('key-list-info');
+  const fundWalletBtn = document.getElementById('fund-wallet-btn');
+  const paymentModal = document.getElementById('payment-modal');
+  const statusModal = document.getElementById('status-modal');
+  const proceedToPaymentBtn = document.getElementById('proceed-to-payment-btn');
+  const paymentStatus = document.getElementById('payment-status');
+  
+  // ==========================================================================
+  // --- CORE FUNCTIONS ---
+  // ==========================================================================
+
+  /**
+   * Main function to fetch and render all dynamic data on the dashboard.
+   */
+  async function loadDashboardData() {
+    if (!userToken) return;
+    renderBalance('<div class="loader loader-small"></div>');
+    apiKeyListDiv.innerHTML = '<div class="loader"></div>';
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/user/keys-and-balance`, {
+        headers: { 'X-Firebase-Token': userToken }
+      });
+      if (!response.ok) throw new Error('Failed to fetch dashboard data.');
+      
+      const data = await response.json();
+      renderBalance(data.balance);
+      renderKeyList(data.keys);
+      document.getElementById('key-cost').textContent = `(Cost: ${API_KEY_GENERATION_COST} Credits)`;
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      balanceDisplay.innerHTML = '<span style="color:var(--red); font-size: 0.5em;">Error</span>';
+      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load your API keys.</p>`;
+    }
+  }
+  
+  /**
+   * Fetches and displays the platform-wide statistics for the admin.
+   */
+  async function fetchAdminStats() {
+    const grid = document.getElementById('admin-stats-grid');
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/admin/stats`, {
+            headers: { 'X-Firebase-Token': userToken }
+        });
+        if (!response.ok) throw new Error('Failed to fetch admin stats.');
+        const stats = await response.json();
+        
+        grid.innerHTML = `
+            <div class="stat-item">
+                <div class="stat-value">${stats.total_registered_users || 0}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${stats.total_api_keys_generated || 0}</div>
+                <div class="stat-label">Keys Generated</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${stats.total_active_user_credits || 0}</div>
+                <div class="stat-label">Total User Credits</div>
+            </div>
+             <div class="stat-item">
+                <div class="stat-value">${stats.users_who_generated_keys || 0}</div>
+                <div class="stat-label">Users With Keys</div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        grid.innerHTML = `<p style="color: var(--red);">Could not load admin statistics.</p>`;
+    }
+  }
+
+  // ==========================================================================
+  // --- UI RENDERING FUNCTIONS ---
+  // ==========================================================================
+
+  function renderBalance(balance) {
+    balanceDisplay.innerHTML = `${balance.toLocaleString()} <span style="font-size: 0.5em; color: var(--muted);">Credits</span>`;
+  }
+
+  function renderKeyList(keys) {
+    apiKeyListDiv.innerHTML = ''; // Clear loader
+    keyListInfo.textContent = `You have generated ${keys.length} API key(s).`;
+    if (keys.length === 0) {
+      apiKeyListDiv.innerHTML = '<p style="color: var(--muted);">You have not generated any API keys yet.</p>';
+      return;
+    }
+    keys.forEach(key => {
+      const keyItem = document.createElement('div');
+      keyItem.className = 'key-item';
+      const keyStringShort = `${key.api_key.substring(0, 8)}...${key.api_key.substring(key.api_key.length - 4)}`;
+      const formattedDate = new Date(key.created_at).toLocaleString();
+      const isActive = key.is_active === 1;
+
+      keyItem.innerHTML = `
+        <div class="key-details">
+          <span class="key-string">${keyStringShort}</span>
+          <span class="key-date">Created: ${formattedDate}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <span class="key-status ${isActive ? 'active' : 'revoked'}">${isActive ? 'Active' : 'Revoked'}</span>
+          ${isActive ? `<button class="revoke-btn" data-key="${key.api_key}">Revoke</button>` : ''}
+        </div>`;
+      apiKeyListDiv.appendChild(keyItem);
+    });
+  }
+
+  // ==========================================================================
+  // --- EVENT HANDLERS ---
+  // ==========================================================================
+
+  // Generate a new API key
+  generateKeyButton.addEventListener('click', async () => {
+    generateKeyButton.disabled = true;
+    generateKeyButton.textContent = 'GENERATING...';
+    generationStatus.style.color = 'var(--cyan)';
+    generationStatus.textContent = 'Contacting server...';
+    newKeyContainer.style.display = 'none';
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
+        method: 'POST',
+        headers: { 'X-Firebase-Token': userToken }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
+
+      apiKeyDisplay.textContent = data.api_key;
+      newKeyContainer.style.display = 'flex';
+      generationStatus.textContent = 'Key generated successfully! Copy it now.';
+      generationStatus.style.color = 'var(--green)';
+      
+      // Refresh the whole dashboard to show new key and updated balance
+      loadDashboardData();
+
+    } catch (error) {
+      console.error('Error generating API key:', error);
+      generationStatus.textContent = `Error: ${error.message}`;
+      generationStatus.style.color = 'var(--red)';
+    } finally {
+      generateKeyButton.disabled = false;
+      generateKeyButton.textContent = 'Generate New API Key';
+    }
+  });
+  
+  // Copy new API key to clipboard
+  copyKeyButton.addEventListener('click', () => {
+    navigator.clipboard.writeText(apiKeyDisplay.textContent).then(() => {
+      copyKeyButton.innerHTML = '<i class="fas fa-check"></i>';
+      generationStatus.textContent = 'API Key copied to clipboard!';
+      setTimeout(() => copyKeyButton.innerHTML = '<i class="far fa-copy"></i>', 2500);
+    });
+  });
+
+  // Handle revoking a key (using event delegation)
+  apiKeyListDiv.addEventListener('click', async (event) => {
+    if (event.target && event.target.matches('.revoke-btn')) {
+      const keyToRevoke = event.target.getAttribute('data-key');
+      if (!confirm('Are you sure you want to revoke this API key? This action is irreversible and will immediately disable the key.')) return;
+      
+      event.target.disabled = true;
+      event.target.textContent = 'Revoking...';
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/user/revoke-api-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
+          body: JSON.stringify({ api_key: keyToRevoke })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Failed to revoke key.');
+        
+        // Refresh the list to show the key as "Revoked"
+        loadDashboardData();
+
+      } catch (error) {
+        console.error('Error revoking key:', error);
+        alert(`Error: ${error.message}`);
+        event.target.disabled = false;
+        event.target.textContent = 'Revoke';
+      }
+    }
+  });
+
+  // Handle logout
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    signOut(auth);
+  });
+
+  // ==========================================================================
+  // --- PAYMENT FLOW LOGIC ---
+  // ==========================================================================
+  
+  // Show/hide modals
+  window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+  window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+
+  fundWalletBtn.addEventListener('click', () => openModal('payment-modal'));
+
+  // Step 1: Initiate Payment
+  proceedToPaymentBtn.addEventListener('click', async () => {
+    const amount = parseInt(document.getElementById('payment-amount').value);
+    if (isNaN(amount) || amount < 100) {
+      paymentStatus.textContent = 'Please enter a valid amount (minimum ₦100).';
+      paymentStatus.style.color = 'var(--red)';
+      return;
+    }
+    
+    proceedToPaymentBtn.disabled = true;
+    paymentStatus.textContent = 'Initiating payment...';
+    paymentStatus.style.color = 'var(--cyan)';
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/payments/initiate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
+            body: JSON.stringify({ amount: amount })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Failed to start payment.');
+
+        // Use Squad's popup checkout
+        const squadInstance = new Squad({
+            onClose: () => {
+                console.log('Payment modal closed.');
+                // We will verify when the user returns to the page anyway
+                paymentStatus.textContent = "Payment window closed. We will verify your transaction shortly.";
+            },
+            onLoad: () => console.log('Squad widget loaded.'),
+            onSuccess: (response) => {
+                // The 'response' object here contains the transaction_ref
+                console.log('Squad Success:', response);
+                // The 'callback_url' will handle verification, but we can also trigger it here
+                closeModal('payment-modal');
+                verifyPayment(response.trans_ref);
+            },
+            key: SQUAD_PUBLIC_KEY,
+            email: currentUser.email,
+            amount: amount * 100, // Amount in kobo
+            currency_code: "NGN",
+            transaction_ref: data.transaction_ref // Use ref from our backend
+        });
+        squadInstance.setup();
+        squadInstance.open();
+
+    } catch (error) {
+        paymentStatus.textContent = `Error: ${error.message}`;
+        paymentStatus.style.color = 'var(--red)';
+    } finally {
+        proceedToPaymentBtn.disabled = false;
+    }
+  });
+
+  // Step 2: Verify Payment (triggered on page load if transaction_ref is in URL)
+  document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tx_ref = urlParams.get('transaction_ref');
+    
+    if (tx_ref) {
+      // Clean the URL to avoid re-triggering on refresh
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Wait for authentication to complete before verifying
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          verifyPayment(tx_ref);
+        }
+      });
+    }
+  });
+
+  async function verifyPayment(transactionRef) {
+      openModal('status-modal');
+      const statusTitle = document.getElementById('status-modal-title');
+      const statusMessage = document.getElementById('status-modal-message');
+      statusTitle.textContent = 'Verifying Your Payment...';
+      statusMessage.textContent = `Please wait while we confirm transaction: ${transactionRef}`;
+
+      try {
+          const response = await fetch(`${BACKEND_URL}/api/payments/verify?transaction_ref=${transactionRef}`, {
+              headers: { 'X-Firebase-Token': userToken }
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Verification failed.');
+          
+          statusTitle.textContent = 'Success!';
+          statusTitle.style.color = 'var(--green)';
+          statusMessage.textContent = `${data.message} ${data.credits_added} credits have been added. Your new balance is ${data.new_balance}.`;
+          
+          // Refresh dashboard data
+          loadDashboardData();
+
+      } catch (error) {
+          statusTitle.textContent = 'Verification Failed';
+          statusTitle.style.color = 'var(--red)';
+          statusMessage.textContent = `Error: ${error.message}. If you have been debited, please contact support with your transaction reference.`;
+      } finally {
+        // Automatically close modal after a few seconds
+        setTimeout(() => closeModal('status-modal'), 7000);
+      }
+  }
+
   // STAR ANIMATION
   document.addEventListener('DOMContentLoaded',()=>{
     const starsContainer = document.getElementById('stars-container');
@@ -146,208 +606,6 @@
       starsContainer.appendChild(star);
     }
   });
-
-  // FIREBASE IMPORTS
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  
-  const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
-  
-  const firebaseConfig = {
-    apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-    authDomain: "elvionai.firebaseapp.com",
-    projectId: "elvionai",
-    storageBucket: "elvionai.appspot.com",
-    messagingSenderId: "161078300830",
-    appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-  };
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  // --- ELEMENTS ---
-  const welcomeMessage = document.getElementById('welcome-message');
-  const generateKeyButton = document.getElementById('generate-key-btn');
-  const apiKeyDisplay = document.getElementById('api-key-display');
-  const newKeyContainer = document.getElementById('new-key-container');
-  const newKeyWarning = document.getElementById('new-key-warning');
-  const copyKeyButton = document.getElementById('copy-key-btn');
-  const generationStatus = document.getElementById('generation-status');
-  const logoutButton = document.getElementById('logout-btn');
-  const keyListInfo = document.getElementById('key-list-info');
-  const apiKeyListDiv = document.getElementById('api-key-list');
-
-  let currentUser, userToken;
-
-  // --- MAIN AUTH GATEKEEPER ---
-  onAuthStateChanged(auth, user => {
-    if (user) {
-      currentUser = user;
-      welcomeMessage.textContent = `Authenticated as ${user.email}`;
-      user.getIdToken().then(token => {
-        userToken = token;
-        fetchAndDisplayApiKeys();
-      });
-    } else {
-      window.location.href = 'developer-login.html'; 
-    }
-  });
-
-  // --- FUNCTIONS ---
-
-  async function fetchAndDisplayApiKeys() {
-    apiKeyListDiv.innerHTML = '<div class="loader"></div>';
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/user/api-keys`, {
-        headers: { 'X-Firebase-Token': userToken }
-      });
-      if (!response.ok) throw new Error('Failed to fetch keys.');
-      
-      const data = await response.json();
-      apiKeyListDiv.innerHTML = ''; // Clear loader
-
-      keyListInfo.textContent = `You have generated ${data.keys.length} API key(s).`;
-
-      if (data.keys.length === 0) {
-        apiKeyListDiv.innerHTML = '<p style="color: var(--muted);">You have not generated any API keys yet.</p>';
-        return;
-      }
-      
-      data.keys.forEach(key => {
-        const keyItem = document.createElement('div');
-        keyItem.className = 'key-item';
-        
-        const keyStringShort = `${key.api_key.substring(0, 8)}...${key.api_key.substring(key.api_key.length - 4)}`;
-        const formattedDate = new Date(key.created_at).toLocaleString();
-
-        const isActive = key.is_active === 1;
-
-        let actionButtonHTML = '';
-        if (isActive) {
-            actionButtonHTML = `<button class="revoke-btn" data-key="${key.api_key}">Revoke</button>`;
-        }
-
-        keyItem.innerHTML = `
-          <div class="key-details">
-            <span class="key-string">${keyStringShort}</span>
-            <span class="key-date">Created: ${formattedDate}</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 15px;">
-            <span class="key-status ${isActive ? 'active' : 'revoked'}">${isActive ? 'Active' : 'Revoked'}</span>
-            ${actionButtonHTML}
-          </div>
-        `;
-        apiKeyListDiv.appendChild(keyItem);
-      });
-
-    } catch (error) {
-      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Error: Could not load your API keys. Please try again later.</p>`;
-      console.error('Error fetching API keys:', error);
-    }
-  }
-
-  async function handleRevokeKey(apiKey) {
-    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone and will immediately disable the key.')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/user/revoke-api-key`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Firebase-Token': userToken
-            },
-            body: JSON.stringify({ api_key: apiKey })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.detail || 'Failed to revoke key.');
-        }
-
-        generationStatus.textContent = 'Key successfully revoked.';
-        generationStatus.style.color = 'var(--green)';
-        fetchAndDisplayApiKeys(); // Refresh the list
-
-    } catch (error) {
-        generationStatus.textContent = `Error: ${error.message}`;
-        generationStatus.style.color = 'var(--red)';
-        console.error('Error revoking key:', error);
-    }
-  }
-  
-  // --- EVENT LISTENERS ---
-
-  generateKeyButton.addEventListener('click', async () => {
-    generateKeyButton.disabled = true;
-    generateKeyButton.textContent = 'GENERATING...';
-    generationStatus.textContent = 'Contacting server...';
-    generationStatus.style.color = 'var(--cyan)';
-    newKeyContainer.style.display = 'none';
-    newKeyWarning.hidden = true;
-    
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
-        method: 'POST',
-        headers: { 'X-Firebase-Token': userToken }
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
-
-      apiKeyDisplay.textContent = data.api_key;
-      newKeyContainer.style.display = 'flex';
-      newKeyWarning.hidden = false;
-      generationStatus.textContent = 'Key generated successfully! Copy it now.';
-      generationStatus.style.color = 'var(--green)';
-      
-      fetchAndDisplayApiKeys(); // Refresh the list of keys
-
-    } catch (error) {
-      console.error('Error generating API key:', error);
-      generationStatus.textContent = `Error: ${error.message}`;
-      generationStatus.style.color = 'var(--red)';
-    } finally {
-      generateKeyButton.disabled = false;
-      generateKeyButton.textContent = 'Generate New API Key';
-    }
-  });
-
-  copyKeyButton.addEventListener('click', () => {
-    const key = apiKeyDisplay.textContent;
-    if (key) {
-      navigator.clipboard.writeText(key).then(() => {
-        copyKeyButton.innerHTML = '<i class="fas fa-check"></i>';
-        generationStatus.textContent = 'API Key copied to clipboard!';
-        generationStatus.style.color = 'var(--green)';
-        setTimeout(() => {
-            copyKeyButton.innerHTML = '<i class="far fa-copy"></i>';
-        }, 2500);
-      });
-    }
-  });
-
-  apiKeyListDiv.addEventListener('click', function(event) {
-    if (event.target && event.target.classList.contains('revoke-btn')) {
-        const keyToRevoke = event.target.getAttribute('data-key');
-        handleRevokeKey(keyToRevoke);
-    }
-  });
-
-  logoutButton.addEventListener('click', () => {
-    signOut(auth);
-  });
 </script>
 </body>
 </html>
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
