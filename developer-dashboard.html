@@ -7,6 +7,7 @@
   <meta name="description" content="Manage your API keys, wallet, and usage for the Elvion AI Developer Platform.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Orbitron:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://checkout.squadco.com/widget/squad.js"></script>
   <style>
     :root {
       --cyan: #00ffff; --blue: #0090ff; --red: #ff4d4d; --green: #28a745; --orange: #ffae42;
@@ -18,13 +19,13 @@
     body {
       min-height: 100vh; font-family: 'Inter', sans-serif;
       background: radial-gradient(circle, #23233a 65%, #0a1128 100%);
-      color: var(--text); display: flex; align-items: flex-start; justify-content: center;
+      color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
       position: relative; padding: 40px 20px; overflow-y: auto;
     }
     #stars-container { position: fixed; width: 100vw; height: 100vh; top: 0; left: 0; z-index: 0; pointer-events: none; }
     .star { position: absolute; background: rgba(255,255,255,0.7); border-radius: 50%; opacity: 0; animation: twinkle 4.5s infinite linear; }
     @keyframes twinkle { 0%,100%{opacity:0.16;} 52%{opacity:1;}}
-    .dashboard-container { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--border-glow); padding: 28px; width: 100%; max-width: 900px; z-index: 1; animation: fadeIn .7s; margin-bottom: 40px; }
+    .dashboard-container { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--border-glow); padding: 28px; width: 100%; max-width: 900px; z-index: 1; animation: fadeIn .7s; margin-bottom: 20px; }
     @keyframes fadeIn {from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);}}
     .header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid rgba(0, 255, 255, 0.2); padding-bottom: 20px;}
     .logo-img { width: 46px; height: 46px; border-radius: 50%; object-fit:cover; background:#fff; animation: logoPulse 3.3s infinite alternate; box-shadow: 0 0 0 #00ffff;}
@@ -75,6 +76,16 @@
     .nav-container { position: fixed; top: 20px; right: 20px; z-index: 10; }
     #logout-btn { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; padding: 0; color: var(--cyan); text-decoration: none; font-size: 1em; transition: all 0.2s; }
     #logout-btn:hover { color: var(--white); text-shadow: 0 0 5px var(--cyan); }
+    #debug-container {
+        position: relative; z-index: 2; width: 100%; max-width: 900px;
+        background: #fff; color: #111; padding: 15px;
+        border-radius: 10px; margin-top: 20px; margin-bottom: 40px;
+        font-family: monospace;
+    }
+    #debug-log {
+        white-space: pre-wrap; word-wrap: break-word;
+        max-height: 300px; overflow-y: auto;
+    }
     @media (max-width: 768px) { .grid-container { grid-template-columns: 1fr; } body { padding: 20px 10px; } }
   </style>
 </head>
@@ -87,7 +98,7 @@
         <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" class="logo-img" alt="Elvion AI Logo">
         <div>
             <h1 class="site-heading">Developer Dashboard</h1>
-            <p id="welcome-message" class="welcome-message">Authenticating...</p>
+            <p id="welcome-message" class="welcome-message">Initializing...</p>
         </div>
     </div>
     
@@ -108,32 +119,19 @@
                 <button id="copy-key-btn" title="Copy to clipboard"><i class="far fa-copy"></i></button>
             </div>
         </div>
-        <div class="section-card full-width" id="user-metrics-section">
-            <h3 class="section-header">Usage Metrics</h3>
-            <div class="stat-grid">
-                <div class="stat-item"><div class="stat-value" id="metric-total-calls">...</div><div class="stat-label">Total API Calls</div></div>
-                <div class="stat-item"><div class="stat-value" id="metric-seraphina-calls">...</div><div class="stat-label">Seraphina Calls</div></div>
-                <div class="stat-item"><div class="stat-value" id="metric-bobby-calls">...</div><div class="stat-label">Bobby Calls</div></div>
-                <div class="stat-item"><div class="stat-value" id="metric-image-calls">...</div><div class="stat-label">Image Generations</div></div>
-            </div>
-            <small style="display: block; text-align: center; margin-top: 15px; color: var(--muted);">User-specific metrics endpoint is pending implementation.</small>
-        </div>
         <div class="section-card full-width">
             <h3 class="section-header">Your API Keys</h3>
-            <p id="key-list-info">Loading your keys...</p>
+            <p id="key-list-info">Waiting for authentication...</p>
             <div id="api-key-list"><div class="loader"></div></div>
         </div>
         <div class="section-card full-width" id="admin-panel" hidden>
             <h3 class="section-header" style="color: var(--orange);">Admin Office</h3>
             <div class="stat-grid" id="admin-stats-grid"><div class="loader"></div></div>
-            
-            <!-- THE NEW ADMIN CREDITS BLOCK -->
             <div style="text-align: center; border-top: 1px solid #444; margin-top: 20px; padding-top: 20px;">
                 <p style="color: var(--muted);">If your balance is zero, use this one-time tool.</p>
                 <button id="grant-credits-btn" class="submit-btn" style="background: var(--orange);">Grant Admin Credits</button>
                 <div class="status-message" id="grant-credits-status"></div>
             </div>
-            <!-- END OF NEW BLOCK -->
         </div>
     </div>
 </div>
@@ -157,10 +155,34 @@
     </div>
 </div>
 
+<!-- DEBUG BOX -->
+<div id="debug-container">
+    <h3 style="margin-top:0;">Live Diagnostic Log</h3>
+    <pre id="debug-log"></pre>
+</div>
+
 <script type="module">
+  // ==========================================================================
+  // --- DEBUG LOGGER ---
+  // ==========================================================================
+  const debugLog = document.getElementById('debug-log');
+  function logToScreen(message, isError = false) {
+      const line = document.createElement('div');
+      const timestamp = new Date().toLocaleTimeString();
+      line.textContent = `[${timestamp}] ${message}`;
+      if (isError) {
+          line.style.color = 'red';
+          line.style.fontWeight = 'bold';
+      }
+      debugLog.appendChild(line);
+      debugLog.scrollTop = debugLog.scrollHeight;
+      console.log(message);
+  }
+
   // ==========================================================================
   // --- CONFIGURATION ---
   // ==========================================================================
+  logToScreen('Script started. Reading configuration...');
   const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
   const SQUAD_PUBLIC_KEY = "sandbox_pk_8109e4303e01a9043777f464e46d91055cfc26e8a527";
   const ADMIN_EMAIL = "Koladhino@gmail.com";
@@ -174,45 +196,12 @@
     messagingSenderId: "161078300830",
     appId: "1:161078300830:web:f460df8591704eb0e96b8f"
   };
+  logToScreen('Configuration loaded.');
   
   // ==========================================================================
-  // --- INITIALIZATION & AUTHENTICATION ---
+  // --- GLOBAL VARIABLES & DOM ELEMENTS ---
   // ==========================================================================
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  
-  let currentUser, userToken, currentUserBalance;
-
-  onIdTokenChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
-      
-      try {
-        userToken = await user.getIdToken(true); 
-        await loadDashboardData();
-        
-        if (user.email === ADMIN_EMAIL) {
-            document.getElementById('admin-panel').hidden = false;
-            fetchAdminStats();
-        }
-
-      } catch (error) {
-        console.error("Error getting ID token:", error);
-        document.getElementById('welcome-message').textContent = 'Authentication error. Please re-login.';
-      }
-      
-    } else {
-      window.location.href = 'developer-login.html';
-    }
-  });
-
-  // ==========================================================================
-  // --- DOM ELEMENTS & CORE FUNCTIONS ---
-  // ==========================================================================
+  let currentUser, userToken;
   const balanceDisplay = document.getElementById('balance-display');
   const generateKeyButton = document.getElementById('generate-key-btn');
   const generationStatus = document.getElementById('generation-status');
@@ -224,44 +213,97 @@
   const fundWalletBtn = document.getElementById('fund-wallet-btn');
   const proceedToPaymentBtn = document.getElementById('proceed-to-payment-btn');
   const paymentStatus = document.getElementById('payment-status');
-  
+
+  // ==========================================================================
+  // --- INITIALIZATION & AUTHENTICATION ---
+  // ==========================================================================
+  try {
+    logToScreen('Importing Firebase modules...');
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const { getAuth, onIdTokenChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+    logToScreen('Firebase modules imported successfully.');
+
+    logToScreen('Initializing Firebase app...');
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    logToScreen('Firebase app initialized. Setting up auth listener...');
+
+    onIdTokenChanged(auth, async (user) => {
+      logToScreen('Auth state changed.');
+      if (user) {
+        currentUser = user;
+        logToScreen(`User found: ${user.email}. Requesting fresh ID token...`);
+        document.getElementById('welcome-message').textContent = `Authenticating, ${user.email}...`;
+        
+        try {
+          userToken = await user.getIdToken(true);
+          logToScreen('ID token received.');
+          document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
+          await loadDashboardData();
+          
+          if (user.email === ADMIN_EMAIL) {
+              logToScreen('Admin user detected. Showing Admin Office.');
+              document.getElementById('admin-panel').hidden = false;
+              await fetchAdminStats();
+          }
+        } catch (error) {
+          logToScreen(`Error during auth/load process: ${error.message}`, true);
+          document.getElementById('welcome-message').textContent = 'Authentication error!';
+        }
+        
+      } else {
+        logToScreen('No user signed in. Redirecting to login page.');
+        window.location.href = 'developer-login.html';
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => { signOut(auth); });
+
+  } catch (error) {
+      logToScreen(`CRITICAL SCRIPT FAILURE: ${error.message}`, true);
+      document.getElementById('welcome-message').textContent = 'CRITICAL SCRIPT ERROR!';
+  }
+
+  // ==========================================================================
+  // --- CORE DATA FUNCTIONS ---
+  // ==========================================================================
   async function loadDashboardData() {
-    if (!userToken) return;
+    logToScreen('Executing loadDashboardData()...');
+    if (!userToken) { logToScreen('Cannot load data, no user token.', true); return; }
+    
     renderBalance('<div class="loader loader-small"></div>');
     apiKeyListDiv.innerHTML = '<div class="loader"></div>';
+    keyListInfo.textContent = 'Loading...';
 
     try {
+      logToScreen(`Fetching data from ${BACKEND_URL}/api/user/keys-and-balance`);
       const response = await fetch(`${BACKEND_URL}/api/user/keys-and-balance`, {
         headers: { 'X-Firebase-Token': userToken }
       });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.detail || 'Failed to fetch dashboard data.');
-      }
+      logToScreen(`Backend response status: ${response.status}`);
       
       const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
       
-      currentUserBalance = data.balance;
+      logToScreen(`Data received: Balance=${data.balance}, Keys=${data.keys.length}`);
       renderBalance(data.balance);
       renderKeyList(data.keys);
-      document.getElementById('key-cost').textContent = `(Cost: ${currentUser && currentUser.email === ADMIN_EMAIL ? 'FREE for Admins' : `${API_KEY_GENERATION_COST} Credits`})`;
-
+      document.getElementById('key-cost').textContent = `(Cost: ${currentUser.email === ADMIN_EMAIL ? 'FREE for Admins' : `${API_KEY_GENERATION_COST} Credits`})`;
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      balanceDisplay.innerHTML = `<span style="color:var(--red); font-size: 0.5em;">Error: ${error.message}</span>`;
-      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load your API keys. Please try refreshing.</p>`;
+      logToScreen(`Error in loadDashboardData: ${error.message}`, true);
+      renderBalance(`<span style="color:var(--red); font-size: 0.5em;">Error</span>`);
+      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load API keys.</p>`;
     }
   }
   
   async function fetchAdminStats() {
+    logToScreen('Executing fetchAdminStats()...');
     const grid = document.getElementById('admin-stats-grid');
     grid.innerHTML = '<div class="loader"></div>';
     try {
-        const response = await fetch(`${BACKEND_URL}/api/admin/stats`, {
-            headers: { 'X-Firebase-Token': userToken }
-        });
-        if (!response.ok) throw new Error('Failed to fetch admin stats.');
+        const response = await fetch(`${BACKEND_URL}/api/admin/stats`, { headers: { 'X-Firebase-Token': userToken } });
         const stats = await response.json();
+        if (!response.ok) throw new Error(stats.detail);
         
         grid.innerHTML = `
             <div class="stat-item"><div class="stat-value">${stats.total_registered_users || 0}</div><div class="stat-label">Total Users</div></div>
@@ -269,16 +311,16 @@
             <div class="stat-item"><div class="stat-value">${(stats.total_user_credits_in_wallets || 0).toLocaleString()}</div><div class="stat-label">User Credits</div></div>
             <div class="stat-item"><div class="stat-value">₦${(stats.total_revenue_credited || 0).toLocaleString()}</div><div class="stat-label">Total Revenue</div></div>
         `;
+        logToScreen('Admin stats loaded successfully.');
     } catch (error) {
-        console.error('Error fetching admin stats:', error);
-        grid.innerHTML = `<p style="color: var(--red);">Could not load admin statistics.</p>`;
+        logToScreen(`Error fetching admin stats: ${error.message}`, true);
+        grid.innerHTML = `<p style="color: var(--red);">Could not load admin stats.</p>`;
     }
   }
 
   // ==========================================================================
-  // --- UI & EVENT HANDLERS ---
+  // --- UI RENDERING ---
   // ==========================================================================
-
   function renderBalance(balance) {
     if (typeof balance === 'number') {
         balanceDisplay.innerHTML = `${balance.toLocaleString()} <span style="font-size: 0.5em; color: var(--muted);">Credits</span>`;
@@ -291,7 +333,7 @@
     apiKeyListDiv.innerHTML = '';
     keyListInfo.textContent = `You have generated ${keys.length} API key(s).`;
     if (keys.length === 0) {
-      apiKeyListDiv.innerHTML = '<p style="color: var(--muted);">You have not generated any API keys yet.</p>';
+      apiKeyListDiv.innerHTML = '<p style="color: var(--muted);">No keys generated yet.</p>';
       return;
     }
     keys.forEach(key => {
@@ -313,7 +355,11 @@
     });
   }
 
+  // ==========================================================================
+  // --- EVENT LISTENERS ---
+  // ==========================================================================
   generateKeyButton.addEventListener('click', async () => {
+    logToScreen('Generate Key button clicked.');
     generateKeyButton.disabled = true;
     generateKeyButton.textContent = 'GENERATING...';
     generationStatus.textContent = 'Contacting server...';
@@ -326,17 +372,15 @@
         headers: { 'X-Firebase-Token': userToken }
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
+      if (!response.ok) throw new Error(data.detail);
 
       apiKeyDisplay.textContent = data.api_key;
       newKeyContainer.style.display = 'flex';
-      generationStatus.textContent = 'Key generated successfully! Copy it now.';
+      generationStatus.textContent = data.message;
       generationStatus.style.color = 'var(--green)';
-      
-      loadDashboardData();
-
+      await loadDashboardData();
     } catch (error) {
-      console.error('Error generating API key:', error);
+      logToScreen(`Error generating key: ${error.message}`, true);
       generationStatus.textContent = `Error: ${error.message}`;
       generationStatus.style.color = 'var(--red)';
     } finally {
@@ -348,16 +392,15 @@
   copyKeyButton.addEventListener('click', () => {
     navigator.clipboard.writeText(apiKeyDisplay.textContent).then(() => {
       copyKeyButton.innerHTML = '<i class="fas fa-check"></i>';
-      generationStatus.textContent = 'API Key copied to clipboard!';
-      setTimeout(() => copyKeyButton.innerHTML = '<i class="far fa-copy"></i>', 2500);
+      setTimeout(() => copyKeyButton.innerHTML = '<i class="far fa-copy"></i>', 2000);
     });
   });
 
   apiKeyListDiv.addEventListener('click', async (event) => {
     if (event.target && event.target.matches('.revoke-btn')) {
       const keyToRevoke = event.target.getAttribute('data-key');
-      if (!confirm('Are you sure you want to revoke this API key? This action is irreversible.')) return;
-      event.target.disabled = true; event.target.textContent = 'Revoking...';
+      if (!confirm('Are you sure you want to revoke this key?')) return;
+      event.target.disabled = true; event.target.textContent = '...';
       try {
         const response = await fetch(`${BACKEND_URL}/api/user/revoke-api-key`, {
           method: 'POST',
@@ -365,61 +408,50 @@
           body: JSON.stringify({ api_key: keyToRevoke })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Failed to revoke key.');
-        loadDashboardData();
+        if (!response.ok) throw new Error(data.detail);
+        await loadDashboardData();
       } catch (error) {
+        logToScreen(`Error revoking key: ${error.message}`, true);
         alert(`Error: ${error.message}`);
         event.target.disabled = false; event.target.textContent = 'Revoke';
       }
     }
   });
 
-  // NEW EVENT LISTENER FOR THE ADMIN "MAGIC BUTTON"
   document.getElementById('grant-credits-btn').addEventListener('click', async () => {
+    logToScreen('Admin "Grant Credits" button clicked.');
+    if (!confirm('Set admin balance to 100,000 credits?')) return;
     const btn = document.getElementById('grant-credits-btn');
     const status = document.getElementById('grant-credits-status');
-
-    if (!confirm('This will set your admin account balance to 100,000 credits. Proceed?')) return;
-
     btn.disabled = true;
-    btn.textContent = 'PROCESSING...';
-    status.textContent = 'Sending request to server...';
-    status.style.color = 'var(--cyan)';
-
+    status.textContent = 'Processing...';
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/grant-credits`, {
             method: 'POST',
             headers: { 'X-Firebase-Token': userToken }
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'An unknown error occurred.');
+        if (!response.ok) throw new Error(data.detail);
 
         status.textContent = data.message;
         status.style.color = 'var(--green)';
-        
-        // Refresh the entire dashboard to show the new balance everywhere
         await loadDashboardData();
-
     } catch (error) {
+        logToScreen(`Error granting credits: ${error.message}`, true);
         status.textContent = `Error: ${error.message}`;
         status.style.color = 'var(--red)';
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Grant Admin Credits';
     }
   });
-
-  document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
   // ==========================================================================
   // --- PAYMENT FLOW LOGIC (ROBUST & SECURE VERSION) ---
   // ==========================================================================
-  
   window.openModal = (id) => document.getElementById(id).style.display = 'flex';
   window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
   fundWalletBtn.addEventListener('click', () => {
-      // Reset the modal state every time it's opened
       document.getElementById('payment-amount').value = 1000;
       paymentStatus.textContent = '';
       proceedToPaymentBtn.disabled = false;
@@ -429,7 +461,7 @@
   proceedToPaymentBtn.addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('payment-amount').value);
     if (isNaN(amount) || amount < 100) {
-      paymentStatus.textContent = 'Please enter a valid amount (minimum ₦100).';
+      paymentStatus.textContent = 'Minimum is ₦100.';
       paymentStatus.style.color = 'var(--red)';
       return;
     }
@@ -438,46 +470,40 @@
     paymentStatus.textContent = 'Initializing secure transaction...';
     paymentStatus.style.color = 'var(--cyan)';
 
-    let transactionRef; // Define here to be accessible in the whole function scope
+    let transactionRef;
 
     try {
-        // Step 1: Ask our backend to create a transaction record
         const response = await fetch(`${BACKEND_URL}/api/payments/initiate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
             body: JSON.stringify({ amount: amount })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Failed to initiate payment with backend.');
+        if (!response.ok) throw new Error(data.detail);
         
-        transactionRef = data.transaction_ref; // Store the official transaction reference from our backend
+        transactionRef = data.transaction_ref;
         paymentStatus.textContent = 'Redirecting to payment gateway...';
 
-        // Step 2: Open the Squad widget with the reference from our backend
         const squadInstance = new Squad({
             onClose: () => {
-                console.log("Payment widget closed.");
-                // We ALWAYS verify, even on close, in case the payment went through
-                // but the success callback didn't fire (e.g., user's internet flickered).
                 closeModal('payment-modal');
                 verifyPayment(transactionRef);
             },
             onSuccess: () => {
-                // This is the ideal scenario.
-                console.log("Payment successful callback received.");
                 closeModal('payment-modal');
                 verifyPayment(transactionRef);
             },
             key: SQUAD_PUBLIC_KEY,
             email: currentUser.email,
-            amount: amount * 100, // Amount must be in kobo
-            currency: "NGN", // Squad's docs now use 'currency'
+            amount: amount * 100,
+            currency: "NGN",
             transaction_ref: transactionRef
         });
         squadInstance.setup();
         squadInstance.open();
 
     } catch (error) {
+        logToScreen(`Error initiating payment: ${error.message}`, true);
         paymentStatus.textContent = `Error: ${error.message}`;
         paymentStatus.style.color = 'var(--red)';
         proceedToPaymentBtn.disabled = false;
@@ -485,59 +511,49 @@
   });
 
   async function verifyPayment(transactionRef) {
-      if (!transactionRef) {
-          console.log("Verification skipped: No transaction reference found.");
-          return;
-      }
+      if (!transactionRef) return;
       
       openModal('status-modal');
       const statusTitle = document.getElementById('status-modal-title');
       const statusMessage = document.getElementById('status-modal-message');
-      statusTitle.textContent = 'Verifying Your Payment...';
+      statusTitle.textContent = 'Verifying Payment...';
       statusTitle.style.color = 'var(--cyan)';
-      statusMessage.textContent = `Please wait while we confirm your transaction...`;
+      statusMessage.textContent = `Please wait...`;
 
       try {
-          // Step 3: Ask our backend to verify the transaction with Squad
           const response = await fetch(`${BACKEND_URL}/api/payments/verify?transaction_ref=${transactionRef}`, {
-              method: 'GET', // Verification is a GET request
+              method: 'GET',
               headers: { 'X-Firebase-Token': userToken }
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.detail || 'Verification request failed.');
+          if (!response.ok) throw new Error(data.detail);
           
           if (data.status === 'already_credited') {
              statusTitle.textContent = 'Already Processed';
-             statusTitle.style.color = 'var(--cyan)';
              statusMessage.textContent = data.message;
           } else {
              statusTitle.textContent = 'Payment Successful!';
              statusTitle.style.color = 'var(--green)';
-             statusMessage.textContent = `${data.message} ${data.credits_added} credits have been added to your wallet.`;
+             statusMessage.textContent = `${data.credits_added} credits added.`;
           }
-          // ALWAYS reload dashboard data after any potential balance change.
-          loadDashboardData();
-
+          await loadDashboardData();
       } catch (error) {
+          logToScreen(`Error verifying payment: ${error.message}`, true);
           statusTitle.textContent = 'Verification Failed';
           statusTitle.style.color = 'var(--red)';
-          statusMessage.textContent = `Error: ${error.message}. If you were debited, please contact support with your transaction reference.`;
+          statusMessage.textContent = `Error: ${error.message}.`;
       } finally {
-        // Close the status modal after a delay so the user can read the message.
         setTimeout(() => closeModal('status-modal'), 8000);
       }
   }
 
   // Star Animation & URL cleanup
   document.addEventListener('DOMContentLoaded', () => {
-    // Check for payment verification in URL params from older redirect flows and clean them
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('transaction_ref') || urlParams.has('payment')) {
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // Create stars
     const starsContainer = document.getElementById('stars-container');
     for(let i=0; i < 80; i++) {
       const star = document.createElement('div');
