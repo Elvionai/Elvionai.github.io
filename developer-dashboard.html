@@ -76,16 +76,6 @@
     .nav-container { position: fixed; top: 20px; right: 20px; z-index: 10; }
     #logout-btn { background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif; padding: 0; color: var(--cyan); text-decoration: none; font-size: 1em; transition: all 0.2s; }
     #logout-btn:hover { color: var(--white); text-shadow: 0 0 5px var(--cyan); }
-    #debug-container {
-        position: relative; z-index: 2; width: 100%; max-width: 900px;
-        background: #fff; color: #111; padding: 15px;
-        border-radius: 10px; margin-top: 20px; margin-bottom: 40px;
-        font-family: monospace;
-    }
-    #debug-log {
-        white-space: pre-wrap; word-wrap: break-word;
-        max-height: 300px; overflow-y: auto;
-    }
     @media (max-width: 768px) { .grid-container { grid-template-columns: 1fr; } body { padding: 20px 10px; } }
   </style>
 </head>
@@ -155,34 +145,10 @@
     </div>
 </div>
 
-<!-- DEBUG BOX -->
-<div id="debug-container">
-    <h3 style="margin-top:0;">Live Diagnostic Log</h3>
-    <pre id="debug-log"></pre>
-</div>
-
 <script type="module">
-  // ==========================================================================
-  // --- DEBUG LOGGER ---
-  // ==========================================================================
-  const debugLog = document.getElementById('debug-log');
-  function logToScreen(message, isError = false) {
-      const line = document.createElement('div');
-      const timestamp = new Date().toLocaleTimeString();
-      line.textContent = `[${timestamp}] ${message}`;
-      if (isError) {
-          line.style.color = 'red';
-          line.style.fontWeight = 'bold';
-      }
-      debugLog.appendChild(line);
-      debugLog.scrollTop = debugLog.scrollHeight;
-      console.log(message);
-  }
-
   // ==========================================================================
   // --- CONFIGURATION ---
   // ==========================================================================
-  logToScreen('Script started. Reading configuration...');
   const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
   const SQUAD_PUBLIC_KEY = "sandbox_pk_8109e4303e01a9043777f464e46d91055cfc26e8a527";
   const ADMIN_EMAIL = "Koladhino@gmail.com";
@@ -196,7 +162,6 @@
     messagingSenderId: "161078300830",
     appId: "1:161078300830:web:f460df8591704eb0e96b8f"
   };
-  logToScreen('Configuration loaded.');
   
   // ==========================================================================
   // --- GLOBAL VARIABLES & DOM ELEMENTS ---
@@ -218,41 +183,33 @@
   // --- INITIALIZATION & AUTHENTICATION ---
   // ==========================================================================
   try {
-    logToScreen('Importing Firebase modules...');
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
     const { getAuth, onIdTokenChanged, signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
-    logToScreen('Firebase modules imported successfully.');
 
-    logToScreen('Initializing Firebase app...');
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    logToScreen('Firebase app initialized. Setting up auth listener...');
 
     onIdTokenChanged(auth, async (user) => {
-      logToScreen('Auth state changed.');
       if (user) {
         currentUser = user;
-        logToScreen(`User found: ${user.email}. Requesting fresh ID token...`);
         document.getElementById('welcome-message').textContent = `Authenticating, ${user.email}...`;
         
+        // THE FIX: Show the admin panel IMMEDIATELY if the email matches.
+        if (user.email === ADMIN_EMAIL) {
+          document.getElementById('admin-panel').hidden = false;
+        }
+
         try {
           userToken = await user.getIdToken(true);
-          logToScreen('ID token received.');
           document.getElementById('welcome-message').textContent = `Welcome, ${user.email}`;
           await loadDashboardData();
-          
           if (user.email === ADMIN_EMAIL) {
-              logToScreen('Admin user detected. Showing Admin Office.');
-              document.getElementById('admin-panel').hidden = false;
-              await fetchAdminStats();
+            await fetchAdminStats();
           }
         } catch (error) {
-          logToScreen(`Error during auth/load process: ${error.message}`, true);
-          document.getElementById('welcome-message').textContent = 'Authentication error!';
+          document.getElementById('welcome-message').textContent = `Authentication error: ${error.message}`;
         }
-        
       } else {
-        logToScreen('No user signed in. Redirecting to login page.');
         window.location.href = 'developer-login.html';
       }
     });
@@ -260,66 +217,54 @@
     document.getElementById('logout-btn').addEventListener('click', () => { signOut(auth); });
 
   } catch (error) {
-      logToScreen(`CRITICAL SCRIPT FAILURE: ${error.message}`, true);
-      document.getElementById('welcome-message').textContent = 'CRITICAL SCRIPT ERROR!';
+    document.getElementById('welcome-message').textContent = `CRITICAL SCRIPT ERROR: ${error.message}`;
   }
 
   // ==========================================================================
   // --- CORE DATA FUNCTIONS ---
   // ==========================================================================
   async function loadDashboardData() {
-    logToScreen('Executing loadDashboardData()...');
-    if (!userToken) { logToScreen('Cannot load data, no user token.', true); return; }
-    
+    if (!userToken) return;
     renderBalance('<div class="loader loader-small"></div>');
     apiKeyListDiv.innerHTML = '<div class="loader"></div>';
-    keyListInfo.textContent = 'Loading...';
+    keyListInfo.textContent = 'Loading your keys...';
 
     try {
-      logToScreen(`Fetching data from ${BACKEND_URL}/api/user/keys-and-balance`);
       const response = await fetch(`${BACKEND_URL}/api/user/keys-and-balance`, {
         headers: { 'X-Firebase-Token': userToken }
       });
-      logToScreen(`Backend response status: ${response.status}`);
-      
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
       
-      logToScreen(`Data received: Balance=${data.balance}, Keys=${data.keys.length}`);
       renderBalance(data.balance);
       renderKeyList(data.keys);
-      document.getElementById('key-cost').textContent = `(Cost: ${currentUser.email === ADMIN_EMAIL ? 'FREE for Admins' : `${API_KEY_GENERATION_COST} Credits`})`;
+      document.getElementById('key-cost').textContent = `(Cost: ${currentUser.email === ADMIN_EMAIL ? 'FREE' : `${API_KEY_GENERATION_COST} Credits`})`;
     } catch (error) {
-      logToScreen(`Error in loadDashboardData: ${error.message}`, true);
       renderBalance(`<span style="color:var(--red); font-size: 0.5em;">Error</span>`);
-      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load API keys.</p>`;
+      apiKeyListDiv.innerHTML = `<p style="color: var(--red);">Could not load API keys: ${error.message}</p>`;
     }
   }
   
   async function fetchAdminStats() {
-    logToScreen('Executing fetchAdminStats()...');
     const grid = document.getElementById('admin-stats-grid');
     grid.innerHTML = '<div class="loader"></div>';
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/stats`, { headers: { 'X-Firebase-Token': userToken } });
         const stats = await response.json();
         if (!response.ok) throw new Error(stats.detail);
-        
         grid.innerHTML = `
             <div class="stat-item"><div class="stat-value">${stats.total_registered_users || 0}</div><div class="stat-label">Total Users</div></div>
             <div class="stat-item"><div class="stat-value">${stats.total_api_keys_generated || 0}</div><div class="stat-label">Keys Generated</div></div>
             <div class="stat-item"><div class="stat-value">${(stats.total_user_credits_in_wallets || 0).toLocaleString()}</div><div class="stat-label">User Credits</div></div>
             <div class="stat-item"><div class="stat-value">₦${(stats.total_revenue_credited || 0).toLocaleString()}</div><div class="stat-label">Total Revenue</div></div>
         `;
-        logToScreen('Admin stats loaded successfully.');
     } catch (error) {
-        logToScreen(`Error fetching admin stats: ${error.message}`, true);
         grid.innerHTML = `<p style="color: var(--red);">Could not load admin stats.</p>`;
     }
   }
 
   // ==========================================================================
-  // --- UI RENDERING ---
+  // --- UI RENDERING & EVENT LISTENERS ---
   // ==========================================================================
   function renderBalance(balance) {
     if (typeof balance === 'number') {
@@ -355,17 +300,10 @@
     });
   }
 
-  // ==========================================================================
-  // --- EVENT LISTENERS ---
-  // ==========================================================================
   generateKeyButton.addEventListener('click', async () => {
-    logToScreen('Generate Key button clicked.');
     generateKeyButton.disabled = true;
-    generateKeyButton.textContent = 'GENERATING...';
+    generateKeyButton.textContent = '...';
     generationStatus.textContent = 'Contacting server...';
-    generationStatus.style.color = 'var(--cyan)';
-    newKeyContainer.style.display = 'none';
-
     try {
       const response = await fetch(`${BACKEND_URL}/api/user/create-api-key`, {
         method: 'POST',
@@ -380,12 +318,11 @@
       generationStatus.style.color = 'var(--green)';
       await loadDashboardData();
     } catch (error) {
-      logToScreen(`Error generating key: ${error.message}`, true);
       generationStatus.textContent = `Error: ${error.message}`;
       generationStatus.style.color = 'var(--red)';
     } finally {
       generateKeyButton.disabled = false;
-      generateKeyButton.textContent = 'Generate New API Key';
+      generateKeyButton.textContent = 'Generate API Key';
     }
   });
   
@@ -397,34 +334,30 @@
   });
 
   apiKeyListDiv.addEventListener('click', async (event) => {
-    if (event.target && event.target.matches('.revoke-btn')) {
+    if (event.target.matches('.revoke-btn')) {
       const keyToRevoke = event.target.getAttribute('data-key');
       if (!confirm('Are you sure you want to revoke this key?')) return;
-      event.target.disabled = true; event.target.textContent = '...';
+      event.target.disabled = true;
       try {
         const response = await fetch(`${BACKEND_URL}/api/user/revoke-api-key`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
           body: JSON.stringify({ api_key: keyToRevoke })
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail);
+        if (!response.ok) throw new Error((await response.json()).detail);
         await loadDashboardData();
       } catch (error) {
-        logToScreen(`Error revoking key: ${error.message}`, true);
         alert(`Error: ${error.message}`);
-        event.target.disabled = false; event.target.textContent = 'Revoke';
+        event.target.disabled = false;
       }
     }
   });
 
   document.getElementById('grant-credits-btn').addEventListener('click', async () => {
-    logToScreen('Admin "Grant Credits" button clicked.');
     if (!confirm('Set admin balance to 100,000 credits?')) return;
     const btn = document.getElementById('grant-credits-btn');
     const status = document.getElementById('grant-credits-status');
-    btn.disabled = true;
-    status.textContent = 'Processing...';
+    btn.disabled = true; status.textContent = 'Processing...';
     try {
         const response = await fetch(`${BACKEND_URL}/api/admin/grant-credits`, {
             method: 'POST',
@@ -432,12 +365,10 @@
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail);
-
         status.textContent = data.message;
         status.style.color = 'var(--green)';
         await loadDashboardData();
     } catch (error) {
-        logToScreen(`Error granting credits: ${error.message}`, true);
         status.textContent = `Error: ${error.message}`;
         status.style.color = 'var(--red)';
     } finally {
@@ -446,7 +377,7 @@
   });
 
   // ==========================================================================
-  // --- PAYMENT FLOW LOGIC (ROBUST & SECURE VERSION) ---
+  // --- PAYMENT FLOW ---
   // ==========================================================================
   window.openModal = (id) => document.getElementById(id).style.display = 'flex';
   window.closeModal = (id) => document.getElementById(id).style.display = 'none';
@@ -461,17 +392,11 @@
   proceedToPaymentBtn.addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('payment-amount').value);
     if (isNaN(amount) || amount < 100) {
-      paymentStatus.textContent = 'Minimum is ₦100.';
-      paymentStatus.style.color = 'var(--red)';
-      return;
+      paymentStatus.textContent = 'Minimum is ₦100.'; return;
     }
-    
     proceedToPaymentBtn.disabled = true;
-    paymentStatus.textContent = 'Initializing secure transaction...';
-    paymentStatus.style.color = 'var(--cyan)';
-
+    paymentStatus.textContent = 'Initializing...';
     let transactionRef;
-
     try {
         const response = await fetch(`${BACKEND_URL}/api/payments/initiate`, {
             method: 'POST',
@@ -482,48 +407,29 @@
         if (!response.ok) throw new Error(data.detail);
         
         transactionRef = data.transaction_ref;
-        paymentStatus.textContent = 'Redirecting to payment gateway...';
-
         const squadInstance = new Squad({
-            onClose: () => {
-                closeModal('payment-modal');
-                verifyPayment(transactionRef);
-            },
-            onSuccess: () => {
-                closeModal('payment-modal');
-                verifyPayment(transactionRef);
-            },
-            key: SQUAD_PUBLIC_KEY,
-            email: currentUser.email,
-            amount: amount * 100,
-            currency: "NGN",
-            transaction_ref: transactionRef
+            onClose: () => { closeModal('payment-modal'); verifyPayment(transactionRef); },
+            onSuccess: () => { closeModal('payment-modal'); verifyPayment(transactionRef); },
+            key: SQUAD_PUBLIC_KEY, email: currentUser.email, amount: amount * 100,
+            currency: "NGN", transaction_ref: transactionRef
         });
         squadInstance.setup();
         squadInstance.open();
-
     } catch (error) {
-        logToScreen(`Error initiating payment: ${error.message}`, true);
         paymentStatus.textContent = `Error: ${error.message}`;
-        paymentStatus.style.color = 'var(--red)';
         proceedToPaymentBtn.disabled = false;
     }
   });
 
   async function verifyPayment(transactionRef) {
       if (!transactionRef) return;
-      
       openModal('status-modal');
       const statusTitle = document.getElementById('status-modal-title');
       const statusMessage = document.getElementById('status-modal-message');
       statusTitle.textContent = 'Verifying Payment...';
-      statusTitle.style.color = 'var(--cyan)';
-      statusMessage.textContent = `Please wait...`;
-
       try {
           const response = await fetch(`${BACKEND_URL}/api/payments/verify?transaction_ref=${transactionRef}`, {
-              method: 'GET',
-              headers: { 'X-Firebase-Token': userToken }
+              method: 'GET', headers: { 'X-Firebase-Token': userToken }
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.detail);
@@ -538,7 +444,6 @@
           }
           await loadDashboardData();
       } catch (error) {
-          logToScreen(`Error verifying payment: ${error.message}`, true);
           statusTitle.textContent = 'Verification Failed';
           statusTitle.style.color = 'var(--red)';
           statusMessage.textContent = `Error: ${error.message}.`;
@@ -550,10 +455,9 @@
   // Star Animation & URL cleanup
   document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('transaction_ref') || urlParams.has('payment')) {
+    if (urlParams.has('transaction_ref')) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-
     const starsContainer = document.getElementById('stars-container');
     for(let i=0; i < 80; i++) {
       const star = document.createElement('div');
