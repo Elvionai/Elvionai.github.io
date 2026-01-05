@@ -4,1691 +4,323 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Explorer | Elvion AI</title>
-    <meta name="description" content="Explore and test Elvion AI's powerful conversational and generative models in real-time.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <meta name="description" content="Live test and integrate Elvion AI's powerful conversational and generative models into your applications.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Orbitron:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --cyan: #00ffff;
-            --blue: #0090ff;
-            --magenta: #ff00ff;
-            --red: #ff4d4d;
-            --green: #28a745;
-            --orange: #ffae42;
-            --bg-primary: #0a1128;
-            --bg-secondary: #10142c;
-            --card-bg: #121a30;
-            --border-color: rgba(0, 255, 255, 0.2);
-            --border-glow: 0 0 12px rgba(0, 255, 255, 0.5);
-            --radius: 8px;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a8b2d1;
-            --header-font: 'Orbitron', sans-serif;
-            --body-font: 'Inter', sans-serif;
-            --code-font: 'Fira Code', monospace;
+            --cyan: #00ffff; --blue: #0090ff; --magenta: #ff00ff; --red: #ff4d4d; --green: #28a745; --orange: #ffae42;
+            --bg-primary: #0a1128; --bg-secondary: #10142c; --card-bg: #121a30;
+            --border-color: rgba(0, 255, 255, 0.2); --border-glow: 0 0 12px rgba(0, 255, 255, 0.5);
+            --radius: 8px; --text-primary: #e0e0e0; --text-secondary: #a8b2d1;
+            --header-font: 'Orbitron', sans-serif; --body-font: 'Inter', sans-serif; --code-font: 'Fira Code', monospace;
         }
-
         *, *::before, *::after { box-sizing: border-box; }
-        
-        body {
-            font-family: var(--body-font);
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            margin: 0;
-            line-height: 1.7;
-        }
+        body { font-family: var(--body-font); background-color: var(--bg-primary); color: var(--text-primary); margin: 0; line-height: 1.7; }
 
-        .container {
+        /* --- Main Header --- */
+        .main-header {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
             display: flex;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* --- Left Sidebar: Navigation --- */
-        .sidebar-nav {
+            justify-content: space-between;
+            align-items: center;
             position: sticky;
             top: 0;
-            height: 100vh;
-            width: 280px;
-            flex-shrink: 0;
-            overflow-y: auto;
-            border-right: 1px solid var(--border-color);
-            padding: 40px 20px;
-            background-color: var(--bg-primary); /* Ensure it has a background */
-            z-index: 100; /* Above main content on smaller screens if overlapping */
+            z-index: 100;
         }
+        .header-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .header-logo img { width: 36px; height: 36px; border-radius: 50%; }
+        .header-logo h1 { font-family: var(--header-font); font-size: 1.4em; margin: 0; color: #fff; }
+        .header-nav a { color: var(--text-secondary); text-decoration: none; font-weight: 500; margin-left: 25px; transition: color 0.2s; }
+        .header-nav a:hover { color: var(--cyan); }
+        .api-status { display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: var(--orange); animation: pulse 2s infinite; }
+        .status-dot.online { background-color: var(--green); animation: none; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 174, 66, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 174, 66, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 174, 66, 0); } }
 
-        .nav-top-links {
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-        }
-        .nav-top-links a {
-            display: inline-block;
-            margin: 0 5px;
-            padding: 8px 12px;
-            color: var(--cyan);
-            text-decoration: none;
-            font-weight: 500;
-            border: 1px solid var(--cyan);
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            font-size: 0.9em;
-        }
-        .nav-top-links a:hover { background: var(--cyan); color: var(--bg-primary); }
-
-
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .nav-logo img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--cyan); }
-        .nav-logo h1 { font-family: var(--header-font); font-size: 1.5em; margin: 0; color: #fff; }
-
+        .container { display: flex; max-width: 1300px; margin: 0 auto; }
+        
+        /* --- Left & Right Sidebars --- */
+        .sidebar-nav { position: sticky; top: 71px; height: calc(100vh - 71px); width: 240px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border-color); padding: 30px 15px; }
+        .code-examples { position: sticky; top: 71px; height: calc(100vh - 71px); width: 420px; flex-shrink: 0; background-color: #0d1117; padding: 0; overflow-y: auto; }
+        
+        .nav-section-title { font-family: var(--header-font); text-transform: uppercase; font-size: 0.8em; letter-spacing: 1px; color: var(--text-secondary); margin: 25px 0 10px 15px; }
         .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav li a {
-            display: block;
-            padding: 10px 15px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 0.95em;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            position: relative;
-        }
+        .sidebar-nav li a { display: block; padding: 8px 15px; color: var(--text-secondary); text-decoration: none; border-radius: 6px; font-size: 0.95em; font-weight: 500; transition: all 0.2s ease; position: relative; }
         .sidebar-nav li a:hover { color: #fff; background-color: rgba(0, 255, 255, 0.1); }
-        .sidebar-nav li a.active {
-            color: var(--cyan);
-            background-color: rgba(0, 255, 255, 0.1);
-        }
-        .sidebar-nav li a.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 3px;
-            height: 20px;
-            background-color: var(--cyan);
-            border-radius: 0 4px 4px 0;
-        }
-        .nav-section-title {
-            font-family: var(--header-font);
-            text-transform: uppercase;
-            font-size: 0.8em;
-            letter-spacing: 1px;
-            color: var(--text-secondary);
-            margin-top: 30px;
-            margin-bottom: 10px;
-            padding: 0 15px;
-        }
-
-        /* --- Main Content Area --- */
-        main {
-            flex-grow: 1;
-            padding: 50px 30px;
-            min-width: 0; /* Allows content to shrink */
-        }
-        section {
-            margin-bottom: 60px;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.5s, transform 0.5s;
-        }
-        section.visible { opacity: 1; transform: translateY(0); }
-
-        h2 {
-            font-family: var(--header-font);
-            font-size: 2.2em;
-            color: #fff;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        h3 { font-family: var(--header-font); font-size: 1.5em; color: var(--cyan); margin-top: 40px; margin-bottom: 15px; }
-        p { color: var(--text-secondary); margin-bottom: 1em; }
-        a { color: var(--cyan); text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        code {
-            font-family: var(--code-font);
-            background-color: rgba(0, 255, 255, 0.1);
-            color: var(--cyan);
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
+        .sidebar-nav li a.active { color: var(--cyan); background-color: rgba(0, 255, 255, 0.1); }
         
-        .api-key-input {
-            width: 100%;
-            padding: 10px;
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: var(--radius);
-            margin-bottom: 20px;
-            font-family: var(--code-font);
-            font-size: 0.95em;
-        }
-
-        .endpoint-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 0 10px rgba(0,255,255,0.1);
-        }
-        .endpoint-header {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 15px;
-        }
-        .endpoint-method {
-            font-family: var(--header-font);
-            font-weight: 700;
-            font-size: 1.1em;
-            color: var(--magenta);
-            background: rgba(255, 0, 255, 0.2);
-            padding: 5px 10px;
-            border-radius: 4px;
-        }
-        .endpoint-path { font-family: var(--code-font); color: var(--text-primary); font-size: 1.1em; }
-        .credit-cost {
-            background: linear-gradient(45deg, var(--orange), #ff7a00);
-            color: #000;
-            font-family: var(--header-font);
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: 700;
-            margin-left: auto; /* Pushes to the right */
-        }
+        /* --- Main Content --- */
+        main { width: 100%; padding: 40px 30px; }
+        section { margin-bottom: 50px; border-bottom: 1px solid var(--border-color); padding-bottom: 30px; }
+        h2 { font-family: var(--header-font); font-size: 2em; color: #fff; margin: 0 0 15px 0; }
+        h3 { font-family: var(--header-font); font-size: 1.3em; color: var(--cyan); margin-top: 30px; margin-bottom: 15px; }
+        p { color: var(--text-secondary); margin: 0 0 15px 0; }
+        code { font-family: var(--code-font); background-color: rgba(0, 255, 255, 0.1); color: var(--cyan); padding: 3px 6px; border-radius: 4px; font-size: 0.9em; }
         
+        /* Interactive "Try It Out" Section */
+        .api-tester { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); margin-top: 25px; }
+        .api-tester-header { padding: 15px; border-bottom: 1px solid var(--border-color); font-family: var(--header-font); font-size: 1.1em; }
+        .api-tester-body { padding: 20px; }
         .form-group { margin-bottom: 15px; }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--cyan);
-            font-weight: 500;
+        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-secondary); }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px;
+            padding: 10px; color: var(--text-primary); font-family: var(--code-font); font-size: 0.95em;
         }
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group textarea,
-        .form-group select,
-        .form-group input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: var(--radius);
-            font-family: var(--body-font);
-            font-size: 0.95em;
-        }
-        .form-group textarea { min-height: 100px; resize: vertical; }
-        .form-group input[type="file"] { padding: 8px; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .submit-btn { /* (From previous code) */ }
+        .api-response { margin-top: 20px; }
+        .api-response pre { background-color: #0d1117; padding: 15px; border-radius: var(--radius); max-height: 300px; overflow-y: auto; }
+        .api-response code { background: none; color: #fff; }
 
-        .submit-btn {
-            background: linear-gradient(90deg, var(--cyan), var(--magenta));
-            color: #000;
-            border: none;
-            border-radius: var(--radius);
-            padding: 12px 25px;
-            font-size: 1em;
-            font-family: var(--header-font);
-            font-weight: 700;
-            cursor: pointer;
-            transition: all .2s;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            position: relative;
-            margin-top: 10px;
-        }
-        .submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(255, 0, 255, 0.4); }
-        .submit-btn:disabled { cursor: not-allowed; background: #555; box-shadow: none; opacity: 0.7; }
-        .submit-btn .btn-text { transition: opacity 0.2s; }
-        .submit-btn .btn-loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.2s; }
-        .submit-btn.btn-loading .btn-text { opacity: 0; }
-        .submit-btn.btn-loading .btn-loader { opacity: 1; }
-        .loader { width: 20px; height: 20px; border: 3px solid #fff; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
-        @keyframes rotation { to { transform: rotate(360deg); } }
+        /* Code Examples Styles */
+        .code-header { /* (From previous code) */ }
+        .lang-tab { /* (From previous code) */ }
+        pre { /* (From previous code) */ }
+        .copy-code-btn { /* (From previous code) */ }
+        /* Syntax Highlighting Tokens */
 
-        .response-area { margin-top: 30px; }
-        .response-header {
-            font-family: var(--header-font);
-            font-size: 1.2em;
-            color: var(--cyan);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-        }
-        .response-viewer {
-            background-color: #1a1e27;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 20px;
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            font-family: var(--code-font);
-            font-size: 0.9em;
-            color: #c9d1d9;
-            position: relative;
-        }
-        .image-response img { max-width: 100%; height: auto; border-radius: var(--radius); margin-top: 15px; border: 1px solid var(--border-color); }
-        .audio-response audio { width: 100%; margin-top: 15px; }
-        .video-response { margin-top: 15px; }
-        .video-response video { max-width: 100%; height: auto; border-radius: var(--radius); }
-        .error-response { color: var(--red); }
-        .stream-response-container { border: 1px solid var(--border-color); border-radius: var(--radius); background-color: #1a1e27; padding: 15px; max-height: 400px; overflow-y: auto; }
-        .stream-response-container p { margin: 0; color: #c9d1d9; font-family: var(--code-font); font-size: 0.9em; }
-
-
-        /* --- Right Sidebar: Code Generator --- */
-        .code-generator {
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            width: 450px;
-            flex-shrink: 0;
-            background-color: #0d1117;
-            padding: 40px 20px;
-            overflow-y: auto;
-            border-left: 1px solid var(--border-color);
-        }
-        .code-generator-header { font-family: var(--header-font); font-size: 1.5em; color: #fff; margin-bottom: 20px; }
-        .lang-tabs { display: flex; gap: 5px; background-color: #161b22; padding: 10px; border-radius: var(--radius) var(--radius) 0 0; }
-        .lang-tab {
-            font-family: var(--body-font);
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .lang-tab.active { background-color: #21262d; color: #fff; }
-        
-        pre.code-block {
-            background-color: #161b22;
-            padding: 20px;
-            border-radius: 0 0 var(--radius) var(--radius);
-            margin: 0;
-            white-space: pre-wrap;
-            position: relative;
-        }
-        pre.code-block code {
-            background: none;
-            padding: 0;
-            color: #c9d1d9;
-            font-size: 0.9em;
-            line-height: 1.6;
-        }
-        .copy-code-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: #21262d;
-            border: 1px solid #30363d;
-            color: var(--text-secondary);
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            opacity: 0.5;
-        }
-        pre.code-block:hover .copy-code-btn { opacity: 1; }
-        .copy-code-btn:hover { background: #30363d; color: #fff; }
-
-        /* Syntax Highlighting */
-        .token.keyword { color: #ff7b72; }
-        .token.string { color: #a5d6ff; }
-        .token.number { color: #d2a8ff; }
-        .token.function { color: #d2a8ff; }
-        .token.comment { color: #8b949e; }
-        .token.punctuation { color: #c9d1d9; }
-        .token.operator { color: #ff7b72; }
-
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .code-generator { width: 350px; } /* Adjust width */
-        }
-        @media (max-width: 992px) {
-            .code-generator { display: none; } /* Hide code generator on smaller desktops */
-            .sidebar-nav { width: 220px; }
-            main { padding: 40px 20px; }
-        }
-        @media (max-width: 768px) {
-            .container { flex-direction: column; }
-            .sidebar-nav { position: static; height: auto; width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); padding: 20px; }
-            .nav-logo { border-bottom: none; margin-bottom: 0; }
-            .nav-top-links { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-            .sidebar-nav ul { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px; justify-content: center; }
-            .sidebar-nav li { flex-grow: 1; min-width: 120px; text-align: center; }
-            .nav-section-title { display: none; } /* Hide section titles on mobile nav */
-            main { padding: 30px 15px; }
-            h2 { font-size: 1.8em; }
-            .endpoint-header { flex-direction: column; align-items: flex-start; }
-            .credit-cost { margin-left: 0; margin-top: 10px; }
-        }
+        @media (max-width: 1200px) { .code-examples { display: none; } }
+        @media (max-width: 768px) { .sidebar-nav { display: none; } .main-header { flex-direction: column; gap: 15px; padding: 15px; } main { padding: 30px 15px; } }
     </style>
 </head>
 <body>
+    <header class="main-header">
+        <a href="index.html" class="header-logo">
+            <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Elvion AI Logo">
+            <h1>Elvion AI</h1>
+        </a>
+        <div class="header-nav">
+            <div class="api-status">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text">Checking API Status...</span>
+            </div>
+            <a href="index.html">Home</a>
+            <a href="developer-dashboard.html">Dashboard</a>
+        </div>
+    </header>
 
     <div class="container">
-        <nav class="sidebar-nav" id="sidebar-nav">
-            <div class="nav-top-links">
-                <a href="index.html"><i class="fas fa-home"></i> Home</a>
-                <a href="developer-login.html"><i class="fas fa-sign-in-alt"></i> Login</a>
-                <a href="developer-dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            </div>
-            <div class="nav-logo">
-                <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Elvion AI Logo">
-                <h1>API Explorer</h1>
-            </div>
+        <nav class="sidebar-nav">
             <ul>
                 <li class="nav-section-title">Getting Started</li>
                 <li><a href="#introduction" class="nav-link active">Introduction</a></li>
                 <li><a href="#authentication" class="nav-link">Authentication</a></li>
-                <li><a href="#quick-start" class="nav-link">Quick Start</a></li>
-                <li class="nav-section-title">Core AI Models</li>
-                <li><a href="#endpoint-bobby-chat" class="nav-link">Bobby Chat</a></li>
-                <li><a href="#endpoint-seraphina-chat" class="nav-link">Seraphina Chat</a></li>
-                <li class="nav-section-title">Creative & Generative Tools</li>
-                <li><a href="#endpoint-generate-image" class="nav-link">Image Generation</a></li>
-                <li><a href="#endpoint-edit-photo" class="nav-link">Edit Photo</a></li>
-                <li><a href="#endpoint-remove-background" class="nav-link">Remove Background</a></li>
-                <li><a href="#endpoint-text-to-speech" class="nav-link">Text-to-Speech</a></li>
-                <li><a href="#endpoint-generate-video-text" class="nav-link">Video from Text</a></li>
-                <li><a href="#endpoint-generate-video-image" class="nav-link">Video from Image</a></li>
-                <li><a href="#endpoint-generate-music" class="nav-link">Music Generation</a></li>
-                <li class="nav-section-title">Error & Pricing</li>
-                <li><a href="#error-handling" class="nav-link">Error Handling</a></li>
-                <li><a href="#pricing-credits" class="nav-link">Pricing & Credits</a></li>
+                <li class="nav-section-title">API Endpoints</li>
+                <li><a href="#endpoint-bobby" class="nav-link">Bobby Chat</a></li>
+                <li><a href="#endpoint-seraphina" class="nav-link">Seraphina Chat</a></li>
+                <li><a href="#endpoint-image" class="nav-link">Image Generation</a></li>
             </ul>
         </nav>
 
-        <main id="main-content">
+        <main>
             <section id="introduction">
-                <h2>Introduction</h2>
-                <p>Welcome to the Elvion AI Developer API Explorer. This interactive guide allows you to understand, test, and integrate our advanced AI models directly from your browser. Our API provides programmatic access to Elvion AI's capabilities, designed for scalability and ease of use.</p>
-                <p>Use the navigation on the left to jump to specific endpoints. You can enter your API key, customize parameters, run requests live, and view dynamically generated code snippets for Python and JavaScript on the right.</p>
-                <p>Manage your API keys and wallet balance on your <a href="developer-dashboard.html">Developer Dashboard</a>.</p>
+                <h2>API Explorer</h2>
+                <p>Welcome to the Elvion AI Developer Hub. This is an interactive environment where you can explore, test, and integrate our powerful AI models directly from your browser. Get your API key, choose an endpoint, and make your first live request in minutes.</p>
             </section>
 
             <section id="authentication">
                 <h2>Authentication</h2>
-                <p>All requests to the Elvion AI API must be authenticated using an API key. You can generate, manage, and revoke your API keys from the Developer Dashboard.</p>
-                <p>Include your API key in the <code>Authorization</code> header, formatted as a Bearer token:</p>
-                <code>Authorization: Bearer YOUR_API_KEY</code>
-                <p style="margin-top:20px;">Enter your API Key in the dedicated input field in the Code Generator section on the right to test endpoints live. If you don't have one, generate it on the <a href="developer-dashboard.html">Developer Dashboard</a>.</p>
-                <input type="text" id="api-key-input" class="api-key-input" placeholder="Enter your Elvion AI API Key here (e.g., elv_sec_...)">
-            </section>
-
-            <section id="quick-start">
-                <h2>Quick Start Guide</h2>
-                <p>Get your first AI response in minutes!</p>
-                <h3>1. Get Your API Key</h3>
-                <p>Log into your <a href="developer-dashboard.html">Developer Dashboard</a> and generate a new API key. Copy it.</p>
-                <h3>2. Enter Your API Key</h3>
-                <p>Paste your API key into the input field above or in the Code Generator on the right.</p>
-                <h3>3. Try Bobby Chat</h3>
-                <p>Navigate to the "Bobby Chat" section below, input a simple prompt like "Tell me a fun fact.", and click "Send Request". Observe the response and the generated code examples.</p>
-            </section>
-
-            <!-- Bobby Chat Endpoint -->
-            <section id="endpoint-bobby-chat" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/developer/bobby/chat</span>
-                    <span class="credit-cost">2 Credits</span>
-                </div>
-                <p>Access the Bobby model, a fast and cost-effective conversational AI. Ideal for general chat, simple Q&A, and creative text generation. Bobby does not have real-time web access.</p>
-                <form id="form-bobby-chat">
-                    <div class="form-group">
-                        <label for="bobby-prompt">Prompt <span style="color:var(--red);">*</span></label>
-                        <textarea id="bobby-prompt" placeholder="Hello, who are you?"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="bobby-system-prompt">System Prompt (Optional)</label>
-                        <textarea id="bobby-system-prompt" placeholder="You are a helpful assistant."></textarea>
-                    </div>
-                    <button type="submit" class="submit-btn" id="bobby-submit-btn">
-                        <span class="btn-text">Send Request</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-bobby-chat" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                </div>
-            </section>
-
-            <!-- Seraphina Chat Endpoint -->
-            <section id="endpoint-seraphina-chat" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/developer/seraphina/chat</span>
-                    <span class="credit-cost">5 Credits</span>
-                </div>
-                <p>Access Seraphina, our premium, web-grounded research assistant. Seraphina provides accurate, up-to-date information with citations. This endpoint supports streaming for real-time responses.</p>
-                <form id="form-seraphina-chat">
-                    <div class="form-group">
-                        <label for="seraphina-message">Message <span style="color:var(--red);">*</span></label>
-                        <textarea id="seraphina-message" placeholder="What is the capital of Nigeria and cite your source."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="seraphina-stream">Stream Response?</label>
-                        <select id="seraphina-stream">
-                            <option value="true">Yes (Recommended)</option>
-                            <option value="false">No (Full response at once)</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="submit-btn" id="seraphina-submit-btn">
-                        <span class="btn-text">Send Request</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-seraphina-chat" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <div class="stream-response-container"></div>
+                <p>Your API key is required for all requests. Enter it below to enable the "Try It Out" feature for all endpoints. You can generate and manage your keys from the <a href="developer-dashboard.html" style="color:var(--cyan);">Developer Dashboard</a>.</p>
+                <div class="form-group">
+                    <label for="api-key-input"><i class="fas fa-key"></i> Your API Key</label>
+                    <input type="password" id="api-key-input" placeholder="elv_sec_...">
                 </div>
             </section>
             
-            <!-- Image Generation Endpoint -->
-            <section id="endpoint-generate-image" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/developer/generate-image</span>
-                    <span class="credit-cost">15 Credits</span>
-                </div>
-                <p>Generate high-quality, unique images from a detailed text prompt. Choose between different models and providers.</p>
-                <form id="form-generate-image">
-                    <div class="form-group">
-                        <label for="image-prompt">Image Prompt <span style="color:var(--red);">*</span></label>
-                        <textarea id="image-prompt" placeholder="A futuristic city at sunset, neon lights reflecting on wet streets, cybernetic people walking, cinematic, photorealistic"></textarea>
+            <section id="endpoint-bobby">
+                <h2>Bobby Chat</h2>
+                <p>A fast and cost-effective conversational model for general-purpose tasks. Cost: 2 Credits/call.</p>
+                <div class="api-tester">
+                    <div class="api-tester-header">Try It Out</div>
+                    <div class="api-tester-body">
+                        <div class="form-group">
+                            <label for="bobby-prompt">Prompt</label>
+                            <textarea id="bobby-prompt">Tell me a short, futuristic story about a programmer and their AI companion.</textarea>
+                        </div>
+                        <button class="submit-btn" data-endpoint="bobby">Send API Request</button>
+                        <div class="api-response">
+                            <h3>Response</h3>
+                            <pre id="bobby-response"><code>Awaiting request...</code></pre>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="image-model">Model</label>
-                        <select id="image-model">
-                            <option value="v6">Thena V6 (Default)</option>
-                            <option value="photoreal">Thena Photoreal</option>
-                            <option value="anime_core">Thena Anime Core</option>
-                            <option value="illustration">Thena Illustration</option>
-                            <option value="realistic">Thena Realistic</option>
-                            <option value="movie">Thena Movie</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="image-use-minimax">Use MiniMax (Experimental)</label>
-                        <select id="image-use-minimax">
-                            <option value="false">No (Use Thena)</option>
-                            <option value="true">Yes (Use MiniMax)</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="submit-btn" id="image-submit-btn">
-                        <span class="btn-text">Generate Image</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-generate-image" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                    <div class="image-response"></div>
                 </div>
             </section>
             
-            <!-- Edit Photo Endpoint (MiniMax) -->
-            <section id="endpoint-edit-photo" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/tools/edit-photo</span>
-                    <span class="credit-cost">15 Credits</span>
-                </div>
-                <p>Edit an existing photo based on a text prompt. Upload your image and describe the changes.</p>
-                <form id="form-edit-photo">
-                    <div class="form-group">
-                        <label for="edit-photo-file">Image File <span style="color:var(--red);">*</span></label>
-                        <input type="file" id="edit-photo-file" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-photo-prompt">Edit Prompt <span style="color:var(--red);">*</span></label>
-                        <textarea id="edit-photo-prompt" placeholder="Change the sky to a vibrant sunset orange, add a dragon flying in the distance."></textarea>
-                    </div>
-                    <button type="submit" class="submit-btn" id="edit-photo-submit-btn">
-                        <span class="btn-text">Edit Photo</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-edit-photo" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                    <div class="image-response"></div>
-                </div>
-            </section>
-
-            <!-- Remove Background Endpoint -->
-            <section id="endpoint-remove-background" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/tools/remove-background</span>
-                    <span class="credit-cost">5 Credits</span>
-                </div>
-                <p>Automatically remove the background from an uploaded image.</p>
-                <form id="form-remove-background">
-                    <div class="form-group">
-                        <label for="remove-bg-file">Image File <span style="color:var(--red);">*</span></label>
-                        <input type="file" id="remove-bg-file" accept="image/*">
-                    </div>
-                    <button type="submit" class="submit-btn" id="remove-bg-submit-btn">
-                        <span class="btn-text">Remove Background</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-remove-background" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                    <div class="image-response"></div>
-                </div>
-            </section>
-
-             <!-- Text-to-Speech Endpoint -->
-            <section id="endpoint-text-to-speech" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/tools/text-to-speech</span>
-                    <span class="credit-cost">5 Credits</span>
-                </div>
-                <p>Convert text into natural-sounding speech using MiniMax TTS voices.</p>
-                <form id="form-text-to-speech">
-                    <div class="form-group">
-                        <label for="tts-text">Text to Speak <span style="color:var(--red);">*</span></label>
-                        <textarea id="tts-text" placeholder="The quick brown fox jumps over the lazy dog."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="tts-voice">Voice Style</label>
-                        <select id="tts-voice">
-                            <option value="Wise_Woman">Wise Woman (Default)</option>
-                            <option value="Exuberant_Girl">Exuberant Girl (Anime)</option>
-                            <option value="Deep_Voice_Man">Deep Voice Man (Movie)</option>
-                            <option value="Calm_Woman">Calm Woman (Narrator)</option>
-                            <option value="Young_Knight">Young Knight</option>
-                            <option value="Abbess">Abbess</option>
-                            <option value="Sweet_Girl_2">Sweet Girl</option>
-                            <option value="Lovely_Girl">Lovely Girl</option>
-                            <option value="Casual_Guy">Casual Guy</option>
-                            <option value="Imposing_Manner">Imposing Manner (CEO)</option>
-                            <option value="Patient_Man">Patient Man (Gentle)</option>
-                            <option value="Determined_Man">Determined Man (Hero)</option>
-                            <option value="Lively_Girl">Lively Girl (Cute)</option>
-                            <option value="Decent_Boy">Decent Boy</option>
-                            <option value="Elegant_Man">Elegant Man</option>
-                            <option value="Friendly_Person">Friendly Person</option>
-                            <option value="Inspirational_girl">Inspirational Girl</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="submit-btn" id="tts-submit-btn">
-                        <span class="btn-text">Generate Speech</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-text-to-speech" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                    <div class="audio-response"></div>
-                </div>
-            </section>
-
-             <!-- Video from Text Endpoint -->
-            <section id="endpoint-generate-video-text" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/tools/generate-video-from-text</span>
-                    <span class="credit-cost">25 Credits</span>
-                </div>
-                <p>Generate a short video from a descriptive text prompt. This is an asynchronous process; you'll get a task ID to check its status.</p>
-                <form id="form-generate-video-text">
-                    <div class="form-group">
-                        <label for="video-text-prompt">Video Description <span style="color:var(--red);">*</span></label>
-                        <textarea id="video-text-prompt" placeholder="A spaceship flying through an asteroid field, dynamic camera movement, cinematic."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="video-text-duration">Duration (seconds, max 12)</label>
-                        <input type="number" id="video-text-duration" value="6" min="1" max="12">
-                    </div>
-                    <button type="submit" class="submit-btn" id="video-text-submit-btn">
-                        <span class="btn-text">Generate Video</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-generate-video-text" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                    <div class="video-status-check" style="margin-top: 20px;">
-                        <p id="video-text-status-msg"></p>
-                        <button id="video-text-check-status-btn" class="submit-btn" style="display:none;">
-                            <span class="btn-text">Check Video Status</span>
-                            <span class="btn-loader"><div class="loader"></div></span>
-                        </button>
-                        <div class="video-response" id="video-text-result" style="display:none;"></div>
+            <section id="endpoint-seraphina">
+                <h2>Seraphina Chat</h2>
+                <p>A premium, web-grounded research assistant for accurate, up-to-date answers. Cost: 5 Credits/call.</p>
+                <div class="api-tester">
+                    <div class="api-tester-header">Try It Out</div>
+                    <div class="api-tester-body">
+                        <div class="form-group">
+                            <label for="seraphina-prompt">Message</label>
+                            <textarea id="seraphina-prompt">What are the latest developments in generative AI models as of this week?</textarea>
+                        </div>
+                        <button class="submit-btn" data-endpoint="seraphina">Send API Request</button>
+                        <div class="api-response">
+                            <h3>Response</h3>
+                            <pre id="seraphina-response"><code>Awaiting request...</code></pre>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Video from Image Endpoint -->
-            <section id="endpoint-generate-video-image" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/tools/generate-video-from-image</span>
-                    <span class="credit-cost">25 Credits</span>
-                </div>
-                <p>Animate a still image with a motion prompt. You'll upload an image and specify the animation. This is also an asynchronous process.</p>
-                <form id="form-generate-video-image">
-                    <div class="form-group">
-                        <label for="video-image-file">Starting Image <span style="color:var(--red);">*</span></label>
-                        <input type="file" id="video-image-file" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label for="video-image-prompt">Animation Prompt <span style="color:var(--red);">*</span></label>
-                        <textarea id="video-image-prompt" placeholder="Make the clouds move slowly across the sky, camera gently pans left."></textarea>
-                    </div>
-                    <button type="submit" class="submit-btn" id="video-image-submit-btn">
-                        <span class="btn-text">Animate Image</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-generate-video-image" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                     <div class="video-status-check" style="margin-top: 20px;">
-                        <p id="video-image-status-msg"></p>
-                        <button id="video-image-check-status-btn" class="submit-btn" style="display:none;">
-                            <span class="btn-text">Check Video Status</span>
-                            <span class="btn-loader"><div class="loader"></div></span>
-                        </button>
-                        <div class="video-response" id="video-image-result" style="display:none;"></div>
+            <section id="endpoint-image">
+                <h2>Image Generation</h2>
+                <p>Create high-quality images from text. Cost: 15 Credits/call.</p>
+                <div class="api-tester">
+                    <div class="api-tester-header">Try It Out</div>
+                    <div class="api-tester-body">
+                        <div class="form-group">
+                            <label for="image-prompt">Prompt</label>
+                            <textarea id="image-prompt">A cyberpunk cityscape at night, neon signs reflecting on wet streets, a lone figure in a trench coat, photorealistic, cinematic lighting.</textarea>
+                        </div>
+                         <div class="form-group">
+                            <label for="image-model">Model</label>
+                            <select id="image-model">
+                                <option value="v6">Thena v6 (General)</option>
+                                <option value="photoreal">Thena Photoreal</option>
+                                <option value="anime_core">Thena Anime Core</option>
+                                <option value="minimax">MiniMax Creative</option>
+                            </select>
+                        </div>
+                        <button class="submit-btn" data-endpoint="image">Send API Request</button>
+                        <div class="api-response">
+                            <h3>Response</h3>
+                            <pre id="image-response"><code>Awaiting request... (Response will show image data)</code></pre>
+                        </div>
                     </div>
                 </div>
             </section>
-
-            <!-- Music Generation Endpoint -->
-            <section id="endpoint-generate-music" class="endpoint-card">
-                <div class="endpoint-header">
-                    <span class="endpoint-method">POST</span>
-                    <span class="endpoint-path">/api/tools/generate-music</span>
-                    <span class="credit-cost">10 Credits</span>
-                </div>
-                <p>Generate unique music from a text description. You can include optional lyrics.</p>
-                <form id="form-generate-music">
-                    <div class="form-group">
-                        <label for="music-prompt">Music Description <span style="color:var(--red);">*</span></label>
-                        <textarea id="music-prompt" placeholder="An upbeat pop song with shimmering electronic beats and a catchy melody."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="music-lyrics">Lyrics (Optional)</label>
-                        <textarea id="music-lyrics" placeholder="You're the spark, you're the light, making everything feel so right..."></textarea>
-                    </div>
-                    <button type="submit" class="submit-btn" id="music-submit-btn">
-                        <span class="btn-text">Generate Music</span>
-                        <span class="btn-loader"><div class="loader"></div></span>
-                    </button>
-                </form>
-                <div class="response-area" id="response-generate-music" style="display:none;">
-                    <h4 class="response-header">Response:</h4>
-                    <pre class="response-viewer"></pre>
-                    <div class="audio-response"></div>
-                </div>
-            </section>
-
-            <section id="error-handling">
-                <h2>Error Handling</h2>
-                <p>The API uses standard HTTP status codes. If a request fails, the response body will be a JSON object with a <code>detail</code> key and a human-readable error message. Your code should always anticipate non-200 responses.</p>
-                <table>
-                    <thead><tr><th>Status Code</th><th>Meaning</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>200 OK</code></td><td>Request successful.</td></tr>
-                        <tr><td><code>401 Unauthorized</code></td><td>Authentication failed. API key missing, invalid, or revoked.</td></tr>
-                        <tr><td><code>402 Payment Required</code></td><td>Insufficient credits.</td></tr>
-                        <tr><td><code>404 Not Found</code></td><td>Endpoint does not exist.</td></tr>
-                        <tr><td><code>422 Unprocessable Entity</code></td><td>Malformed request body or missing parameters.</td></tr>
-                        <tr><td><code>5xx Server Error</code></td><td>Unexpected error on our end. Try again.</td></tr>
-                    </tbody>
-                </table>
-            </section>
-            
-            <section id="pricing-credits">
-                <h2>Pricing & Credits</h2>
-                <p>All API usage is billed in credits, deducted in real-time. Purchase credits from your <a href="developer-dashboard.html">Developer Dashboard</a>.</p>
-                 <table>
-                    <thead><tr><th>Service</th><th>Cost (Credits)</th></tr></thead>
-                    <tbody>
-                        <tr><td>Bobby Chat</td><td>2 per request</td></tr>
-                        <tr><td>Seraphina Chat</td><td>5 per request</td></tr>
-                        <tr><td>Image Generation</td><td>15 per request</td></tr>
-                        <tr><td>Edit Photo</td><td>15 per request</td></tr>
-                        <tr><td>Remove Background</td><td>5 per request</td></tr>
-                        <tr><td>Text-to-Speech</td><td>5 per request</td></tr>
-                        <tr><td>Video from Text</td><td>25 per request</td></tr>
-                        <tr><td>Video from Image</td><td>25 per request</td></tr>
-                        <tr><td>Music Generation</td><td>10 per request</td></tr>
-                        <tr><td>API Key Generation</td><td>100 per key (on dashboard)</td></tr>
-                    </tbody>
-                </table>
-            </section>
-
         </main>
 
-        <!-- Right Sidebar: Code Generator -->
-        <aside class="code-generator" id="code-generator">
-            <h2 class="code-generator-header">Code Samples</h2>
-            <p style="color:var(--text-secondary); margin-bottom: 20px;">Your API key will be automatically included in the code samples below if entered.</p>
-            <input type="text" id="generator-api-key-input" class="api-key-input" placeholder="Enter your API Key (for code samples)">
-
-            <div class="lang-tabs">
-                <button class="lang-tab active" data-lang="python">Python</button>
-                <button class="lang-tab" data-lang="javascript">JavaScript</button>
-            </div>
-            
-            <div id="generated-code-output">
-                <pre class="code-block" data-lang-id="python">
-<button class="copy-code-btn" title="Copy to clipboard"><i class="fas fa-copy"></i></button><code class="language-python"># Select an endpoint to see code here.</code></pre>
-                <pre class="code-block" data-lang-id="javascript" style="display:none;">
-<button class="copy-code-btn" title="Copy to clipboard"><i class="fas fa-copy"></i></button><code class="language-javascript">// Select an endpoint to see code here.</code></pre>
-            </div>
+        <aside class="code-examples">
+            <!-- Code examples will be dynamically loaded here by JS -->
         </aside>
     </div>
 
-    <script>
-        const BACKEND_URL = "https://web-production-9a18.up.railway.app"; 
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Global Config ---
+    const API_BASE_URL = "https://web-production-9a18.up.railway.app";
+    const apiKeyInput = document.getElementById('api-key-input');
+    
+    // --- API Status Check ---
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    fetch(API_BASE_URL)
+        .then(res => {
+            if (res.ok) {
+                statusDot.classList.add('online');
+                statusText.textContent = 'API Online';
+            } else { throw new Error(); }
+        })
+        .catch(() => { statusText.textContent = 'API Unreachable'; });
 
-        // Global DOM references
-        const dom = {
-            sidebarNav: document.getElementById('sidebar-nav'),
-            mainContent: document.getElementById('main-content'),
-            navLinks: document.querySelectorAll('.sidebar-nav .nav-link'),
-            apiKeyInput: document.getElementById('api-key-input'),
-            generatorApiKeyInput: document.getElementById('generator-api-key-input'),
-            langTabs: document.querySelectorAll('.lang-tab'),
-            generatedCodeOutput: document.getElementById('generated-code-output'),
-            copyCodeButtons: document.querySelectorAll('.copy-code-btn'),
-            // Specific endpoint forms
-            formBobbyChat: document.getElementById('form-bobby-chat'),
-            responseBobbyChat: document.getElementById('response-bobby-chat'),
-            bobbySubmitBtn: document.getElementById('bobby-submit-btn'),
-
-            formSeraphinaChat: document.getElementById('form-seraphina-chat'),
-            responseSeraphinaChat: document.getElementById('response-seraphina-chat'),
-            seraphinaSubmitBtn: document.getElementById('seraphina-submit-btn'),
-
-            formGenerateImage: document.getElementById('form-generate-image'),
-            responseGenerateImage: document.getElementById('response-generate-image'),
-            imageSubmitBtn: document.getElementById('image-submit-btn'),
-
-            formEditPhoto: document.getElementById('form-edit-photo'),
-            responseEditPhoto: document.getElementById('response-edit-photo'),
-            editPhotoSubmitBtn: document.getElementById('edit-photo-submit-btn'),
-
-            formRemoveBackground: document.getElementById('form-remove-background'),
-            responseRemoveBackground: document.getElementById('response-remove-background'),
-            removeBgSubmitBtn: document.getElementById('remove-bg-submit-btn'),
-
-            formTextToSpeech: document.getElementById('form-text-to-speech'),
-            responseTextToSpeech: document.getElementById('response-text-to-speech'),
-            ttsSubmitBtn: document.getElementById('tts-submit-btn'),
-
-            formGenerateVideoText: document.getElementById('form-generate-video-text'),
-            responseGenerateVideoText: document.getElementById('response-generate-video-text'),
-            videoTextSubmitBtn: document.getElementById('video-text-submit-btn'),
-            videoTextCheckStatusBtn: document.getElementById('video-text-check-status-btn'),
-            videoTextStatusMsg: document.getElementById('video-text-status-msg'),
-            videoTextResult: document.getElementById('video-text-result'),
-
-            formGenerateVideoImage: document.getElementById('form-generate-video-image'),
-            responseGenerateVideoImage: document.getElementById('response-generate-video-image'),
-            videoImageSubmitBtn: document.getElementById('video-image-submit-btn'),
-            videoImageCheckStatusBtn: document.getElementById('video-image-check-status-btn'),
-            videoImageStatusMsg: document.getElementById('video-image-status-msg'),
-            videoImageResult: document.getElementById('video-image-result'),
-
-            formGenerateMusic: document.getElementById('form-generate-music'),
-            responseGenerateMusic: document.getElementById('response-generate-music'),
-            musicSubmitBtn: document.getElementById('music-submit-btn'),
-        };
-
-        let currentActiveForm = null; // Track which form is currently active for code generation
-        let currentLang = 'python'; // Default code language
-
-        // --- Utility Functions ---
-        function setStatusMessage(element, message, color = var(--text-primary)) {
-            if (element) {
-                element.textContent = message;
-                element.style.color = color;
+    // --- Scroll Spy & Nav ---
+    const sections = document.querySelectorAll('main section');
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
+                });
             }
-        }
+        });
+    }, { rootMargin: '-40% 0px -60% 0px' });
+    sections.forEach(section => observer.observe(section));
 
-        function showResponseArea(element, display = 'block') {
-            element.style.display = display;
-        }
+    // --- Interactive API Tester ---
+    const allTesterButtons = document.querySelectorAll('.submit-btn[data-endpoint]');
+    allTesterButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const endpoint = button.dataset.endpoint;
+            const apiKey = apiKeyInput.value;
+            const responseElement = document.getElementById(`${endpoint}-response`);
 
-        function hideResponseArea(element) {
-            element.style.display = 'none';
-        }
-
-        function clearResponseArea(element) {
-            const pre = element.querySelector('pre.response-viewer');
-            const img = element.querySelector('.image-response');
-            const audio = element.querySelector('.audio-response');
-            const videoContainer = element.querySelector('.video-response');
-            const streamContainer = element.querySelector('.stream-response-container');
-
-            if (pre) pre.textContent = '';
-            if (img) img.innerHTML = '';
-            if (audio) audio.innerHTML = '';
-            if (videoContainer) videoContainer.innerHTML = '';
-            if (streamContainer) streamContainer.innerHTML = '';
-        }
-        
-        function toggleButtonLoading(button, isLoading) {
-            button.disabled = isLoading;
-            button.classList.toggle('btn-loading', isLoading);
-        }
-
-        // --- API Helper Function ---
-        async function makeApiCall(endpoint, method, payload, isFormData = false) {
-            const apiKey = dom.apiKeyInput.value.trim();
             if (!apiKey) {
-                alert('Please enter your API Key first!');
-                return null;
+                alert('Please enter your API Key in the Authentication section first.');
+                apiKeyInput.focus();
+                return;
             }
 
-            const headers = {
-                'Authorization': `Bearer ${apiKey}`
-            };
-
-            let body = null;
-            if (method === 'POST') {
-                if (isFormData) {
-                    body = payload; // FormData is passed directly
-                } else {
-                    headers['Content-Type'] = 'application/json';
-                    body = JSON.stringify(payload);
-                }
-            }
+            let body = {};
+            let path = '';
 
             try {
-                const response = await fetch(`${BACKEND_URL}${endpoint}`, {
-                    method: method,
-                    headers: headers,
-                    body: body,
+                switch (endpoint) {
+                    case 'bobby':
+                        path = '/api/developer/bobby/chat';
+                        body = { prompt: document.getElementById('bobby-prompt').value };
+                        break;
+                    case 'seraphina':
+                        path = '/api/developer/seraphina/chat';
+                        body = { message: document.getElementById('seraphina-prompt').value, stream: false }; // Force non-stream for simple display
+                        break;
+                    case 'image':
+                        path = '/api/developer/generate-image';
+                        const model = document.getElementById('image-model').value;
+                        body = {
+                            prompt: document.getElementById('image-prompt').value,
+                            model: model === 'minimax' ? 'v6' : model,
+                            use_minimax: model === 'minimax'
+                        };
+                        break;
+                }
+
+                responseElement.innerHTML = '<code>Sending request...</code>';
+                button.disabled = true;
+
+                const response = await fetch(API_BASE_URL + path, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
                 });
+                
+                const data = await response.json();
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("API Error:", response.status, errorText);
-                    let errorDetail = errorText;
-                    try {
-                        const errorJson = JSON.parse(errorText);
-                        errorDetail = errorJson.detail || errorText;
-                    } catch (e) { /* not JSON */ }
-                    throw new Error(`API Error ${response.status}: ${errorDetail}`);
+                    throw new Error(data.detail || `HTTP Error ${response.status}`);
                 }
-                return response; // Return full response for streaming or JSON parsing
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                throw error;
-            }
-        }
-
-        // --- Code Generation ---
-        function generateCode(formId, lang, apiKey) {
-            const form = document.getElementById(formId);
-            if (!form) return;
-
-            let endpointPath = '';
-            let payload = {};
-            let isFilePayload = false; // For file uploads
-
-            // Common headers
-            const authHeader = apiKey ? `'Authorization': 'Bearer ${apiKey}'` : `'Authorization': 'Bearer YOUR_API_KEY'`;
-
-            // --- Bobby Chat ---
-            if (formId === 'form-bobby-chat') {
-                endpointPath = '/api/developer/bobby/chat';
-                payload.prompt = form.querySelector('#bobby-prompt').value || "Hello, who are you?";
-                const systemPrompt = form.querySelector('#bobby-system-prompt').value;
-                if (systemPrompt) payload.systemPrompt = systemPrompt;
-            }
-            // --- Seraphina Chat ---
-            else if (formId === 'form-seraphina-chat') {
-                endpointPath = '/api/developer/seraphina/chat';
-                payload.message = form.querySelector('#seraphina-message').value || "What is the capital of Nigeria and cite your source.";
-                payload.stream = form.querySelector('#seraphina-stream').value === 'true';
-                // Note: History is dynamic and not easily represented statically
-            }
-            // --- Image Generation ---
-            else if (formId === 'form-generate-image') {
-                endpointPath = '/api/developer/generate-image';
-                payload.prompt = form.querySelector('#image-prompt').value || "A futuristic city at sunset, neon lights reflecting on wet streets, cybernetic people walking, cinematic, photorealistic";
-                payload.model = form.querySelector('#image-model').value || "v6";
-                payload.use_minimax = form.querySelector('#image-use-minimax').value === 'true';
-            }
-            // --- Edit Photo ---
-            else if (formId === 'form-edit-photo') {
-                endpointPath = '/api/tools/edit-photo';
-                payload.prompt = form.querySelector('#edit-photo-prompt').value || "Change the sky to a vibrant sunset orange.";
-                // File upload - special handling
-                isFilePayload = true;
-            }
-            // --- Remove Background ---
-            else if (formId === 'form-remove-background') {
-                endpointPath = '/api/tools/remove-background';
-                isFilePayload = true;
-            }
-            // --- Text to Speech ---
-            else if (formId === 'form-text-to-speech') {
-                endpointPath = '/api/tools/text-to-speech';
-                payload.text = form.querySelector('#tts-text').value || "The quick brown fox jumps over the lazy dog.";
-                payload.voice_id = form.querySelector('#tts-voice').value || "Wise_Woman";
-            }
-            // --- Video from Text ---
-            else if (formId === 'form-generate-video-text') {
-                endpointPath = '/api/tools/generate-video-from-text';
-                payload.prompt = form.querySelector('#video-text-prompt').value || "A majestic eagle soaring over snow-capped mountains.";
-                payload.duration = parseInt(form.querySelector('#video-text-duration').value) || 6;
-            }
-            // --- Video from Image ---
-            else if (formId === 'form-generate-video-image') {
-                endpointPath = '/api/tools/generate-video-from-image';
-                payload.prompt = form.querySelector('#video-image-prompt').value || "Make the ocean waves crash dynamically.";
-                isFilePayload = true;
-            }
-            // --- Music Generation ---
-            else if (formId === 'form-generate-music') {
-                endpointPath = '/api/tools/generate-music';
-                payload.prompt = form.querySelector('#music-prompt').value || "A chill synthwave track with a driving beat.";
-                const lyrics = form.querySelector('#music-lyrics').value;
-                if (lyrics) payload.lyrics = lyrics;
-            }
-
-
-            const fullUrl = `${BACKEND_URL}${endpointPath}`;
-
-            let code = '';
-            if (lang === 'python') {
-                let pythonBody = '';
-                if (isFilePayload) {
-                    const fileName = form.querySelector('input[type="file"]').files[0]?.name || 'your_image.png';
-                    const fileVar = `files={'file': ('${fileName}', open('${fileName}', 'rb'), 'image/png')}`; // Assuming image type
-                    if (formId === 'form-edit-photo' || formId === 'form-generate-video-image') {
-                         pythonBody = `
-files = {
-    'file': ('${fileName}', open('${fileName}', 'rb'), 'image/png')
-}
-data = {
-    'prompt': "${payload.prompt}"
-}
-response = requests.post(API_URL, headers={'Authorization': f"Bearer {apiKey}"}, files=files, data=data)
-                         `.trim();
-                    } else { // Remove background, video from image
-                        pythonBody = `
-files={'file': ('${fileName}', open('${fileName}', 'rb'), 'image/png')}
-response = requests.post(API_URL, headers={'Authorization': f"Bearer {apiKey}"}, files=files)
-                        `.trim();
-                    }
-                } else {
-                    pythonBody = `json.dumps(${JSON.stringify(payload, null, 2)})`;
-                    if (formId === 'form-seraphina-chat' && payload.stream === true) {
-                        code = `<span class="token comment"># Note: Streaming responses require a more complex HTTP client (e.g., httpx with async)</span>
-<span class="token keyword">import</span> requests
-<span class="token keyword">import</span> json
-
-API_URL = <span class="token string">"${fullUrl}"</span>
-API_KEY = <span class="token string">"${apiKey || 'YOUR_API_KEY'}"</span>
-
-headers = {
-    <span class="token string">"Authorization"</span>: <span class="token string">f"Bearer <span class="token punctuation">{</span>API_KEY<span class="token punctuation">}</span>"</span>,
-    <span class="token string">"Content-Type"</span>: <span class="token string">"application/json"</span>
-}
-
-data = {
-    <span class="token string">"message"</span>: ${JSON.stringify(payload.message)},
-    <span class="token string">"stream"</span>: <span class="token boolean">True</span>
-}
-
-<span class="token comment"># Example for non-streaming:</span>
-response = requests.post(API_URL, headers=headers, json=data)
-
-<span class="token keyword">if</span> response.status_code == <span class="token number">200</span>:
-    print(json.dumps(response.json(), indent=<span class="token number">2</span>))
-<span class="token keyword">else</span>:
-    print(<span class="token string">f"Error: <span class="token punctuation">{</span>response.status_code<span class="token punctuation">}</span>"</span>)
-    print(response.text)
-`;
-                    } else {
-                        code = `<span class="token comment"># Python Request Example</span>
-<span class="token keyword">import</span> requests
-<span class="token keyword">import</span> json
-
-API_URL = <span class="token string">"${fullUrl}"</span>
-API_KEY = <span class="token string">"${apiKey || 'YOUR_API_KEY'}"</span>
-
-headers = {
-    <span class="token string">"Authorization"</span>: <span class="token string">f"Bearer <span class="token punctuation">{</span>API_KEY<span class="token punctuation">}</span>"</span>,
-    <span class="token string">"Content-Type"</span>: <span class="token string">"application/json"</span>
-}
-
-data = ${pythonBody}
-
-response = requests.post(API_URL, headers=headers, json=data)
-
-<span class="token keyword">if</span> response.status_code == <span class="token number">200</span>:
-    print(json.dumps(response.json(), indent=<span class="token number">2</span>))
-<span class="token keyword">else</span>:
-    print(<span class="token string">f"Error: <span class="token punctuation">{</span>response.status_code<span class="token punctuation">}</span>"</span>)
-    print(response.text)
-`;
-                    }
-                }
-            } else if (lang === 'javascript') {
-                let jsBody = '';
-                if (isFilePayload) {
-                    const fileInputId = formId.replace('form-', '') + '-file';
-                    const fileName = form.querySelector(`#${fileInputId}`).files[0]?.name || 'your_image.png';
-                    jsBody = `
-        <span class="token keyword">const</span> formData = <span class="token keyword">new</span> <span class="token class-name">FormData</span>();
-        formData.<span class="token function">append</span>(<span class="token string">'file'</span>, fileInput.<span class="token function">files</span>[<span class="token number">0</span>]);
-                    `;
-                    if (formId === 'form-edit-photo' || formId === 'form-generate-video-image') {
-                        jsBody = `
-        <span class="token keyword">const</span> formData = <span class="token keyword">new</span> <span class="token class-name">FormData</span>();
-        formData.<span class="token function">append</span>(<span class="token string">'file'</span>, fileInput.<span class="token function">files</span>[<span class="token number">0</span>]);
-        formData.<span class="token function">append</span>(<span class="token string">'prompt'</span>, <span class="token string">${JSON.stringify(payload.prompt)}</span>);
-                        `.trim();
-                    }
-                    code = `<span class="token comment">// JavaScript Fetch API Example (Browser/Node.js with node-fetch)</span>
-<span class="token keyword">const</span> API_URL = <span class="token string">'${fullUrl}'</span>;
-<span class="token keyword">const</span> API_KEY = <span class="token string">'${apiKey || 'YOUR_API_KEY'}'</span>;
-
-<span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">callEndpoint</span>() {
-    <span class="token keyword">const</span> fileInput = document.<span class="token function">getElementById</span>(<span class="token string">'${fileInputId}'</span>);
-    <span class="token keyword">if</span> (!fileInput.<span class="token function">files</span>[<span class="token number">0</span>]) {
-        <span class="token function">alert</span>(<span class="token string">'Please select a file.'</span>);
-        <span class="token keyword">return</span>;
-    }
-${jsBody}
-    <span class="token keyword">try</span> {
-        <span class="token keyword">const</span> response = <span class="token keyword">await</span> <span class="token function">fetch</span>(API_URL, {
-            method: <span class="token string">'POST'</span>,
-            headers: {
-                <span class="token string">'Authorization'</span>: <span class="token string">`Bearer <span class="token punctuation">{</span>API_KEY<span class="token punctuation">}</span>`</span>,
-                <span class="token comment">// 'Content-Type': 'multipart/form-data' is set automatically by browser with FormData</span>
-            },
-            body: formData
-        });
-
-        <span class="token keyword">if</span> (response.ok) {
-            <span class="token keyword">const</span> data = <span class="token keyword">await</span> response.<span class="token function">json</span>();
-            console.<span class="token function">log</span>(data);
-        } <span class="token keyword">else</span> {
-            console.<span class="token function">error</span>(<span class="token string">`Error: <span class="token punctuation">${</span>response.status<span class="token punctuation">}</span>`</span>, <span class="token keyword">await</span> response.<span class="token function">text</span>());
-        }
-    } <span class="token keyword">catch</span> (error) {
-        console.<span class="token function">error</span>(<span class="token string">'Fetch Error:'</span>, error);
-    }
-}
-<span class="token function">callEndpoint</span>();
-`;
-                } else {
-                    jsBody = `JSON.stringify(${JSON.stringify(payload, null, 2)})`;
-                    if (formId === 'form-seraphina-chat' && payload.stream === true) {
-                         code = `<span class="token comment">// JavaScript Fetch API Example (Streaming)</span>
-<span class="token keyword">const</span> API_URL = <span class="token string">'${fullUrl}'</span>;
-<span class="token keyword">const</span> API_KEY = <span class="token string">'${apiKey || 'YOUR_API_KEY'}'</span>;
-
-<span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">callStreamingEndpoint</span>() {
-    <span class="token keyword">try</span> {
-        <span class="token keyword">const</span> response = <span class="token keyword">await</span> <span class="token function">fetch</span>(API_URL, {
-            method: <span class="token string">'POST'</span>,
-            headers: {
-                <span class="token string">'Authorization'</span>: <span class="token string">`Bearer <span class="token punctuation">{</span>API_KEY<span class="token punctuation">}</span>`</span>,
-                <span class="token string">'Content-Type'</span>: <span class="token string">'application/json'</span>
-            },
-            body: <span class="token constant">JSON</span>.<span class="token function">stringify</span>({
-                message: <span class="token string">${JSON.stringify(payload.message)}</span>,
-                stream: <span class="token boolean">true</span>
-            })
-        });
-
-        <span class="token keyword">if</span> (!response.ok) {
-            <span class="token keyword">throw new</span> <span class="token class-name">Error</span>(<span class="token string">`API Error: <span class="token punctuation">${</span>response.status<span class="token punctuation">}</span> <span class="token punctuation">${</span><span class="token keyword">await</span> response.<span class="token function">text</span>()<span class="token punctuation">}</span>`</span>);
-        }
-
-        <span class="token keyword">const</span> reader = response.<span class="token function">body</span>.<span class="token function">getReader</span>();
-        <span class="token keyword">const</span> decoder = <span class="token keyword">new</span> <span class="token class-name">TextDecoder</span>();
-        <span class="token keyword">let</span> result = <span class="token string">''</span>;
-
-        <span class="token keyword">while</span> (<span class="token boolean">true</span>) {
-            <span class="token keyword">const</span> { done, value } = <span class="token keyword">await</span> reader.<span class="token function">read</span>();
-            <span class="token keyword">if</span> (done) <span class="token keyword">break</span>;
-            <span class="token keyword">const</span> chunk = decoder.<span class="token function">decode</span>(value, { stream: <span class="token boolean">true</span> });
-            result += chunk;
-            <span class="token comment">// You would typically append chunk to a UI element here</span>
-            console.<span class="token function">log</span>(chunk); 
-        }
-        console.<span class="token function">log</span>(<span class="token string">'Stream finished.'</span>);
-
-    } <span class="token keyword">catch</span> (error) {
-        console.<span class="token function">error</span>(<span class="token string">'Fetch Error:'</span>, error);
-    }
-}
-<span class="token function">callStreamingEndpoint</span>();
-`;
-                    } else {
-                        code = `<span class="token comment">// JavaScript Fetch API Example (Browser/Node.js with node-fetch)</span>
-<span class="token keyword">const</span> API_URL = <span class="token string">'${fullUrl}'</span>;
-<span class="token keyword">const</span> API_KEY = <span class="token string">'${apiKey || 'YOUR_API_KEY'}'</span>;
-
-<span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">callEndpoint</span>() {
-    <span class="token keyword">try</span> {
-        <span class="token keyword">const</span> response = <span class="token keyword">await</span> <span class="token function">fetch</span>(API_URL, {
-            method: <span class="token string">'POST'</span>,
-            headers: {
-                <span class="token string">'Authorization'</span>: <span class="token string">`Bearer <span class="token punctuation">{</span>API_KEY<span class="token punctuation">}</span>`</span>,
-                <span class="token string">'Content-Type'</span>: <span class="token string">'application/json'</span>
-            },
-            body: ${jsBody}
-        });
-
-        <span class="token keyword">if</span> (response.ok) {
-            <span class="token keyword">const</span> data = <span class="token keyword">await</span> response.<span class="token function">json</span>();
-            console.<span class="token function">log</span>(data);
-        } <span class="token keyword">else</span> {
-            console.<span class="token function">error</span>(<span class="token string">`Error: <span class="token punctuation">${</span>response.status<span class="token punctuation">}</span>`</span>, <span class="token keyword">await</span> response.<span class="token function">text</span>());
-        }
-    } <span class="token keyword">catch</span> (error) {
-        console.<span class="token function">error</span>(<span class="token string">'Fetch Error:'</span>, error);
-    }
-}
-<span class="token function">callEndpoint</span>();
-`;
-                    }
-                }
-            }
-            return code;
-        }
-
-        function updateCodeGenerator() {
-            const pythonCodeBlock = dom.generatedCodeOutput.querySelector('[data-lang-id="python"] code');
-            const jsCodeBlock = dom.generatedCodeOutput.querySelector('[data-lang-id="javascript"] code');
-            const apiKey = dom.generatorApiKeyInput.value.trim();
-
-            if (currentActiveForm) {
-                pythonCodeBlock.innerHTML = syntaxHighlight(generateCode(currentActiveForm, 'python', apiKey), 'python');
-                jsCodeBlock.innerHTML = syntaxHighlight(generateCode(currentActiveForm, 'javascript', apiKey), 'javascript');
-            } else {
-                pythonCodeBlock.textContent = '# Select an endpoint to see code here.';
-                jsCodeBlock.textContent = '// Select an endpoint to see code here.';
-            }
-        }
-
-        // Simple Syntax Highlighter (a real one would be much more complex, but this gives the feel)
-        function syntaxHighlight(code, lang) {
-            if (lang === 'python') {
-                return code
-                    .replace(/\b(import|from|as|if|else|elif|for|while|def|class|return|try|except|finally|with|pass|break|continue|in|not|and|or|is|None|True|False|print)\b/g, '<span class="token keyword">$&</span>')
-                    .replace(/"(.*?)"|'(.*?)'/g, '<span class="token string">$&</span>')
-                    .replace(/\b(\d+)\b/g, '<span class="token number">$&</span>')
-                    .replace(/#.*/g, '<span class="token comment">$&</span>')
-                    .replace(/(\(|\)|\[|\]|\{|\}|:|,|\.)/g, '<span class="token punctuation">$&</span>')
-                    .replace(/(=|\+|-|\*|\/|%|<|>|!|&|\|)/g, '<span class="token operator">$&</span>');
-            } else if (lang === 'javascript') {
-                return code
-                    .replace(/\b(const|let|var|function|async|await|return|if|else|for|while|try|catch|new|this|import|export|true|false|null|undefined)\b/g, '<span class="token keyword">$&</span>')
-                    .replace(/"(.*?)"|'(.*?)'|`(.*?)`/g, '<span class="token string">$&</span>')
-                    .replace(/\b(\d+)\b/g, '<span class="token number">$&</span>')
-                    .replace(/\/\/.*/g, '<span class="token comment">$&</span>')
-                    .replace(/\/\*[\s\S]*?\*\//g, '<span class="token comment">$&</span>')
-                    .replace(/(\(|\)|\[|\]|\{|\}|:|,|\.|=|\+|-|\*|\/|%|<|>|!|&|\|)/g, '<span class="token punctuation">$&</span>')
-                    .replace(/\b(console|document|window|fetch|JSON|FormData)\b/g, '<span class="token function">$&</span>');
-            }
-            return code;
-        }
-
-        // --- Event Handlers ---
-        dom.sidebarNav.addEventListener('click', (event) => {
-            const link = event.target.closest('.nav-link');
-            if (link) {
-                event.preventDefault();
-                const targetId = link.getAttribute('href').substring(1);
-                const targetSection = document.getElementById(targetId);
-                if (targetSection) {
-                    targetSection.scrollIntoView({ behavior: 'smooth' });
-                    // Update active class immediately for better UX
-                    dom.navLinks.forEach(l => l.classList.remove('active'));
-                    link.classList.add('active');
-                }
-            }
-        });
-
-        // Scroll Spy
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Make section visible for fade-in effect
-                    entry.target.classList.add('visible');
-
-                    // Update active nav link
-                    dom.navLinks.forEach(link => {
-                        link.classList.remove('active');
-                        if (link.getAttribute('href').substring(1) === entry.target.id) {
-                            link.classList.add('active');
-                        }
-                    });
-                }
-            });
-        }, { rootMargin: '-30% 0px -30% 0px' }); // Adjust rootMargin for when to consider a section "active"
-
-        document.querySelectorAll('main section').forEach(section => observer.observe(section));
-
-        dom.langTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                currentLang = tab.dataset.lang;
-                dom.langTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                dom.generatedCodeOutput.querySelector(`[data-lang-id="python"]`).style.display = 'none';
-                dom.generatedCodeOutput.querySelector(`[data-lang-id="javascript"]`).style.display = 'none';
-                dom.generatedCodeOutput.querySelector(`[data-lang-id="${currentLang}"]`).style.display = 'block';
-            });
-        });
-
-        dom.copyCodeButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const codeBlock = button.closest('pre').querySelector('code');
-                navigator.clipboard.writeText(codeBlock.innerText).then(() => {
-                    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                    setTimeout(() => button.innerHTML = '<i class="fas fa-copy"></i>', 2000);
-                });
-            });
-        });
-
-        dom.apiKeyInput.addEventListener('input', () => {
-            localStorage.setItem('elvionApiKey', dom.apiKeyInput.value.trim());
-            dom.generatorApiKeyInput.value = dom.apiKeyInput.value.trim();
-            updateCodeGenerator();
-        });
-
-        dom.generatorApiKeyInput.addEventListener('input', () => {
-            localStorage.setItem('elvionApiKey', dom.generatorApiKeyInput.value.trim());
-            dom.apiKeyInput.value = dom.generatorApiKeyInput.value.trim();
-            updateCodeGenerator();
-        });
-
-        // --- Live API Call Logic ---
-
-        // General function to handle API form submissions
-        async function handleApiFormSubmit(event, endpointPath, method, formId, responseAreaId, btnId, isFile = false, isStream = false) {
-            event.preventDefault();
-            const form = document.getElementById(formId);
-            const responseArea = document.getElementById(responseAreaId);
-            const submitBtn = document.getElementById(btnId);
-
-            clearResponseArea(responseArea);
-            showResponseArea(responseArea);
-            toggleButtonLoading(submitBtn, true);
-
-            try {
-                let payload = {};
-                let formData = null;
-
-                if (isFile) {
-                    formData = new FormData();
-                    const fileInput = form.querySelector('input[type="file"]');
-                    if (!fileInput || !fileInput.files[0]) {
-                        throw new Error("Please select a file.");
-                    }
-                    formData.append('file', fileInput.files[0]);
-
-                    // Add prompt for edit-photo/video-from-image
-                    if (formId === 'form-edit-photo' || formId === 'form-generate-video-image') {
-                        const promptInput = form.querySelector('textarea[id$="-prompt"]');
-                        if (!promptInput || !promptInput.value.trim()) {
-                            throw new Error("Prompt is required for this operation.");
-                        }
-                        formData.append('prompt', promptInput.value.trim());
-                    }
-                } else {
-                    // Standard JSON payload construction
-                    if (formId === 'form-bobby-chat') {
-                        payload.prompt = form.querySelector('#bobby-prompt').value.trim();
-                        const systemPrompt = form.querySelector('#bobby-system-prompt').value.trim();
-                        if (systemPrompt) payload.systemPrompt = systemPrompt;
-                    } else if (formId === 'form-seraphina-chat') {
-                        payload.message = form.querySelector('#seraphina-message').value.trim();
-                        payload.stream = form.querySelector('#seraphina-stream').value === 'true';
-                    } else if (formId === 'form-generate-image') {
-                        payload.prompt = form.querySelector('#image-prompt').value.trim();
-                        payload.model = form.querySelector('#image-model').value;
-                        payload.use_minimax = form.querySelector('#image-use-minimax').value === 'true';
-                    } else if (formId === 'form-text-to-speech') {
-                        payload.text = form.querySelector('#tts-text').value.trim();
-                        payload.voice_id = form.querySelector('#tts-voice').value;
-                    } else if (formId === 'form-generate-video-text') {
-                        payload.prompt = form.querySelector('#video-text-prompt').value.trim();
-                        payload.duration = parseInt(form.querySelector('#video-text-duration').value);
-                    } else if (formId === 'form-generate-music') {
-                        payload.prompt = form.querySelector('#music-prompt').value.trim();
-                        const lyrics = form.querySelector('#music-lyrics').value.trim();
-                        if (lyrics) payload.lyrics = lyrics;
-                    }
-                }
-
-                if (!isFile && (!payload.prompt && !payload.message && !payload.text)) {
-                     throw new Error("Please provide a prompt/message/text for the request.");
-                }
-
-                const response = await makeApiCall(endpointPath, method, isFile ? formData : payload, isFile);
                 
-                if (isStream) {
-                    // Handle SSE stream for Seraphina
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    const streamContainer = responseArea.querySelector('.stream-response-container');
-                    let fullContent = '';
-                    let tempDiv = document.createElement('div'); // For parsing chunks
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) {
-                            streamContainer.innerHTML += '<p style="color: var(--green);">Stream Finished.</p>';
-                            break;
-                        }
-                        const chunk = decoder.decode(value, { stream: true });
-                        chunk.split('\n\n').forEach(line => {
-                            if (line.startsWith('data: ')) {
-                                const dataStr = line.substring(6);
-                                if (dataStr === '[DONE]') {
-                                    return;
-                                }
-                                try {
-                                    const eventData = JSON.parse(dataStr);
-                                    if (eventData.type === 'content') {
-                                        fullContent += eventData.content;
-                                        streamContainer.innerHTML = fullContent.replace(/\n/g, '<br>');
-                                        streamContainer.scrollTop = streamContainer.scrollHeight; // Auto-scroll
-                                    } else if (eventData.type === 'status') {
-                                        streamContainer.innerHTML += `<p style="color:var(--text-secondary);">Status: ${eventData.content}</p>`;
-                                        streamContainer.scrollTop = streamContainer.scrollHeight;
-                                    } else if (eventData.type === 'citations') {
-                                        streamContainer.innerHTML += '<p style="color:var(--cyan);">Citations:</p>';
-                                        eventData.citations.forEach(cite => {
-                                            streamContainer.innerHTML += `<p style="font-size:0.8em; color:var(--text-secondary);"><a href="${cite.url}" target="_blank" style="color:var(--cyan);">${cite.title || cite.url}</a></p>`;
-                                        });
-                                        streamContainer.scrollTop = streamContainer.scrollHeight;
-                                    }
-                                } catch (e) {
-                                    console.warn("Failed to parse SSE data:", dataStr, e);
-                                }
-                            }
-                        });
-                    }
-
-                } else if (endpointPath.includes('/video-status')) { // Handle polling for video
-                    // Response is handled by the checkStatus function
-                    const data = await response.json();
-                    return data; // Return data for caller to handle
-                } else if (endpointPath.includes('/generate-music') || endpointPath.includes('/text-to-speech') || endpointPath.includes('/audio-narration')) {
-                    // Audio response
-                    const audioBlob = await response.blob();
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audioTag = `<audio controls src="${audioUrl}"></audio>`;
-                    responseArea.querySelector('.audio-response').innerHTML = audioTag;
-                    responseArea.querySelector('pre.response-viewer').textContent = JSON.stringify({ message: "Audio generated successfully." }, null, 2);
-                } else if (endpointPath.includes('/generate-image') || endpointPath.includes('/edit-photo') || endpointPath.includes('/remove-background')) {
-                    // Image response (Base64)
-                    const data = await response.json();
-                    if (data.image_b64) {
-                        const imgTag = `<img src="data:image/png;base64,${data.image_b64}" alt="Generated Image">`;
-                        responseArea.querySelector('.image-response').innerHTML = imgTag;
-                        responseArea.querySelector('pre.response-viewer').textContent = JSON.stringify({ message: "Image generated successfully (displayed above)." }, null, 2);
-                    } else {
-                         responseArea.querySelector('pre.response-viewer').textContent = JSON.stringify(data, null, 2);
-                    }
+                // Truncate long image data for display
+                if(data.image_b64) {
+                    data.image_b64 = data.image_b64.substring(0, 100) + '... [TRUNCATED]';
                 }
-                else {
-                    const data = await response.json();
-                    responseArea.querySelector('pre.response-viewer').textContent = JSON.stringify(data, null, 2);
-                }
+
+                responseElement.innerHTML = `<code>${JSON.stringify(data, null, 2)}</code>`;
+
             } catch (error) {
-                responseArea.querySelector('pre.response-viewer').className = 'response-viewer error-response';
-                responseArea.querySelector('pre.response-viewer').textContent = `Error: ${error.message}`;
+                responseElement.innerHTML = `<code style="color:var(--red);">${error}</code>`;
             } finally {
-                toggleButtonLoading(submitBtn, false);
-            }
-        }
-
-        // --- Specific Form Bindings ---
-
-        // Bobby Chat
-        dom.formBobbyChat.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/developer/bobby/chat', 'POST', 'form-bobby-chat', 'response-bobby-chat', 'bobby-submit-btn');
-        });
-        dom.formBobbyChat.addEventListener('input', () => { currentActiveForm = 'form-bobby-chat'; updateCodeGenerator(); });
-
-        // Seraphina Chat
-        dom.formSeraphinaChat.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/developer/seraphina/chat', 'POST', 'form-seraphina-chat', 'response-seraphina-chat', 'seraphina-submit-btn', false, e.target.querySelector('#seraphina-stream').value === 'true');
-        });
-        dom.formSeraphinaChat.addEventListener('input', () => { currentActiveForm = 'form-seraphina-chat'; updateCodeGenerator(); });
-        
-        // Image Generation
-        dom.formGenerateImage.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/developer/generate-image', 'POST', 'form-generate-image', 'response-generate-image', 'image-submit-btn');
-        });
-        dom.formGenerateImage.addEventListener('input', () => { currentActiveForm = 'form-generate-image'; updateCodeGenerator(); });
-
-        // Edit Photo
-        dom.formEditPhoto.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/tools/edit-photo', 'POST', 'form-edit-photo', 'response-edit-photo', 'edit-photo-submit-btn', true);
-        });
-        dom.formEditPhoto.addEventListener('input', () => { currentActiveForm = 'form-edit-photo'; updateCodeGenerator(); });
-
-        // Remove Background
-        dom.formRemoveBackground.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/tools/remove-background', 'POST', 'form-remove-background', 'response-remove-background', 'remove-bg-submit-btn', true);
-        });
-        dom.formRemoveBackground.addEventListener('input', () => { currentActiveForm = 'form-remove-background'; updateCodeGenerator(); });
-
-        // Text-to-Speech
-        dom.formTextToSpeech.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/tools/text-to-speech', 'POST', 'form-text-to-speech', 'response-text-to-speech', 'tts-submit-btn');
-        });
-        dom.formTextToSpeech.addEventListener('input', () => { currentActiveForm = 'form-text-to-speech'; updateCodeGenerator(); });
-
-        // Video from Text (and Status Polling)
-        let videoTextTaskId = null;
-        dom.formGenerateVideoText.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = dom.formGenerateVideoText;
-            const responseArea = dom.responseGenerateVideoText;
-            const submitBtn = dom.videoTextSubmitBtn;
-
-            clearResponseArea(responseArea);
-            showResponseArea(responseArea);
-            toggleButtonLoading(submitBtn, true);
-            dom.videoTextCheckStatusBtn.style.display = 'none';
-            dom.videoTextResult.style.display = 'none';
-            dom.videoTextStatusMsg.textContent = '';
-
-            try {
-                const payload = {
-                    prompt: form.querySelector('#video-text-prompt').value.trim(),
-                    duration: parseInt(form.querySelector('#video-text-duration').value)
-                };
-                if (!payload.prompt) throw new Error("Video description is required.");
-
-                const data = await makeApiCall('/api/tools/generate-video-from-text', 'POST', payload);
-                videoTextTaskId = data.task_id;
-                responseArea.querySelector('pre.response-viewer').textContent = JSON.stringify(data, null, 2);
-                dom.videoTextStatusMsg.textContent = `Video generation started. Task ID: ${videoTextTaskId}. Please wait.`;
-                dom.videoTextCheckStatusBtn.style.display = 'block';
-            } catch (error) {
-                responseArea.querySelector('pre.response-viewer').className = 'response-viewer error-response';
-                responseArea.querySelector('pre.response-viewer').textContent = `Error: ${error.message}`;
-            } finally {
-                toggleButtonLoading(submitBtn, false);
+                button.disabled = false;
             }
         });
-        dom.videoTextCheckStatusBtn.addEventListener('click', async () => {
-            if (!videoTextTaskId) {
-                alert("No task ID to check."); return;
-            }
-            toggleButtonLoading(dom.videoTextCheckStatusBtn, true);
-            dom.videoTextStatusMsg.textContent = `Checking status for Task ID: ${videoTextTaskId}...`;
-            try {
-                const data = await makeApiCall(`/api/tools/video-status?task_id=${videoTextTaskId}`, 'GET', null);
-                if (data.status === 'Success') {
-                    dom.videoTextStatusMsg.textContent = 'Video is ready!';
-                    dom.videoTextResult.innerHTML = `<video controls src="${data.url}"></video><p style="color:var(--cyan); margin-top:10px;">Download: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
-                    dom.videoTextResult.style.display = 'block';
-                    dom.videoTextCheckStatusBtn.style.display = 'none'; // Hide button once done
-                } else if (data.status === 'pending') {
-                    dom.videoTextStatusMsg.textContent = 'Video is still processing. Please wait...';
-                } else {
-                    throw new Error(data.detail || `Video generation failed with status: ${data.status}`);
-                }
-            } catch (error) {
-                dom.videoTextStatusMsg.style.color = 'var(--red)';
-                dom.videoTextStatusMsg.textContent = `Error checking status: ${error.message}`;
-            } finally {
-                toggleButtonLoading(dom.videoTextCheckStatusBtn, false);
-            }
-        });
-        dom.formGenerateVideoText.addEventListener('input', () => { currentActiveForm = 'form-generate-video-text'; updateCodeGenerator(); });
+    });
 
-
-        // Video from Image (and Status Polling)
-        let videoImageTaskId = null;
-        dom.formGenerateVideoImage.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = dom.formGenerateVideoImage;
-            const responseArea = dom.responseGenerateVideoImage;
-            const submitBtn = dom.videoImageSubmitBtn;
-
-            clearResponseArea(responseArea);
-            showResponseArea(responseArea);
-            toggleButtonLoading(submitBtn, true);
-            dom.videoImageCheckStatusBtn.style.display = 'none';
-            dom.videoImageResult.style.display = 'none';
-            dom.videoImageStatusMsg.textContent = '';
-
-            try {
-                const fileInput = form.querySelector('#video-image-file');
-                if (!fileInput || !fileInput.files[0]) {
-                    throw new Error("Please select an image file.");
-                }
-                const prompt = form.querySelector('#video-image-prompt').value.trim();
-                if (!prompt) throw new Error("Animation prompt is required.");
-
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-                formData.append('prompt', prompt);
-
-                const data = await makeApiCall('/api/tools/generate-video-from-image', 'POST', formData, true);
-                videoImageTaskId = data.task_id;
-                responseArea.querySelector('pre.response-viewer').textContent = JSON.stringify(data, null, 2);
-                dom.videoImageStatusMsg.textContent = `Video animation started. Task ID: ${videoImageTaskId}. Please wait.`;
-                dom.videoImageCheckStatusBtn.style.display = 'block';
-            } catch (error) {
-                responseArea.querySelector('pre.response-viewer').className = 'response-viewer error-response';
-                responseArea.querySelector('pre.response-viewer').textContent = `Error: ${error.message}`;
-            } finally {
-                toggleButtonLoading(submitBtn, false);
-            }
-        });
-        dom.videoImageCheckStatusBtn.addEventListener('click', async () => {
-            if (!videoImageTaskId) {
-                alert("No task ID to check."); return;
-            }
-            toggleButtonLoading(dom.videoImageCheckStatusBtn, true);
-            dom.videoImageStatusMsg.textContent = `Checking status for Task ID: ${videoImageTaskId}...`;
-            try {
-                const data = await makeApiCall(`/api/tools/video-status?task_id=${videoImageTaskId}`, 'GET', null);
-                if (data.status === 'Success') {
-                    dom.videoImageStatusMsg.textContent = 'Video is ready!';
-                    dom.videoImageResult.innerHTML = `<video controls src="${data.url}"></video><p style="color:var(--cyan); margin-top:10px;">Download: <a href="${data.url}" target="_blank">${data.url}</a></p>`;
-                    dom.videoImageResult.style.display = 'block';
-                    dom.videoImageCheckStatusBtn.style.display = 'none';
-                } else if (data.status === 'pending') {
-                    dom.videoImageStatusMsg.textContent = 'Video is still processing. Please wait...';
-                } else {
-                    throw new Error(data.detail || `Video generation failed with status: ${data.status}`);
-                }
-            } catch (error) {
-                dom.videoImageStatusMsg.style.color = 'var(--red)';
-                dom.videoImageStatusMsg.textContent = `Error checking status: ${error.message}`;
-            } finally {
-                toggleButtonLoading(dom.videoImageCheckStatusBtn, false);
-            }
-        });
-        dom.formGenerateVideoImage.addEventListener('input', () => { currentActiveForm = 'form-generate-video-image'; updateCodeGenerator(); });
-
-
-        // Music Generation
-        dom.formGenerateMusic.addEventListener('submit', (e) => {
-            handleApiFormSubmit(e, '/api/tools/generate-music', 'POST', 'form-generate-music', 'response-generate-music', 'music-submit-btn');
-        });
-        dom.formGenerateMusic.addEventListener('input', () => { currentActiveForm = 'form-generate-music'; updateCodeGenerator(); });
-
-        // --- Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Load API Key from local storage
-            const savedApiKey = localStorage.getItem('elvionApiKey');
-            if (savedApiKey) {
-                dom.apiKeyInput.value = savedApiKey;
-                dom.generatorApiKeyInput.value = savedApiKey;
-            }
-
-            // Initial code generation for Quick Start (Bobby)
-            currentActiveForm = 'form-bobby-chat';
-            updateCodeGenerator();
-
-            // Star animation
-            const starsContainer = document.createElement('div');
-            starsContainer.id = 'stars-container';
-            document.body.prepend(starsContainer);
-            for(let i=0; i < 80; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                const size = Math.random() * 2.5 + 1;
-                star.style.width = `${size}px`; star.style.height = `${size}px`;
-                star.style.left = `${Math.random() * 100}%`; star.style.top = `${Math.random() * 100}%`;
-                star.style.animationDelay = `${Math.random() * 4}s`;
-                star.style.animationDuration = `${Math.random() * 2 + 3}s`;
-                starsContainer.appendChild(star);
-            }
-        });
-    </script>
+    // --- Star Animation ---
+    const starsContainer = document.createElement('div');
+    starsContainer.id = 'stars-container';
+    document.body.prepend(starsContainer);
+    for(let i=0; i < 80; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const size = Math.random() * 2 + 1;
+        star.style.width = `${size}px`; star.style.height = `${size}px`;
+        star.style.left = `${Math.random() * 100}%`; star.style.top = `${Math.random() * 100}%`;
+        star.style.animationDelay = `${Math.random() * 4}s`;
+        star.style.animationDuration = `${Math.random() * 2 + 3}s`;
+        starsContainer.appendChild(star);
+    }
+});
+</script>
 </body>
 </html>
-
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
