@@ -3,324 +3,525 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Explorer | Elvion AI</title>
-    <meta name="description" content="Live test and integrate Elvion AI's powerful conversational and generative models into your applications.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Orbitron:wght@700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <title>API Reference & Playground | Elvion AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --cyan: #00ffff; --blue: #0090ff; --magenta: #ff00ff; --red: #ff4d4d; --green: #28a745; --orange: #ffae42;
-            --bg-primary: #0a1128; --bg-secondary: #10142c; --card-bg: #121a30;
-            --border-color: rgba(0, 255, 255, 0.2); --border-glow: 0 0 12px rgba(0, 255, 255, 0.5);
-            --radius: 8px; --text-primary: #e0e0e0; --text-secondary: #a8b2d1;
-            --header-font: 'Orbitron', sans-serif; --body-font: 'Inter', sans-serif; --code-font: 'Fira Code', monospace;
+            --bg-body: #0b0e14;
+            --bg-nav: #11151f;
+            --bg-panel: #161b27;
+            --bg-input: #0b0e14;
+            --primary: #00ffff;
+            --primary-dim: rgba(0, 255, 255, 0.1);
+            --accent: #ff00ff;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #2d3748;
+            --success: #22c55e;
+            --error: #ef4444;
+            --font-main: 'Inter', sans-serif;
+            --font-head: 'Orbitron', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
-        *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: var(--body-font); background-color: var(--bg-primary); color: var(--text-primary); margin: 0; line-height: 1.7; }
 
-        /* --- Main Header --- */
-        .main-header {
-            background-color: var(--card-bg);
-            border-bottom: 1px solid var(--border-color);
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+        * { box-sizing: border-box; outline: none; }
+        body { margin: 0; font-family: var(--font-main); background: var(--bg-body); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        a { text-decoration: none; color: inherit; transition: 0.2s; }
+        
+        /* --- HEADER --- */
+        .top-bar {
+            height: 60px; background: var(--bg-nav); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0;
         }
-        .header-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-        .header-logo img { width: 36px; height: 36px; border-radius: 50%; }
-        .header-logo h1 { font-family: var(--header-font); font-size: 1.4em; margin: 0; color: #fff; }
-        .header-nav a { color: var(--text-secondary); text-decoration: none; font-weight: 500; margin-left: 25px; transition: color 0.2s; }
-        .header-nav a:hover { color: var(--cyan); }
-        .api-status { display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background-color: var(--orange); animation: pulse 2s infinite; }
-        .status-dot.online { background-color: var(--green); animation: none; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 174, 66, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 174, 66, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 174, 66, 0); } }
+        .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-weight: 700; color: #fff; font-size: 1.2rem; }
+        .brand img { height: 32px; width: 32px; border-radius: 50%; border: 1px solid var(--primary); }
+        .nav-links { display: flex; gap: 20px; font-size: 0.9rem; color: var(--text-muted); }
+        .nav-links a:hover { color: var(--primary); }
+        .nav-links .btn-login { background: var(--primary); color: #000; padding: 6px 16px; border-radius: 4px; font-weight: 600; }
+        .system-status { font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; background: var(--text-muted); border-radius: 50%; }
+        .status-dot.online { background: var(--success); box-shadow: 0 0 8px var(--success); }
 
-        .container { display: flex; max-width: 1300px; margin: 0 auto; }
+        /* --- MAIN LAYOUT --- */
+        .layout { display: flex; flex: 1; overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: 260px; background: var(--bg-nav); border-right: 1px solid var(--border); overflow-y: auto; padding: 20px 0; flex-shrink: 0; }
+        .sidebar-group { margin-bottom: 20px; }
+        .sidebar-title { padding: 0 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+        .nav-item { display: block; padding: 8px 20px; font-size: 0.9rem; color: var(--text-muted); border-left: 3px solid transparent; cursor: pointer; }
+        .nav-item:hover { color: #fff; background: rgba(255,255,255,0.03); }
+        .nav-item.active { color: var(--primary); border-left-color: var(--primary); background: var(--primary-dim); }
+        .method { display: inline-block; width: 45px; font-size: 0.7rem; font-weight: 700; font-family: var(--font-mono); }
+        .method.POST { color: var(--accent); }
+        .method.GET { color: var(--primary); }
+
+        /* --- CONTENT AREA --- */
+        .content { flex: 1; overflow-y: auto; padding: 40px; scroll-behavior: smooth; position: relative; }
+        .doc-section { margin-bottom: 60px; max-width: 800px; display: none; } /* Hidden by default */
+        .doc-section.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { font-family: var(--font-head); margin: 0 0 10px; color: #fff; }
+        h2 { font-family: var(--font-head); font-size: 1.5rem; margin: 30px 0 15px; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        p { line-height: 1.6; color: var(--text-muted); margin-bottom: 20px; }
         
-        /* --- Left & Right Sidebars --- */
-        .sidebar-nav { position: sticky; top: 71px; height: calc(100vh - 71px); width: 240px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--border-color); padding: 30px 15px; }
-        .code-examples { position: sticky; top: 71px; height: calc(100vh - 71px); width: 420px; flex-shrink: 0; background-color: #0d1117; padding: 0; overflow-y: auto; }
+        .endpoint-badge { display: inline-flex; align-items: center; gap: 10px; background: var(--bg-panel); padding: 8px 15px; border-radius: 6px; border: 1px solid var(--border); font-family: var(--font-mono); margin-bottom: 20px; }
+        .endpoint-method { font-weight: 700; color: var(--accent); }
+        .endpoint-url { color: var(--text-main); }
+
+        /* --- INPUTS & TABLES --- */
+        .auth-box { background: var(--bg-panel); border: 1px solid var(--primary); border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
+        .api-input { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.9rem; transition: 0.2s; }
+        .api-input:focus { border-color: var(--primary); }
+        .param-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem; }
+        .param-table th { text-align: left; color: var(--text-muted); border-bottom: 1px solid var(--border); padding: 10px 0; font-weight: 500; }
+        .param-table td { padding: 12px 0; border-bottom: 1px solid #1e2536; color: var(--text-main); vertical-align: top; }
+        .param-name { font-family: var(--font-mono); color: var(--primary); }
+        .req { color: var(--error); font-size: 0.7rem; vertical-align: super; }
+
+        /* --- RIGHT PANEL (CODE & RESPONSE) --- */
+        .code-panel { width: 400px; background: #0d1117; border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .code-header { display: flex; border-bottom: 1px solid var(--border); }
+        .tab-btn { flex: 1; background: transparent; border: none; color: var(--text-muted); padding: 12px; cursor: pointer; font-size: 0.85rem; font-weight: 500; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: #fff; border-bottom-color: var(--primary); background: rgba(255,255,255,0.02); }
         
-        .nav-section-title { font-family: var(--header-font); text-transform: uppercase; font-size: 0.8em; letter-spacing: 1px; color: var(--text-secondary); margin: 25px 0 10px 15px; }
-        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav li a { display: block; padding: 8px 15px; color: var(--text-secondary); text-decoration: none; border-radius: 6px; font-size: 0.95em; font-weight: 500; transition: all 0.2s ease; position: relative; }
-        .sidebar-nav li a:hover { color: #fff; background-color: rgba(0, 255, 255, 0.1); }
-        .sidebar-nav li a.active { color: var(--cyan); background-color: rgba(0, 255, 255, 0.1); }
+        .code-window { flex: 1; padding: 20px; overflow-y: auto; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.5; color: #a5d6ff; position: relative; }
+        .code-block { white-space: pre-wrap; word-break: break-all; }
+        .response-window { flex: 1; border-top: 1px solid var(--border); display: flex; flex-direction: column; background: #0b0e14; height: 50%; }
+        .response-header { padding: 10px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .response-body { padding: 20px; overflow: auto; color: #7ee787; font-family: var(--font-mono); font-size: 0.85rem; white-space: pre-wrap; }
         
-        /* --- Main Content --- */
-        main { width: 100%; padding: 40px 30px; }
-        section { margin-bottom: 50px; border-bottom: 1px solid var(--border-color); padding-bottom: 30px; }
-        h2 { font-family: var(--header-font); font-size: 2em; color: #fff; margin: 0 0 15px 0; }
-        h3 { font-family: var(--header-font); font-size: 1.3em; color: var(--cyan); margin-top: 30px; margin-bottom: 15px; }
-        p { color: var(--text-secondary); margin: 0 0 15px 0; }
-        code { font-family: var(--code-font); background-color: rgba(0, 255, 255, 0.1); color: var(--cyan); padding: 3px 6px; border-radius: 4px; font-size: 0.9em; }
-        
-        /* Interactive "Try It Out" Section */
-        .api-tester { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); margin-top: 25px; }
-        .api-tester-header { padding: 15px; border-bottom: 1px solid var(--border-color); font-family: var(--header-font); font-size: 1.1em; }
-        .api-tester-body { padding: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-secondary); }
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px;
-            padding: 10px; color: var(--text-primary); font-family: var(--code-font); font-size: 0.95em;
+        /* --- ACTION BUTTONS --- */
+        .action-bar { margin-top: 20px; display: flex; gap: 10px; }
+        .btn-run { background: var(--primary); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: var(--font-head); transition: 0.2s; }
+        .btn-run:hover { box-shadow: 0 0 15px var(--primary-dim); transform: translateY(-1px); }
+        .btn-copy { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 5px 10px; border-radius: 4px; cursor: pointer; position: absolute; top: 10px; right: 10px; font-size: 0.8rem; }
+        .btn-copy:hover { color: #fff; border-color: var(--text-muted); }
+
+        /* Loader */
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Syntax Colors */
+        .kwd { color: #ff7b72; } .str { color: #a5d6ff; } .num { color: #79c0ff; } .com { color: #8b949e; }
+
+        @media (max-width: 1024px) {
+            .code-panel { display: none; } /* Hide code panel on tablet/mobile, or stack it */
+            .sidebar { transform: translateX(-100%); position: absolute; height: 100%; z-index: 10; transition: 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .content { padding: 20px; }
         }
-        .form-group textarea { min-height: 80px; resize: vertical; }
-        .submit-btn { /* (From previous code) */ }
-        .api-response { margin-top: 20px; }
-        .api-response pre { background-color: #0d1117; padding: 15px; border-radius: var(--radius); max-height: 300px; overflow-y: auto; }
-        .api-response code { background: none; color: #fff; }
-
-        /* Code Examples Styles */
-        .code-header { /* (From previous code) */ }
-        .lang-tab { /* (From previous code) */ }
-        pre { /* (From previous code) */ }
-        .copy-code-btn { /* (From previous code) */ }
-        /* Syntax Highlighting Tokens */
-
-        @media (max-width: 1200px) { .code-examples { display: none; } }
-        @media (max-width: 768px) { .sidebar-nav { display: none; } .main-header { flex-direction: column; gap: 15px; padding: 15px; } main { padding: 30px 15px; } }
     </style>
 </head>
 <body>
-    <header class="main-header">
-        <a href="index.html" class="header-logo">
-            <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Elvion AI Logo">
-            <h1>Elvion AI</h1>
-        </a>
-        <div class="header-nav">
-            <div class="api-status">
-                <div class="status-dot" id="status-dot"></div>
-                <span id="status-text">Checking API Status...</span>
-            </div>
+
+    <!-- TOP HEADER -->
+    <header class="top-bar">
+        <div class="brand">
+            <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Logo">
+            ELVION API
+        </div>
+        <div class="nav-links">
+            <div class="system-status">System: <span id="sys-status-dot" class="status-dot"></span> <span id="sys-status-text">Checking...</span></div>
             <a href="index.html">Home</a>
             <a href="developer-dashboard.html">Dashboard</a>
+            <a href="developer-login.html" class="btn-login">Login</a>
         </div>
     </header>
 
-    <div class="container">
-        <nav class="sidebar-nav">
-            <ul>
-                <li class="nav-section-title">Getting Started</li>
-                <li><a href="#introduction" class="nav-link active">Introduction</a></li>
-                <li><a href="#authentication" class="nav-link">Authentication</a></li>
-                <li class="nav-section-title">API Endpoints</li>
-                <li><a href="#endpoint-bobby" class="nav-link">Bobby Chat</a></li>
-                <li><a href="#endpoint-seraphina" class="nav-link">Seraphina Chat</a></li>
-                <li><a href="#endpoint-image" class="nav-link">Image Generation</a></li>
-            </ul>
+    <div class="layout">
+        
+        <!-- SIDEBAR NAVIGATION -->
+        <nav class="sidebar">
+            <div class="sidebar-group">
+                <div class="sidebar-title">Getting Started</div>
+                <a class="nav-item active" onclick="showSection('intro')">Introduction</a>
+                <a class="nav-item" onclick="showSection('auth')">Authentication</a>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-title">AI Models</div>
+                <a class="nav-item" onclick="showSection('bobby')">
+                    <span class="method POST">POST</span> Bobby Chat
+                </a>
+                <a class="nav-item" onclick="showSection('seraphina')">
+                    <span class="method POST">POST</span> Seraphina Chat
+                </a>
+                <a class="nav-item" onclick="showSection('image')">
+                    <span class="method POST">POST</span> Generate Image
+                </a>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-title">User Data</div>
+                <a class="nav-item" onclick="showSection('user')">
+                    <span class="method GET">GET</span> Check Balance
+                </a>
+            </div>
         </nav>
 
-        <main>
-            <section id="introduction">
-                <h2>API Explorer</h2>
-                <p>Welcome to the Elvion AI Developer Hub. This is an interactive environment where you can explore, test, and integrate our powerful AI models directly from your browser. Get your API key, choose an endpoint, and make your first live request in minutes.</p>
-            </section>
-
-            <section id="authentication">
-                <h2>Authentication</h2>
-                <p>Your API key is required for all requests. Enter it below to enable the "Try It Out" feature for all endpoints. You can generate and manage your keys from the <a href="developer-dashboard.html" style="color:var(--cyan);">Developer Dashboard</a>.</p>
-                <div class="form-group">
-                    <label for="api-key-input"><i class="fas fa-key"></i> Your API Key</label>
-                    <input type="password" id="api-key-input" placeholder="elv_sec_...">
-                </div>
-            </section>
+        <!-- MAIN CONTENT AREA -->
+        <main class="content">
             
-            <section id="endpoint-bobby">
-                <h2>Bobby Chat</h2>
-                <p>A fast and cost-effective conversational model for general-purpose tasks. Cost: 2 Credits/call.</p>
-                <div class="api-tester">
-                    <div class="api-tester-header">Try It Out</div>
-                    <div class="api-tester-body">
-                        <div class="form-group">
-                            <label for="bobby-prompt">Prompt</label>
-                            <textarea id="bobby-prompt">Tell me a short, futuristic story about a programmer and their AI companion.</textarea>
-                        </div>
-                        <button class="submit-btn" data-endpoint="bobby">Send API Request</button>
-                        <div class="api-response">
-                            <h3>Response</h3>
-                            <pre id="bobby-response"><code>Awaiting request...</code></pre>
-                        </div>
-                    </div>
+            <!-- GLOBAL AUTH INPUT (Visible on all sections) -->
+            <div class="auth-box">
+                <div class="input-group" style="margin:0;">
+                    <label style="color:var(--primary); font-weight:700;">GLOBAL API KEY</label>
+                    <input type="password" id="global-api-key" class="api-input" placeholder="Enter your key (elv_sec_...) to test endpoints" oninput="updateAllSnippets()">
+                    <div style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">Get your key from the <a href="developer-dashboard.html" style="color:var(--primary); text-decoration:underline;">Dashboard</a>.</div>
                 </div>
-            </section>
-            
-            <section id="endpoint-seraphina">
-                <h2>Seraphina Chat</h2>
-                <p>A premium, web-grounded research assistant for accurate, up-to-date answers. Cost: 5 Credits/call.</p>
-                <div class="api-tester">
-                    <div class="api-tester-header">Try It Out</div>
-                    <div class="api-tester-body">
-                        <div class="form-group">
-                            <label for="seraphina-prompt">Message</label>
-                            <textarea id="seraphina-prompt">What are the latest developments in generative AI models as of this week?</textarea>
-                        </div>
-                        <button class="submit-btn" data-endpoint="seraphina">Send API Request</button>
-                        <div class="api-response">
-                            <h3>Response</h3>
-                            <pre id="seraphina-response"><code>Awaiting request...</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            </div>
 
-            <section id="endpoint-image">
-                <h2>Image Generation</h2>
-                <p>Create high-quality images from text. Cost: 15 Credits/call.</p>
-                <div class="api-tester">
-                    <div class="api-tester-header">Try It Out</div>
-                    <div class="api-tester-body">
-                        <div class="form-group">
-                            <label for="image-prompt">Prompt</label>
-                            <textarea id="image-prompt">A cyberpunk cityscape at night, neon signs reflecting on wet streets, a lone figure in a trench coat, photorealistic, cinematic lighting.</textarea>
-                        </div>
-                         <div class="form-group">
-                            <label for="image-model">Model</label>
-                            <select id="image-model">
-                                <option value="v6">Thena v6 (General)</option>
-                                <option value="photoreal">Thena Photoreal</option>
-                                <option value="anime_core">Thena Anime Core</option>
-                                <option value="minimax">MiniMax Creative</option>
-                            </select>
-                        </div>
-                        <button class="submit-btn" data-endpoint="image">Send API Request</button>
-                        <div class="api-response">
-                            <h3>Response</h3>
-                            <pre id="image-response"><code>Awaiting request... (Response will show image data)</code></pre>
-                        </div>
-                    </div>
+            <!-- SECTION: INTRO -->
+            <div id="intro" class="doc-section active">
+                <h1>Elvion AI API</h1>
+                <p>Welcome to the developer hub. This interactive documentation allows you to test endpoints in real-time. The Elvion API provides access to advanced LLMs and image generation models.</p>
+                <h2>Base URL</h2>
+                <code style="background:var(--bg-panel); padding:10px; display:block; border-radius:6px; border:1px solid var(--border); font-family:var(--font-mono); color:var(--text-main);">
+                    https://web-production-9a18.up.railway.app
+                </code>
+            </div>
+
+            <!-- SECTION: BOBBY -->
+            <div id="bobby" class="doc-section">
+                <h1>Bobby Chat</h1>
+                <div class="endpoint-badge">
+                    <span class="endpoint-method">POST</span>
+                    <span class="endpoint-url">/api/developer/bobby/chat</span>
                 </div>
-            </section>
+                <p>Our fastest, most cost-effective conversational model. Ideal for general chat and creative writing.</p>
+                
+                <h3>Parameters</h3>
+                <form id="form-bobby">
+                    <table class="param-table">
+                        <tr>
+                            <td class="param-name">prompt <span class="req">*</span></td>
+                            <td>
+                                <input type="text" class="api-input param-input" data-key="prompt" value="Hello, tell me a joke." oninput="updateSnippet('bobby')">
+                                <div style="margin-top:5px; font-size:0.8rem; color:var(--text-muted);">The user's message.</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">systemPrompt</td>
+                            <td>
+                                <input type="text" class="api-input param-input" data-key="systemPrompt" placeholder="Optional system instruction" oninput="updateSnippet('bobby')">
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="action-bar">
+                        <button type="button" class="btn-run" onclick="executeRequest('bobby')">
+                            <div class="spinner" id="spinner-bobby"></div> Run Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SECTION: SERAPHINA -->
+            <div id="seraphina" class="doc-section">
+                <h1>Seraphina Chat</h1>
+                <div class="endpoint-badge">
+                    <span class="endpoint-method">POST</span>
+                    <span class="endpoint-url">/api/developer/seraphina/chat</span>
+                </div>
+                <p>The premium research model. Connects to the web for grounded, factual answers with citations.</p>
+                <form id="form-seraphina">
+                    <table class="param-table">
+                        <tr>
+                            <td class="param-name">message <span class="req">*</span></td>
+                            <td><input type="text" class="api-input param-input" data-key="message" value="Who is the current president of Nigeria?" oninput="updateSnippet('seraphina')"></td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">stream</td>
+                            <td><input type="text" class="api-input param-input" data-key="stream" value="false" readonly style="opacity:0.5;"> <span style="font-size:0.8rem;">(False for testing)</span></td>
+                        </tr>
+                    </table>
+                    <div class="action-bar">
+                        <button type="button" class="btn-run" onclick="executeRequest('seraphina')"><div class="spinner" id="spinner-seraphina"></div> Run Request</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SECTION: IMAGE -->
+            <div id="image" class="doc-section">
+                <h1>Generate Image</h1>
+                <div class="endpoint-badge">
+                    <span class="endpoint-method">POST</span>
+                    <span class="endpoint-url">/api/developer/generate-image</span>
+                </div>
+                <p>Create high-quality AI images. Returns a Base64 string.</p>
+                <form id="form-image">
+                    <table class="param-table">
+                        <tr>
+                            <td class="param-name">prompt <span class="req">*</span></td>
+                            <td><input type="text" class="api-input param-input" data-key="prompt" value="A futuristic cyberpunk city with neon lights, digital art" oninput="updateSnippet('image')"></td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">model</td>
+                            <td>
+                                <select class="api-input param-input" data-key="model" onchange="updateSnippet('image')">
+                                    <option value="v6">v6 (Default)</option>
+                                    <option value="photoreal">photoreal</option>
+                                    <option value="anime_core">anime_core</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="action-bar">
+                        <button type="button" class="btn-run" onclick="executeRequest('image')"><div class="spinner" id="spinner-image"></div> Run Request</button>
+                    </div>
+                </form>
+            </div>
+
+             <!-- SECTION: USER -->
+             <div id="user" class="doc-section">
+                <h1>Check Balance</h1>
+                <div class="endpoint-badge">
+                    <span class="endpoint-method">GET</span>
+                    <span class="endpoint-url">/api/user/keys-and-balance</span>
+                </div>
+                <p>Retrieve your current wallet balance and list of active keys.</p>
+                <div class="action-bar">
+                    <button type="button" class="btn-run" onclick="executeRequest('user')"><div class="spinner" id="spinner-user"></div> Run Request</button>
+                </div>
+            </div>
+
         </main>
 
-        <aside class="code-examples">
-            <!-- Code examples will be dynamically loaded here by JS -->
+        <!-- RIGHT PANEL: CODE & RESPONSE -->
+        <aside class="code-panel">
+            <div class="code-header">
+                <button class="tab-btn active" onclick="setLang('python')">Python</button>
+                <button class="tab-btn" onclick="setLang('curl')">cURL</button>
+                <button class="tab-btn" onclick="setLang('js')">Node.js</button>
+            </div>
+            
+            <!-- Code View -->
+            <div class="code-window">
+                <button class="btn-copy" onclick="copyCode()"><i class="fas fa-copy"></i></button>
+                <div id="code-display" class="code-block"></div>
+            </div>
+
+            <!-- Response View -->
+            <div class="response-window">
+                <div class="response-header">
+                    <span>Response</span>
+                    <span id="res-status" style="color:var(--text-muted);">...</span>
+                </div>
+                <div id="response-display" class="response-body">Click "Run Request" to see results...</div>
+            </div>
         </aside>
+
     </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Global Config ---
-    const API_BASE_URL = "https://web-production-9a18.up.railway.app";
-    const apiKeyInput = document.getElementById('api-key-input');
+    // --- CONFIGURATION ---
+    const BASE_URL = "https://web-production-9a18.up.railway.app";
     
-    // --- API Status Check ---
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-    fetch(API_BASE_URL)
-        .then(res => {
-            if (res.ok) {
-                statusDot.classList.add('online');
-                statusText.textContent = 'API Online';
-            } else { throw new Error(); }
-        })
-        .catch(() => { statusText.textContent = 'API Unreachable'; });
+    // --- STATE ---
+    let currentLang = 'python';
+    let currentSection = 'intro';
 
-    // --- Scroll Spy & Nav ---
-    const sections = document.querySelectorAll('main section');
-    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                navLinks.forEach(link => {
-                    link.classList.toggle('active', link.getAttribute('href').substring(1) === entry.target.id);
-                });
-            }
-        });
-    }, { rootMargin: '-40% 0px -60% 0px' });
-    sections.forEach(section => observer.observe(section));
+    // --- ENDPOINT DEFINITIONS ---
+    const endpoints = {
+        'bobby': { method: 'POST', url: '/api/developer/bobby/chat', body: { prompt: "", systemPrompt: "" } },
+        'seraphina': { method: 'POST', url: '/api/developer/seraphina/chat', body: { message: "", stream: false } },
+        'image': { method: 'POST', url: '/api/developer/generate-image', body: { prompt: "", model: "v6" } },
+        'user': { method: 'GET', url: '/api/user/keys-and-balance', body: null }
+    };
 
-    // --- Interactive API Tester ---
-    const allTesterButtons = document.querySelectorAll('.submit-btn[data-endpoint]');
-    allTesterButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const endpoint = button.dataset.endpoint;
-            const apiKey = apiKeyInput.value;
-            const responseElement = document.getElementById(`${endpoint}-response`);
-
-            if (!apiKey) {
-                alert('Please enter your API Key in the Authentication section first.');
-                apiKeyInput.focus();
-                return;
-            }
-
-            let body = {};
-            let path = '';
-
-            try {
-                switch (endpoint) {
-                    case 'bobby':
-                        path = '/api/developer/bobby/chat';
-                        body = { prompt: document.getElementById('bobby-prompt').value };
-                        break;
-                    case 'seraphina':
-                        path = '/api/developer/seraphina/chat';
-                        body = { message: document.getElementById('seraphina-prompt').value, stream: false }; // Force non-stream for simple display
-                        break;
-                    case 'image':
-                        path = '/api/developer/generate-image';
-                        const model = document.getElementById('image-model').value;
-                        body = {
-                            prompt: document.getElementById('image-prompt').value,
-                            model: model === 'minimax' ? 'v6' : model,
-                            use_minimax: model === 'minimax'
-                        };
-                        break;
-                }
-
-                responseElement.innerHTML = '<code>Sending request...</code>';
-                button.disabled = true;
-
-                const response = await fetch(API_BASE_URL + path, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                });
-                
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.detail || `HTTP Error ${response.status}`);
-                }
-                
-                // Truncate long image data for display
-                if(data.image_b64) {
-                    data.image_b64 = data.image_b64.substring(0, 100) + '... [TRUNCATED]';
-                }
-
-                responseElement.innerHTML = `<code>${JSON.stringify(data, null, 2)}</code>`;
-
-            } catch (error) {
-                responseElement.innerHTML = `<code style="color:var(--red);">${error}</code>`;
-            } finally {
-                button.disabled = false;
-            }
-        });
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        checkSystemStatus();
+        updateAllSnippets(); // Set initial code state
     });
 
-    // --- Star Animation ---
-    const starsContainer = document.createElement('div');
-    starsContainer.id = 'stars-container';
-    document.body.prepend(starsContainer);
-    for(let i=0; i < 80; i++) {
-        const star = document.createElement('div');
-        star.className = 'star';
-        const size = Math.random() * 2 + 1;
-        star.style.width = `${size}px`; star.style.height = `${size}px`;
-        star.style.left = `${Math.random() * 100}%`; star.style.top = `${Math.random() * 100}%`;
-        star.style.animationDelay = `${Math.random() * 4}s`;
-        star.style.animationDuration = `${Math.random() * 2 + 3}s`;
-        starsContainer.appendChild(star);
+    function checkSystemStatus() {
+        fetch(BASE_URL + '/')
+            .then(res => {
+                if(res.ok) {
+                    document.getElementById('sys-status-dot').classList.add('online');
+                    document.getElementById('sys-status-text').textContent = "Online";
+                    document.getElementById('sys-status-text').style.color = "var(--success)";
+                } else {
+                    throw new Error('Down');
+                }
+            })
+            .catch(() => {
+                document.getElementById('sys-status-text').textContent = "Offline";
+                document.getElementById('sys-status-text').style.color = "var(--error)";
+            });
     }
-});
+
+    // --- NAVIGATION ---
+    window.showSection = (id) => {
+        document.querySelectorAll('.doc-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        currentSection = id;
+        updateSnippet(id);
+    };
+
+    window.setLang = (lang) => {
+        currentLang = lang;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        updateSnippet(currentSection);
+    };
+
+    // --- CODE GENERATION ---
+    window.updateSnippet = (sectionId) => {
+        if (!endpoints[sectionId]) {
+            document.getElementById('code-display').textContent = "# Select an endpoint to see code.";
+            return;
+        }
+
+        const ep = endpoints[sectionId];
+        const apiKey = document.getElementById('global-api-key').value || "YOUR_API_KEY";
+        
+        // Gather inputs if it has a body
+        let payload = {};
+        if (ep.body) {
+            const form = document.getElementById(`form-${sectionId}`);
+            if (form) {
+                form.querySelectorAll('.param-input').forEach(input => {
+                    const key = input.dataset.key;
+                    if (input.value) payload[key] = input.value;
+                });
+            } else {
+                payload = ep.body; // Fallback
+            }
+        }
+
+        let code = "";
+
+        if (currentLang === 'python') {
+            code = `import requests\n\nurl = "${BASE_URL}${ep.url}"\nheaders = {\n    "Authorization": "Bearer ${apiKey}",\n    "Content-Type": "application/json"\n}\n\n`;
+            if (ep.method === 'POST') {
+                code += `data = ${JSON.stringify(payload, null, 4)}\n\nresponse = requests.post(url, headers=headers, json=data)`;
+            } else {
+                code += `response = requests.get(url, headers=headers)`;
+            }
+            code += `\n\nprint(response.json())`;
+        } 
+        else if (currentLang === 'js') {
+            code = `const url = "${BASE_URL}${ep.url}";\nconst headers = {\n  "Authorization": "Bearer ${apiKey}",\n  "Content-Type": "application/json"\n};\n\n`;
+            if (ep.method === 'POST') {
+                code += `const body = JSON.stringify(${JSON.stringify(payload, null, 2)});\n\nfetch(url, { method: "POST", headers, body })`;
+            } else {
+                code += `fetch(url, { method: "GET", headers })`;
+            }
+            code += `\n  .then(res => res.json())\n  .then(console.log);`;
+        }
+        else if (currentLang === 'curl') {
+            code = `curl -X ${ep.method} "${BASE_URL}${ep.url}" \\\n  -H "Authorization: Bearer ${apiKey}"`;
+            if (ep.method === 'POST') {
+                code += ` \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(payload)}'`;
+            }
+        }
+
+        // Highlight simply by coloring (Regex replacement for basic syntax)
+        document.getElementById('code-display').innerHTML = syntaxHighlight(code);
+    };
+
+    window.updateAllSnippets = () => {
+        if(currentSection && endpoints[currentSection]) updateSnippet(currentSection);
+    };
+
+    // --- REQUEST EXECUTION ---
+    window.executeRequest = async (sectionId) => {
+        const ep = endpoints[sectionId];
+        const apiKey = document.getElementById('global-api-key').value;
+        const resDisplay = document.getElementById('response-display');
+        const statusDisplay = document.getElementById('res-status');
+        const spinner = document.getElementById(`spinner-${sectionId}`);
+
+        if (!apiKey) {
+            alert("Please enter your API Key at the top first.");
+            document.getElementById('global-api-key').focus();
+            return;
+        }
+
+        // Show Loading
+        if(spinner) spinner.style.display = 'inline-block';
+        resDisplay.textContent = "Sending request...";
+        resDisplay.style.color = "#a5d6ff";
+
+        // Build Payload
+        let options = {
+            method: ep.method,
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            }
+        };
+
+        if (ep.method === 'POST') {
+            let payload = {};
+            const form = document.getElementById(`form-${sectionId}`);
+            form.querySelectorAll('.param-input').forEach(input => {
+                const key = input.dataset.key;
+                // Handle booleans/numbers if needed, for now strings work for most
+                let val = input.value;
+                if(val === 'false') val = false;
+                if(val === 'true') val = true;
+                if(input.value) payload[key] = val;
+            });
+            options.body = JSON.stringify(payload);
+        }
+
+        try {
+            const res = await fetch(BASE_URL + ep.url, options);
+            const data = await res.json();
+            
+            // Update Status UI
+            statusDisplay.textContent = `${res.status} ${res.statusText}`;
+            statusDisplay.style.color = res.ok ? "var(--success)" : "var(--error)";
+            
+            // Pretty Print JSON
+            resDisplay.textContent = JSON.stringify(data, null, 2);
+            resDisplay.style.color = res.ok ? "#7ee787" : "#ff7b72"; // Green for success, Red for error
+
+        } catch (error) {
+            statusDisplay.textContent = "Network Error";
+            statusDisplay.style.color = "var(--error)";
+            resDisplay.textContent = error.message;
+        } finally {
+            if(spinner) spinner.style.display = 'none';
+        }
+    };
+
+    // --- UTILS ---
+    window.copyCode = () => {
+        const text = document.getElementById('code-display').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.querySelector('.btn-copy');
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i>', 2000);
+        });
+    }
+
+    function syntaxHighlight(code) {
+        // Very basic highlighter for aesthetics
+        return code
+            .replace(/"(.*?)"/g, '<span class="str">"$1"</span>')
+            .replace(/\b(import|from|const|let|var|function|return|if|else|await|async)\b/g, '<span class="kwd">$1</span>')
+            .replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+    }
 </script>
+
 </body>
 </html>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
