@@ -3,828 +3,880 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elvion AI | Developer API Documentation</title>
+    <title>Elvion AI | Developer Hub</title>
+    
+    <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PrismJS for Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
     <style>
         :root {
-            --bg-dark-space: #0d0c22;
-            --bg-content: #110f2c;
-            --bg-sidebar: #0a091a;
-            --bg-interactive: #000000;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0b0;
-            --text-headings: #ffffff;
-            --border-color: #2a284d;
-            --accent-purple: #9f55ff;
-            --accent-pink: #e040fb;
-            --accent-blue: #00bfff;
-            --accent-green: #4ade80;
-            --accent-red: #f87171;
-            --accent-yellow: #facc15;
-            --font-body: 'Inter', sans-serif;
-            --font-code: 'Fira Code', monospace;
-            --shadow-glow: 0 0 15px rgba(159, 85, 255, 0.3);
-            --shadow-glow-pink: 0 0 15px rgba(224, 64, 251, 0.4);
+            /* Elvion Theme Palette */
+            --bg-deep: #030305;
+            --bg-panel: #0a0a12;
+            --bg-card: #11111a;
+            --bg-input: #050508;
+            
+            --primary: #9d4edd;
+            --primary-glow: rgba(157, 78, 221, 0.4);
+            --secondary: #e040fb;
+            --accent: #00b4d8;
+            
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --border: #1f1f2e;
+            
+            --success: #10b981;
+            --error: #ef4444;
+            
+            --font-main: 'Inter', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
         }
 
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
+        * { box-sizing: border-box; scroll-behavior: smooth; }
 
         body {
             margin: 0;
-            font-family: var(--font-body);
-            background-color: var(--bg-dark-space);
-            color: var(--text-primary);
-            font-size: 16px;
-            line-height: 1.7;
-            overflow: hidden;
-            display: flex;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: var(--font-main);
             height: 100vh;
-        }
-
-        /* --- Main 3-Column Layout --- */
-        .api-layout {
+            overflow: hidden; /* Main scroll handled by grid areas */
             display: grid;
-            grid-template-columns: 280px 1fr 45%;
-            width: 100%;
-            height: 100vh;
+            grid-template-columns: 260px 1fr 450px; /* Thena-style layout */
+            grid-template-areas: "sidebar content playground";
         }
 
-        /* --- Scrollbar Styling --- */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-dark-space); }
-        ::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background-color: var(--accent-purple); }
-
-        /* --- 1. Sidebar --- */
+        /* --- 1. Sidebar (Navigation) --- */
         .sidebar {
-            background-color: var(--bg-sidebar);
-            border-right: 1px solid var(--border-color);
-            padding: 1.5rem 0;
+            grid-area: sidebar;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
+            padding: 20px 0;
             overflow-y: auto;
-            transition: transform 0.3s ease;
         }
 
-        .sidebar-header {
-            padding: 0 1.5rem 1.5rem;
-            border-bottom: 1px solid var(--border-color);
+        .logo-area {
+            padding: 0 24px 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
         }
-        .sidebar-header h1 {
+
+        .logo-area h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             margin: 0;
-            font-size: 1.8rem;
-            color: var(--text-headings);
-            font-weight: 700;
-            text-shadow: 0 0 8px var(--accent-purple);
-        }
-        .sidebar-header h1 span { color: var(--accent-purple); }
-        .sidebar-header p { margin: 5px 0 0; color: var(--text-secondary); font-size: 0.8rem; }
-
-        .api-key-section { padding: 1.5rem; }
-        .api-key-section label { font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; display: block; margin-bottom: 0.5rem; }
-        #api-key-input {
-            width: 100%;
-            background-color: var(--bg-dark-space);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 0.6rem;
-            color: var(--text-primary);
-            font-family: var(--font-code);
-            font-size: 0.85rem;
-            transition: all 0.2s ease;
-        }
-        #api-key-input:focus { outline: none; border-color: var(--accent-purple); box-shadow: var(--shadow-glow); }
-
-        .sidebar-nav { flex-grow: 1; }
-        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav .nav-category {
-            padding: 1.5rem 1.5rem 0.5rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            color: var(--text-secondary);
-        }
-        .sidebar-nav li a {
-            display: flex;
-            align-items: center;
-            padding: 0.6rem 1.5rem;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-            border-left: 3px solid transparent;
-        }
-        .sidebar-nav li a:hover { color: var(--text-primary); background-color: rgba(159, 85, 255, 0.1); }
-        .sidebar-nav li a.active {
-            color: var(--accent-pink);
-            border-left-color: var(--accent-pink);
-            font-weight: 500;
-            background-color: rgba(224, 64, 251, 0.05);
-        }
-        .sidebar-nav .method-tag {
-            font-family: var(--font-code);
-            font-size: 0.75rem;
-            padding: 0.1rem 0.4rem;
-            border-radius: 4px;
-            margin-right: 0.75rem;
-            font-weight: 700;
-        }
-        .method-tag.POST { color: var(--accent-purple); border: 1px solid var(--accent-purple); }
-        .method-tag.GET { color: var(--accent-blue); border: 1px solid var(--accent-blue); }
-
-        /* --- 2. Documentation Content --- */
-        .documentation-content {
-            background-color: var(--bg-content);
-            padding: 3rem 4rem;
-            overflow-y: auto;
+            letter-spacing: -0.5px;
         }
 
-        .doc-section { padding-top: 2.5rem; margin-bottom: 5rem; }
-        .doc-section h2 {
-            font-size: 2.25rem;
-            color: var(--text-headings);
-            margin: 0 0 1rem 0;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .doc-section h3 { font-size: 1.5rem; color: var(--text-headings); margin-top: 2.5rem; margin-bottom: 1rem; }
-        
-        p, li { color: var(--text-secondary); line-height: 1.8; }
-        a { color: var(--accent-pink); text-decoration: none; transition: text-shadow 0.2s; }
-        a:hover { text-decoration: underline; text-shadow: var(--shadow-glow-pink); }
-
-        code {
-            font-family: var(--font-code);
-            background-color: var(--bg-dark-space);
-            padding: 0.2em 0.4em;
-            border-radius: 4px;
-            font-size: 0.9em;
-            color: var(--accent-pink);
-            border: 1px solid var(--border-color);
-        }
-        
-        .endpoint-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background-color: var(--bg-dark-space);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            margin: 1.5rem 0;
-            flex-wrap: wrap;
-        }
-        .endpoint-info .path { font-family: var(--font-code); color: var(--text-primary); font-size: 1rem; }
-        .info-badge { padding: 0.3rem 0.8rem; border-radius: 16px; font-size: 0.8rem; font-weight: 500; }
-        .cost-badge { background-color: var(--accent-yellow); color: #000; }
-        .auth-badge { background-color: var(--accent-blue); color: #fff; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1.5rem;
-            font-size: 0.95rem;
-        }
-        th, td { padding: 1rem; text-align: left; border: 1px solid var(--border-color); }
-        th { background-color: var(--bg-dark-space); color: var(--text-headings); font-weight: 500; }
-        .required { color: var(--accent-red); font-weight: 700; }
-
-        /* --- 3. Interactive Panel --- */
-        .interactive-panel {
-            background-color: var(--bg-interactive);
-            padding: 3rem;
-            overflow-y: auto;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-        }
-
-        .panel-content { display: none; }
-        .panel-content.active { display: block; animation: fadeIn 0.5s ease-in-out; }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .panel-content h3 { font-size: 1.2rem; color: var(--text-headings); margin: 0 0 1rem 0; }
-        
-        /* Code Examples Styling */
-        .code-examples-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .language-select {
-            background-color: var(--bg-dark-space);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 0.5rem;
-            border-radius: 6px;
-            font-family: var(--font-body);
-        }
-        .code-block { position: relative; }
-        .code-block pre {
-            background-color: #0d0d0d;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin: 0;
-            padding: 1.25rem;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-        .code-block pre code { background-color: transparent; padding: 0; border: none; }
-        .copy-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--border-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 0.4rem 0.7rem;
-            border-radius: 6px;
-            cursor: pointer;
-            opacity: 0.3;
-            transition: all 0.2s ease;
-        }
-        .code-block:hover .copy-btn { opacity: 1; }
-        .copy-btn:hover { background-color: var(--accent-purple); }
-
-        /* "Try It Out" Console Styling */
-        .try-it-out {
-            margin-top: 2.5rem;
-            padding: 1.5rem;
-            background-color: var(--bg-dark-space);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-        }
-        .try-it-out h4 {
-            font-size: 1rem;
-            color: var(--text-headings);
-            margin: 0 0 1rem 0;
+        .logo-area span {
+            font-size: 12px;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.75rem;
         }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); }
-        .form-group input, .form-group textarea {
-            width: 100%;
-            background: var(--bg-interactive);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 0.7rem;
-            color: var(--text-primary);
-            font-family: var(--font-body);
-            transition: all 0.2s ease;
-        }
-        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent-pink); box-shadow: var(--shadow-glow-pink); }
-        .form-group textarea { min-height: 100px; font-family: var(--font-code); resize: vertical; }
 
-        .execute-btn {
-            width: 100%;
-            padding: 0.8rem;
-            background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
-            border: none;
+        .nav-group { margin-bottom: 24px; padding: 0 12px; }
+        .nav-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 12px 8px;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            color: var(--text-muted);
+            text-decoration: none;
             border-radius: 6px;
-            color: #fff;
-            font-weight: 700;
-            font-size: 1rem;
+            font-size: 14px;
+            transition: all 0.2s ease;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(157, 78, 221, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-item .method {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 10px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .method.POST { background: rgba(157, 78, 221, 0.2); color: var(--primary); }
+        .method.GET { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+
+        /* --- 2. Main Content (Documentation) --- */
+        .content-area {
+            grid-area: content;
+            padding: 40px 60px;
+            overflow-y: auto;
             position: relative;
         }
-        .execute-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(159, 85, 255, 0.4); }
-        .execute-btn.loading { color: transparent; }
-        .execute-btn .spinner {
-            visibility: hidden;
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            margin-left: -10px;
-            margin-top: -10px;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .execute-btn.loading .spinner { visibility: visible; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .response-area { margin-top: 1.5rem; display: none; }
-        .response-area.visible { display: block; animation: fadeIn 0.3s; }
-        .response-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            background: var(--bg-interactive);
-            border: 1px solid var(--border-color);
-            border-radius: 6px 6px 0 0;
-            font-family: var(--font-code);
-            font-size: 0.9rem;
+        .doc-header { margin-bottom: 40px; }
+        .doc-header h2 { font-size: 32px; margin: 0 0 10px; font-weight: 700; }
+        .doc-header p { color: var(--text-muted); font-size: 16px; line-height: 1.6; }
+
+        .endpoint-section {
+            margin-bottom: 80px;
+            scroll-margin-top: 40px;
+            opacity: 0.4; /* Dim inactive sections */
+            transition: opacity 0.3s ease;
         }
-        .status-code.success { color: var(--accent-green); font-weight: 700; }
-        .status-code.error { color: var(--accent-red); font-weight: 700; }
-        .response-output {
-            max-height: 400px;
+
+        .endpoint-section.active-view { opacity: 1; }
+
+        .endpoint-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .endpoint-title h3 { margin: 0; font-size: 24px; }
+        .cost-badge {
+            font-size: 12px;
+            background: #f59e0b20;
+            color: #f59e0b;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #f59e0b50;
+        }
+
+        .description { color: var(--text-muted); line-height: 1.6; margin-bottom: 24px; }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .params-table th {
+            text-align: left;
+            background: var(--bg-card);
+            padding: 12px 16px;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .params-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .params-table td:first-child { color: var(--primary); font-family: var(--font-code); }
+        .required-star { color: var(--error); margin-left: 4px; }
+        .type-badge { font-family: var(--font-code); font-size: 11px; background: #222; padding: 2px 6px; border-radius: 4px; }
+
+        /* --- 3. Playground (Right Panel) --- */
+        .playground {
+            grid-area: playground;
+            background: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Sticky API Key Header */
+        .playground-header {
+            padding: 15px 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .api-key-input-group label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .input-wrapper { position: relative; }
+        .input-wrapper i { position: absolute; left: 12px; top: 10px; color: var(--text-muted); font-size: 12px; }
+        
+        .global-api-key {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            padding: 8px 10px 8px 32px;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: var(--font-code);
+            font-size: 12px;
+            transition: border-color 0.2s;
+        }
+        
+        .global-api-key:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 10px var(--primary-glow); }
+
+        /* Tabs (Code vs Live) */
+        .playground-tabs {
+            display: flex;
+            background: var(--bg-deep);
+            padding: 2px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .p-tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .p-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(157, 78, 221, 0.05); }
+
+        /* Scrollable Area for Code/Console */
+        .playground-content {
+            flex: 1;
             overflow-y: auto;
-            border: 1px solid var(--border-color);
-            border-top: none;
-            border-radius: 0 0 6px 6px;
+            padding: 20px;
+        }
+
+        /* View: Code Snippets */
+        .view-code { display: none; }
+        .view-code.active { display: block; }
+
+        .lang-selector {
+            width: 100%;
+            background: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .code-container {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
             background: #0d0d0d;
         }
-        .response-output pre { margin: 0; padding: 1rem; background: transparent; border: none; }
-        .response-output img { max-width: 100%; border-radius: 6px; margin: 1rem; }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text-main);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 5;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover { background: var(--primary); }
+
+        /* View: Live Console */
+        .view-console { display: none; }
+        .view-console.active { display: block; }
+
+        .console-form { display: flex; flex-direction: column; gap: 16px; }
+        
+        .c-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .c-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-family: var(--font-main);
+            font-size: 13px;
+        }
+        .c-input:focus { outline: none; border-color: var(--primary); }
+        textarea.c-input { min-height: 80px; resize: vertical; }
+
+        .action-btn {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .action-btn:active { transform: scale(0.98); }
+        .action-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .response-viewer {
+            margin-top: 20px;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            display: none;
+        }
+        .response-viewer.visible { display: block; animation: slideUp 0.3s ease; }
+
+        .status-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 10px;
+            font-family: var(--font-code);
+        }
+        .status-200 { color: var(--success); }
+        .status-err { color: var(--error); }
+
+        .preview-image {
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+
+        /* Animations */
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Prism overrides */
+        pre[class*="language-"] { margin: 0; border-radius: 0; padding: 15px; background: transparent; }
+        code[class*="language-"] { font-family: var(--font-code) !important; font-size: 12px; }
+
     </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 </head>
 <body>
 
-<div class="api-layout">
-    <!-- SIDENAV -->
+    <!-- SIDEBAR NAVIGATION -->
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <h1>Elvion<span>AI</span></h1>
-            <p>API Reference v2.0.0</p>
+        <div class="logo-area">
+            <h1>ELVION<span>AI</span></h1>
+            <div style="font-size: 10px; color: var(--primary); margin-top: 4px;">DEVELOPER PLATFORM</div>
         </div>
-        <div class="api-key-section">
-            <label for="api-key-input">Your API Key</label>
-            <input type="password" id="api-key-input" placeholder="Paste your API key here">
+
+        <div class="nav-group">
+            <div class="nav-label">General</div>
+            <a href="#intro" class="nav-item active" onclick="activateSection('intro')">
+                <i class="fa-solid fa-book-open" style="margin-right:10px; font-size:12px;"></i> Introduction
+            </a>
+            <a href="#auth" class="nav-item" onclick="activateSection('auth')">
+                <i class="fa-solid fa-key" style="margin-right:10px; font-size:12px;"></i> Authentication
+            </a>
         </div>
-        <nav class="sidebar-nav">
-            <ul>
-                <li class="nav-category">Getting Started</li>
-                <li><a href="#introduction" class="nav-link active">Introduction</a></li>
-                <li><a href="#authentication" class="nav-link">Authentication</a></li>
-                
-                <li class="nav-category">Developer Endpoints</li>
-                <li><a href="#dev-seraphina-chat" class="nav-link"><span class="method-tag POST">POST</span>Seraphina Chat</a></li>
-                <li><a href="#dev-bobby-chat" class="nav-link"><span class="method-tag POST">POST</span>Bobby Chat</a></li>
-                <li><a href="#dev-generate-image" class="nav-link"><span class="method-tag POST">POST</span>Generate Image</a></li>
 
-                <li class="nav-category">Public Tools API</li>
-                <li><a href="#public-create-comic" class="nav-link"><span class="method-tag POST">POST</span>Create Comic</a></li>
-                <li><a href="#public-create-website" class="nav-link"><span class="method-tag POST">POST</span>Create Website</a></li>
-                <li><a href="#public-tts" class="nav-link"><span class="method-tag POST">POST</span>Text-to-Speech</a></li>
+        <div class="nav-group">
+            <div class="nav-label">Core AI Models</div>
+            <a href="#seraphina" class="nav-item" onclick="activateSection('seraphina')">
+                <span class="method POST">POST</span> Seraphina Chat
+            </a>
+            <a href="#bobby" class="nav-item" onclick="activateSection('bobby')">
+                <span class="method POST">POST</span> Bobby Chat
+            </a>
+        </div>
 
-                <li class="nav-category">Account Management</li>
-                <li><a href="#acct-create-key" class="nav-link"><span class="method-tag POST">POST</span>Create API Key</a></li>
-                <li><a href="#acct-get-keys" class="nav-link"><span class="method-tag GET">GET</span>Get Keys & Balance</a></li>
-                
-                <li class="nav-category">Payments</li>
-                <li><a href="#payments-initiate" class="nav-link"><span class="method-tag POST">POST</span>Initiate Funding</a></li>
-            </ul>
-        </nav>
+        <div class="nav-group">
+            <div class="nav-label">Creative Suite</div>
+            <a href="#image-gen" class="nav-item" onclick="activateSection('image-gen')">
+                <span class="method POST">POST</span> Generate Image
+            </a>
+            <a href="#comic-gen" class="nav-item" onclick="activateSection('comic-gen')">
+                <span class="method POST">POST</span> Create Comic
+            </a>
+            <a href="#music-gen" class="nav-item" onclick="activateSection('music-gen')">
+                <span class="method POST">POST</span> Generate Music
+            </a>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-label">Video & Audio</div>
+            <a href="#video-text" class="nav-item" onclick="activateSection('video-text')">
+                <span class="method POST">POST</span> Video (Text)
+            </a>
+            <a href="#video-status" class="nav-item" onclick="activateSection('video-status')">
+                <span class="method GET">GET</span> Video Status
+            </a>
+            <a href="#tts" class="nav-item" onclick="activateSection('tts')">
+                <span class="method POST">POST</span> Text to Speech
+            </a>
+        </div>
     </aside>
 
-    <!-- MAIN DOCUMENTATION -->
-    <main class="documentation-content">
-        <section id="introduction" class="doc-section">
-            <h2>Introduction</h2>
-            <p>Welcome to the Elvion AI Developer API, your gateway to integrating our powerful suite of generative AI models into your own applications. Our API is designed to be intuitive, robust, and versatile, empowering you to build next-generation experiences with advanced conversational AI, image generation, website creation, and more.</p>
-            <p>This interactive documentation provides a comprehensive overview of all available endpoints. You can test every endpoint live from this page by entering your API key in the sidebar and using the "Try It Live" console for each function.</p>
-        </section>
-
-        <section id="authentication" class="doc-section">
-            <h2>Authentication</h2>
-            <p>Our API uses two primary methods of authentication depending on the endpoint's purpose.</p>
-            
-            <h3>Developer API Keys (Bearer Token)</h3>
-            <p>For accessing our core AI models (`/api/developer/*`), you must use an API key. Pass your key in the <code>Authorization</code> header as a Bearer token.</p>
-            <code>Authorization: Bearer YOUR_API_KEY</code>
-            <p>You can generate and manage your keys from the <a href="https://elvionai.com.ng/developer-dashboard.html" target="_blank">Elvion AI Developer Dashboard</a>. Generating a key costs 100 credits, and each subsequent API call will deduct credits from your account based on the model used.</p>
-            
-            <h3>Firebase Authentication (X-Firebase-Token)</h3>
-            <p>Endpoints related to managing your account, such as creating keys or initiating payments (`/api/user/*` or `/api/payments/*`), require your Firebase ID token. This is handled automatically when you are logged into our developer dashboard. The token should be passed in the <code>X-Firebase-Token</code> header.</p>
-        </section>
-
-        <!-- DEVELOPER ENDPOINTS -->
-        <section id="dev-seraphina-chat" class="doc-section">
-            <h2>Developer: Seraphina Chat</h2>
-            <p>Engage with Seraphina, our advanced research and reasoning model. Ideal for applications requiring deep analysis, fact-checked answers with citations, and professional content generation. This endpoint supports non-streaming responses for direct integration.</p>
-            <div class="endpoint-info">
-                <span class="path">/api/developer/seraphina/chat</span>
-                <span class="info-badge cost-badge">5 Credits / call</span>
-                <span class="info-badge auth-badge">Bearer Token</span>
-            </div>
-
-            <h3>Request Body</h3>
-            <table>
-                <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-                <tbody>
-                    <tr><td><code>message</code></td><td>string <span class="required">*</span></td><td>The latest user message to send to the model.</td></tr>
-                    <tr><td><code>history</code></td><td>array (objects)</td><td>An array of previous messages (<code>role: 'user'|'assistant'</code>, <code>content: 'string'</code>) to provide conversation context. Must be valid JSON.</td></tr>
-                    <tr><td><code>stream</code></td><td>boolean</td><td>Set to <code>false</code> for a complete JSON response. Defaults to <code>true</code> (streaming) for our web app, but should be <code>false</code> for most API use cases.</td></tr>
-                </tbody>
-            </table>
-        </section>
-
-        <section id="dev-bobby-chat" class="doc-section">
-            <h2>Developer: Bobby Chat</h2>
-            <p>Access Bobby, our thoughtful and dependable chat model. Bobby excels at coding, creative writing, and general conversation, making it a powerful and cost-effective choice for a wide range of applications.</p>
-            <div class="endpoint-info">
-                <span class="path">/api/developer/bobby/chat</span>
-                <span class="info-badge cost-badge">2 Credits / call</span>
-                <span class="info-badge auth-badge">Bearer Token</span>
-            </div>
-            <h3>Request Body</h3>
-            <table>
-                <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-                <tbody>
-                    <tr><td><code>prompt</code></td><td>string <span class="required">*</span></td><td>The user's prompt or message.</td></tr>
-                    <tr><td><code>systemPrompt</code></td><td>string</td><td>An optional system prompt to guide the model's behavior. Defaults to Bobby's internal persona.</td></tr>
-                </tbody>
-            </table>
-        </section>
-
-        <section id="dev-generate-image" class="doc-section">
-            <h2>Developer: Generate Image</h2>
-            <p>Create stunning, high-quality images from a text prompt. This versatile endpoint can use either the advanced Thena models or the creative MiniMax engine, giving you flexibility in style and output. Returns a JSON object with a base64 encoded image.</p>
-             <div class="endpoint-info">
-                <span class="path">/api/developer/generate-image</span>
-                <span class="info-badge cost-badge">15 Credits / call</span>
-                <span class="info-badge auth-badge">Bearer Token</span>
-            </div>
-            <h3>Request Body</h3>
-            <table>
-                 <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-                 <tbody>
-                    <tr><td><code>prompt</code></td><td>string <span class="required">*</span></td><td>A detailed description of the image you want to create.</td></tr>
-                    <tr><td><code>model</code></td><td>string</td><td>(Thena only) The specific model to use. E.g., <code>v6</code>, <code>photoreal</code>, <code>anime_core</code>. Defaults to <code>v6</code>.</td></tr>
-                    <tr><td><code>use_minimax</code></td><td>boolean</td><td>Set to <code>true</code> to use the MiniMax engine instead of Thena. Defaults to <code>false</code>.</td></tr>
-                 </tbody>
-            </table>
-        </section>
-
-        <!-- PUBLIC TOOLS API -->
-        <section id="public-create-comic" class="doc-section">
-            <h2>Public Tool: Create Comic</h2>
-            <p>Generates a multi-panel comic strip from a story. This public endpoint is used by our web interface and requires no API key. The story can be structured with special tags for precise control over panels.</p>
-            <div class="endpoint-info">
-                <span class="path">/api/tools/generate-comic</span>
-                <span class="info-badge auth-badge">No Auth Needed</span>
-            </div>
-            <h3>Request Body</h3>
-            <table>
-                <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
-                <tbody>
-                    <tr><td><code>story</code></td><td>string <span class="required">*</span></td><td>The full story for the comic. Use <code>[INSTRUCTION]</code>, <code>[NARRATION]</code>, and <code>[DIALOGUE]</code> tags to structure panels.</td></tr>
-                    <tr><td><code>style</code></td><td>string</td><td>The visual style of the comic. Options: `anime`, `american`, `manga`, `illustration`, `photoreal`. Defaults to `anime`.</td></tr>
-                    <tr><td><code>panels</code></td><td>integer</td><td>The number of panels to generate. Defaults to 3.</td></tr>
-                    <tr><td><code>model_provider</code></td><td>string</td><td>The backend engine to use: `minimax` or `thena`. Defaults to `minimax`.</td></tr>
-                </tbody>
-            </table>
-        </section>
-
-        <!-- Other sections for all remaining endpoints would follow this detailed format -->
+    <!-- MAIN CONTENT -->
+    <main class="content-area">
         
+        <!-- Introduction -->
+        <section id="intro" class="endpoint-section active-view">
+            <div class="doc-header">
+                <h2>Elvion AI API Documentation</h2>
+                <p>Welcome to the engine room. Elvion AI provides a suite of high-performance generative models accessible via a simple REST API. From the deep reasoning of <strong>Seraphina</strong> to the creative visual engines of <strong>Thena & MiniMax</strong>, everything is at your fingertips.</p>
+                
+                <div style="background: linear-gradient(90deg, #111 0%, #222 100%); padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); margin-top: 20px;">
+                    <h4 style="margin: 0 0 10px; color: var(--primary);">Quick Start</h4>
+                    <p style="margin:0; font-size: 14px;">Base URL: <code style="color:var(--secondary); background: #000; padding: 4px 8px; border-radius: 4px;">https://web-production-9a18.up.railway.app</code></p>
+                    <p style="margin:10px 0 0; font-size: 14px;">
+                        Get your API Key here: <a href="https://elvionai.com.ng/developer-login.html" target="_blank" style="color: var(--accent);">Developer Dashboard <i class="fa-solid fa-external-link-alt"></i></a>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Auth -->
+        <section id="auth" class="endpoint-section">
+            <div class="endpoint-title">
+                <h3>Authentication</h3>
+            </div>
+            <div class="description">
+                <p>The Developer API uses <strong>Bearer Token</strong> authentication. You must include your API key in the header of every request requiring credit deduction.</p>
+                <p><strong>Note:</strong> Public tool endpoints used on the frontend technically do not require a key in the codebase provided, but the Developer Wrapper endpoints (`/api/developer/...`) do. This documentation focuses on the Developer Wrapper endpoints where applicable.</p>
+            </div>
+            <pre><code class="language-http">Authorization: Bearer elv_your_api_key_here</code></pre>
+        </section>
+
+        <!-- Seraphina -->
+        <section id="seraphina" class="endpoint-section" data-endpoint="/api/developer/seraphina/chat" data-method="POST">
+            <div class="endpoint-title">
+                <span class="method POST">POST</span>
+                <h3>Seraphina Chat</h3>
+                <span class="cost-badge">5 Credits</span>
+            </div>
+            <p class="description">
+                Interact with Seraphina (powered by Perplexity Sonar Pro). She offers deep reasoning, real-time web grounding, and citation support.
+            </p>
+            
+            <h4>Parameters</h4>
+            <table class="params-table">
+                <thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>message <i class="fa-solid fa-asterisk required-star"></i></td><td><span class="type-badge">string</span></td><td>The user's input query.</td></tr>
+                    <tr><td>history</td><td><span class="type-badge">array</span></td><td>List of previous messages <code>{role: "user"|"assistant", content: "..."}</code></td></tr>
+                    <tr><td>stream</td><td><span class="type-badge">bool</span></td><td>Default: <code>true</code>. Stream the response chunks.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Bobby -->
+        <section id="bobby" class="endpoint-section" data-endpoint="/api/developer/bobby/chat" data-method="POST">
+            <div class="endpoint-title">
+                <span class="method POST">POST</span>
+                <h3>Bobby Chat</h3>
+                <span class="cost-badge">2 Credits</span>
+            </div>
+            <p class="description">
+                Bobby (Thena Llama) is your go-to model for creative writing, coding assistance, and general conversation. Light, fast, and thoughtful.
+            </p>
+            <table class="params-table">
+                <thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>prompt <i class="fa-solid fa-asterisk required-star"></i></td><td><span class="type-badge">string</span></td><td>The input text.</td></tr>
+                    <tr><td>systemPrompt</td><td><span class="type-badge">string</span></td><td>Optional. Override the default system persona.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Image Gen -->
+        <section id="image-gen" class="endpoint-section" data-endpoint="/api/developer/generate-image" data-method="POST">
+            <div class="endpoint-title">
+                <span class="method POST">POST</span>
+                <h3>Generate Image</h3>
+                <span class="cost-badge">15 Credits</span>
+            </div>
+            <p class="description">
+                Generate high-fidelity images using Thena v6 (default) or MiniMax engines.
+            </p>
+            <table class="params-table">
+                <thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>prompt <i class="fa-solid fa-asterisk required-star"></i></td><td><span class="type-badge">string</span></td><td>Detailed image description.</td></tr>
+                    <tr><td>model</td><td><span class="type-badge">string</span></td><td><code>v6</code>, <code>photoreal</code>, <code>anime_core</code>. (Thena only)</td></tr>
+                    <tr><td>use_minimax</td><td><span class="type-badge">bool</span></td><td>Default: <code>false</code>. Set true to use MiniMax engine.</td></tr>
+                    <tr><td>creative</td><td><span class="type-badge">bool</span></td><td>Enable creative mode (Thena only).</td></tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <!-- Video Text -->
+        <section id="video-text" class="endpoint-section" data-endpoint="/api/tools/generate-video-from-text" data-method="POST">
+            <div class="endpoint-title">
+                <span class="method POST">POST</span>
+                <h3>Video from Text</h3>
+                <span class="cost-badge">MiniMax</span>
+            </div>
+            <p class="description">
+                Initiate a video generation task. <strong>Note:</strong> This returns a <code>task_id</code>. You must poll the Status endpoint to get the final URL.
+            </p>
+            <table class="params-table">
+                <thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>prompt <i class="fa-solid fa-asterisk required-star"></i></td><td><span class="type-badge">string</span></td><td>Cinematic description of the scene.</td></tr>
+                    <tr><td>duration</td><td><span class="type-badge">int</span></td><td>Default: 6. Duration in seconds.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Video Status -->
+        <section id="video-status" class="endpoint-section" data-endpoint="/api/tools/video-status" data-method="GET">
+            <div class="endpoint-title">
+                <span class="method GET">GET</span>
+                <h3>Video Status</h3>
+            </div>
+            <p class="description">
+                Check the progress of a video generation task.
+            </p>
+            <table class="params-table">
+                <thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td>task_id <i class="fa-solid fa-asterisk required-star"></i></td><td><span class="type-badge">string</span></td><td>The ID returned from the generation endpoint.</td></tr>
+                </tbody>
+            </table>
+        </section>
+
     </main>
 
-    <!-- INTERACTIVE PANEL -->
-    <aside class="interactive-panel">
-        
-        <div id="panel-introduction" class="panel-content active">
-            <h3>Welcome to the Elvion AI API</h3>
-            <p>This panel will update as you scroll through the documentation.</p>
-            <p>Select an endpoint from the navigation on the left to see its code examples and a live testing console.</p>
-        </div>
-        <div id="panel-authentication" class="panel-content">
-             <h3>Authentication</h3>
-             <p>Remember to add your API key in the sidebar to use the "Try It Live" feature for protected endpoints.</p>
-        </div>
-
-        <!-- Seraphina Chat Panel -->
-        <div id="panel-dev-seraphina-chat" class="panel-content">
-            <div class="code-examples-header">
-                <h3>Code Examples</h3>
-                <select class="language-select">
-                    <option value="curl">cURL</option>
-                    <option value="python">Python</option>
-                    <option value="javascript">Node.js</option>
-                </select>
-            </div>
-            <div class="code-block" data-lang="curl">
-                <pre><code class="language-bash">curl -X POST 'https://web-production-9a18.up.railway.app/api/developer/seraphina/chat' \
---header 'Authorization: Bearer YOUR_API_KEY' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "message": "Explain quantum computing in simple terms.",
-    "history": [],
-    "stream": false
-}'</code></pre><button class="copy-btn">Copy</button>
-            </div>
-            <div class="code-block" data-lang="python" style="display:none;">
-                 <pre><code class="language-python">import requests
-import json
-
-API_URL = "https://web-production-9a18.up.railway.app/api/developer/seraphina/chat"
-API_KEY = "YOUR_API_KEY"
-
-headers = {
-    "Authorization": f"Bearer {API_KEY}",
-    "Content-Type": "application/json"
-}
-payload = {
-    "message": "Explain quantum computing in simple terms.",
-    "stream": False
-}
-
-response = requests.post(API_URL, headers=headers, json=payload)
-print(response.json())</code></pre><button class="copy-btn">Copy</button>
-            </div>
-             <div class="code-block" data-lang="javascript" style="display:none;">
-                 <pre><code class="language-javascript">const API_URL = 'https://web-production-9a18.up.railway.app/api/developer/seraphina/chat';
-const API_KEY = 'YOUR_API_KEY';
-
-async function callSeraphina() {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': \`Bearer \${API_KEY}\`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      message: 'Explain quantum computing in simple terms.',
-      stream: false
-    })
-  });
-  const data = await response.json();
-  console.log(data);
-}
-callSeraphina();</code></pre><button class="copy-btn">Copy</button>
-            </div>
-
-            <div class="try-it-out">
-                <h4>Try it Live</h4>
-                <form data-endpoint="/api/developer/seraphina/chat">
-                    <div class="form-group">
-                        <label for="seraphina-message">Message</label>
-                        <textarea name="message" rows="3">Explain quantum computing in simple terms.</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="seraphina-history">History (JSON Array)</label>
-                        <textarea name="history" rows="4">[]</textarea>
-                    </div>
-                    <input type="hidden" name="stream" value="false">
-                    <button type="submit" class="execute-btn">Execute<div class="spinner"></div></button>
-                </form>
-                <div class="response-area">
-                    <h4>Response</h4>
-                    <div class="response-status">
-                        <span class="status-code"></span>
-                        <span class="response-time"></span>
-                    </div>
-                    <div class="response-output"><pre><code class="language-json"></code></pre></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Bobby Chat Panel -->
-        <div id="panel-dev-bobby-chat" class="panel-content">
-             <div class="code-examples-header">
-                <h3>Code Examples</h3>
-                <select class="language-select">
-                    <option value="curl">cURL</option>
-                    <option value="python">Python</option>
-                    <option value="javascript">Node.js</option>
-                </select>
-            </div>
-            <div class="code-block" data-lang="curl">
-                <pre><code class="language-bash">curl -X POST 'https://web-production-9a18.up.railway.app/api/developer/bobby/chat' \
---header 'Authorization: Bearer YOUR_API_KEY' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "prompt": "Write a python function to reverse a string."
-}'</code></pre><button class="copy-btn">Copy</button>
-            </div>
-            <div class="try-it-out">
-                <h4>Try it Live</h4>
-                <form data-endpoint="/api/developer/bobby/chat">
-                    <div class="form-group">
-                        <label>Prompt</label>
-                        <textarea name="prompt" rows="4">Write a python function that sorts a list of dictionaries by a specific key.</textarea>
-                    </div>
-                    <button type="submit" class="execute-btn">Execute<div class="spinner"></div></button>
-                </form>
-                <div class="response-area">
-                    <h4>Response</h4>
-                    <div class="response-status">
-                        <span class="status-code"></span><span class="response-time"></span>
-                    </div>
-                    <div class="response-output"><pre><code class="language-json"></code></pre></div>
+    <!-- RIGHT PANEL (CONTROLLER) -->
+    <aside class="playground">
+        <div class="playground-header">
+            <div class="api-key-input-group">
+                <label>Global API Key (Saved in Browser)</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="globalApiKey" class="global-api-key" placeholder="Enter Key to Enable Test Console...">
                 </div>
             </div>
         </div>
 
-        <!-- Generate Image Panel -->
-        <div id="panel-dev-generate-image" class="panel-content">
-             <div class="code-examples-header">
-                <h3>Code Examples</h3>
-                <select class="language-select">
-                    <option value="curl">cURL</option>
-                    <option value="python">Python</option>
-                </select>
-            </div>
-            <div class="code-block" data-lang="curl">
-                <pre><code class="language-bash">curl -X POST 'https://web-production-9a18.up.railway.app/api/developer/generate-image' \
---header 'Authorization: Bearer YOUR_API_KEY' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "prompt": "A hyperrealistic portrait of a futuristic Nigerian queen, cybernetic enhancements glowing with purple light, afrofuturism.",
-    "model": "photoreal"
-}'</code></pre><button class="copy-btn">Copy</button>
-            </div>
-            <div class="code-block" data-lang="python" style="display: none;">
-                <pre><code class="language-python"># This Python code saves the returned image to a file.
-import requests, base64
-from io import BytesIO
-from PIL import Image
-
-API_URL = "https://web-production-9a18.up.railway.app/api/developer/generate-image"
-API_KEY = "YOUR_API_KEY"
-
-headers = {"Authorization": f"Bearer {API_KEY}"}
-payload = {
-    "prompt": "A majestic lion with a cosmic mane, photorealistic",
-    "model": "photoreal"
-}
-
-res = requests.post(API_URL, headers=headers, json=payload)
-if res.ok:
-    img_b64 = res.json()['image_b64']
-    img_bytes = base64.b64decode(img_b64)
-    img = Image.open(BytesIO(img_bytes))
-    img.save("elvion_image.png")
-    print("Image saved to elvion_image.png")
-else:
-    print(res.text)
-</code></pre><button class="copy-btn">Copy</button>
-            </div>
-            <div class="try-it-out">
-                <h4>Try it Live</h4>
-                <form data-endpoint="/api/developer/generate-image">
-                    <div class="form-group">
-                        <label>Prompt</label>
-                        <textarea name="prompt" rows="4">A hyperrealistic portrait of a futuristic Nigerian queen, cybernetic enhancements glowing with purple light, afrofuturism.</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Model (Thena only)</label>
-                        <input name="model" value="photoreal">
-                    </div>
-                    <button type="submit" class="execute-btn">Execute<div class="spinner"></div></button>
-                </form>
-                <div class="response-area">
-                    <h4>Response</h4>
-                    <div class="response-status">
-                        <span class="status-code"></span><span class="response-time"></span>
-                    </div>
-                    <div class="response-output">
-                        <img src="" alt="Generated Image" style="display: none;" />
-                        <pre><code class="language-json"></code></pre>
-                    </div>
-                </div>
-            </div>
+        <div class="playground-tabs">
+            <div class="p-tab active" onclick="switchView('code')"><i class="fa-solid fa-code"></i> Code</div>
+            <div class="p-tab" onclick="switchView('console')"><i class="fa-solid fa-play"></i> Live Console</div>
         </div>
 
-        <!-- Panels for all other sections would follow -->
-
-    </aside>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const BASE_URL = 'https://web-production-9a18.up.railway.app';
-    const apiKeyInput = document.getElementById('api-key-input');
-    
-    apiKeyInput.value = localStorage.getItem('elvionApiKey') || '';
-    apiKeyInput.addEventListener('input', () => localStorage.setItem('elvionApiKey', apiKeyInput.value));
-
-    const navLinks = document.querySelectorAll('.nav-link');
-    const sections = document.querySelectorAll('.doc-section');
-    const interactivePanels = document.querySelectorAll('.panel-content');
-
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const id = entry.target.getAttribute('id');
-                navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#\${id}`));
-                interactivePanels.forEach(panel => panel.classList.toggle('active', panel.id === `panel-\${id}`));
-            }
-        });
-    }, { rootMargin: "-40% 0px -60% 0px" });
-    sections.forEach(section => observer.observe(section));
-
-    document.querySelectorAll('.interactive-panel').forEach(panel => {
-        const langSelect = panel.querySelector('.language-select');
-        const copyBtns = panel.querySelectorAll('.copy-btn');
-
-        if (langSelect) {
-            langSelect.addEventListener('change', () => {
-                const lang = langSelect.value;
-                panel.querySelectorAll('.code-block').forEach(b => {
-                    b.style.display = b.dataset.lang === lang ? 'block' : 'none';
-                });
-            });
-        }
-        
-        copyBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const code = btn.previousElementSibling.querySelector('code').innerText;
-                navigator.clipboard.writeText(code).then(() => {
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-                });
-            });
-        });
-    });
-
-    document.querySelectorAll('.try-it-out form').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const endpoint = form.dataset.endpoint;
-            const responseArea = form.nextElementSibling;
-            const outputEl = responseArea.querySelector('.response-output pre code');
-            const statusEl = responseArea.querySelector('.status-code');
-            const timeEl = responseArea.querySelector('.response-time');
-            const imageEl = responseArea.querySelector('.response-output img');
-            const button = form.querySelector('.execute-btn');
-            const apiKey = apiKeyInput.value;
-
-            if (endpoint.startsWith('/api/developer/') && !apiKey) {
-                alert('Please enter your API Key in the sidebar for developer endpoints.');
-                return;
-            }
-
-            button.classList.add('loading');
-            button.disabled = true;
-            responseArea.classList.add('visible');
-            outputEl.textContent = 'Sending request...';
-            if (imageEl) imageEl.style.display = 'none';
-
-            const formData = new FormData(form);
-            let body;
-            try {
-                body = Object.fromEntries(formData.entries());
-                if (body.history) body.history = JSON.parse(body.history);
-                if (body.stream === 'false') body.stream = false;
-            } catch (err) {
-                alert('Invalid JSON in one of the fields.');
-                button.classList.remove('loading');
-                button.disabled = false;
-                return;
-            }
-
-            const headers = { 'Content-Type': 'application/json' };
-            if (apiKey) headers['Authorization'] = \`Bearer \${apiKey}\`;
+        <div class="playground-content">
             
-            const startTime = Date.now();
-            try {
-                const response = await fetch(BASE_URL + endpoint, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(body),
-                });
+            <!-- CODE SNIPPET VIEW -->
+            <div id="view-code" class="view-code active">
+                <select class="lang-selector" id="langSelect" onchange="updateCodeSnippet()">
+                    <option value="curl">cURL</option>
+                    <option value="python">Python (Requests)</option>
+                    <option value="js">Node.js (Fetch)</option>
+                </select>
+                <div class="code-container">
+                    <button class="copy-btn" onclick="copyCode()"><i class="fa-regular fa-copy"></i> Copy</button>
+                    <pre><code id="codeBlock" class="language-bash"># Select an endpoint on the left to see code</code></pre>
+                </div>
+            </div>
 
-                const endTime = Date.now();
-                timeEl.textContent = \`\${endTime - startTime} ms\`;
-                statusEl.textContent = \`Status: \${response.status}\`;
-                statusEl.className = \`status-code \${response.ok ? 'success' : 'error'}\`;
-                
-                const responseData = await response.json();
+            <!-- LIVE CONSOLE VIEW -->
+            <div id="view-console" class="view-console">
+                <div id="console-form" class="console-form">
+                    <div style="text-align: center; color: var(--text-muted); margin-top: 50px;">
+                        <i class="fa-solid fa-arrow-left"></i> Select an endpoint to test
+                    </div>
+                </div>
 
-                if (endpoint.includes('generate-image') && response.ok) {
-                    if (imageEl) {
-                        imageEl.src = \`data:image/png;base64,\${responseData.image_b64}\`;
-                        imageEl.style.display = 'block';
-                    }
-                }
-                
-                outputEl.textContent = JSON.stringify(responseData, null, 2);
-                hljs.highlightElement(outputEl);
+                <div id="response-viewer" class="response-viewer">
+                    <div class="status-line">
+                        <span>Response</span>
+                        <span id="res-status" class="status-200"></span>
+                    </div>
+                    <div id="image-preview-container" style="display:none;">
+                        <img id="image-preview" class="preview-image" src="" alt="Generated">
+                    </div>
+                    <div class="code-container">
+                        <pre><code id="res-body" class="language-json">...</code></pre>
+                    </div>
+                </div>
+            </div>
 
-            } catch (error) {
-                statusEl.textContent = 'Status: Network Error';
-                statusEl.className = 'status-code error';
-                outputEl.textContent = error.toString();
-            } finally {
-                button.classList.remove('loading');
-                button.disabled = false;
-            }
+        </div>
+    </aside>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    
+    <script>
+        // State
+        const BASE_URL = "https://web-production-9a18.up.railway.app";
+        let currentEndpoint = null;
+        let currentMethod = null;
+        
+        // --- Initialization ---
+        document.addEventListener("DOMContentLoaded", () => {
+            // Load API Key from LocalStorage
+            const savedKey = localStorage.getItem("elvion_api_key");
+            if(savedKey) document.getElementById("globalApiKey").value = savedKey;
+
+            // Save Key on Change
+            document.getElementById("globalApiKey").addEventListener("input", (e) => {
+                localStorage.setItem("elvion_api_key", e.target.value);
+            });
+
+            // Activate first endpoint section if none selected, or handle scrollspy
+            activateSection('intro');
         });
-    });
-});
-</script>
 
+        // --- Navigation Logic ---
+        function activateSection(id) {
+            // Highlight Nav
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            // Find the link pointing to this id
+            const navLink = document.querySelector(`a[href="#${id}"]`);
+            if(navLink) navLink.classList.add('active');
+
+            // Show Section
+            document.querySelectorAll('.endpoint-section').forEach(el => el.classList.remove('active-view'));
+            const section = document.getElementById(id);
+            if(section) section.classList.add('active-view');
+
+            // Setup Right Panel context
+            if(section && section.dataset.endpoint) {
+                currentEndpoint = section.dataset.endpoint;
+                currentMethod = section.dataset.method;
+                renderConsole(id);
+                updateCodeSnippet();
+            } else {
+                // Info pages (Intro/Auth)
+                document.getElementById('codeBlock').innerText = "# Select an API Endpoint to generate code";
+                document.getElementById('console-form').innerHTML = '<div style="text-align: center; color: var(--text-muted); margin-top: 50px;">Select an endpoint to test</div>';
+            }
+        }
+
+        // --- View Switching (Code vs Console) ---
+        function switchView(view) {
+            document.querySelectorAll('.p-tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.view-code, .view-console').forEach(el => el.classList.remove('active'));
+            
+            if(view === 'code') {
+                document.querySelector('.p-tab:nth-child(1)').classList.add('active');
+                document.getElementById('view-code').classList.add('active');
+            } else {
+                document.querySelector('.p-tab:nth-child(2)').classList.add('active');
+                document.getElementById('view-console').classList.add('active');
+            }
+        }
+
+        // --- Code Snippet Generator ---
+        function updateCodeSnippet() {
+            if(!currentEndpoint) return;
+            
+            const lang = document.getElementById('langSelect').value;
+            const apiKey = document.getElementById('globalApiKey').value || "YOUR_API_KEY";
+            const params = getParamsForSection(currentEndpoint);
+            let code = "";
+
+            if (lang === 'curl') {
+                code = `curl -X ${currentMethod} "${BASE_URL}${currentEndpoint}" \\\n`;
+                code += `  -H "Authorization: Bearer ${apiKey}" \\\n`;
+                code += `  -H "Content-Type: application/json" \\\n`;
+                if(currentMethod === 'POST') {
+                    code += `  -d '${JSON.stringify(params, null, 2)}'`;
+                }
+                document.getElementById('codeBlock').className = "language-bash";
+            } else if (lang === 'python') {
+                code = `import requests\n\nurl = "${BASE_URL}${currentEndpoint}"\n`;
+                code += `headers = {\n    "Authorization": "Bearer ${apiKey}",\n    "Content-Type": "application/json"\n}\n`;
+                if(currentMethod === 'POST') {
+                    code += `data = ${JSON.stringify(params, null, 4)}\n`;
+                    code += `response = requests.post(url, headers=headers, json=data)\n`;
+                } else {
+                    code += `response = requests.get(url, headers=headers)\n`;
+                }
+                code += `print(response.json())`;
+                document.getElementById('codeBlock').className = "language-python";
+            } else if (lang === 'js') {
+                code = `const url = "${BASE_URL}${currentEndpoint}";\n`;
+                code += `const headers = {\n  "Authorization": "Bearer ${apiKey}",\n  "Content-Type": "application/json"\n};\n`;
+                if(currentMethod === 'POST') {
+                    code += `const body = ${JSON.stringify(params, null, 2)};\n\n`;
+                    code += `fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })\n`;
+                } else {
+                    code += `fetch(url, { method: 'GET', headers })\n`;
+                }
+                code += `  .then(res => res.json())\n  .then(data => console.log(data));`;
+                document.getElementById('codeBlock').className = "language-javascript";
+            }
+
+            document.getElementById('codeBlock').innerText = code;
+            Prism.highlightElement(document.getElementById('codeBlock'));
+        }
+
+        // --- Helper: Default Params for Snippets ---
+        function getParamsForSection(endpoint) {
+            if(endpoint.includes('seraphina')) return { message: "Why is the sky blue?", history: [], stream: false };
+            if(endpoint.includes('bobby')) return { prompt: "Write a haiku about space." };
+            if(endpoint.includes('generate-image')) return { prompt: "A cyberpunk city in neon rain", model: "v6", use_minimax: false };
+            if(endpoint.includes('comic')) return { story: "Hero wakes up. Hero fights dragon.", style: "anime", panels: 3 };
+            if(endpoint.includes('video-from-text')) return { prompt: "Drone shot of a mountain peak", duration: 6 };
+            if(endpoint.includes('text-to-speech')) return { text: "Welcome to Elvion AI.", voice_id: "Wise_Woman" };
+            return {};
+        }
+
+        // --- Render Live Console Form ---
+        function renderConsole(id) {
+            const container = document.getElementById('console-form');
+            container.innerHTML = '';
+            document.getElementById('response-viewer').classList.remove('visible');
+
+            // Common Inputs based on ID
+            let inputs = "";
+            
+            if(id === 'seraphina') {
+                inputs += createInput('message', 'Message', 'textarea', 'Explain quantum mechanics...');
+            } else if (id === 'bobby') {
+                inputs += createInput('prompt', 'Prompt', 'textarea', 'Write python code to...');
+                inputs += createInput('systemPrompt', 'System Prompt (Optional)', 'text', '');
+            } else if (id === 'image-gen') {
+                inputs += createInput('prompt', 'Image Prompt', 'textarea', 'Astronaut riding a horse...');
+                inputs += `<div class="c-field"><label>Model</label><select id="in_model" class="c-input"><option value="v6">Thena v6</option><option value="photoreal">Photoreal</option></select></div>`;
+                inputs += `<div class="c-field" style="margin-top:10px;"><label><input type="checkbox" id="in_minimax"> Use MiniMax Engine</label></div>`;
+            } else if (id === 'video-status') {
+                inputs += createInput('task_id', 'Task ID', 'text', 'Enter task ID from generation...');
+            } else if (id === 'video-text') {
+                 inputs += createInput('prompt', 'Video Prompt', 'textarea', 'Ocean waves crashing...');
+            }
+
+            inputs += `<button class="action-btn" onclick="executeRequest('${id}')"><i class="fa-solid fa-bolt"></i> Send Request</button>`;
+            container.innerHTML = inputs;
+        }
+
+        function createInput(id, label, type, placeholder) {
+            if(type === 'textarea') {
+                return `<div class="c-field"><label>${label}</label><textarea id="in_${id}" class="c-input" placeholder="${placeholder}"></textarea></div>`;
+            }
+            return `<div class="c-field"><label>${label}</label><input type="text" id="in_${id}" class="c-input" placeholder="${placeholder}"></div>`;
+        }
+
+        // --- Execute Request (The "Actionic" Part) ---
+        async function executeRequest(id) {
+            const apiKey = document.getElementById('globalApiKey').value;
+            if(!apiKey) {
+                alert("Please enter a Global API Key at the top of the playground.");
+                return;
+            }
+
+            const btn = document.querySelector('.action-btn');
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            const resView = document.getElementById('response-viewer');
+            const resStatus = document.getElementById('res-status');
+            const resBody = document.getElementById('res-body');
+            const imgPreview = document.getElementById('image-preview');
+            const imgContainer = document.getElementById('image-preview-container');
+
+            resView.classList.remove('visible');
+            imgContainer.style.display = 'none';
+
+            // Build Payload
+            let payload = {};
+            if(document.getElementById('in_message')) payload.message = document.getElementById('in_message').value;
+            if(document.getElementById('in_prompt')) payload.prompt = document.getElementById('in_prompt').value;
+            if(document.getElementById('in_model')) payload.model = document.getElementById('in_model').value;
+            if(document.getElementById('in_minimax')) payload.use_minimax = document.getElementById('in_minimax').checked;
+            
+            // Handle History for Seraphina (Basic empty array for demo)
+            if(id === 'seraphina') payload.history = [];
+            if(id === 'seraphina') payload.stream = false; // Force non-stream for simple console output
+
+            let url = BASE_URL + currentEndpoint;
+            
+            // Handle GET params
+            if(currentMethod === 'GET') {
+                if(document.getElementById('in_task_id')) {
+                    url += `?task_id=${document.getElementById('in_task_id').value}`;
+                }
+            }
+
+            try {
+                const opts = {
+                    method: currentMethod,
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    }
+                };
+                if(currentMethod === 'POST') opts.body = JSON.stringify(payload);
+
+                const req = await fetch(url, opts);
+                const data = await req.json();
+
+                resStatus.innerText = `${req.status} ${req.statusText}`;
+                resStatus.className = req.ok ? 'status-200' : 'status-err';
+                resBody.innerText = JSON.stringify(data, null, 2);
+                
+                // Special handling for Image Gen preview
+                if(data.image_b64) {
+                    imgPreview.src = `data:image/png;base64,${data.image_b64}`;
+                    imgContainer.style.display = 'block';
+                } else if (data.url && (data.url.endsWith('.png') || data.url.endsWith('.jpg') || data.url.endsWith('.mp4'))) {
+                     // For MiniMax video URL or other links
+                     // For video we might want a video tag, but for now simple link/img
+                     if(data.url.endsWith('.mp4')) {
+                        resBody.innerText += `\n\n[Video Generated]`;
+                     }
+                }
+
+                resView.classList.add('visible');
+                Prism.highlightElement(resBody);
+
+            } catch (e) {
+                resStatus.innerText = "Error";
+                resStatus.className = 'status-err';
+                resBody.innerText = e.toString();
+                resView.classList.add('visible');
+            } finally {
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+            }
+        }
+
+        function copyCode() {
+            const text = document.getElementById('codeBlock').innerText;
+            navigator.clipboard.writeText(text);
+            const btn = document.querySelector('.copy-btn');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+            setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy', 2000);
+        }
+
+    </script>
 </body>
 </html>
 
