@@ -2910,11 +2910,15 @@
                     buildForm: () => `
                         <label for="research-topic">Research Topic</label><input type="text" id="research-topic" placeholder="The history of artificial intelligence" required aria-label="Research topic">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-flask-vial"></i> Generate Report</button>`,
+                    
+                    // =================== START OF REPLACEMENT ===================
                     handleSubmit: async (form) => {
                         const topic = form.querySelector('#research-topic')?.value;
                         if (!topic) return "Please provide a research topic.";
+                        
                         await addMessageToChat('user', `Research report request on: "${topic}"`);
                         displayProcessingMessage('Conducting research and compiling report...');
+                        
                         try {
                             const res = await fetch(`${API_BASE_URL}/api/tools/research`, {
                                 method: 'POST',
@@ -2922,19 +2926,33 @@
                                 body: JSON.stringify({ topic }),
                                 signal: currentController?.signal
                             });
-                            if (!res.ok) throw new Error(res.statusText);
-                            const blob = await res.blob();
-                            const url = URL.createObjectURL(blob);
-                            const downloadLink = `<a href="${url}" download="research_${topic.replace(/\s/g, '_')}.pdf" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
+
+                            // THE FIX IS HERE: We now correctly read the JSON response from the backend.
+                            const data = await res.json();
+
+                            if (!res.ok) {
+                                // If the server sent an error, use its detail message.
+                                throw new Error(data.detail || 'The server returned an error.');
+                            }
+
+                            // Now, we use the 'download_url' and 'filename' provided by the backend.
+                            const downloadLink = `<a href="${data.download_url}" download="${data.filename}" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
+                            
+                            // Display the success message with the correct, working link.
                             await showToolResponse(`✅ Research report on **${topic}** is ready! ${downloadLink}`, true);
-                            return null;
+                            
+                            return null; // Indicates success
                         } catch (err) {
-                            if (err.name === 'AbortError') { return '❌ Research report generation stopped.'; }
+                            if (err.name === 'AbortError') {
+                                return '❌ Research report generation stopped.';
+                            }
+                            // Display any errors that occurred.
                             return `❌ Research report failed: ${err.message}`;
                         } finally {
                             removeProcessingMessage();
                         }
                     }
+                    // =================== END OF REPLACEMENT ===================
                 },
             };
 
