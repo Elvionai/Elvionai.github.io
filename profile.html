@@ -1239,6 +1239,7 @@
                 <a href="#" class="tool-link" data-tool="edit-website" role="menuitem"><i class="fa-solid fa-pen-ruler"></i> Edit Last Website</a>
                 <a href="#" class="tool-link" data-tool="my-sites" role="menuitem"><i class="fa-solid fa-list-check"></i> My Websites</a>
                 <a href="#" class="tool-link" data-tool="research-report" role="menuitem"><i class="fa-solid fa-flask-vial"></i> Research Report</a>
+              <a href="#" class="tool-link" data-tool="seraphina-research" role="menuitem"><i class="fa-solid fa-dna"></i> Seraphina Research (Deep)</a>
             </div>
             <button type="button" class="submit-btn" style="background:rgba(16,33,59,0.7);color:var(--neon-blue);margin-top:20px;" onclick="closeToolMenu();">Close</button>
         </nav>
@@ -2955,6 +2956,59 @@
                         } catch (err) {
                             if (err.name === 'AbortError') return '❌ Report stopped.';
                             return `❌ Report failed: ${err.message}`;
+                        } finally {
+                            removeProcessingMessage();
+                        }
+                    }
+                },
+                "seraphina-research": {
+                    title: "Seraphina Research (Deep Web)",
+                    description: "Generate a highly detailed, citation-heavy research report using Seraphina.",
+                    buildForm: () => `
+                        <label for="sera-topic">Research Topic</label><input type="text" id="sera-topic" placeholder="Quantum Computing advancements 2025" required aria-label="Research topic">
+                        <button type="submit" class="submit-btn" style="width:100%; background: linear-gradient(135deg, #bd00ff, #00f2ff);"><i class="fa-solid fa-brain"></i> Generate Deep Report</button>`,
+                    
+                    handleSubmit: async (form) => {
+                        const topic = form.querySelector('#sera-topic')?.value;
+                        if (!topic) return "Please provide a research topic.";
+                        
+                        await addMessageToChat('user', `Seraphina Research request: "${topic}"`);
+                        displayProcessingMessage('Seraphina is scouring the deep web...');
+                        
+                        try {
+                            const res = await fetch(`${API_BASE_URL}/api/seraphina/research-report`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ topic }),
+                                signal: currentController?.signal
+                            });
+
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.detail || 'Server error');
+
+                            // Convert Data URI to Blob for clean linking
+                            const blob = await (await fetch(data.download_url)).blob();
+                            const cleanUrl = URL.createObjectURL(blob);
+
+                            // Render clickable response
+                            const htmlResponse = `
+                                <div style="display:flex; align-items:center; gap:15px; background:rgba(189, 0, 255, 0.15); padding:15px; border-radius:15px; border:1px solid var(--neon-purple);">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" alt="PDF" style="width:40px; height:40px; display:block;">
+                                    <div style="display:flex; flex-direction:column;">
+                                        <span style="color:white; font-weight:bold;">Seraphina Report: ${topic}</span>
+                                        <a href="${cleanUrl}" download="${data.filename}" style="color:var(--neon-green); font-weight:bold; text-decoration:none; margin-top:5px;">
+                                            <i class="fa-solid fa-download"></i> Download Deep Research PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+
+                            await showToolResponse(htmlResponse, true);
+                            return null;
+
+                        } catch (err) {
+                            if (err.name === 'AbortError') return '❌ Report stopped.';
+                            return `❌ Seraphina failed: ${err.message}`;
                         } finally {
                             removeProcessingMessage();
                         }
