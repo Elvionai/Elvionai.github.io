@@ -2911,7 +2911,6 @@
                         <label for="research-topic">Research Topic</label><input type="text" id="research-topic" placeholder="The history of artificial intelligence" required aria-label="Research topic">
                         <button type="submit" class="submit-btn" style="width:100%;"><i class="fa-solid fa-flask-vial"></i> Generate Report</button>`,
                     
-                    // =================== START OF REPLACEMENT ===================
                     handleSubmit: async (form) => {
                         const topic = form.querySelector('#research-topic')?.value;
                         if (!topic) return "Please provide a research topic.";
@@ -2920,6 +2919,7 @@
                         displayProcessingMessage('Conducting research and compiling report...');
                         
                         try {
+                            // 1. Call Backend
                             const res = await fetch(`${API_BASE_URL}/api/tools/research`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -2927,32 +2927,38 @@
                                 signal: currentController?.signal
                             });
 
-                            // THE FIX IS HERE: We now correctly read the JSON response from the backend.
                             const data = await res.json();
+                            if (!res.ok) throw new Error(data.detail || 'Server error');
 
-                            if (!res.ok) {
-                                // If the server sent an error, use its detail message.
-                                throw new Error(data.detail || 'The server returned an error.');
-                            }
+                            // 2. Process the Data URI into a local Blob (Clean URL)
+                            const blob = await (await fetch(data.download_url)).blob();
+                            const cleanUrl = URL.createObjectURL(blob);
 
-                            // Now, we use the 'download_url' and 'filename' provided by the backend.
-                            const downloadLink = `<a href="${data.download_url}" download="${data.filename}" style="color:var(--neon-blue);font-weight:bold;">Download PDF Report</a>`;
-                            
-                            // Display the success message with the correct, working link.
-                            await showToolResponse(`✅ Research report on **${topic}** is ready! ${downloadLink}`, true);
-                            
-                            return null; // Indicates success
+                            // 3. THE FIX: We wrap the link in a specific HTML structure containing an <img> tag.
+                            // Your chat system detects the <img> tag and automatically allows the HTML to render,
+                            // making the link clickable without changing any other code.
+                            const htmlResponse = `
+                                <div style="display:flex; align-items:center; gap:15px; background:rgba(0, 242, 255, 0.1); padding:15px; border-radius:15px; border:1px solid var(--neon-blue);">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/337/337946.png" alt="PDF" style="width:40px; height:40px; display:block;">
+                                    <div style="display:flex; flex-direction:column;">
+                                        <span style="color:white; font-weight:bold;">Report Ready: ${topic}</span>
+                                        <a href="${cleanUrl}" download="${data.filename}" style="color:var(--neon-green); font-weight:bold; text-decoration:none; margin-top:5px;">
+                                            <i class="fa-solid fa-download"></i> Click to Download PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+
+                            await showToolResponse(htmlResponse, true);
+                            return null;
+
                         } catch (err) {
-                            if (err.name === 'AbortError') {
-                                return '❌ Research report generation stopped.';
-                            }
-                            // Display any errors that occurred.
-                            return `❌ Research report failed: ${err.message}`;
+                            if (err.name === 'AbortError') return '❌ Report stopped.';
+                            return `❌ Report failed: ${err.message}`;
                         } finally {
                             removeProcessingMessage();
                         }
                     }
-                    // =================== END OF REPLACEMENT ===================
                 },
             };
 
