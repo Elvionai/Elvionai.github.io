@@ -7,11 +7,10 @@
   <meta name="description" content="Manage your API keys, wallet, and usage for the Elvion AI Developer Platform.">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://checkout.squadco.com/widget/squad.js"></script>
   <style>
     :root {
       --cyan: #00ffff; --blue: #0090ff; --magenta: #ff00ff; --red: #ff4d4d; --green: #28a745; --orange: #ffae42;
-      --bg-primary: #0a1128; --bg-secondary: #10142c; --card-bg: rgba(18, 26, 48, 0.9);
+      --bg-primary: #0a1128; --bg-secondary: #10142c; --card-bg: rgba(18, 26, 48, 0.95);
       --border-color: rgba(0, 255, 255, 0.2); --border-glow: 0 0 12px rgba(0, 255, 255, 0.5);
       --radius: 12px; --text-primary: #e0e0e0; --text-secondary: #b3b3b3;
     }
@@ -45,7 +44,7 @@
     .metric-value { font-family: 'Orbitron', sans-serif; font-size: 2.2em; font-weight: 800; color: #fff; line-height: 1; }
     .metric-value .loader-small { display: inline-block; width: 1em; height: 1em; border: 2px solid var(--cyan); border-bottom-color: transparent; }
 
-    .section-card { background: var(--card-bg); border-radius: var(--radius); padding: 25px; border: 1px solid var(--border-color); margin-bottom: 30px; }
+    .section-card { background: var(--card-bg); border-radius: var(--radius); padding: 25px; border: 1px solid var(--border-color); margin-bottom: 30px; position: relative; overflow: hidden; }
     .section-header { font-family:'Orbitron',sans-serif; color: var(--cyan); margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 1.3em; }
     
     .key-generation-grid { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; }
@@ -71,6 +70,13 @@
     .submit-btn.btn-loading .btn-text { opacity: 0; }
     .submit-btn.btn-loading .btn-loader { opacity: 1; }
 
+    /* Admin Panel Specifics */
+    #admin-panel { border-color: var(--orange); box-shadow: 0 0 15px rgba(255, 174, 66, 0.2); }
+    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+    .admin-card { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px solid rgba(255, 174, 66, 0.3); }
+    .admin-input { width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter'; }
+    .admin-input:focus { outline: none; border-color: var(--orange); }
+
     .status-message { font-size: .95em; margin-top: 15px; min-height: 20px; transition: color 0.3s; }
     .loader { width: 40px; height: 40px; border: 4px solid var(--cyan); border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
     @keyframes rotation { to { transform: rotate(360deg); } }
@@ -81,15 +87,11 @@
     .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 1.8em; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
     .close-btn:hover { opacity: 1; }
 
-    /* Payment Modal Specifics */
     .payment-tabs { display: flex; background: var(--bg-secondary); border-radius: 10px; margin-bottom: 25px; padding: 5px; }
     .payment-tab { flex: 1; padding: 12px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); font-family: 'Orbitron', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .payment-tab.active { background: linear-gradient(90deg, var(--cyan), var(--magenta)); color: #000; }
-    .manual-payment-details { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; text-align: left; font-size: 0.95em; line-height: 1.6; }
-    .manual-payment-details strong { color: var(--cyan); }
     #payment-amount { width: 100%; padding: 12px; box-sizing: border-box; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; color: #fff; font-size: 1.2em; margin: 15px 0 20px; text-align: center; }
 
-    /* New Key Modal Specifics */
     #new-key-display { font-family: monospace; background: var(--bg-secondary); padding: 15px; border-radius: 8px; color: var(--cyan); font-size: 1.1em; word-break: break-all; border: 1px solid var(--cyan); margin: 20px 0; }
     .copy-btn { background: transparent; border: 1px solid var(--cyan); color: var(--cyan); }
     .copy-btn:hover { background: var(--cyan); color: var(--bg-primary); }
@@ -105,6 +107,7 @@
       .key-table tr { margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; }
       .key-table td { text-align: right; position: relative; padding-left: 50%; border: none; }
       .key-table td::before { content: attr(data-label); position: absolute; left: 10px; width: calc(50% - 20px); text-align: left; font-weight: bold; color: var(--cyan); font-family: 'Orbitron'; text-transform: uppercase; font-size: 0.8em; }
+      .admin-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -124,6 +127,7 @@
     </header>
 
     <main>
+        <!-- Metrics Section -->
         <div class="metrics-grid">
             <div class="metric-card metric-card-double">
                 <div>
@@ -140,6 +144,7 @@
             </div>
         </div>
 
+        <!-- API Key Management Section -->
         <div class="section-card">
             <h2 class="section-header"><i class="fas fa-key"></i> API Key Management</h2>
             <div class="key-generation-grid">
@@ -170,49 +175,69 @@
             </div>
         </div>
 
+        <!-- Admin Office (Hidden for normal users) -->
         <div class="section-card" id="admin-panel" hidden>
             <h2 class="section-header" style="color: var(--orange);"><i class="fas fa-user-shield"></i> Admin Office</h2>
-            <div style="text-align: center; ">
-                <p style="color: var(--text-secondary);">This one-time tool sets your admin credit balance to 100,000.</p>
-                <button id="grant-credits-btn" class="submit-btn" style="background: var(--orange);">
-                    <span class="btn-text">Grant Admin Credits</span>
-                    <span class="btn-loader"><div class="loader" style="width:20px; height:20px; border-width:3px; border-color:black; border-bottom-color:transparent;"></div></span>
-                </button>
-                <p class="status-message" id="grant-credits-status"></p>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">Master Control Panel for credit distribution.</p>
+            
+            <div class="admin-grid">
+                <!-- Action 1: Self Grant -->
+                <div class="admin-card">
+                    <h4 style="margin-top:0; color:var(--orange);">Boost Admin Balance</h4>
+                    <p style="font-size:0.8em; color:#ccc;">Set your own balance to 100,000.</p>
+                    <button id="grant-credits-btn" class="submit-btn" style="background: var(--orange); width: 100%;">
+                        <span class="btn-text">Grant Self</span>
+                        <span class="btn-loader"><div class="loader" style="width:20px; height:20px; border-width:3px; border-color:black; border-bottom-color:transparent;"></div></span>
+                    </button>
+                    <p class="status-message" id="grant-credits-status"></p>
+                </div>
+
+                <!-- Action 2: Gift User -->
+                <div class="admin-card">
+                    <h4 style="margin-top:0; color:var(--cyan);">Gift Credits to User</h4>
+                    <input type="email" id="gift-email" class="admin-input" placeholder="User Email (e.g. user@gmail.com)">
+                    <input type="number" id="gift-amount" class="admin-input" placeholder="Amount (e.g. 5000)">
+                    <button id="gift-credits-btn" class="submit-btn" style="background: transparent; border: 1px solid var(--cyan); color: var(--cyan); width: 100%;">
+                        <span class="btn-text">Send Gift</span>
+                        <span class="btn-loader"><div class="loader" style="width:20px; height:20px; border-width:3px; border-color:var(--cyan); border-bottom-color:transparent;"></div></span>
+                    </button>
+                    <p class="status-message" id="gift-status"></p>
+                </div>
             </div>
         </div>
     </main>
 </div>
 
-<!-- HYBRID PAYMENT MODAL -->
+<!-- KORAPAY PAYMENT MODAL -->
 <div class="modal-overlay" id="payment-modal">
     <div class="modal-content">
         <button class="close-btn" onclick="closeModal('payment-modal')">&times;</button>
         <h3>Fund Your Wallet</h3>
+        
         <div class="payment-tabs">
-            <button class="payment-tab active" id="automated-payment-tab"><i class="fas fa-credit-card"></i> Automated</button>
+            <button class="payment-tab active" id="automated-payment-tab"><i class="fas fa-bolt"></i> Korapay Instant</button>
             <button class="payment-tab" id="manual-payment-tab"><i class="fas fa-university"></i> Manual Transfer</button>
         </div>
+
+        <!-- Automated Flow -->
         <div class="payment-content" id="automated-payment-content">
-            <p>Enter amount in Naira (₦) to add. 1 credit = 1 Naira.</p>
+            <p>Enter amount in Naira (₦) to add. 1 Credit = 1 Naira.</p>
             <input type="number" id="payment-amount" min="100" value="1000">
             <button id="proceed-to-payment-btn" class="submit-btn">
-                <span class="btn-text">Proceed to Secure Payment</span>
+                <span class="btn-text">Proceed to Checkout <i class="fas fa-external-link-alt" style="font-size:0.8em; margin-left:5px;"></i></span>
                 <span class="btn-loader"><div class="loader" style="width:20px; height:20px; border-width:3px; border-color:black; border-bottom-color:transparent;"></div></span>
             </button>
             <p class="status-message" id="payment-status"></p>
         </div>
+
+        <!-- Manual Flow -->
         <div class="payment-content" id="manual-payment-content" style="display: none;">
-            <p>To fund your wallet manually, please follow these steps:</p>
-            <div class="manual-payment-details">
-                1. Transfer the desired amount to:<br>
+            <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; text-align: left; font-size: 0.95em; line-height: 1.6;">
+                <p style="margin-top:0;">1. Transfer amount to:<br>
                 <strong>Bank:</strong> Kuda Bank<br>
-                <strong>Account No:</strong> 200... (Your Account Number)<br>
-                <strong>Name:</strong> Kolade Philip Ogunlana
-                <br><br>
-                2. After payment, send a WhatsApp message to <strong>+234... (Your Number)</strong> with a screenshot and your developer email: <strong id="user-email-display"></strong>
-                <br><br>
-                Credits will be applied manually within 10-15 minutes.
+                <strong>Account:</strong> 200... (Your Account)<br>
+                <strong>Name:</strong> Kolade Philip Ogunlana</p>
+                <p style="margin-bottom:0;">2. Send receipt to WhatsApp (+234...) with your email: <strong id="user-email-display" style="color:var(--cyan);"></strong></p>
             </div>
         </div>
     </div>
@@ -223,19 +248,19 @@
     <div class="modal-content">
         <h3 id="status-modal-title">Processing...</h3>
         <div id="status-modal-loader" class="loader"></div>
-        <p id="status-modal-message">Please wait, we are processing your request.</p>
+        <p id="status-modal-message">Please wait, we are verifying your transaction.</p>
     </div>
 </div>
 
-<!-- NEW KEY DISPLAY MODAL -->
+<!-- NEW KEY MODAL -->
 <div class="modal-overlay" id="new-key-modal">
     <div class="modal-content">
         <button class="close-btn" onclick="closeModal('new-key-modal')">&times;</button>
-        <h3>API Key Generated Successfully!</h3>
-        <p style="color:var(--orange);">Please copy this key and store it securely. You will not be able to see it again.</p>
+        <h3>API Key Generated!</h3>
+        <p style="color:var(--orange);">Copy this key now. It won't be shown again.</p>
         <div id="new-key-display"></div>
         <button id="copy-new-key-btn" class="submit-btn copy-btn" style="margin-top:20px;">
-            <span class="btn-text"><i class="fas fa-copy"></i> Copy Key & Close</span>
+            <span class="btn-text"><i class="fas fa-copy"></i> Copy & Close</span>
         </button>
     </div>
 </div>
@@ -245,7 +270,6 @@
   // --- CONFIGURATION ---
   // ==========================================================================
   const BACKEND_URL = "https://web-production-9a18.up.railway.app";
-  const SQUAD_PUBLIC_KEY = "pk_42df784a0a75a673c0613b83112da8847cb60cad"; // YOUR LIVE PUBLIC KEY
   const ADMIN_EMAIL = "koladhino@gmail.com";
   const API_KEY_GENERATION_COST = 100;
   
@@ -259,7 +283,7 @@
   };
   
   // ==========================================================================
-  // --- GLOBAL STATE & DOM REFERENCES ---
+  // --- DOM REFERENCES ---
   // ==========================================================================
   let currentUser, userToken;
   const dom = {
@@ -276,6 +300,10 @@
     adminPanel: document.getElementById('admin-panel'),
     grantCreditsBtn: document.getElementById('grant-credits-btn'),
     grantCreditsStatus: document.getElementById('grant-credits-status'),
+    giftCreditsBtn: document.getElementById('gift-credits-btn'), // New
+    giftEmail: document.getElementById('gift-email'), // New
+    giftAmount: document.getElementById('gift-amount'), // New
+    giftStatus: document.getElementById('gift-status'), // New
     keyCost: document.getElementById('key-cost'),
     automatedPaymentTab: document.getElementById('automated-payment-tab'),
     manualPaymentTab: document.getElementById('manual-payment-tab'),
@@ -285,10 +313,14 @@
     newKeyModal: document.getElementById('new-key-modal'),
     newKeyDisplay: document.getElementById('new-key-display'),
     copyNewKeyBtn: document.getElementById('copy-new-key-btn'),
+    statusModal: document.getElementById('status-modal'),
+    statusTitle: document.getElementById('status-modal-title'),
+    statusMessage: document.getElementById('status-modal-message'),
+    statusLoader: document.getElementById('status-modal-loader')
   };
 
   // ==========================================================================
-  // --- FIREBASE AUTHENTICATION ---
+  // --- AUTHENTICATION ---
   // ==========================================================================
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -299,17 +331,22 @@
   onIdTokenChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
-      dom.welcomeMessage.textContent = `Syncing profile, ${user.email}...`;
+      dom.welcomeMessage.textContent = `Syncing...`;
       try {
         userToken = await user.getIdToken(true);
         dom.welcomeMessage.textContent = `Welcome, ${user.email}`;
         
+        // Show Admin Panel if user matches
         if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
           dom.adminPanel.hidden = false;
         }
         await loadDashboardData();
+        
+        // Check for Payment Return immediately after auth loads
+        checkUrlForPaymentVerification();
+
       } catch (error) {
-        dom.welcomeMessage.textContent = `Authentication error: ${error.message}`;
+        dom.welcomeMessage.textContent = `Error: ${error.message}`;
       }
     } else {
       window.location.href = 'developer-login.html';
@@ -319,141 +356,157 @@
   document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
   // ==========================================================================
-  // --- ROBUST API HELPER ---
+  // --- API FETCH WRAPPER ---
   // ==========================================================================
   async function fetchWrapper(endpoint, options = {}) {
     const defaultHeaders = { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken };
     options.headers = { ...defaultHeaders, ...options.headers };
     const response = await fetch(`${BACKEND_URL}${endpoint}`, options);
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'An unknown server error occurred.' }));
-      throw new Error(errorData.detail || `Server returned status ${response.status}`);
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(errorData.detail || `Status ${response.status}`);
     }
     return response.json();
   }
 
   // ==========================================================================
-  // --- CORE DATA & UI FUNCTIONS ---
+  // --- DASHBOARD DATA ---
   // ==========================================================================
   async function loadDashboardData() {
     dom.balanceDisplay.innerHTML = '<div class="loader-small"></div>';
     dom.activeKeysDisplay.innerHTML = '<div class="loader-small"></div>';
-    dom.apiKeyListPlaceholder.innerHTML = '<div class="loader"></div>';
     dom.apiKeyList.innerHTML = '';
     try {
       const data = await fetchWrapper('/api/user/keys-and-balance');
-      renderMetrics(data.balance, data.keys);
+      dom.balanceDisplay.textContent = (data.balance || 0).toLocaleString();
+      dom.activeKeysDisplay.textContent = data.keys.filter(k => k.is_active).length;
       renderKeyList(data.keys);
-      dom.keyCost.textContent = `Cost: ${API_KEY_GENERATION_COST} Credits (applies to all users)`;
+      dom.keyCost.textContent = `Cost: ${API_KEY_GENERATION_COST} Credits`;
     } catch (error) {
-      dom.balanceDisplay.textContent = 'Error';
-      dom.activeKeysDisplay.textContent = 'Error';
-      dom.apiKeyListPlaceholder.innerHTML = `<p style="color: var(--red);">Could not load data: ${error.message}</p>`;
+      dom.balanceDisplay.textContent = '-';
+      dom.activeKeysDisplay.textContent = '-';
+      dom.apiKeyListPlaceholder.innerHTML = `<p style="color:var(--red);">Error loading data.</p>`;
     }
   }
 
-  function renderMetrics(balance, keys) {
-    dom.balanceDisplay.textContent = (balance || 0).toLocaleString();
-    const activeKeys = keys.filter(k => k.is_active).length;
-    dom.activeKeysDisplay.textContent = activeKeys;
-  }
-  
   function renderKeyList(keys) {
     dom.apiKeyList.innerHTML = '';
     dom.apiKeyListPlaceholder.style.display = keys.length === 0 ? 'block' : 'none';
     if (keys.length === 0) {
-      dom.apiKeyListPlaceholder.innerHTML = '<p style="color: var(--text-secondary);">No API keys generated yet.</p>';
+      dom.apiKeyListPlaceholder.innerHTML = '<p style="color:var(--text-secondary);">No keys yet.</p>';
       return;
     }
-    keys.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Show newest first
+    keys.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     keys.forEach(key => {
-      const keyStringShort = `${key.api_key.substring(0, 8)}...${key.api_key.substring(key.api_key.length - 4)}`;
-      const formattedDate = new Date(key.created_at).toLocaleDateString();
-      const isActive = key.is_active;
+      const keyShort = `${key.api_key.substring(0, 8)}...${key.api_key.substring(key.api_key.length - 4)}`;
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td data-label="Key"><span class="key-string-short">${keyStringShort}</span></td>
-        <td data-label="Status"><span class="key-status ${isActive ? 'active' : 'revoked'}">${isActive ? 'Active' : 'Revoked'}</span></td>
-        <td data-label="Created"><span class="key-date">${formattedDate}</span></td>
-        <td data-label="Actions">${isActive ? `<button class="action-btn revoke" data-key="${key.api_key}"><i class="fas fa-trash-alt"></i> Revoke</button>` : ''}</td>
+        <td data-label="Key"><span class="key-string-short">${keyShort}</span></td>
+        <td data-label="Status"><span class="key-status ${key.is_active ? 'active' : 'revoked'}">${key.is_active ? 'Active' : 'Revoked'}</span></td>
+        <td data-label="Created"><span>${new Date(key.created_at).toLocaleDateString()}</span></td>
+        <td data-label="Actions">${key.is_active ? `<button class="action-btn revoke" data-key="${key.api_key}"><i class="fas fa-trash-alt"></i> Revoke</button>` : ''}</td>
       `;
       dom.apiKeyList.appendChild(row);
     });
   }
-  
-  function toggleButtonLoading(button, isLoading) {
-    button.disabled = isLoading;
-    button.classList.toggle('btn-loading', isLoading);
-  }
 
   // ==========================================================================
-  // --- EVENT LISTENERS ---
+  // --- ACTIONS: KEYS & ADMIN ---
   // ==========================================================================
+  function toggleBtn(btn, loading) {
+    btn.disabled = loading;
+    btn.classList.toggle('btn-loading', loading);
+  }
+  function setMsg(el, text, color) { el.textContent = text; el.style.color = color; }
+
+  // Generate Key
   dom.generateKeyButton.addEventListener('click', async () => {
-    toggleButtonLoading(dom.generateKeyButton, true);
-    setStatusMessage(dom.generationStatus, 'Contacting server...', 'var(--text-secondary)');
+    toggleBtn(dom.generateKeyButton, true);
+    setMsg(dom.generationStatus, 'Generating...', 'var(--text-secondary)');
     try {
       const data = await fetchWrapper('/api/user/create-api-key', { method: 'POST' });
       dom.newKeyDisplay.textContent = data.api_key;
       openModal('new-key-modal');
       await loadDashboardData();
-      setStatusMessage(dom.generationStatus, data.message, 'var(--green)');
-    } catch (error) {
-      setStatusMessage(dom.generationStatus, `Error: ${error.message}`, 'var(--red)');
+      setMsg(dom.generationStatus, '', 'var(--green)');
+    } catch (e) {
+      setMsg(dom.generationStatus, e.message, 'var(--red)');
     } finally {
-      toggleButtonLoading(dom.generateKeyButton, false);
+      toggleBtn(dom.generateKeyButton, false);
     }
   });
 
+  // Copy Key
   dom.copyNewKeyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(dom.newKeyDisplay.textContent).then(() => closeModal('new-key-modal'));
+    navigator.clipboard.writeText(dom.newKeyDisplay.textContent);
+    closeModal('new-key-modal');
   });
 
-  dom.apiKeyList.addEventListener('click', async (event) => {
-    const revokeButton = event.target.closest('.revoke');
-    if (revokeButton) {
-      const keyToRevoke = revokeButton.getAttribute('data-key');
-      if (!confirm('Are you sure you want to revoke this key?')) return;
-      toggleButtonLoading(revokeButton, true);
-      try {
-        await fetchWrapper('/api/user/revoke-api-key', { method: 'POST', body: JSON.stringify({ api_key: keyToRevoke }) });
-        await loadDashboardData();
-      } catch (error) {
-        alert(`Error: ${error.message}`);
-        toggleButtonLoading(revokeButton, false);
-      }
+  // Revoke Key
+  dom.apiKeyList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.revoke');
+    if (!btn) return;
+    if (!confirm('Revoke this key? It will stop working immediately.')) return;
+    toggleBtn(btn, true);
+    try {
+      await fetchWrapper('/api/user/revoke-api-key', { method: 'POST', body: JSON.stringify({ api_key: btn.dataset.key }) });
+      await loadDashboardData();
+    } catch (e) {
+      alert(e.message);
+      toggleBtn(btn, false);
     }
   });
 
+  // Admin: Self Grant
   dom.grantCreditsBtn.addEventListener('click', async () => {
-    if (!confirm('This will set your admin balance to 100,000 credits. Proceed?')) return;
-    toggleButtonLoading(dom.grantCreditsBtn, true);
-    setStatusMessage(dom.grantCreditsStatus, 'Processing...', 'var(--text-secondary)');
+    if (!confirm('Set balance to 100k?')) return;
+    toggleBtn(dom.grantCreditsBtn, true);
+    setMsg(dom.grantCreditsStatus, 'Processing...', 'var(--text-secondary)');
     try {
-        const data = await fetchWrapper('/api/admin/grant-credits', { method: 'POST' });
-        setStatusMessage(dom.grantCreditsStatus, data.message, 'var(--green)');
-        await loadDashboardData();
-    } catch (error) {
-        setStatusMessage(dom.grantCreditsStatus, `Error: ${error.message}`, 'var(--red)');
+      const data = await fetchWrapper('/api/admin/grant-credits', { method: 'POST' });
+      setMsg(dom.grantCreditsStatus, data.message, 'var(--green)');
+      await loadDashboardData();
+    } catch (e) {
+      setMsg(dom.grantCreditsStatus, e.message, 'var(--red)');
     } finally {
-        toggleButtonLoading(dom.grantCreditsBtn, false);
+      toggleBtn(dom.grantCreditsBtn, false);
+    }
+  });
+
+  // Admin: Gift User
+  dom.giftCreditsBtn.addEventListener('click', async () => {
+    const email = dom.giftEmail.value.trim();
+    const amount = parseInt(dom.giftAmount.value);
+    if(!email || !amount) { setMsg(dom.giftStatus, "Enter email and amount.", "var(--red)"); return; }
+    
+    toggleBtn(dom.giftCreditsBtn, true);
+    setMsg(dom.giftStatus, 'Sending Gift...', 'var(--text-secondary)');
+    try {
+        const data = await fetchWrapper('/api/admin/gift-credits', {
+            method: 'POST',
+            body: JSON.stringify({ target_email: email, amount: amount })
+        });
+        setMsg(dom.giftStatus, data.message, 'var(--green)');
+        dom.giftEmail.value = ''; dom.giftAmount.value = '';
+    } catch(e) {
+        setMsg(dom.giftStatus, e.message, 'var(--red)');
+    } finally {
+        toggleBtn(dom.giftCreditsBtn, false);
     }
   });
 
   // ==========================================================================
-  // --- HYBRID PAYMENT FLOW ---
+  // --- KORAPAY PAYMENT LOGIC ---
   // ==========================================================================
   window.openModal = (id) => document.getElementById(id).style.display = 'flex';
   window.closeModal = (id) => document.getElementById(id).style.display = 'none';
 
   dom.fundWalletBtn.addEventListener('click', () => {
-      document.getElementById('payment-amount').value = 1000;
-      setStatusMessage(dom.paymentStatus, '', 'var(--text-secondary)');
-      toggleButtonLoading(dom.proceedToPaymentBtn, false);
-      dom.userEmailDisplay.textContent = currentUser.email;
-      openModal('payment-modal');
+    dom.userEmailDisplay.textContent = currentUser.email;
+    openModal('payment-modal');
   });
 
+  // Tab Switching
   dom.automatedPaymentTab.addEventListener('click', () => {
     dom.automatedPaymentTab.classList.add('active'); dom.manualPaymentTab.classList.remove('active');
     dom.automatedPaymentContent.style.display = 'block'; dom.manualPaymentContent.style.display = 'none';
@@ -463,60 +516,70 @@
     dom.manualPaymentContent.style.display = 'block'; dom.automatedPaymentContent.style.display = 'none';
   });
 
+  // Initiate Korapay Checkout
   dom.proceedToPaymentBtn.addEventListener('click', async () => {
     const amount = parseInt(document.getElementById('payment-amount').value);
     if (isNaN(amount) || amount < 100) {
-      setStatusMessage(dom.paymentStatus, 'Minimum is ₦100.', 'var(--orange)'); return;
+      setMsg(dom.paymentStatus, 'Min amount is ₦100', 'var(--orange)'); return;
     }
-    toggleButtonLoading(dom.proceedToPaymentBtn, true);
-    setStatusMessage(dom.paymentStatus, 'Initializing...', 'var(--text-secondary)');
+    toggleBtn(dom.proceedToPaymentBtn, true);
+    setMsg(dom.paymentStatus, 'Creating Secure Checkout...', 'var(--text-secondary)');
+    
     try {
         const data = await fetchWrapper('/api/payments/initiate', { method: 'POST', body: JSON.stringify({ amount }) });
-        const squadInstance = new Squad({
-            onClose: () => verifyPayment(data.transaction_ref),
-            onSuccess: () => verifyPayment(data.transaction_ref),
-            key: SQUAD_PUBLIC_KEY, email: currentUser.email, amount: amount * 100,
-            currency: "NGN", transaction_ref: data.transaction_ref
-        });
-        squadInstance.setup();
-        squadInstance.open();
-    } catch (error) {
-        setStatusMessage(dom.paymentStatus, `Error: ${error.message}`, 'var(--red)');
-        toggleButtonLoading(dom.proceedToPaymentBtn, false);
+        
+        if (data.checkout_url) {
+            setMsg(dom.paymentStatus, 'Redirecting to Korapay...', 'var(--green)');
+            // Redirect user to Korapay
+            window.location.href = data.checkout_url;
+        } else {
+            throw new Error("No checkout URL returned");
+        }
+    } catch (e) {
+        setMsg(dom.paymentStatus, `Error: ${e.message}`, 'var(--red)');
+        toggleBtn(dom.proceedToPaymentBtn, false);
     }
   });
 
-  async function verifyPayment(transactionRef) {
-      if (!transactionRef) return;
-      closeModal('payment-modal');
-      openModal('status-modal');
-      const statusTitle = document.getElementById('status-modal-title');
-      const statusMessage = document.getElementById('status-modal-message');
-      statusTitle.style.color = 'var(--cyan)';
-      statusTitle.textContent = 'Verifying Payment...';
-      statusMessage.textContent = 'Confirming transaction with the provider.';
-      try {
-          const data = await fetchWrapper(`/api/payments/verify?transaction_ref=${transactionRef}`);
-          if (data.status === 'already_credited') {
-             statusTitle.textContent = 'Already Processed';
-             statusMessage.textContent = data.message;
-          } else {
-             statusTitle.textContent = 'Payment Successful!';
-             statusTitle.style.color = 'var(--green)';
-             statusMessage.textContent = `${data.credits_added} credits have been added to your wallet.`;
-          }
-          await loadDashboardData();
-      } catch (error) {
-          statusTitle.textContent = 'Verification Failed';
-          statusTitle.style.color = 'var(--red)';
-          statusMessage.textContent = `Error: ${error.message}. If debited, contact support.`;
-      } finally {
-        setTimeout(() => closeModal('status-modal'), 8000);
-      }
+  // Verify Payment (On Return)
+  async function checkUrlForPaymentVerification() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get('reference'); // Korapay appends ?reference=...
+
+    if (reference) {
+        // Clear URL so we don't re-verify on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        openModal('status-modal');
+        dom.statusTitle.textContent = 'Verifying Payment';
+        dom.statusMessage.textContent = 'Communicating with Korapay...';
+        
+        try {
+            const data = await fetchWrapper(`/api/payments/verify?transaction_ref=${reference}`);
+            
+            if (data.status === 'success' || data.status === 'already_credited') {
+                dom.statusTitle.textContent = 'Success!';
+                dom.statusTitle.style.color = 'var(--green)';
+                dom.statusLoader.style.borderColor = 'var(--green)';
+                dom.statusLoader.style.borderBottomColor = 'transparent';
+                dom.statusMessage.textContent = `${data.message}. Balance updated.`;
+                await loadDashboardData();
+            } else {
+                throw new Error(data.message || 'Payment not confirmed.');
+            }
+        } catch (e) {
+            dom.statusTitle.textContent = 'Verification Failed';
+            dom.statusTitle.style.color = 'var(--red)';
+            dom.statusLoader.style.borderColor = 'var(--red)';
+            dom.statusMessage.textContent = e.message;
+        } finally {
+            setTimeout(() => closeModal('status-modal'), 4000);
+        }
+    }
   }
 
   // ==========================================================================
-  // --- PAGE LOAD & HELPERS ---
+  // --- ANIMATIONS ---
   // ==========================================================================
   document.addEventListener('DOMContentLoaded', () => {
     const starsContainer = document.getElementById('stars-container');
@@ -531,7 +594,6 @@
       starsContainer.appendChild(star);
     }
   });
-  function setStatusMessage(element, message, color) { element.textContent = message; element.style.color = color; }
 </script>
 </body>
 </html>
