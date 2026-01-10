@@ -4,301 +4,224 @@
   <meta charset="UTF-8">
   <title>Elvion AI | Developer Console</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Fonts & Icons -->
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
   <style>
     :root {
-      --bg: #030712;
-      --card-bg: #111827;
-      --border: #1f2937;
-      --primary: #3b82f6;
-      --primary-glow: rgba(59, 130, 246, 0.5);
-      --accent: #8b5cf6;
-      --text: #f3f4f6;
-      --text-muted: #9ca3af;
-      --success: #10b981;
-      --danger: #ef4444;
-      --warning: #f59e0b;
+      --primary: #00ffff; --secondary: #ff00ff; --bg-dark: #050a14;
+      --glass-bg: rgba(16, 24, 45, 0.85); --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #ffffff; --text-muted: #94a3b8; --success: #00e676; --danger: #ff1744; --warning: #ffae42;
     }
-
     * { box-sizing: border-box; outline: none; }
-    body { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); color: var(--text); min-height: 100vh; }
-
-    /* Layout */
-    .dashboard { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
-    .sidebar { background: var(--card-bg); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; }
-    .main-content { padding: 30px; overflow-y: auto; }
-
-    /* Sidebar */
-    .brand { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; color: white; display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
-    .brand span { background: linear-gradient(to right, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+    #stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+    .star { position: absolute; background: white; border-radius: 50%; animation: twinkle var(--duration) linear infinite; opacity: 0; }
+    @keyframes twinkle { 0% { opacity: 0; } 50% { opacity: 0.8; } 100% { opacity: 0; } }
     
-    .nav-item { padding: 12px 15px; margin-bottom: 5px; border-radius: 8px; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; font-weight: 500; }
-    .nav-item:hover, .nav-item.active { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
-    .nav-item i { width: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; margin-bottom: 30px; border-bottom: 1px solid var(--glass-border); }
+    .brand { display: flex; align-items: center; gap: 15px; }
+    .brand img { width: 50px; height: 50px; border-radius: 12px; }
+    .brand h1 { font-family: 'Orbitron'; font-size: 1.5rem; margin: 0; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .user-info { display: flex; align-items: center; gap: 20px; }
+    .logout-btn { background: rgba(255, 23, 68, 0.1); color: var(--danger); border: 1px solid rgba(255, 23, 68, 0.3); padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: 600; }
+    .logout-btn:hover { background: var(--danger); color: white; }
 
-    .user-mini { margin-top: auto; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border); }
-    .user-mini small { display: block; color: var(--text-muted); font-size: 0.75rem; }
-    .logout-link { color: var(--danger); font-size: 0.8rem; margin-top: 5px; cursor: pointer; display: inline-block; }
+    .card { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 25px; margin-bottom: 30px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .card-title { font-family: 'Orbitron'; font-size: 1.2rem; color: var(--primary); margin: 0; display: flex; align-items: center; gap: 10px; }
 
-    /* Cards */
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 25px; position: relative; overflow: hidden; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 25px; }
+    .metric-box { display: flex; flex-direction: column; gap: 5px; }
+    .metric-value { font-family: 'Orbitron'; font-size: 2.5rem; font-weight: 700; color: white; }
     
-    /* Balance Card */
-    .balance-card { background: linear-gradient(145deg, #1e3a8a, #111827); border: 1px solid #3b82f6; }
-    .balance-val { font-family: 'Space Grotesk'; font-size: 2.5rem; font-weight: 700; color: white; margin: 10px 0; }
-    
-    .btn { padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; }
-    .btn-primary { background: var(--primary); color: white; box-shadow: 0 0 15px var(--primary-glow); }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 20px var(--primary-glow); }
-    .btn-secondary { background: rgba(255,255,255,0.1); color: white; }
-    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
-    
-    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #000; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(0, 255, 255, 0.4); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 12px; }
+    .btn-outline:hover { background: rgba(0, 255, 255, 0.1); }
 
-    /* Tables & Activity */
-    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 10px; }
-    .section-title { font-family: 'Space Grotesk'; font-size: 1.25rem; font-weight: 700; }
+    .table-container { overflow-x: auto; max-height: 400px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 15px; color: var(--primary); font-family: 'Orbitron'; font-size: 0.85rem; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: rgba(16, 24, 45, 0.95); z-index: 2; }
+    td { padding: 15px; border-bottom: 1px solid var(--glass-border); color: var(--text-muted); font-size: 0.9rem; }
+    
+    .amount-positive { color: var(--success); font-family: 'Orbitron'; font-weight: bold; }
+    .amount-negative { color: var(--danger); font-family: 'Orbitron'; font-weight: bold; }
 
-    .activity-feed { display: flex; flex-direction: column; gap: 10px; }
-    .activity-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border); transition: 0.2s; }
-    .activity-item:hover { background: rgba(255,255,255,0.04); }
-    
-    .act-left { display: flex; align-items: center; gap: 15px; }
-    .act-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
-    .icon-payment { background: rgba(16, 185, 129, 0.2); color: var(--success); }
-    .icon-usage { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-    .icon-key { background: rgba(59, 130, 246, 0.2); color: var(--primary); }
-    
-    .act-details h4 { margin: 0; font-size: 0.95rem; font-weight: 600; }
-    .act-details p { margin: 2px 0 0; font-size: 0.8rem; color: var(--text-muted); }
-    
-    .act-amount { font-family: 'Space Grotesk'; font-weight: 700; font-size: 1rem; }
-    .positive { color: var(--success); }
-    .negative { color: var(--danger); }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .badge-active { background: rgba(0, 230, 118, 0.15); color: var(--success); }
+    .badge-revoked { background: rgba(255, 23, 68, 0.15); color: var(--danger); }
 
-    /* API Key Table */
-    .table-responsive { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th { text-align: left; padding: 12px; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid var(--border); }
-    td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-    .key-blur { filter: blur(4px); transition: 0.2s; cursor: pointer; font-family: monospace; }
-    .key-blur:hover { filter: blur(0); }
-    
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
-    .badge-active { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-    .badge-inactive { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .admin-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .admin-box { background: rgba(255, 174, 66, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 174, 66, 0.2); }
+    input { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; padding: 10px; border-radius: 6px; width: 100%; margin-top: 10px; }
 
-    /* Modals */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; }
-    .modal { background: #111827; border: 1px solid var(--border); padding: 30px; border-radius: 16px; width: 90%; max-width: 450px; position: relative; animation: popIn 0.3s; }
-    @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .modal h3 { margin-top: 0; font-family: 'Space Grotesk'; }
-    .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; }
-    
-    input { width: 100%; background: #030712; border: 1px solid var(--border); padding: 12px; border-radius: 8px; color: white; margin-top: 8px; margin-bottom: 15px; font-size: 1rem; }
-    input:focus { border-color: var(--primary); }
-
-    /* Toast */
-    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 10px; }
-    .toast { background: #1f2937; border-left: 4px solid var(--primary); padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s; min-width: 300px; }
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+    .toast { background: rgba(16, 24, 45, 0.95); border-left: 4px solid var(--primary); padding: 15px 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 15px; min-width: 300px; animation: slideIn 0.3s; backdrop-filter: blur(10px); }
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
-    /* Mobile */
-    @media (max-width: 768px) {
-      .dashboard { grid-template-columns: 1fr; }
-      .sidebar { display: none; /* Add toggle logic if needed */ }
-      .main-content { padding: 20px; }
-    }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; display: none; align-items: center; justify-content: center; }
+    .modal { background: #0f1623; border: 1px solid var(--primary); padding: 30px; border-radius: 16px; width: 90%; max-width: 450px; position: relative; animation: popIn 0.3s; }
+    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem; }
+    .key-display { background: black; padding: 15px; border-radius: 8px; font-family: monospace; color: var(--secondary); word-break: break-all; margin: 20px 0; }
+    
+    .loader { width: 20px; height: 20px; border: 2px solid white; border-bottom-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+    .btn.loading .loader { display: inline-block; }
+    .btn.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) { .metrics, .admin-controls { grid-template-columns: 1fr; } header { flex-direction: column; text-align: center; gap: 15px; } }
   </style>
 </head>
 <body>
 
-<div class="toast-container" id="toast-container"></div>
+<div id="stars"></div>
+<div id="toast-container"></div>
 
-<div class="dashboard">
-  <!-- Sidebar -->
-  <div class="sidebar">
+<div class="container">
+  <header>
     <div class="brand">
-      <i class="fas fa-cube" style="color:var(--primary)"></i> Elvion<span>AI</span>
+      <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Logo">
+      <h1>Developer Console</h1>
     </div>
-    <div class="nav-item active">
-      <i class="fas fa-chart-line"></i> Dashboard
+    <div class="user-info">
+      <span style="color:var(--text-muted);" id="user-email">Loading...</span>
+      <button class="logout-btn" id="logout-btn"><i class="fas fa-power-off"></i></button>
     </div>
-    <!-- Add documentation link if needed -->
-    <a href="https://documenter.getpostman.com/view/YOUR_DOCS" target="_blank" style="text-decoration:none;">
-        <div class="nav-item">
-        <i class="fas fa-book"></i> API Docs
+  </header>
+
+  <!-- Metrics -->
+  <div class="card">
+    <div class="metrics">
+      <div class="metric-box">
+        <span style="color:var(--text-muted); text-transform:uppercase; font-size:0.8rem;">Available Credits</span>
+        <span class="metric-value" id="balance-display">...</span>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="btn" id="fund-wallet-btn">
+              <i class="fas fa-bolt"></i> Fund Wallet
+            </button>
+            <button class="btn btn-outline" id="transfer-btn" style="padding: 12px;">
+              <i class="fas fa-paper-plane"></i> Transfer
+            </button>
         </div>
-    </a>
-    
-    <div class="user-mini">
-      <div style="font-weight:600;" id="user-name">Developer</div>
-      <small id="user-email-display">Loading...</small>
-      <span class="logout-link" id="logout-btn">Sign Out</span>
+      </div>
+      <div class="metric-box" style="align-items: flex-end; text-align: right;">
+        <span style="color:var(--text-muted); text-transform:uppercase; font-size:0.8rem;">Active Keys</span>
+        <span class="metric-value" id="active-keys-display">...</span>
+      </div>
     </div>
   </div>
 
-  <!-- Main Content -->
-  <div class="main-content">
-    
-    <!-- Admin Section (Hidden by default) -->
-    <div id="admin-banner" style="display:none; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); padding: 15px; border-radius: 8px; margin-bottom: 20px; color: var(--warning);">
-      <strong><i class="fas fa-shield-alt"></i> Admin Controls:</strong> 
-      <button class="btn btn-sm btn-secondary" onclick="triggerAdminGrant()" style="margin-left:10px;">Self-Grant 100k</button>
-      <button class="btn btn-sm btn-secondary" onclick="openModal('admin-gift-modal')" style="margin-left:5px;">Gift User</button>
+  <!-- Real-Time Activity History (Fix for Problems 2 & 3) -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-history"></i> Activity Feed</h3>
+      <button class="btn-outline" onclick="loadAllData()" title="Refresh Data">
+        <i class="fas fa-sync-alt"></i> Refresh
+      </button>
     </div>
+    <div class="table-container">
+      <table id="activity-table">
+        <thead>
+          <tr>
+            <th>Action / Service</th>
+            <th>Amount (Cr)</th>
+            <th>Timestamp (UTC)</th>
+          </tr>
+        </thead>
+        <tbody id="activity-list">
+          <!-- JS will render rows here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-    <!-- Stats Grid -->
-    <div class="grid-3">
-      <!-- Balance -->
-      <div class="card balance-card">
-        <div style="color:rgba(255,255,255,0.7); font-size:0.9rem;">Available Balance</div>
-        <div class="balance-val" id="balance-display">...</div>
-        <div style="display:flex; gap: 10px;">
-          <button class="btn btn-secondary btn-sm" onclick="openModal('payment-modal')">
-            <i class="fas fa-plus"></i> Add Funds
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="openModal('transfer-modal')">
-            <i class="fas fa-paper-plane"></i> Transfer
-          </button>
-        </div>
-      </div>
+  <!-- API Keys -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fas fa-key"></i> API Keys</h3>
+      <button class="btn" id="generate-key-btn">
+        <span class="btn-text">New Key (100 Cr)</span><div class="loader"></div>
+      </button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Key</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
+        <tbody id="key-list"><tr><td colspan="4" style="text-align:center;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 
-      <!-- Keys -->
-      <div class="card">
-        <div class="section-title" style="margin-bottom:10px;">API Keys</div>
-        <div style="font-size: 2rem; font-weight:700;" id="active-key-count">0</div>
-        <small style="color:var(--text-muted);">Active keys in usage</small>
-        <button class="btn btn-primary btn-sm" style="margin-top:15px; width:100%;" onclick="generateKey()">
-          <i class="fas fa-plus"></i> Create New Key (100 Cr)
+  <!-- Admin -->
+  <div class="card" id="admin-panel" style="display: none; border-color: var(--warning);">
+    <div class="card-header"><h3 class="card-title" style="color: var(--warning);"><i class="fas fa-user-shield"></i> Admin</h3></div>
+    <div class="admin-controls">
+      <div class="admin-box">
+        <h4 style="color: var(--warning); margin-top: 0;">Self Refill</h4>
+        <button class="btn" id="grant-self-btn" style="background: var(--warning); width: 100%; margin-top:10px;">
+          <span class="btn-text">Set 100k Balance</span><div class="loader"></div>
         </button>
       </div>
-
-      <!-- Quick Info -->
-      <div class="card">
-        <div class="section-title" style="margin-bottom:10px;">Usage Stats</div>
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-          <span style="color:var(--text-muted);">Last 24h</span>
-          <span style="color:var(--success);">Active</span>
-        </div>
-        <div style="background:rgba(255,255,255,0.05); height:8px; border-radius:4px; overflow:hidden;">
-            <div style="width: 70%; height:100%; background:var(--primary);"></div>
-        </div>
-        <small style="color:var(--text-muted); display:block; margin-top:10px;">System operational</small>
+      <div class="admin-box">
+        <h4 style="color: var(--primary); margin-top: 0;">Gift User</h4>
+        <input type="email" id="gift-email" placeholder="Email">
+        <input type="number" id="gift-amount" placeholder="Amount">
+        <button class="btn btn-outline" id="gift-btn" style="width: 100%; margin-top: 10px;">
+          <span class="btn-text">Send</span><div class="loader"></div>
+        </button>
       </div>
     </div>
-
-    <!-- Main Section: Activity & Keys -->
-    <div class="grid-3" style="grid-template-columns: 2fr 1fr;">
-      
-      <!-- Activity Feed -->
-      <div class="card">
-        <div class="section-header">
-            <div class="section-title">Activity History</div>
-            <button class="btn btn-sm btn-secondary" onclick="loadActivity()"><i class="fas fa-sync"></i></button>
-        </div>
-        <div class="activity-feed" id="activity-list">
-          <!-- JS Injects Here -->
-          <div style="text-align:center; padding:20px; color:var(--text-muted);">Loading activity...</div>
-        </div>
-      </div>
-
-      <!-- Key List -->
-      <div class="card">
-        <div class="section-title">Your Keys</div>
-        <div class="table-responsive">
-          <table id="key-table">
-            <tbody id="key-table-body">
-              <!-- JS Injects Here -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
 <!-- MODALS -->
-
-<!-- Payment Modal -->
 <div class="modal-overlay" id="payment-modal">
   <div class="modal">
     <button class="close-modal" onclick="closeModal('payment-modal')">&times;</button>
-    <h3><i class="fas fa-wallet" style="color:var(--success);"></i> Fund Wallet</h3>
-    <p style="color:var(--text-muted); font-size:0.9rem;">Secure payment via Korapay. 1 Credit = ₦1.</p>
-    
-    <label>Amount (₦)</label>
-    <input type="number" id="fund-amount" value="1000" min="100">
-    
-    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="initiatePayment(this)">
-      Proceed to Payment
+    <h3><i class="fas fa-wallet"></i> Fund Wallet</h3>
+    <p style="color: var(--text-muted);">Secure payment via Korapay. 1 Credit = ₦1.</p>
+    <div style="margin: 20px 0;">
+      <label style="color: var(--primary); font-size: 0.8rem;">Amount (₦)</label>
+      <input type="number" id="fund-amount" value="1000" min="100" style="font-size: 1.5rem; text-align: center;">
+    </div>
+    <button class="btn" id="proceed-pay-btn" style="width: 100%;">
+      <span class="btn-text">Proceed to Checkout</span><div class="loader"></div>
     </button>
   </div>
 </div>
 
-<!-- Transfer Modal -->
 <div class="modal-overlay" id="transfer-modal">
   <div class="modal">
     <button class="close-modal" onclick="closeModal('transfer-modal')">&times;</button>
-    <h3><i class="fas fa-paper-plane" style="color:var(--primary);"></i> Transfer Credits</h3>
-    <p style="color:var(--text-muted); font-size:0.9rem;">Gift credits to another developer.</p>
-    
-    <label>Recipient Email</label>
-    <input type="email" id="transfer-email" placeholder="friend@example.com">
-    
-    <label>Amount (Credits)</label>
-    <input type="number" id="transfer-amount" placeholder="100">
-    
-    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="executeTransfer(this)">
-      Send Credits
+    <h3><i class="fas fa-paper-plane"></i> Transfer Credits</h3>
+    <p style="color: var(--text-muted);">Gift credits to another Elvion AI developer.</p>
+    <div style="margin: 20px 0;">
+      <label>Recipient Email</label>
+      <input type="email" id="transfer-email" placeholder="friend@example.com">
+      <label>Amount to Send</label>
+      <input type="number" id="transfer-amount" placeholder="e.g., 500">
+    </div>
+    <button class="btn" id="proceed-transfer-btn" style="width: 100%;">
+      <span class="btn-text">Confirm & Send</span><div class="loader"></div>
     </button>
   </div>
 </div>
 
-<!-- Admin Gift Modal -->
-<div class="modal-overlay" id="admin-gift-modal">
+<div class="modal-overlay" id="key-modal">
   <div class="modal">
-    <button class="close-modal" onclick="closeModal('admin-gift-modal')">&times;</button>
-    <h3 style="color:var(--warning)">Admin Gift</h3>
-    <label>Target Email</label>
-    <input type="email" id="admin-gift-email">
-    <label>Amount</label>
-    <input type="number" id="admin-gift-amount">
-    <button class="btn btn-primary" onclick="adminGift(this)" style="width:100%">Gift</button>
+    <button class="close-modal" onclick="closeModal('key-modal')">&times;</button>
+    <h3><i class="fas fa-check-circle" style="color: var(--success);"></i> Key Generated</h3>
+    <div class="key-display" id="new-key-text"></div>
+    <button class="btn" id="copy-key-btn" style="width: 100%;">Copy & Close</button>
   </div>
 </div>
 
-<!-- Key Created Modal -->
-<div class="modal-overlay" id="key-created-modal">
-  <div class="modal" style="text-align:center;">
-    <button class="close-modal" onclick="closeModal('key-created-modal')">&times;</button>
-    <i class="fas fa-check-circle" style="font-size:3rem; color:var(--success); margin-bottom:15px;"></i>
-    <h3>API Key Generated</h3>
-    <p style="color:var(--text-muted);">Keep this key safe. Use it in the 'Authorization: Bearer' header.</p>
-    
-    <div style="background:black; padding:15px; border-radius:8px; font-family:monospace; color:var(--accent); word-break:break-all; margin:15px 0;" id="new-key-display">
-      el_sec_...
-    </div>
-    
-    <button class="btn btn-secondary" onclick="copyKey()">Copy to Clipboard</button>
-  </div>
-</div>
-
-<!-- JAVASCRIPT LOGIC -->
 <script type="module">
-  // --- CONFIGURATION ---
   const BACKEND_URL = "https://web-production-9a18.up.railway.app";
   const ADMIN_EMAIL = "koladhino@gmail.com";
   
-  // Firebase Imports
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
   const firebaseConfig = {
     apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
     authDomain: "elvionai.firebaseapp.com",
@@ -308,299 +231,242 @@
     appId: "1:161078300830:web:f460df8591704eb0e96b8f"
   };
 
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onIdTokenChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   let userToken = null;
-  let currentUserEmail = "";
 
-  // --- AUTH LISTENER ---
+  const dom = {
+    balance: document.getElementById('balance-display'),
+    activeKeys: document.getElementById('active-keys-display'),
+    activityList: document.getElementById('activity-list'),
+    keyList: document.getElementById('key-list'),
+    email: document.getElementById('user-email'),
+    adminPanel: document.getElementById('admin-panel')
+  };
+
   onIdTokenChanged(auth, async (user) => {
     if (user) {
       userToken = await user.getIdToken(true);
-      currentUserEmail = user.email;
+      dom.email.textContent = user.email;
+      if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) dom.adminPanel.style.display = 'block';
       
-      // Update UI Info
-      document.getElementById('user-email-display').textContent = user.email;
-      document.getElementById('user-name').textContent = user.email.split('@')[0];
+      // Load all dashboard data
+      await loadAllData();
       
-      // Admin Check
-      if(user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
-        document.getElementById('admin-banner').style.display = 'block';
-      }
-
-      // Load Data
-      await refreshDashboard();
-      
-      // Check for Payment Return
+      // CRITICAL: Check for payment redirect on page load
       checkPaymentReturn();
       
+      window.loadAllData = loadAllData;
     } else {
       window.location.href = 'developer-login.html';
     }
   });
 
-  // --- CORE FUNCTIONS ---
+  document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
   async function apiCall(endpoint, method = 'GET', body = null) {
-    const options = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Firebase-Token': userToken
-      }
-    };
-    if (body) options.body = JSON.stringify(body);
-    
+    const headers = { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken };
+    const config = { method, headers };
+    if (body) config.body = JSON.stringify(body);
+    const res = await fetch(`${BACKEND_URL}${endpoint}`, config);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    return data;
+  }
+
+  async function loadAllData() {
     try {
-      const res = await fetch(`${BACKEND_URL}${endpoint}`, options);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'API Error');
-      return data;
+      const [metrics, activity] = await Promise.all([
+        apiCall('/api/user/keys-and-balance'),
+        apiCall('/api/user/activity') // Use the new combined endpoint
+      ]);
+
+      dom.balance.textContent = (metrics.balance || 0).toLocaleString();
+      dom.activeKeys.textContent = metrics.keys.filter(k => k.is_active).length;
+      renderKeys(metrics.keys);
+      renderActivity(activity.activity);
     } catch (e) {
-      console.error("API Call Error:", e);
-      throw e;
+      console.error(e);
+      showToast('Dashboard sync failed: ' + e.message, 'error');
     }
   }
 
-  async function refreshDashboard() {
-    try {
-      // 1. Get Balance & Keys
-      const data = await apiCall('/api/user/keys-and-balance');
-      document.getElementById('balance-display').textContent = data.balance.toLocaleString();
-      
-      const activeKeys = data.keys.filter(k => k.is_active);
-      document.getElementById('active-key-count').textContent = activeKeys.length;
-      
-      renderKeys(data.keys);
-      
-      // 2. Get Activity History
-      await loadActivity();
-      
-    } catch (e) {
-      showToast(e.message, 'error');
-    }
-  }
-
-  // --- ACTIVITY FEED RENDERER ---
-  async function loadActivity() {
-    const list = document.getElementById('activity-list');
-    list.innerHTML = '<div style="text-align:center; padding:10px; color:var(--text-muted);">Updating...</div>';
-    
-    try {
-      // Note: We updated the backend to return 'activity' merging logs and transactions
-      // If backend updated: /api/user/activity. If old backend: /api/user/usage-history
-      let res;
-      try {
-        res = await apiCall('/api/user/activity'); // Try new endpoint
-      } catch {
-         // Fallback if backend isn't fully updated yet, though user asked for full solution
-         res = await apiCall('/api/user/usage-history'); 
-      }
-      
-      const logs = res.activity || res.logs || [];
-      list.innerHTML = '';
-      
-      if(logs.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No recent activity.</div>';
-        return;
-      }
-
-      logs.forEach(item => {
-        // Determine styling based on Type/Amount
-        let iconClass = 'icon-usage';
-        let iconHtml = '<i class="fas fa-bolt"></i>';
-        let amountClass = 'negative';
-        let title = item.description || item.endpoint;
-        
-        // Handle Transactions/Gifts (Amount is positive)
-        if (item.amount > 0 || item.type === 'transaction') {
-            iconClass = 'icon-payment';
-            iconHtml = '<i class="fas fa-arrow-down"></i>';
-            amountClass = 'positive';
-            if(title.toLowerCase().includes('gift')) iconHtml = '<i class="fas fa-gift"></i>';
-        } 
-        // Handle Key Generation
-        else if (title.includes('API Key')) {
-            iconClass = 'icon-key';
-            iconHtml = '<i class="fas fa-key"></i>';
-        }
-        // Handle Transfers (Out)
-        else if (item.type === 'transfer_out') {
-             iconHtml = '<i class="fas fa-paper-plane"></i>';
-        }
-
-        const date = new Date(item.timestamp).toLocaleString();
-
-        const div = document.createElement('div');
-        div.className = 'activity-item';
-        div.innerHTML = `
-          <div class="act-left">
-            <div class="act-icon ${iconClass}">${iconHtml}</div>
-            <div class="act-details">
-              <h4>${title}</h4>
-              <p>${date} &bull; ${item.details || item.api_key || ''}</p>
-            </div>
-          </div>
-          <div class="act-amount ${amountClass}">
-            ${item.amount > 0 ? '+' : ''}${item.amount}
-          </div>
-        `;
-        list.appendChild(div);
-      });
-      
-    } catch (e) {
-      list.innerHTML = `<div style="text-align:center; color:var(--danger)">Failed to load activity</div>`;
-    }
-  }
-
-  // --- KEY RENDERER ---
   function renderKeys(keys) {
-    const tbody = document.getElementById('key-table-body');
-    tbody.innerHTML = '';
-    
-    // Sort active first, then by date
-    keys.sort((a,b) => (b.is_active - a.is_active) || new Date(b.created_at) - new Date(a.created_at));
-
-    keys.forEach(key => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><span class="key-blur" title="Click to copy" onclick="navigator.clipboard.writeText('${key.api_key}'); showToast('Copied!')">${key.api_key}</span></td>
-            <td><span class="badge ${key.is_active ? 'badge-active' : 'badge-inactive'}">${key.is_active ? 'ACTIVE' : 'REVOKED'}</span></td>
-            <td>${key.is_active ? `<i class="fas fa-trash" style="color:var(--danger); cursor:pointer;" onclick="revokeKey('${key.api_key}')"></i>` : ''}</td>
-        `;
-        tbody.appendChild(tr);
+    dom.keyList.innerHTML = '';
+    if (!keys.length) return dom.keyList.innerHTML = '<tr><td colspan="4" style="text-align:center;">No keys found.</td></tr>';
+    keys.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    keys.forEach(k => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td style="font-family:monospace; color:var(--secondary);">${k.api_key.slice(0, 8)}...${k.api_key.slice(-4)}</td>
+        <td><span class="badge ${k.is_active ? 'badge-active' : 'badge-revoked'}">${k.is_active ? 'Active' : 'Revoked'}</span></td>
+        <td>${new Date(k.created_at).toLocaleDateString()}</td>
+        <td>${k.is_active ? `<button class="btn-outline" onclick="revokeKey('${k.api_key}')" style="padding:4px 8px; font-size:0.7rem;">Revoke</button>` : '-'}</td>
+      `;
+      dom.keyList.appendChild(row);
+    });
+  }
+  
+  // FIX FOR PROBLEM 2 & 3: Renders the combined activity feed
+  function renderActivity(logs) {
+    dom.activityList.innerHTML = '';
+    if (!logs || !logs.length) {
+      dom.activityList.innerHTML = '<tr><td colspan="3" style="text-align:center;">No recent activity.</td></tr>';
+      return;
+    }
+    logs.forEach(log => {
+      const isCredit = log.amount > 0;
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td style="color: var(--text-main); font-weight: 500;">${log.description}</td>
+        <td class="${isCredit ? 'amount-positive' : 'amount-negative'}">
+            ${isCredit ? '+' : ''} ${log.amount.toLocaleString()} Cr
+        </td>
+        <td style="font-size: 0.85rem;">${new Date(log.timestamp).toLocaleString()}</td>
+      `;
+      dom.activityList.appendChild(row);
     });
   }
 
   // --- ACTIONS ---
-
-  // 1. Payment Verification (Fixes Problem 1)
-  window.checkPaymentReturn = async function() {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('reference') || params.get('trxref'); // Korapay uses reference
-    
-    if (ref) {
-        // Clean URL immediately so user doesn't retry on refresh
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        showToast('Verifying payment...', 'warning');
-        try {
-            const res = await apiCall(`/api/payments/verify?transaction_ref=${ref}`);
-            if(res.status === 'success' || res.status === 'already_credited') {
-                showToast(`Payment Successful! Wallet funded.`, 'success');
-                refreshDashboard(); // Update balance immediately
-            } else {
-                showToast(`Payment status: ${res.status}`, 'error');
-            }
-        } catch (e) {
-            showToast('Verification failed. Contact support.', 'error');
-        }
-    }
-  }
-
-  window.initiatePayment = async function(btn) {
-    const amt = document.getElementById('fund-amount').value;
-    if(amt < 100) return showToast('Minimum ₦100', 'error');
-    
-    btn.disabled = true; btn.innerText = "Processing...";
-    
+  const genBtn = document.getElementById('generate-key-btn');
+  genBtn.addEventListener('click', async () => {
+    setLoading(genBtn, true);
     try {
-        const res = await apiCall('/api/payments/initiate', 'POST', { amount: parseInt(amt) });
-        // Redirect to Korapay Checkout
-        window.location.href = res.checkout_url;
-    } catch (e) {
-        showToast(e.message, 'error');
-        btn.disabled = false; btn.innerText = "Proceed to Payment";
-    }
-  }
+      const res = await apiCall('/api/user/create-api-key', 'POST');
+      document.getElementById('new-key-text').textContent = res.api_key;
+      openModal('key-modal');
+      await loadAllData();
+      showToast('Key Generated (-100 Credits)', 'success');
+    } catch (e) { showToast(e.message, 'error'); }
+    finally { setLoading(genBtn, false); }
+  });
 
-  // 2. Key Generation
-  window.generateKey = async function() {
-    if(!confirm("Generate new API key? This costs 100 credits.")) return;
-    
-    try {
-        const res = await apiCall('/api/user/create-api-key', 'POST');
-        document.getElementById('new-key-display').textContent = res.api_key;
-        openModal('key-created-modal');
-        refreshDashboard();
-        showToast('Key generated successfully', 'success');
-    } catch (e) {
-        showToast(e.message, 'error');
-    }
-  }
-  
   window.revokeKey = async function(key) {
-      if(!confirm("Revoke this key? It cannot be reactivated.")) return;
+    if(!confirm("Are you sure you want to revoke this key? This action is permanent.")) return;
+    try { 
+      await apiCall('/api/user/revoke-api-key', 'POST', { api_key: key }); 
+      await loadAllData(); 
+      showToast('API Key has been revoked.', 'success'); 
+    } catch (e) { showToast(e.message, 'error'); }
+  }
+
+  document.getElementById('grant-self-btn').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    setLoading(btn, true);
+    try { 
+      const res = await apiCall('/api/admin/grant-credits', 'POST'); 
+      await loadAllData(); 
+      showToast(res.message, 'success'); 
+    } catch(err) { showToast(err.message, 'error'); }
+    finally { setLoading(btn, false); }
+  });
+
+  document.getElementById('gift-btn').addEventListener('click', async (e) => {
+    const email = document.getElementById('gift-email').value;
+    const amount = parseInt(document.getElementById('gift-amount').value);
+    if(!email || !amount) return showToast('Email and amount are required.', 'error');
+    const btn = e.target.closest('button');
+    setLoading(btn, true);
+    try { 
+      const res = await apiCall('/api/admin/gift-credits', 'POST', { target_email: email, amount }); 
+      showToast(res.message, 'success'); 
+      document.getElementById('gift-email').value = '';
+      document.getElementById('gift-amount').value = '';
+    } catch(err) { showToast(err.message, 'error'); }
+    finally { setLoading(btn, false); }
+  });
+
+  // FIX FOR PROBLEM 1: Payment logic
+  document.getElementById('proceed-pay-btn').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    const amount = parseInt(document.getElementById('fund-amount').value);
+    if(amount < 100) return showToast('Minimum funding is ₦100.', 'error');
+    
+    setLoading(btn, true);
+    try {
+      const res = await apiCall('/api/payments/initiate', 'POST', { amount });
+      showToast('Redirecting to secure checkout...', 'success');
+      window.location.href = res.checkout_url;
+    } catch(e) { 
+      showToast(e.message, 'error'); 
+      setLoading(btn, false); 
+    }
+  });
+
+  async function checkPaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('reference') || params.get('trxref');
+    if (ref) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      showToast('Verifying your payment, please wait...', 'warning');
       try {
-          await apiCall('/api/user/revoke-api-key', 'POST', { api_key: key });
-          refreshDashboard();
-          showToast('Key revoked', 'success');
-      } catch(e) { showToast(e.message, 'error'); }
+        const res = await apiCall(`/api/payments/verify?transaction_ref=${ref}`);
+        if(res.status === 'success') {
+          showToast(`Payment successful! ${res.credits_added} credits added.`, 'success');
+          await loadAllData(); // Refresh all data to show new balance and transaction
+        } else {
+          showToast('Payment not yet confirmed or failed.', 'error');
+        }
+      } catch(e) { 
+        showToast('Payment verification failed. Please contact support.', 'error'); 
+      }
+    }
   }
 
-  window.copyKey = function() {
-      const text = document.getElementById('new-key-display').textContent;
-      navigator.clipboard.writeText(text);
-      showToast('Copied to clipboard', 'success');
-      closeModal('key-created-modal');
-  }
-
-  // 3. User Transfer (Fixes Problem 4)
-  window.executeTransfer = async function(btn) {
+  // FIX FOR PROBLEM 4: User-to-user transfer
+  document.getElementById('proceed-transfer-btn').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
       const email = document.getElementById('transfer-email').value;
       const amount = parseInt(document.getElementById('transfer-amount').value);
-      
-      if(!email || !amount) return showToast('Fill all fields', 'error');
-      
-      btn.disabled = true; btn.innerText = "Sending...";
-      
+      if(!email || !amount || amount <= 0) return showToast('Please enter a valid email and amount.', 'error');
+
+      setLoading(btn, true);
       try {
           const res = await apiCall('/api/user/transfer-credits', 'POST', { recipient_email: email, amount: amount });
-          showToast(res.message, 'success');
+          await loadAllData();
           closeModal('transfer-modal');
-          refreshDashboard();
-      } catch (e) {
-          showToast(e.message, 'error');
-      } finally {
-          btn.disabled = false; btn.innerText = "Send Credits";
-      }
-  }
-
-  // 4. Admin Actions
-  window.triggerAdminGrant = async function() {
-      try { await apiCall('/api/admin/grant-credits', 'POST'); refreshDashboard(); showToast('Granted 100k', 'success'); }
-      catch(e) { showToast(e.message, 'error'); }
-  }
-  
-  window.adminGift = async function(btn) {
-      const email = document.getElementById('admin-gift-email').value;
-      const amt = parseInt(document.getElementById('admin-gift-amount').value);
-      try {
-          const res = await apiCall('/api/admin/gift-credits', 'POST', { target_email: email, amount: amt });
           showToast(res.message, 'success');
-          closeModal('admin-gift-modal');
-      } catch(e) { showToast(e.message, 'error'); }
-  }
+      } catch(err) {
+          showToast(err.message, 'error');
+      } finally {
+          setLoading(btn, false);
+      }
+  });
 
-  // --- UI UTILS ---
-  window.signOutUser = () => signOut(auth);
-  document.getElementById('logout-btn').addEventListener('click', signOutUser);
-
-  window.openModal = (id) => document.getElementById(id).style.display = 'flex';
-  window.closeModal = (id) => document.getElementById(id).style.display = 'none';
-  
+  // UI Utils
   function showToast(msg, type='success') {
     const t = document.createElement('div');
-    t.className = 'toast';
+    t.className = `toast`;
     t.style.borderLeftColor = type === 'success' ? 'var(--success)' : (type === 'warning' ? 'var(--warning)' : 'var(--danger)');
-    
-    let icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-    
-    t.innerHTML = `<i class="fas ${icon}" style="color:${t.style.borderLeftColor}"></i> <span>${msg}</span>`;
+    t.innerHTML = `<span>${msg}</span>`;
     document.getElementById('toast-container').appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+    setTimeout(() => t.remove(), 5000);
   }
+  
+  function setLoading(btn, isLoading) { btn.disabled = isLoading; btn.classList.toggle('loading', isLoading); }
+  
+  window.openModal = (id) => document.getElementById(id).style.display = 'flex';
+  window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+  document.getElementById('fund-wallet-btn').addEventListener('click', () => openModal('payment-modal'));
+  document.getElementById('transfer-btn').addEventListener('click', () => openModal('transfer-modal'));
+  document.getElementById('copy-key-btn').addEventListener('click', () => { 
+      navigator.clipboard.writeText(document.getElementById('new-key-text').textContent); 
+      closeModal('key-modal'); 
+      showToast('API Key copied!', 'success');
+  });
 
+  const stars = document.getElementById('stars');
+  for(let i=0; i<60; i++) {
+    const s = document.createElement('div'); s.className = 'star';
+    s.style.left = Math.random()*100+'%'; s.style.top = Math.random()*100+'%';
+    s.style.width = Math.random()*3+'px'; s.style.height = s.style.width;
+    s.style.setProperty('--duration', (Math.random()*3+2)+'s');
+    stars.appendChild(s);
+  }
 </script>
 </body>
 </html>
