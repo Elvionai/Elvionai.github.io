@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elvion Book Cover Studio</title>
+    <title>Elvion Philadelphia Cover Studio</title>
     
     <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
@@ -24,67 +24,318 @@
             --text: #eee; 
             --accent: #00cec9; 
             --danger: #ff7675;
+            --info: #3498db;
+            --success: #2ecc71;
         }
         body { margin: 0; background: var(--dark); color: var(--text); font-family: 'Roboto', sans-serif; overflow: hidden; }
 
         /* --- LAYOUT --- */
-        .app-container { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; filter: blur(5px); transition: filter 0.3s; pointer-events: none; }
-        .app-container.logged-in { filter: blur(0); pointer-events: all; }
+        .app-container { 
+            display: grid; 
+            grid-template-columns: 320px 1fr 300px; 
+            height: 100vh; 
+            filter: blur(5px); 
+            transition: filter 0.3s; 
+            pointer-events: none; /* Disable interaction until logged in */
+        }
+        .app-container.logged-in { 
+            filter: blur(0); 
+            pointer-events: all; 
+        }
 
-        .sidebar { background: var(--panel); padding: 15px; border-right: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .sidebar-right { border-left: 1px solid #333; border-right: none; }
+        .sidebar { 
+            background: var(--panel); 
+            padding: 15px; 
+            border-right: 1px solid #333; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            position: relative; /* For loader */
+        }
+        .sidebar-right { 
+            border-left: 1px solid #333; 
+            border-right: none; 
+        }
         
-        h3 { margin: 0 0 5px 0; color: var(--accent); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        h3 { 
+            margin: 0 0 5px 0; 
+            color: var(--accent); 
+            font-size: 13px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            border-bottom: 1px solid #444; 
+            padding-bottom: 5px; 
+        }
 
         /* --- UI ELEMENTS --- */
-        input, select, textarea, button { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #181825; color: white; box-sizing: border-box; margin-bottom: 8px; font-size: 13px; }
-        input:focus, textarea:focus { outline: 1px solid var(--primary); border-color: var(--primary); }
+        input, select, textarea, button { 
+            width: 100%; 
+            padding: 10px; 
+            border-radius: 5px; 
+            border: 1px solid #444; 
+            background: #181825; 
+            color: white; 
+            box-sizing: border-box; 
+            margin-bottom: 8px; 
+            font-size: 13px; 
+            resize: vertical;
+        }
+        input:focus, textarea:focus { 
+            outline: 1px solid var(--primary); 
+            border-color: var(--primary); 
+        }
 
-        button { background: var(--primary); border: none; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        button:hover { filter: brightness(1.15); transform: translateY(-1px); }
+        button { 
+            background: var(--primary); 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+        }
+        button:hover { 
+            filter: brightness(1.15); 
+            transform: translateY(-1px); 
+        }
         button.secondary { background: #444; }
-        button.danger { background: var(--danger); color: #2d3436; }
+        button.danger { background: var(--danger); color: #fff; }
         button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         /* --- CANVAS --- */
-        .canvas-area { background: #12121a; display: flex; align-items: center; justify-content: center; overflow: auto; position: relative; background-image: radial-gradient(#2d2d44 1px, transparent 1px); background-size: 20px 20px; }
-        .canvas-shadow { box-shadow: 0 0 40px rgba(0,0,0,0.6); }
+        .canvas-area { 
+            background: #12121a; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: auto; 
+            position: relative; 
+            background-image: radial-gradient(#2d2d44 1px, transparent 1px); 
+            background-size: 20px 20px; 
+        }
+        .canvas-shadow { 
+            box-shadow: 0 0 40px rgba(0,0,0,0.6); 
+        }
+        #canvas-guides {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .guide-line {
+            position: absolute;
+            background: rgba(0,255,255,0.5);
+            width: 2px;
+            height: 100%;
+        }
 
         /* --- AUTH OVERLAY --- */
-        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-        .auth-box { background: var(--panel); padding: 40px; border-radius: 12px; width: 350px; text-align: center; border: 1px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .auth-btn { margin-top: 10px; padding: 12px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; font-size: 14px; }
+        #auth-overlay { 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            z-index: 2000; 
+            background: rgba(0,0,0,0.7); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            backdrop-filter: blur(2px); 
+        }
+        .auth-box { 
+            background: var(--panel); 
+            padding: 40px; 
+            border-radius: 12px; 
+            width: 350px; 
+            text-align: center; 
+            border: 1px solid var(--primary); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+        }
+        .auth-btn { 
+            margin-top: 10px; 
+            padding: 12px; 
+            border-radius: 25px; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            width: 100%; 
+            font-size: 14px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background 0.2s, color 0.2s, transform 0.1s;
+        }
+        .auth-btn:hover { transform: translateY(-2px); }
         .btn-google { background: #fff; color: #333; }
         .btn-twitter { background: #1da1f2; color: #fff; }
         .btn-email { background: var(--primary); color: #fff; }
-        .divider { margin: 15px 0; color: #888; font-size: 12px; }
+        .divider { margin: 15px 0; color: #888; font-size: 12px; position: relative; }
+        .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 40%; height: 1px; background: #555; }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+        .auth-toggle { font-size: 12px; margin-top: 10px; cursor: pointer; color: var(--info); }
+        .auth-toggle:hover { text-decoration: underline; }
 
         /* --- WALLET --- */
-        .wallet-card { background: linear-gradient(135deg, #6c5ce7, #a29bfe); padding: 15px; border-radius: 8px; text-align: center; color: white; margin-bottom: 15px; position: relative; overflow: hidden; }
-        .wallet-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: linear-gradient(transparent, rgba(255,255,255,0.2), transparent); transform: rotate(45deg); animation: shine 3s infinite; }
-        @keyframes shine { 0% { transform: translate(-100%, -100%) rotate(45deg); } 100% { transform: translate(100%, 100%) rotate(45deg); } }
+        .wallet-card { 
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe); 
+            padding: 15px; 
+            border-radius: 8px; 
+            text-align: center; 
+            color: white; 
+            margin-bottom: 15px; 
+            position: relative; 
+            overflow: hidden; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .wallet-card::before { 
+            content: ''; 
+            position: absolute; 
+            top: -50%; left: -50%; 
+            width: 200%; height: 200%; 
+            background: linear-gradient(transparent, rgba(255,255,255,0.2), transparent); 
+            transform: rotate(45deg); 
+            animation: shine 3s infinite; 
+        }
+        @keyframes shine { 
+            0% { transform: translate(-100%, -100%) rotate(45deg); } 
+            100% { transform: translate(100%, 100%) rotate(45deg); } 
+        }
 
         /* --- PERSISTENT CHARACTERS --- */
-        .char-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .char-item { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
-        .char-item:hover { border-color: var(--accent); transform: scale(1.02); }
-        .char-item img { width: 100%; height: 100%; object-fit: cover; }
-        .char-actions { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: space-between; padding: 2px; display: none; }
-        .char-item:hover .char-actions { display: flex; }
-        .char-btn { color: white; background: none; border: none; font-size: 10px; padding: 5px; }
+        .char-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 10px; 
+        }
+        .char-item { 
+            position: relative; 
+            aspect-ratio: 1; 
+            border-radius: 6px; 
+            overflow: hidden; 
+            cursor: pointer; 
+            border: 2px solid transparent; 
+            transition: 0.2s; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .char-item:hover { 
+            border-color: var(--accent); 
+            transform: scale(1.02); 
+        }
+        .char-item img { 
+            width: 100%; height: 100%; 
+            object-fit: cover; 
+            pointer-events: none; /* Prevent dragging img itself */
+        }
+        .char-actions { 
+            position: absolute; 
+            bottom: 0; width: 100%; 
+            background: rgba(0,0,0,0.7); 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 2px; 
+            transform: translateY(100%);
+            transition: transform 0.2s ease-out;
+        }
+        .char-item:hover .char-actions { 
+            transform: translateY(0); 
+        }
+        .char-btn { 
+            color: white; 
+            background: none; 
+            border: none; 
+            font-size: 10px; 
+            padding: 5px; 
+            flex-grow: 1;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+        .char-btn:hover { 
+            background: rgba(255,255,255,0.1); 
+            transform: none;
+        }
 
         /* --- 3D MOCKUP --- */
-        #mockup-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 3000; align-items: center; justify-content: center; flex-direction: column; }
+        #mockup-modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); 
+            z-index: 3000; 
+            align-items: center; 
+            justify-content: center; 
+            flex-direction: column; 
+        }
         .scene { width: 300px; height: 450px; perspective: 1500px; }
         .book { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 1s; }
-        .face { position: absolute; width: 300px; height: 450px; background-size: cover; background-color: #eee; }
+        .face { position: absolute; width: 300px; height: 450px; background-size: cover; background-position: center; background-color: #333; border: 1px solid #000; }
         .front { transform: translateZ(25px); }
         .back { transform: rotateY(180deg) translateZ(25px); }
         .spine { width: 50px; height: 450px; transform: rotateY(-90deg) translateZ(25px); left: -25px; }
-        
+        .mockup-controls button { background: var(--info); }
+        .mockup-controls button.danger { background: var(--danger); }
+
         /* --- NOTIFICATIONS --- */
-        #toast { position: fixed; bottom: 20px; right: 20px; background: var(--panel); border-left: 4px solid var(--accent); padding: 15px 25px; border-radius: 4px; color: white; transform: translateX(150%); transition: transform 0.3s; z-index: 4000; }
-        #toast.show { transform: translateX(0); }
+        #toast { 
+            position: fixed; 
+            bottom: 20px; right: 20px; 
+            background: var(--panel); 
+            border-left: 4px solid var(--accent); 
+            padding: 15px 25px; 
+            border-radius: 4px; 
+            color: white; 
+            transform: translateX(150%); 
+            transition: transform 0.3s ease-out; 
+            z-index: 4000; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        #toast.show { 
+            transform: translateX(0); 
+        }
+
+        /* --- LOADER --- */
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid var(--primary); /* Blue */
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* --- CHAT --- */
+        #chat-output {
+            background: #222;
+            height: 100px;
+            overflow-y: auto;
+            font-size: 11px;
+            padding: 5px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            color: #aaa;
+            line-height: 1.4;
+        }
+        #chat-output .user-msg { color: var(--info); font-weight: bold; }
+        #chat-output .bot-msg { color: #eee; }
+        #chat-output .typing-indicator { color: var(--accent); animation: pulse 1s infinite alternate; }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -92,8 +343,8 @@
 <!-- AUTH OVERLAY -->
 <div id="auth-overlay">
     <div class="auth-box">
-        <h2 style="color: var(--primary); margin-top:0;">Welcome Author</h2>
-        <p style="font-size: 14px; color: #ccc;">Sign in to access your Book Cover Studio.</p>
+        <h2 style="color: var(--primary); margin-top:0;">Elvion Philadelphia Studio</h2>
+        <p style="font-size: 14px; color: #ccc;">Sign in to unlock your creative workspace.</p>
         
         <button class="auth-btn btn-google" onclick="signIn('google')">
             <i class="fab fa-google"></i> Continue with Google
@@ -102,20 +353,21 @@
             <i class="fab fa-twitter"></i> Continue with Twitter
         </button>
         
-        <div class="divider">OR USE EMAIL</div>
+        <div class="divider">OR</div>
         
-        <input type="email" id="auth-email" placeholder="email@address.com">
-        <input type="password" id="auth-password" placeholder="Password (Optional for Demo)">
-        <button class="auth-btn btn-email" onclick="signIn('email')">
-            <i class="fas fa-envelope"></i> Enter Studio
+        <input type="email" id="auth-email" placeholder="Email address">
+        <input type="password" id="auth-password" placeholder="Password (min 6 characters)">
+        <button class="auth-btn btn-email" id="email-auth-btn" onclick="signIn('email')">
+            <i class="fas fa-sign-in-alt"></i> Sign In
         </button>
+        <div class="auth-toggle" onclick="toggleAuthMode()" id="auth-mode-toggle">New user? Register here.</div>
         <p id="auth-error" style="color: var(--danger); font-size: 12px; margin-top: 10px;"></p>
     </div>
 </div>
 
 <!-- 3D PREVIEW MODAL -->
 <div id="mockup-modal">
-    <h2 style="color: white; margin-bottom: 40px;">3D Preview</h2>
+    <h2 style="color: white; margin-bottom: 40px;">3D Book Mockup</h2>
     <div class="scene">
         <div class="book" id="book-3d">
             <div class="face front" id="face-front"></div>
@@ -123,110 +375,136 @@
             <div class="face back" id="face-back"></div>
         </div>
     </div>
-    <div style="margin-top: 50px; display: flex; gap: 15px;">
-        <button onclick="rotateBook('front')">Front</button>
-        <button onclick="rotateBook('spine')">Spine</button>
-        <button onclick="rotateBook('full')">Full View</button>
-        <button class="danger" onclick="document.getElementById('mockup-modal').style.display='none'">Close</button>
+    <div style="margin-top: 50px; display: flex; gap: 15px;" class="mockup-controls">
+        <button onclick="rotateBook('front')"><i class="fas fa-book"></i> Front</button>
+        <button onclick="rotateBook('spine')"><i class="fas fa-barcode"></i> Spine</button>
+        <button onclick="rotateBook('full')"><i class="fas fa-book-reader"></i> Full View</button>
+        <button class="danger" onclick="document.getElementById('mockup-modal').style.display='none'"><i class="fas fa-times"></i> Close</button>
     </div>
 </div>
 
-<!-- TOAST -->
-<div id="toast">Operation Successful</div>
+<!-- TOAST NOTIFICATIONS -->
+<div id="toast"></div>
 
-<!-- MAIN APP -->
+<!-- MAIN APP INTERFACE -->
 <div class="app-container" id="app-container">
     
-    <!-- LEFT SIDEBAR -->
+    <!-- LEFT SIDEBAR: GENERATION & ASSETS -->
     <div class="sidebar">
-        <!-- Wallet -->
+        <!-- Wallet Display -->
         <div class="wallet-card">
             <div style="font-size: 11px; text-transform: uppercase;">Credit Balance</div>
             <div style="font-size: 32px; font-weight: 900;" id="credit-display">--</div>
             <button onclick="fundWallet()" style="background: rgba(0,0,0,0.3); margin-top: 5px; font-size: 11px; padding: 5px;">
-                <i class="fas fa-plus-circle"></i> Fund Wallet
+                <i class="fas fa-wallet"></i> Fund Wallet
             </button>
         </div>
 
         <h3>Create Cover</h3>
         <select id="gen-model">
-            <option value="v6">Thena V6 (High Quality)</option>
-            <option value="photoreal">Thena Photoreal</option>
-            <option value="movie">Thena Cinematic</option>
-            <option value="illustration">Thena Illustration</option>
+            <option value="v6">Philadelphia V6 (High Quality)</option>
+            <option value="photoreal">Philadelphia Photoreal</option>
+            <option value="movie">Philadelphia Cinematic</option>
+            <option value="illustration">Philadelphia Illustration</option>
         </select>
-        <textarea id="gen-prompt" rows="3" placeholder="Describe the scene... e.g. 'A dark castle on a hill...'"></textarea>
+        <textarea id="gen-prompt" rows="3" placeholder="Describe your book cover scene... e.g. 'A futuristic city, flying cars, neon lights, cyberpunk style'"></textarea>
         
         <div style="display: flex; gap: 5px;">
-            <button class="secondary" onclick="askAI()" title="AI Help"><i class="fas fa-magic"></i> AI</button>
+            <button class="secondary" onclick="requestPromptIdea()"><i class="fas fa-lightbulb"></i> Prompt Idea</button>
             <button onclick="generateImage('cover')" id="btn-gen-cover"><i class="fas fa-paint-brush"></i> Generate (20c)</button>
         </div>
+        <div style="text-align: center; font-size: 11px; color: #999; margin-top: -10px;">
+            <span id="cover-limit-status"></span>
+        </div>
+
+        <hr style="border-color: #333; width: 100%;">
 
         <h3>Persistent Characters</h3>
         <div class="char-grid" id="char-container">
-            <!-- Characters load here -->
+            <!-- Saved characters load here -->
+            <p style="font-size: 11px; color: #888; text-align: center;">No characters yet. Create one!</p>
         </div>
         <button class="secondary" onclick="generateImage('char')" style="margin-top: 10px;" id="btn-gen-char">
-            <i class="fas fa-user-plus"></i> Create Character (10c)
+            <i class="fas fa-user-plus"></i> New Character (10c)
         </button>
+        <div style="text-align: center; font-size: 11px; color: #999; margin-top: -10px;">
+            <span id="char-limit-status"></span>
+        </div>
 
-        <!-- Chat -->
+        <!-- Bobby Assistant Chat -->
         <div style="margin-top: auto; border-top: 1px solid #444; padding-top: 10px;">
             <h3>Bobby Assistant</h3>
-            <div id="chat-output" style="height: 100px; background: #222; overflow-y: auto; font-size: 11px; padding: 5px; margin-bottom: 5px; border-radius: 4px; color: #aaa;">
-                Bob: Hi! Need help describing your cover?
+            <div id="chat-output">
+                <div class="bot-msg">Hi! I'm Bobby. I can help with prompt ideas or general questions.</div>
             </div>
             <div style="display: flex; gap: 5px;">
-                <input type="text" id="chat-input" placeholder="Ask something..." style="margin: 0;">
-                <button onclick="sendChat()" style="width: 40px;"><i class="fas fa-paper-plane"></i></button>
+                <input type="text" id="chat-input" placeholder="Ask Bobby..." style="margin: 0;">
+                <button onclick="sendChat()" style="width: 40px; min-width: 40px;"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
 
-    <!-- CENTER CANVAS -->
+    <!-- CENTER CANVAS: BOOK COVER EDITOR -->
     <div class="canvas-area">
         <canvas id="c"></canvas>
+        <div id="canvas-guides"></div>
     </div>
 
-    <!-- RIGHT SIDEBAR -->
+    <!-- RIGHT SIDEBAR: EDITING TOOLS -->
     <div class="sidebar sidebar-right">
-        <h3>Project</h3>
+        <h3>Project Settings</h3>
         <button onclick="saveProject()"><i class="fas fa-save"></i> Save Progress</button>
-        <select onchange="setCanvasMode(this.value)">
+        <select id="canvas-mode-select" onchange="setCanvasMode(this.value)">
             <option value="front">Front Cover Only (600x900)</option>
             <option value="full">Full Wrap (Back+Spine+Front)</option>
         </select>
+        <button class="danger" onclick="clearCanvas()"><i class="fas fa-trash-alt"></i> Clear Canvas</button>
 
-        <h3>Edit Tools</h3>
-        <button onclick="addText()"><i class="fas fa-font"></i> Add Title Text</button>
+        <h3>Text Tools</h3>
+        <button onclick="addText()"><i class="fas fa-font"></i> Add Text Layer</button>
         
-        <div style="display: flex; gap: 5px;">
-            <select id="font-family" onchange="updateObject('fontFamily', this.value)">
+        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <select id="font-family" onchange="updateObject('fontFamily', this.value)" style="flex-grow: 1;">
                 <option value="Cinzel">Cinzel (Fantasy)</option>
                 <option value="Playfair Display">Playfair (Romance)</option>
                 <option value="Oswald">Oswald (Thriller)</option>
                 <option value="Roboto">Roboto (Modern)</option>
-                <option value="Great Vibes">Script</option>
-                <option value="Orbitron">Sci-Fi</option>
+                <option value="Great Vibes">Great Vibes (Script)</option>
+                <option value="Orbitron">Orbitron (Sci-Fi)</option>
+                <option value="Bebas Neue">Bebas Neue (Bold)</option>
+                <option value="Anton">Anton (Heavy)</option>
+                <option value="Dancing Script">Dancing Script</option>
+                <option value="Montserrat">Montserrat (Clean)</option>
+                <option value="Merriweather">Merriweather (Serif)</option>
+                <option value="Lato">Lato (Geometric)</option>
             </select>
-            <input type="color" id="text-color" style="width: 50px;" onchange="updateObject('fill', this.value)">
+            <input type="color" id="text-color" value="#000000" style="width: 50px;" onchange="updateObject('fill', this.value)">
         </div>
-        <input type="range" min="10" max="150" value="60" oninput="updateObject('fontSize', parseInt(this.value))">
+        <label style="font-size: 11px; color: #bbb;">Font Size:</label>
+        <input type="range" min="10" max="150" value="60" oninput="updateObject('fontSize', parseInt(this.value))" style="margin-top: 0;">
+        <label style="font-size: 11px; color: #bbb;">Text Stroke:</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="color" id="text-stroke-color" value="#FFFFFF" style="width: 50px;" onchange="updateObject('stroke', this.value)">
+            <input type="range" min="0" max="10" value="0" oninput="updateObject('strokeWidth', parseInt(this.value))">
+        </div>
 
-        <h3>Image Tools</h3>
-        <button class="secondary" onclick="removeBackground()"><i class="fas fa-eraser"></i> Remove Background</button>
-        <button class="secondary" onclick="enableBrushMode()"><i class="fas fa-paint-roller"></i> Brush/Erase Mode</button>
+
+        <h3>Object Manipulation</h3>
+        <button class="secondary" onclick="bringToFront()"><i class="fas fa-layer-group"></i> Bring to Front</button>
+        <button class="secondary" onclick="sendToBack()"><i class="fas fa-layer-group"></i> Send to Back</button>
+        <button class="secondary" onclick="removeBackground()"><i class="fas fa-eraser"></i> Remove Image BG</button>
+        <button class="secondary" onclick="toggleBrushMode()"><i class="fas fa-paint-roller"></i> Erase/Brush</button>
         <button class="danger" onclick="deleteObject()"><i class="fas fa-trash"></i> Delete Selected</button>
 
         <div style="margin-top: auto; gap: 10px; display: flex; flex-direction: column;">
             <button onclick="openMockup()" style="background: var(--accent); color: #000;"><i class="fas fa-cube"></i> View 3D Mockup</button>
-            <button onclick="downloadCover()" style="background: #27ae60;"><i class="fas fa-download"></i> Download Final</button>
+            <button onclick="downloadCover()" style="background: var(--success);"><i class="fas fa-download"></i> Download Cover</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 1. FIREBASE CONFIGURATION (REPLACE WITH YOURS) ---
+    // --- 1. FIREBASE CONFIGURATION (USER'S PROVIDED) ---
     const firebaseConfig = {
       apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
       authDomain: "elvionai.firebaseapp.com",
@@ -242,81 +520,153 @@
     const googleProvider = new firebase.auth.GoogleAuthProvider();
     const twitterProvider = new firebase.auth.TwitterAuthProvider();
 
-    // --- 2. GLOBAL VARIABLES ---
+    // --- 2. GLOBAL VARIABLES & CONSTANTS ---
     const API_URL = "https://web-production-9a18.up.railway.app"; 
-    const SUPER_ADMIN_EMAIL = "koladhino@gmail.com";
-    
+    const SUPER_ADMIN_EMAIL = "Koladhino@gmail.com"; // Matches your bot.py
+    const COVER_COST = 20;
+    const CHAR_COST = 10;
+    const DAILY_COVER_LIMIT = 3;
+    const DAILY_CHAR_LIMIT = 5; // Arbitrary for demo, adjust as needed
+
     let currentUser = null;
-    let authToken = null; // The ID Token for backend calls
+    let authToken = null; // Firebase ID Token for backend calls
     let credits = 0;
     let canvas;
     let isBrushMode = false;
+    let currentAuthMode = 'signin'; // 'signin' or 'register'
+
+    // HTML Elements
+    const authOverlay = document.getElementById('auth-overlay');
+    const appContainer = document.getElementById('app-container');
+    const authEmailInput = document.getElementById('auth-email');
+    const authPasswordInput = document.getElementById('auth-password');
+    const authErrorDiv = document.getElementById('auth-error');
+    const emailAuthBtn = document.getElementById('email-auth-btn');
+    const authModeToggle = document.getElementById('auth-mode-toggle');
+    const creditDisplay = document.getElementById('credit-display');
+    const charContainer = document.getElementById('char-container');
+    const chatOutput = document.getElementById('chat-output');
+    const chatInput = document.getElementById('chat-input');
+    const btnGenCover = document.getElementById('btn-gen-cover');
+    const btnGenChar = document.getElementById('btn-gen-char');
+    const genPromptInput = document.getElementById('gen-prompt');
+    const genModelSelect = document.getElementById('gen-model');
+    const coverLimitStatus = document.getElementById('cover-limit-status');
+    const charLimitStatus = document.getElementById('char-limit-status');
+    const canvasGuidesDiv = document.getElementById('canvas-guides');
 
     // --- 3. AUTHENTICATION LOGIC ---
     
-    // Check Auth State
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             currentUser = user;
             authToken = await user.getIdToken();
             
-            // Hide Overlay
-            document.getElementById('auth-overlay').style.display = 'none';
-            document.getElementById('app-container').classList.add('logged-in');
+            appContainer.classList.add('logged-in');
+            authOverlay.style.display = 'none';
             
-            // Sync Wallet & Load Data
-            showToast(`Welcome, ${user.displayName || user.email}`);
+            showToast(`Welcome, ${user.displayName || user.email.split('@')[0]}!`);
             await fetchWalletBalance();
             loadProject();
             loadCharacters();
+            updateDailyLimitStatus();
         } else {
-            // Show Overlay
-            document.getElementById('auth-overlay').style.display = 'flex';
-            document.getElementById('app-container').classList.remove('logged-in');
+            currentUser = null;
+            authToken = null;
+            appContainer.classList.remove('logged-in');
+            authOverlay.style.display = 'flex';
+            // Clear all UI dependent on user
+            creditDisplay.innerText = '--';
+            charContainer.innerHTML = '<p style="font-size: 11px; color: #888; text-align: center;">Sign in to see characters.</p>';
+            canvas.clear();
+            canvas.renderAll();
+            authErrorDiv.innerText = ''; // Clear auth errors on logout
+            updateDailyLimitStatus(); // Clear limit status
         }
     });
 
     async function signIn(method) {
+        authErrorDiv.innerText = ''; // Clear previous errors
         try {
-            if (method === 'google') await auth.signInWithPopup(googleProvider);
-            if (method === 'twitter') await auth.signInWithPopup(twitterProvider);
-            if (method === 'email') {
-                const email = document.getElementById('auth-email').value;
-                const pass = document.getElementById('auth-password').value || "demo1234"; // Simplification for demo
-                // In a real app, use sendSignInLinkToEmail or strict password flows
-                // For this demo, we assume the user exists or we create them anonymously linked to email
-                await auth.signInAnonymously(); // Or proper implementation
-                // Force update email for credits to work in backend
-                if(auth.currentUser) auth.currentUser.updateEmail(email).catch(e => console.log("Email update skipped"));
+            if (method === 'google') {
+                await auth.signInWithPopup(googleProvider);
+            } else if (method === 'twitter') {
+                await auth.signInWithPopup(twitterProvider);
+            } else if (method === 'email') {
+                const email = authEmailInput.value;
+                const password = authPasswordInput.value;
+                if (!email || !password || password.length < 6) {
+                    throw new Error("Please enter a valid email and a password of at least 6 characters.");
+                }
+
+                if (currentAuthMode === 'signin') {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                    showToast("Account created! Please sign in.");
+                    toggleAuthMode(); // Switch back to sign-in
+                }
             }
         } catch (error) {
-            document.getElementById('auth-error').innerText = error.message;
+            console.error("Auth error:", error);
+            authErrorDiv.innerText = error.message.replace("Firebase: ", "");
+        }
+    }
+
+    function toggleAuthMode() {
+        if (currentAuthMode === 'signin') {
+            currentAuthMode = 'register';
+            emailAuthBtn.innerHTML = `<i class="fas fa-user-plus"></i> Register`;
+            authModeToggle.innerText = 'Already have an account? Sign in.';
+        } else {
+            currentAuthMode = 'signin';
+            emailAuthBtn.innerHTML = `<i class="fas fa-sign-in-alt"></i> Sign In`;
+            authModeToggle.innerText = 'New user? Register here.';
         }
     }
 
     // --- 4. BACKEND API INTERACTION ---
     
-    // Wrapper to include Firebase Token in headers
     async function fetchWithAuth(endpoint, options = {}) {
-        if (!authToken && auth.currentUser) authToken = await auth.currentUser.getIdToken(true);
+        if (!currentUser || !authToken) {
+            showToast("You must be logged in.", 'danger');
+            return null;
+        }
+        
+        // Refresh token before each request to ensure it's valid
+        authToken = await currentUser.getIdToken(true); 
         
         const headers = {
-            'Content-Type': 'application/json',
             'X-Firebase-Token': authToken, // YOUR BACKEND EXPECTS THIS
             ...options.headers
         };
-
-        const response = await fetch(`${API_URL}${endpoint}`, {
-            ...options,
-            headers: headers
-        });
-
-        if (response.status === 401 || response.status === 403) {
-            showToast("Session expired. Please refresh.");
-            return null;
+        if (options.body && typeof options.body !== 'string' && !(options.body instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(options.body);
         }
 
-        return response.json();
+        try {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                ...options,
+                headers: headers
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                showToast("Session expired or unauthorized. Please refresh and log in again.", 'danger');
+                auth.signOut(); // Force logout to clear state
+                return null;
+            }
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+                throw new Error(errorData.detail || `API Error: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("API Call Error:", error);
+            showToast(error.message || "An unexpected error occurred with the API.", 'danger');
+            return null;
+        }
     }
 
     // --- 5. CANVAS & EDITING LOGIC ---
@@ -326,32 +676,50 @@
             width: 600,
             height: 900,
             backgroundColor: '#ffffff',
-            preserveObjectStacking: true
+            preserveObjectStacking: true // Ensure objects maintain their z-index relative to each other
         });
         
         // Auto-save logic
         canvas.on('object:modified', saveProject);
         canvas.on('object:added', saveProject);
+        canvas.on('object:removed', saveProject);
+        canvas.on('selection:created', updatePropertyPanels);
+        canvas.on('selection:updated', updatePropertyPanels);
+        canvas.on('selection:cleared', clearPropertyPanels);
     };
 
     function setCanvasMode(mode) {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+
         if (mode === 'full') {
-            canvas.setWidth(1300); // 600 + 100(spine) + 600
-            // Add guide lines
-            canvas.add(new fabric.Line([600, 0, 600, 900], { stroke: 'cyan', strokeDashArray: [5, 5], selectable: false }));
-            canvas.add(new fabric.Line([700, 0, 700, 900], { stroke: 'cyan', strokeDashArray: [5, 5], selectable: false }));
+            canvas.setWidth(1300); // Back(600) + Spine(100) + Front(600)
+            canvasGuidesDiv.style.width = '1300px';
+            canvasGuidesDiv.innerHTML = `
+                <div class="guide-line" style="left: 600px;"></div>
+                <div class="guide-line" style="left: 700px;"></div>
+                <p style="position: absolute; left: 620px; top: 10px; color: cyan; font-size: 11px;">Spine Area</p>
+                <p style="position: absolute; left: 100px; top: 10px; color: cyan; font-size: 11px;">Back Cover</p>
+                <p style="position: absolute; left: 900px; top: 10px; color: cyan; font-size: 11px;">Front Cover</p>
+            `;
         } else {
             canvas.setWidth(600);
+            canvasGuidesDiv.style.width = '600px';
+            canvasGuidesDiv.innerHTML = '';
         }
         canvas.renderAll();
+        saveProject();
     }
 
     function addText() {
-        const text = new fabric.IText('Title Here', {
-            left: 100, top: 100,
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        const text = new fabric.IText('Book Title', {
+            left: 50, top: 100,
             fontFamily: 'Cinzel',
             fill: '#000000',
-            fontSize: 60
+            fontSize: 60,
+            stroke: '#FFFFFF',
+            strokeWidth: 1,
+            shadow: 'rgba(0,0,0,0.5) 5px 5px 5px'
         });
         canvas.add(text);
         canvas.setActiveObject(text);
@@ -363,298 +731,588 @@
             obj.set(prop, value);
             canvas.renderAll();
             saveProject();
+            updatePropertyPanels(); // Update panels after change
         }
     }
 
-    function enableBrushMode() {
+    function updatePropertyPanels() {
+        const obj = canvas.getActiveObject();
+        if (obj) {
+            if (obj.type.includes('text')) {
+                document.getElementById('font-family').value = obj.fontFamily || 'Roboto';
+                document.getElementById('text-color').value = obj.fill || '#000000';
+                document.getElementById('text-stroke-color').value = obj.stroke || '#FFFFFF';
+                document.querySelector('input[type="range"][oninput="updateObject(\'fontSize\', parseInt(this.value))"]').value = obj.fontSize || 60;
+                document.querySelector('input[type="range"][oninput="updateObject(\'strokeWidth\', parseInt(this.value))"]').value = obj.strokeWidth || 0;
+            }
+            // Add more properties for other object types here
+        }
+    }
+
+    function clearPropertyPanels() {
+        document.getElementById('font-family').value = 'Cinzel';
+        document.getElementById('text-color').value = '#000000';
+        document.getElementById('text-stroke-color').value = '#FFFFFF';
+        document.querySelector('input[type="range"][oninput="updateObject(\'fontSize\', parseInt(this.value))"]').value = 60;
+        document.querySelector('input[type="range"][oninput="updateObject(\'strokeWidth\', parseInt(this.value))"]').value = 0;
+    }
+
+    function toggleBrushMode() {
         isBrushMode = !isBrushMode;
         canvas.isDrawingMode = isBrushMode;
         if (isBrushMode) {
             canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.color = canvas.backgroundColor; // Eraser effect (paint with BG color)
-            canvas.freeDrawingBrush.width = 20;
-            showToast("Brush Mode: ON (Painting Background Color)");
+            canvas.freeDrawingBrush.color = canvas.backgroundColor; // Erase effect (paint with BG color)
+            canvas.freeDrawingBrush.width = 30;
+            showToast("Brush Mode: ON (Paints with background color)", 'info');
         } else {
-            showToast("Brush Mode: OFF");
+            showToast("Brush Mode: OFF", 'info');
+        }
+    }
+
+    function deleteObject() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        const obj = canvas.getActiveObject();
+        if(obj) {
+            canvas.remove(obj);
+            saveProject();
+            showToast("Object deleted.");
+        } else {
+            showToast("No object selected.", 'info');
+        }
+    }
+
+    function sendToBack() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        const obj = canvas.getActiveObject();
+        if(obj) {
+            canvas.sendToBack(obj);
+            saveProject();
+            showToast("Sent to back.");
+        } else {
+            showToast("No object selected.", 'info');
+        }
+    }
+
+    function bringToFront() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        const obj = canvas.getActiveObject();
+        if(obj) {
+            canvas.bringToFront(obj);
+            saveProject();
+            showToast("Brought to front.");
+        } else {
+            showToast("No object selected.", 'info');
+        }
+    }
+    
+    function clearCanvas() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        if(confirm("Are you sure you want to clear the entire canvas? This cannot be undone.")) {
+            canvas.clear();
+            canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+            saveProject();
+            showToast("Canvas cleared.");
         }
     }
 
     // --- 6. IMAGE GENERATION & LIMITS ---
 
-    function checkLimits(cost) {
-        // 1. Check Admin
-        if (currentUser.email === SUPER_ADMIN_EMAIL) return true;
-
-        // 2. Check Daily Limit (Local Storage for speed)
-        const today = new Date().toDateString();
-        const count = parseInt(localStorage.getItem(`gen_count_${currentUser.uid}_${today}`) || 0);
-        if (count >= 3) {
-            alert("Daily limit reached (3 generations). Upgrade or wait till tomorrow.");
-            return false;
+    function checkAndDeductCredits(cost) {
+        // 1. Check Admin - Admin is FREE
+        if (currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+            return true;
         }
 
-        // 3. Check Credits
+        // 2. Check Credits
         if (credits < cost) {
-            if(confirm("Insufficient credits. Fund wallet now?")) fundWallet();
+            if(confirm(`Insufficient credits. You need ${cost} credits. Fund wallet now?`)) fundWallet();
             return false;
         }
+        updateLocalCredits(-cost); // Deduct immediately if not admin
         return true;
     }
 
-    async function generateImage(type) {
-        const cost = type === 'cover' ? 20 : 10;
-        if (!checkLimits(cost)) return;
-
-        const prompt = document.getElementById('gen-prompt').value;
-        const model = document.getElementById('gen-model').value;
-        const btn = document.getElementById(type === 'cover' ? 'btn-gen-cover' : 'btn-gen-char');
+    function updateDailyLimitStatus() {
+        if (!currentUser) {
+            coverLimitStatus.innerText = '';
+            charLimitStatus.innerText = '';
+            return;
+        }
+        const today = new Date().toDateString();
+        const coverCount = parseInt(localStorage.getItem(`gen_count_${currentUser.uid}_${today}_cover`) || 0);
+        const charCount = parseInt(localStorage.getItem(`gen_count_${currentUser.uid}_${today}_char`) || 0);
         
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        if (currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+            coverLimitStatus.innerText = `Unlimited covers today`;
+            charLimitStatus.innerText = `Unlimited characters today`;
+        } else {
+            coverLimitStatus.innerText = `Covers: ${coverCount}/${DAILY_COVER_LIMIT} today`;
+            charLimitStatus.innerText = `Characters: ${charCount}/${DAILY_CHAR_LIMIT} today`;
+        }
+    }
+
+    async function generateImage(type) {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        
+        const cost = (type === 'cover' ? COVER_COST : CHAR_COST);
+        const limitKey = `gen_count_${currentUser.uid}_${new Date().toDateString()}_${type}`;
+        const currentCount = parseInt(localStorage.getItem(limitKey) || 0);
+        const maxLimit = (type === 'cover' ? DAILY_COVER_LIMIT : DAILY_CHAR_LIMIT);
+
+        // Bypass limits for admin
+        const isAdmin = (currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase());
+
+        if (!isAdmin && currentCount >= maxLimit) {
+            showToast(`Daily limit reached for ${type} generation (${maxLimit}).`, 'danger');
+            return;
+        }
+
+        if (!checkAndDeductCredits(cost)) return; // This will handle credits check and deduction for non-admins
+
+        const prompt = genPromptInput.value;
+        if (!prompt) {
+            showToast("Please enter a description for the image.", 'danger');
+            return;
+        }
+
+        const btn = (type === 'cover' ? btnGenCover : btnGenChar);
+        const originalBtnHtml = btn.innerHTML;
+        btn.innerHTML = `<span class="loader"></span> Generating...`;
         btn.disabled = true;
 
         try {
             // Using the 'generate-image' endpoint (mapped to your bot.py)
             const result = await fetchWithAuth('/generate-image', {
                 method: 'POST',
-                body: JSON.stringify({
-                    prompt: type === 'char' ? `Character sheet, white background, ${prompt}` : prompt,
-                    model: type === 'char' ? 'anime_core' : model,
-                    width: type === 'char' ? 512 : 600,
-                    height: type === 'char' ? 512 : 900
-                })
+                body: {
+                    prompt: (type === 'char' ? `a highly detailed and expressive character sheet, full body, plain white background, cinematic lighting, professional digital art, ` : '') + prompt,
+                    model: (type === 'char' ? 'anime_core' : genModelSelect.value), // Use specific model for characters
+                    width: (type === 'char' ? 512 : 600),
+                    height: (type === 'char' ? 512 : 900)
+                }
             });
 
             if (result && result.image_b64) {
                 if (type === 'cover') {
                     fabric.Image.fromURL('data:image/png;base64,' + result.image_b64, (img) => {
-                        img.scaleToWidth(600);
+                        img.scaleToWidth(canvas.width);
                         canvas.add(img);
                         canvas.sendToBack(img);
+                        saveProject();
                     });
+                    showToast("Book cover generated!", 'success');
                 } else {
-                    saveCharacter(result.image_b64);
+                    saveCharacter(result.image_b64, prompt);
+                    showToast("Character generated and saved!", 'success');
                 }
                 
-                // Deduct & Log
-                updateLocalCredits(-cost);
-                logDailyUsage();
-                showToast("Generation Complete!");
+                if (!isAdmin) {
+                    localStorage.setItem(limitKey, currentCount + 1);
+                }
+                updateDailyLimitStatus();
             } else {
-                throw new Error("Generation failed.");
+                throw new Error(result ? result.detail : "Unknown generation error.");
             }
         } catch (e) {
-            console.error(e);
-            showToast("Error generating image.");
+            console.error("Image generation error:", e);
+            showToast(`Error: ${e.message || "Failed to generate image."}`, 'danger');
         } finally {
-            btn.innerHTML = type === 'cover' ? 'Generate (20c)' : 'Create Character (10c)';
+            btn.innerHTML = originalBtnHtml;
             btn.disabled = false;
         }
     }
 
     async function removeBackground() {
-        const obj = canvas.getActiveObject();
-        if (!obj || obj.type !== 'image') return alert("Select an image first");
+        if (!currentUser) return showToast("Please log in first.", 'danger');
 
-        showToast("Removing background...");
+        const obj = canvas.getActiveObject();
+        if (!obj || obj.type !== 'image') return showToast("Select an image first.", 'info');
+
+        showToast("Removing background... This may take a moment.", 'info');
         
-        // Convert Fabric obj to blob
         const dataURL = obj.toDataURL({format: 'png'});
         const blob = await (await fetch(dataURL)).blob();
         const formData = new FormData();
         formData.append('file', blob, 'image.png');
 
-        // Call backend (uses authentication via get_current_user in backend if adapted, or api key)
-        // Since backend snippet for remove-bg uses UploadFile, we send as FormData
-        // We assume backend validates token or we rely on the API key inside backend
-        const res = await fetch(`${API_URL}/api/tools/remove-background`, {
-            method: 'POST',
-            body: formData
-            // Note: UploadFile endpoints usually don't take JSON headers easily with FormData
-            // You might need to append token if backend requires it: headers: {'X-Firebase-Token': authToken}
-        });
+        try {
+            // The /api/tools/remove-background endpoint in your bot.py doesn't use Depends(get_current_user) for cost deduction
+            // or explicit auth. It's configured to use REMOVE_BG_API_KEY.
+            // So, for this specific endpoint, we don't pass X-Firebase-Token in headers,
+            // as it expects an API Key header or is public. If it becomes a credited service,
+            // adjust your backend or integrate credit deduction logic here.
+            
+            const res = await fetch(`${API_URL}/api/tools/remove-background`, {
+                method: 'POST',
+                body: formData
+            });
 
-        if(res.ok) {
-            const newBlob = await res.blob();
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                fabric.Image.fromURL(e.target.result, (img) => {
-                    img.set({ left: obj.left, top: obj.top, scaleX: obj.scaleX, scaleY: obj.scaleY });
-                    canvas.remove(obj);
-                    canvas.add(img);
-                    canvas.setActiveObject(img);
-                    saveProject();
-                });
-            };
-            reader.readAsDataURL(newBlob);
-        } else {
-            showToast("Failed to remove background");
+            if(res.ok) {
+                const newBlob = await res.blob();
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    fabric.Image.fromURL(e.target.result, (img) => {
+                        img.set({ left: obj.left, top: obj.top, scaleX: obj.scaleX, scaleY: obj.scaleY });
+                        canvas.remove(obj);
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        saveProject();
+                        showToast("Background removed!", 'success');
+                    });
+                };
+                reader.readAsDataURL(newBlob);
+            } else {
+                const errorData = await res.json().catch(() => ({ detail: "Unknown error" }));
+                throw new Error(errorData.detail || `API Error: ${res.status}`);
+            }
+        } catch(e) {
+            console.error("Remove BG error:", e);
+            showToast(`Background removal failed: ${e.message}`, 'danger');
         }
     }
 
-    // --- 7. PERSISTENCE ---
+    // --- 7. PERSISTENCE (Local Storage) ---
 
-    function saveCharacter(b64) {
+    function saveCharacter(b64, prompt) {
+        if (!currentUser) return;
         const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
-        chars.push(b64);
+        chars.push({ b64: b64, prompt: prompt, timestamp: new Date().toISOString() });
         localStorage.setItem(`chars_${currentUser.uid}`, JSON.stringify(chars));
         loadCharacters();
     }
 
     function loadCharacters() {
-        const container = document.getElementById('char-container');
-        container.innerHTML = "";
+        if (!currentUser) {
+            charContainer.innerHTML = '<p style="font-size: 11px; color: #888; text-align: center;">Sign in to see characters.</p>';
+            return;
+        }
+        charContainer.innerHTML = "";
         const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
         
-        chars.forEach(b64 => {
+        if (chars.length === 0) {
+            charContainer.innerHTML = '<p style="font-size: 11px; color: #888; text-align: center;">No characters yet. Create one!</p>';
+        }
+
+        chars.forEach((charData, index) => {
             const div = document.createElement('div');
             div.className = 'char-item';
+            div.setAttribute('title', charData.prompt);
             div.innerHTML = `
-                <img src="data:image/png;base64,${b64}" onclick="addToCanvas('${b64}')">
+                <img src="data:image/png;base64,${charData.b64}">
                 <div class="char-actions">
-                    <button class="char-btn" onclick="addToCanvas('${b64}')">USE</button>
-                    <button class="char-btn" style="color:red" onclick="deleteChar('${b64}')">DEL</button>
+                    <button class="char-btn" onclick="addCharacterToCanvas('${charData.b64}')"><i class="fas fa-plus"></i> Use</button>
+                    <button class="char-btn" style="color:${varDanger}" onclick="deleteCharacter(${index})"><i class="fas fa-trash"></i> Del</button>
                 </div>
             `;
-            container.appendChild(div);
+            charContainer.appendChild(div);
         });
     }
     
-    function addToCanvas(b64) {
+    function addCharacterToCanvas(b64) {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
         fabric.Image.fromURL('data:image/png;base64,' + b64, (img) => {
-            img.scaleToWidth(200);
+            img.scaleToWidth(300); // Default size when added
             canvas.add(img);
+            canvas.centerObject(img);
+            canvas.setActiveObject(img);
+            saveProject();
+            showToast("Character added to canvas.");
         });
     }
 
+    function deleteCharacter(index) {
+        if (!currentUser) return;
+        if (!confirm("Delete this character?")) return;
+
+        const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
+        chars.splice(index, 1);
+        localStorage.setItem(`chars_${currentUser.uid}`, JSON.stringify(chars));
+        loadCharacters();
+        showToast("Character deleted.");
+    }
+
     function saveProject() {
-        if(currentUser) localStorage.setItem(`project_${currentUser.uid}`, JSON.stringify(canvas.toJSON()));
+        if(currentUser) {
+            localStorage.setItem(`project_${currentUser.uid}`, JSON.stringify(canvas.toJSON()));
+            // showToast("Progress saved."); // Too frequent if called on every mod
+        }
     }
 
     function loadProject() {
-        const json = localStorage.getItem(`project_${currentUser.uid}`);
-        if(json) canvas.loadFromJSON(json);
-    }
-
-    function logDailyUsage() {
-        const today = new Date().toDateString();
-        const key = `gen_count_${currentUser.uid}_${today}`;
-        const count = parseInt(localStorage.getItem(key) || 0);
-        localStorage.setItem(key, count + 1);
+        if(currentUser) {
+            const json = localStorage.getItem(`project_${currentUser.uid}`);
+            if(json) {
+                canvas.loadFromJSON(json, () => {
+                    canvas.renderAll();
+                    const savedMode = localStorage.getItem(`canvas_mode_${currentUser.uid}`);
+                    if (savedMode) {
+                        document.getElementById('canvas-mode-select').value = savedMode;
+                        setCanvasMode(savedMode);
+                    }
+                    showToast("Project loaded!");
+                });
+            } else {
+                showToast("No saved project found. Starting fresh!");
+            }
+        }
     }
 
     // --- 8. PAYMENTS & CREDITS ---
 
     async function fetchWalletBalance() {
-        // Backend doesn't have a direct "get balance" in snippet, 
-        // but we can infer it or use a separate call. 
-        // For now, we simulate using local or calling user details endpoint if exists.
+        if (!currentUser) return;
         
-        // Simulating backend fetch:
-        const stored = localStorage.getItem(`credits_${currentUser.uid}`);
-        credits = stored ? parseInt(stored) : (currentUser.email === SUPER_ADMIN_EMAIL ? 999999 : 50);
-        
-        document.getElementById('credit-display').innerText = credits.toLocaleString();
+        // This endpoint `/api/user/keys-and-balance` provides both keys and balance.
+        // It requires Firebase Auth.
+        const result = await fetchWithAuth('/api/user/keys-and-balance', { method: 'GET' });
+
+        if (result && result.balance !== undefined) {
+            credits = result.balance;
+            creditDisplay.innerText = credits.toLocaleString();
+            localStorage.setItem(`credits_${currentUser.uid}`, credits); // Sync local with backend
+        } else {
+            // Fallback for admin or if backend fails to return balance
+            credits = (currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) ? 999999 : 0;
+            creditDisplay.innerText = credits.toLocaleString();
+            localStorage.setItem(`credits_${currentUser.uid}`, credits);
+        }
     }
 
     function updateLocalCredits(change) {
+        if (currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) return; // Admin has infinite
+
         credits += change;
         localStorage.setItem(`credits_${currentUser.uid}`, credits);
-        document.getElementById('credit-display').innerText = credits.toLocaleString();
+        creditDisplay.innerText = credits.toLocaleString();
     }
 
     async function fundWallet() {
-        const amount = prompt("Enter amount (NGN) to add:", "1000");
-        if (!amount || amount < 100) return;
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+
+        const amount = prompt("Enter amount (NGN) to add (min ₦100):", "1000");
+        const parsedAmount = parseInt(amount);
+
+        if (isNaN(parsedAmount) || parsedAmount < 100) {
+            return showToast("Please enter a valid amount (minimum ₦100).", 'danger');
+        }
+
+        showToast("Initiating payment...", 'info');
 
         try {
             const result = await fetchWithAuth('/api/payments/initiate', {
                 method: 'POST',
-                body: JSON.stringify({ amount: parseInt(amount) })
+                body: { amount: parsedAmount }
             });
 
             if (result && result.checkout_url) {
-                // Open Korapay in new tab
-                const win = window.open(result.checkout_url, '_blank');
+                const newWindow = window.open(result.checkout_url, '_blank');
                 
+                showToast("Redirecting to Korapay. Please complete the payment.", 'info');
+
                 // Polling for completion
                 const checkInterval = setInterval(async () => {
-                    if (win.closed) {
+                    if (newWindow.closed) {
                         clearInterval(checkInterval);
-                        // Verify transaction
-                        const verify = await fetchWithAuth(`/api/payments/verify?transaction_ref=${result.transaction_ref}`, { method: 'GET' });
-                        if (verify && verify.status === 'success') {
-                            updateLocalCredits(parseInt(amount)); // Or use verify.new_balance
-                            showToast("Payment Successful!");
+                        showToast("Verifying payment...", 'info');
+                        const verifyResult = await fetchWithAuth(`/api/payments/verify?transaction_ref=${result.transaction_ref}`, { method: 'GET' });
+                        
+                        if (verifyResult && verifyResult.status === 'success') {
+                            showToast(`Payment Successful! ${verifyResult.credits_added} credits added.`, 'success');
+                            credits = verifyResult.new_balance; // Get actual new balance from backend
+                            creditDisplay.innerText = credits.toLocaleString();
+                            localStorage.setItem(`credits_${currentUser.uid}`, credits);
+                        } else {
+                            showToast(`Payment verification failed: ${verifyResult?.message || "Unknown error."}`, 'danger');
                         }
                     }
-                }, 3000);
+                }, 3000); // Check every 3 seconds
             }
         } catch (e) {
-            console.error(e);
-            alert("Payment init failed");
+            console.error("Payment initiation error:", e);
+            showToast(`Payment initiation failed: ${e.message}`, 'danger');
         }
     }
 
     // --- 9. 3D MOCKUPS & UTILS ---
 
     function openMockup() {
-        const dataUrl = canvas.toDataURL();
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        
+        // Ensure canvas has content
+        if (canvas.getObjects().length === 0) {
+            return showToast("Canvas is empty. Add a design first!", 'info');
+        }
+
+        const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
         document.getElementById('mockup-modal').style.display = 'flex';
         
-        // Apply textures
-        document.getElementById('face-front').style.backgroundImage = `url(${dataUrl})`;
-        document.getElementById('face-back').style.backgroundColor = '#333'; // Simple back
+        const isFullWrap = canvas.width > 1000;
         
-        if (canvas.width > 1000) {
-            // Logic for Full Wrap splitting
-            document.getElementById('face-front').style.backgroundPosition = "100% 0";
+        // Reset styles first
+        document.getElementById('face-front').style.backgroundImage = '';
+        document.getElementById('face-spine').style.backgroundImage = '';
+        document.getElementById('face-back').style.backgroundImage = '';
+        document.getElementById('face-front').style.backgroundPosition = '';
+        document.getElementById('face-spine').style.backgroundPosition = '';
+        document.getElementById('face-back').style.backgroundPosition = '';
+        document.getElementById('face-back').style.backgroundColor = '';
+
+
+        if (isFullWrap) {
+            // For full wrap, calculate positions based on 1300px width (600 back, 100 spine, 600 front)
+            // Front cover is the right 600px of the 1300px image
+            document.getElementById('face-front').style.backgroundImage = `url(${dataUrl})`;
+            document.getElementById('face-front').style.backgroundSize = `1300px 900px`; // Make background fit total width
+            document.getElementById('face-front').style.backgroundPosition = "-700px 0"; // Shift to show right-most 600px
+
+            // Spine is the middle 100px of the 1300px image
             document.getElementById('face-spine').style.backgroundImage = `url(${dataUrl})`;
-            document.getElementById('face-spine').style.backgroundPosition = "50% 0";
+            document.getElementById('face-spine').style.backgroundSize = `1300px 900px`;
+            document.getElementById('face-spine').style.backgroundPosition = "-600px 0"; // Shift to show middle 100px
+
+            // Back cover is the left 600px of the 1300px image
             document.getElementById('face-back').style.backgroundImage = `url(${dataUrl})`;
-            document.getElementById('face-back').style.backgroundPosition = "0% 0";
+            document.getElementById('face-back').style.backgroundSize = `1300px 900px`;
+            document.getElementById('face-back').style.backgroundPosition = "0 0"; // Show left-most 600px
+            
+            // Re-adjust width/height of spine face for the 3D model
+            document.getElementById('face-spine').style.width = '50px'; // Match CSS
+            document.getElementById('face-spine').style.height = '450px'; // Match CSS
+
+        } else {
+            // Front cover only, use default for back and spine
+            document.getElementById('face-front').style.backgroundImage = `url(${dataUrl})`;
+            document.getElementById('face-front').style.backgroundSize = `cover`; 
+            document.getElementById('face-spine').style.backgroundColor = '#222'; // Default dark spine
+            document.getElementById('face-back').style.backgroundColor = '#333'; // Default dark back cover
         }
         
-        rotateBook('front');
+        rotateBook('front'); // Default view
     }
 
     function rotateBook(view) {
         const book = document.getElementById('book-3d');
         if (view === 'front') book.style.transform = "rotateY(-20deg) rotateX(10deg)";
-        if (view === 'spine') book.style.transform = "rotateY(-110deg) rotateX(0deg)";
-        if (view === 'full') book.style.transform = "rotateY(-30deg) rotateX(20deg) scale(0.8)";
+        else if (view === 'spine') book.style.transform = "rotateY(-100deg) rotateX(0deg)";
+        else if (view === 'full') book.style.transform = "rotateY(-30deg) rotateX(20deg) scale(0.8)";
+        else showToast("Invalid 3D view.", 'danger');
     }
 
-    function showToast(msg) {
+    function showToast(msg, type = 'info') {
         const t = document.getElementById('toast');
         t.innerText = msg;
+        t.style.borderColor = `var(--${type})`;
         t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 3000);
     }
     
-    // Simple Chatbot Bridge
-    async function sendChat() {
-        const inp = document.getElementById('chat-input');
-        const txt = inp.value;
-        if(!txt) return;
-        
-        document.getElementById('chat-output').innerHTML += `<div>You: ${txt}</div>`;
-        inp.value = "";
-        
-        const res = await fetchWithAuth('/api/llama/chat', {
-            method: 'POST',
-            body: JSON.stringify({ prompt: txt, systemPrompt: "You are a helpful design assistant named Bobby." })
-        });
-        
-        if(res && (res.content || res.response)) {
-            document.getElementById('chat-output').innerHTML += `<div>Bob: ${res.content || res.response}</div>`;
+    // Bobby Chatbot Integration
+    async function requestPromptIdea() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        const currentPrompt = genPromptInput.value;
+        if (!currentPrompt) return showToast("Enter a basic idea first, e.g., 'a fantasy castle'.", 'info');
+
+        const chatLogEntry = document.createElement('div');
+        chatLogEntry.className = 'user-msg';
+        chatLogEntry.innerText = `You: Requesting prompt idea for "${currentPrompt}"`;
+        chatOutput.appendChild(chatLogEntry);
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'bot-msg typing-indicator';
+        typingIndicator.innerText = "Bobby is thinking...";
+        chatOutput.appendChild(typingIndicator);
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+
+        try {
+            const result = await fetchWithAuth('/api/llama/chat', {
+                method: 'POST',
+                body: { 
+                    prompt: `Elaborate on this book cover idea to create a highly detailed AI image prompt (e.g., for Midjourney or Stable Diffusion): "${currentPrompt}". Suggest specific styles, lighting, and composition elements.`,
+                    systemPrompt: "You are an expert AI prompt engineer, specifically for visual arts." 
+                }
+            });
+
+            if (result && (result.content || result.response)) {
+                genPromptInput.value = result.content || result.response;
+                typingIndicator.remove();
+                const botReply = document.createElement('div');
+                botReply.className = 'bot-msg';
+                botReply.innerText = `Bobby: Here's a refined prompt for you!`;
+                chatOutput.appendChild(botReply);
+                chatOutput.scrollTop = chatOutput.scrollHeight;
+                showToast("Prompt idea generated!");
+            } else {
+                throw new Error("Failed to get prompt idea from Bobby.");
+            }
+        } catch (e) {
+            console.error("Bobby error:", e);
+            typingIndicator.remove();
+            const botReply = document.createElement('div');
+            botReply.className = 'bot-msg';
+            botReply.innerText = `Bobby: Sorry, I couldn't generate an idea right now. (${e.message || 'Error'})`;
+            chatOutput.appendChild(botReply);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+            showToast("Failed to get prompt idea.", 'danger');
         }
     }
-    
+
+    async function sendChat() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        const userMsgDiv = document.createElement('div');
+        userMsgDiv.className = 'user-msg';
+        userMsgDiv.innerText = `You: ${text}`;
+        chatOutput.appendChild(userMsgDiv);
+        chatInput.value = "";
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'bot-msg typing-indicator';
+        typingIndicator.innerText = "Bobby is thinking...";
+        chatOutput.appendChild(typingIndicator);
+        chatOutput.scrollTop = chatOutput.scrollHeight;
+
+        try {
+            const result = await fetchWithAuth('/api/llama/chat', {
+                method: 'POST',
+                body: { 
+                    prompt: text, 
+                    systemPrompt: "You are Bobby, a friendly and helpful assistant in the Elvion AI studio. You are good at answering general questions and providing creative ideas." 
+                }
+            });
+
+            typingIndicator.remove();
+            const botMsgDiv = document.createElement('div');
+            botMsgDiv.className = 'bot-msg';
+            botMsgDiv.innerText = `Bobby: ${result.content || result.response || "No response."}`;
+            chatOutput.appendChild(botMsgDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+
+        } catch (e) {
+            console.error("Bobby Chat Error:", e);
+            typingIndicator.remove();
+            const errorMsgDiv = document.createElement('div');
+            errorMsgDiv.className = 'bot-msg';
+            errorMsgDiv.innerText = `Bobby: Sorry, I had trouble connecting. (${e.message || 'Error'})`;
+            chatOutput.appendChild(errorMsgDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+        }
+    }
+
     function downloadCover() {
+        if (!currentUser) return showToast("Please log in first.", 'danger');
+        if (canvas.getObjects().length === 0) {
+            return showToast("Canvas is empty. Design something first!", 'info');
+        }
         const link = document.createElement('a');
-        link.download = 'book_cover.png';
-        link.href = canvas.toDataURL({ quality: 1.0 });
+        link.download = `philadelphia_cover_${Date.now()}.png`;
+        link.href = canvas.toDataURL({ format:'png', quality:1.0 });
         link.click();
+        showToast("Cover downloaded!", 'success');
     }
 </script>
 
