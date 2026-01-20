@@ -2,313 +2,535 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Philadelphia Studio | Elvion AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Philadelphia AI | Elite Cover Studio</title>
     
     <!-- Core Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
     
-    <!-- Cosmic Fonts from Elvion Theme -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Cinzel:wght@400;700&family=Playfair+Display:wght@700;900&family=Roboto:wght@300;400;900&family=Bebas+Neue&family=Dancing+Script:wght@700&family=Courier+Prime&display=swap" rel="stylesheet">
+    <!-- Cosmic Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Roboto:wght@300;400;500;700&family=Cinzel:wght@700&family=Playfair+Display:wght@700&family=Bebas+Neue&family=Dancing+Script:wght@700&family=Anton&family=Courier+Prime&display=swap" rel="stylesheet">
     
     <style>
+        /* Define global CSS variables for Cosmic Plasma Theme */
         :root {
-            --cosmic-purple: #6366f1;
-            --nebula-pink: #ec4899;
-            --deep-space: #0b061a;
-            --panel-bg: rgba(20, 15, 45, 0.7);
-            --starlight: #e0e7ff;
-            --accent-cyan: #06b6d4;
-            --danger: #ef4444;
-            --success: #10b981;
+            --neon-blue: #00f2ff;
+            --neon-purple: #bd00ff;
+            --neon-green: #00ff88; /* Accent for success/active states */
+            --plasma-gradient: linear-gradient(135deg, var(--neon-blue), var(--neon-purple), var(--neon-green));
+            --plasma-gradient-dark: linear-gradient(135deg, #00b0ff, #8a00b0);
+
+            --glass-bg-strong: rgba(20, 20, 35, 0.85); /* More opaque */
+            --glass-border: rgba(0, 242, 255, 0.3); /* Stronger border, neon blue tint */
+            --glass-card-bg: rgba(25, 25, 45, 0.7); /* Slightly lighter panel for contrast */
+
+            --text-glow: 0 0 12px rgba(0, 242, 255, 0.8), 0 0 20px rgba(189, 0, 255, 0.6); /* Stronger glow */
+            --box-glow: 0 0 20px rgba(0, 242, 255, 0.25); /* Stronger glow */
+
+            --main-text-color: #e0f0ff;
+            --input-focus-bg: rgba(0, 242, 255, 0.12); /* Slightly more opaque */
+            
+            --body-base-bg: #000205; /* Even darker base */
+            --current-bg-blend-mode: screen;
+
+            --danger-color: #ff4d4d;
+            --success-color: #00ff88;
+            --info-color: #00f2ff;
+            --warning-color: #ffc107;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* --- GLOBAL RESET & BASE STYLES --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Roboto', sans-serif;
-            background: var(--deep-space);
-            background-image: 
-                radial-gradient(circle at 15% 25%, rgba(99, 102, 241, 0.2) 0%, transparent 40%),
-                radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
-            color: var(--starlight);
-            height: 100vh;
-            overflow: hidden;
+        html {
+            -webkit-tap-highlight-color: transparent;
+            height: 100%;
+            width: 100%;
         }
-
-        /* --- AUTH OVERLAY --- */
-        #authOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 6, 26, 0.9);
-            z-index: 5000; display: flex; align-items: center; justify-content: center;
-            backdrop-filter: blur(15px);
-            transition: opacity 0.5s;
-        }
-        .auth-card {
-            background: var(--panel-bg); padding: 3rem; border-radius: 24px; width: 420px;
-            border: 1px solid var(--cosmic-purple); text-align: center; 
-            box-shadow: 0 0 60px rgba(99, 102, 241, 0.4);
-        }
-        .auth-card h2 { font-family: 'Orbitron'; font-size: 2rem; margin-bottom: 1rem; color: #fff; }
-        .auth-btn {
-            width: 100%; padding: 14px; margin: 8px 0; border-radius: 50px;
-            border: none; font-weight: bold; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; gap: 12px;
-            font-family: 'Orbitron'; transition: all 0.3s ease;
-        }
-        .auth-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .google-btn { background: #fff; color: #333; }
-        .twitter-btn { background: #1da1f2; color: #fff; }
-        .email-btn { background: linear-gradient(135deg, var(--cosmic-purple), var(--nebula-pink)); color: #fff; }
-
-        /* --- APP LAYOUT --- */
-        .studio-grid {
-            display: grid; grid-template-columns: 360px 1fr 340px;
-            height: 100vh; opacity: 0; pointer-events: none; transition: opacity 0.5s;
-        }
-        .studio-grid.loaded { opacity: 1; pointer-events: all; }
-
-        .sidebar {
-            background: var(--panel-bg); backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(99, 102, 241, 0.2);
-            padding: 20px; display: flex; flex-direction: column; gap: 20px;
-            overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--cosmic-purple) transparent;
-        }
-        .sidebar-right { border-right: none; border-left: 1px solid rgba(99, 102, 241, 0.2); }
-
-        .main-canvas-area {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px; background: radial-gradient(circle, #1a1235 0%, #0b061a 100%);
-        }
-
-        /* --- UI COMPONENTS --- */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .section-header { font-family: 'Orbitron'; font-size: 14px; margin-bottom: 15px; color: var(--accent-cyan); text-shadow: 0 0 10px var(--accent-cyan); }
-
-        .wallet-card {
-            background: linear-gradient(135deg, var(--cosmic-purple), var(--nebula-pink));
-            padding: 20px; border-radius: 20px; text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-        }
-        .credits-num { font-size: 36px; font-weight: 900; font-family: 'Orbitron'; text-shadow: 0 0 15px rgba(255,255,255,0.5); }
-        .refill-btn { background:rgba(0,0,0,0.3); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer; margin-top:10px; font-weight: bold; transition: 0.2s; }
-        .refill-btn:hover { background: rgba(0,0,0,0.5); }
-
-        input, select, textarea {
-            width: 100%; padding: 12px; background: rgba(0,0,0,0.4);
-            border: 1px solid var(--cosmic-purple); border-radius: 10px;
-            color: white; margin-top: 5px; font-family: 'Roboto'; font-size: 14px;
-        }
-        input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 15px var(--cosmic-purple); }
-
-        .btn-action {
-            background: linear-gradient(135deg, var(--cosmic-purple), var(--nebula-pink)); color: white;
-            padding: 14px; border: none; border-radius: 10px;
-            font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
-            width: 100%; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-action:hover { box-shadow: 0 0 20px var(--nebula-pink); transform: translateY(-2px); }
-        .btn-action.secondary { background: rgba(255,255,255,0.1); border: 1px solid var(--accent-cyan); }
-        .btn-action.danger { background: var(--danger); }
-        .btn-action:disabled { opacity: 0.5; transform: none; box-shadow: none; cursor: not-allowed; }
-
-        /* --- CANVAS & TOOLS --- */
-        canvas {
-            border-radius: 5px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8), 0 0 30px rgba(99, 102, 241, 0.3);
-        }
-
-        .char-scroll {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
-            max-height: 280px; overflow-y: auto; padding-right: 5px;
-        }
-        .char-thumb {
-            width: 100%; aspect-ratio: 1; border-radius: 10px;
-            cursor: pointer; border: 2px solid transparent; transition: 0.2s;
-            object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        .char-thumb:hover { border-color: var(--accent-cyan); transform: scale(1.05); }
-
-        .bobby-box {
-            background: rgba(0,0,0,0.4); border-radius: 15px;
-            height: 180px; overflow-y: auto; padding: 10px;
-            font-size: 13px; border: 1px solid rgba(6, 182, 212, 0.3);
-            margin-bottom: 10px;
-        }
-
-        /* --- 3D MODAL --- */
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 4000;
-            align-items: center; justify-content: center; flex-direction: column;
-        }
-        .scene { width: 300px; height: 450px; perspective: 1200px; }
-        .book-3d { 
-            width: 100%; height: 100%; position: relative; 
-            transform-style: preserve-3d; transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-        .face { 
-            position: absolute; width: 300px; height: 450px; 
-            background-size: cover; background-position: center; border: 1px solid #000;
-        }
-        .front { transform: translateZ(25px); }
-        .spine { 
-            width: 50px; transform: rotateY(-90deg) translateZ(25px); 
-            left: -25px; background: #222;
-        }
-        .back { transform: rotateY(180deg) translateZ(25px); background: #111; }
-
-        /* --- TOAST --- */
-        #toast {
-            position: fixed; bottom: 20px; right: 20px;
-            padding: 15px 25px; border-radius: 10px; 
-            color: #fff; font-weight: bold;
-            transform: translateX(120%); transition: 0.5s cubic-bezier(0.25, 1, 0.5, 1); 
-            z-index: 6000; box-shadow: 0 5px 20px rgba(0,0,0,0.4);
-        }
-        #toast.show { transform: translateX(0); }
-        .toast-success { background: var(--success); }
-        .toast-error { background: var(--danger); }
-        .toast-info { background: var(--cosmic-purple); }
         
-        /* --- LOADER --- */
-        .loading-ring {
-            display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite;
+        body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--body-base-bg);
+            color: var(--main-text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- COSMIC BACKGROUND ENGINE --- */
+        #cosmos-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; overflow: hidden; background-color: var(--body-base-bg);
+        }
+
+        .nebula-layer {
+            position: absolute; top: 0; left: 0; width: 400%; height: 400%;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(76, 0, 255, 0.22), transparent 70%),
+                radial-gradient(circle at 80% 20%, rgba(0, 242, 255, 0.25), transparent 60%), 
+                linear-gradient(to bottom right, rgba(5, 7, 20, 0.25), rgba(26, 10, 46, 0.25));
+            mix-blend-mode: var(--current-bg-blend-mode);
+            animation: drift 110s infinite linear alternate;
+            will-change: transform;
+        }
+
+        .nebula-layer:nth-child(2) {
+            background: radial-gradient(circle at 20% 80%, rgba(189, 0, 255, 0.35), transparent 70%),
+                        radial-gradient(circle at 70% 30%, rgba(0, 255, 136, 0.25), transparent 65%);
+            animation: drift 95s infinite linear reverse alternate;
+            mix-blend-mode: overlay;
+        }
+        .nebula-layer:nth-child(3) {
+            background: radial-gradient(circle at 30% 10%, rgba(0, 242, 255, 0.2), transparent 80%),
+                        radial-gradient(circle at 90% 90%, rgba(189, 0, 255, 0.2), transparent 75%);
+            animation: drift 130s infinite linear;
+            mix-blend-mode: soft-light;
+        }
+
+        @keyframes drift {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-90%, -90%) rotate(30deg); }
+        }
+
+        .star {
+            position: absolute; pointer-events: none; border-radius: 50%;
+            background: var(--neon-blue);
+            animation: twinkle var(--duration) infinite ease-in-out alternate;
+            box-shadow: 0 0 8px rgba(0, 242, 255, 0.9), 0 0 15px rgba(0, 242, 255, 0.7);
+            will-change: transform, opacity;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.15; transform: scale(0.4); }
+            50% { opacity: 1.2; transform: scale(1.6); }
+        }
+
+        .shooting-star {
+            position: absolute; height: 5px;
+            background: linear-gradient(-90deg, var(--neon-blue), transparent);
+            filter: drop-shadow(0 0 15px var(--neon-blue));
+            animation: shoot var(--duration) ease-out forwards;
+            opacity: 0; z-index: 0;
+            will-change: transform, opacity, width;
+        }
+        @keyframes shoot {
+            0% { transform: translate(var(--startX), var(--startY)) rotate(-50deg); opacity: 0; width: 0; }
+            5% { opacity: 1; width: var(--initialWidth); }
+            95% { opacity: 0.5; width: 0; }
+            100% { transform: translate(calc(var(--startX) + var(--travelX)), calc(var(--startY) + var(--travelY))) rotate(-50deg); opacity: 0; width: 0; }
+        }
+
+        .cosmic-eagle {
+            position: absolute; width: 140px; height: auto;
+            opacity: 0.18; filter: blur(0.9px);
+            animation: eagleFlight 220s infinite linear;
+            mix-blend-mode: screen; pointer-events: none;
+            will-change: transform, opacity;
+        }
+        @keyframes eagleFlight {
+            0% { transform: translate(-50vw, 50vh) scale(1) rotateY(0deg); opacity: 0.12; }
+            25% { transform: translate(150vw, 30vh) scale(1.2) rotateY(0deg); opacity: 0.25; }
+            26% { transform: translate(150vw, 30vh) scale(1.2) rotateY(180deg); opacity: 0.25; }
+            50% { transform: translate(-50vw, 70vh) scale(1.1) rotateY(180deg); opacity: 0.15; }
+            51% { transform: translate(-50vw, 70vh) scale(1.1) rotateY(0deg); opacity: 0.15; }
+            75% { transform: translate(150vw, 10vh) scale(1.3) rotateY(0deg); opacity: 0.3; }
+            100% { transform: translate(-50vw, 50vh) scale(1) rotateY(0deg); opacity: 0.12; }
+        }
+
+        /* --- UI CONTAINER --- */
+        .ui-container {
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            position: relative; z-index: 10;
+            background: rgba(5, 7, 20, 0.6);
+            border-left: 1px solid rgba(255,255,255,0.15);
+            border-right: 1px solid rgba(255,255,255,0.15);
+        }
+        
+        @media (min-width: 1024px) {
+            .ui-container {
+                border-radius: 25px;
+                height: 95vh; width: 95vw;
+                max-width: 1600px; /* Wider studio for design elements */
+                box-shadow: 0 0 60px rgba(0, 242, 255, 0.25), 0 0 80px rgba(189, 0, 255, 0.2);
+                border: 1px solid var(--glass-border);
+                overflow: hidden;
+            }
+        }
+        .studio-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr 320px; /* Left (Controls), Center (Canvas), Right (Tools/Chat) */
+            flex-grow: 1; /* Allow to take remaining height */
+            min-height: 0; /* Needed for flex-grow to work in parent */
+        }
+        .sidebar {
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .sidebar-right { border-left: 1px solid var(--glass-border); border-right: none; }
+        .canvas-area {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle, #1a1235 0%, #0b061a 100%);
+            position: relative; padding: 20px; overflow: hidden; /* Prevent canvas scrollbar */
+        }
+        canvas {
+            border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.2);
+            background-color: white; /* Ensure default white background for canvas */
+            max-width: 100%; max-height: 100%; /* Ensure canvas fits in its area */
+        }
+        #canvas-guides {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
+        .guide-line {
+            position: absolute; background: rgba(0,255,255,0.4); width: 2px; height: 100%;
+            box-shadow: 0 0 10px rgba(0,255,255,0.5);
+        }
+        .guide-label {
+            position: absolute; top: 10px; color: var(--neon-blue); font-size: 11px;
+            font-family: 'Orbitron', sans-serif; opacity: 0.8;
+            background: rgba(0,0,0,0.5); padding: 2px 5px; border-radius: 3px;
+        }
+
+        /* --- Header & Brand --- */
+        header {
+            padding: 20px 30px; display: flex; justify-content: space-between; align-items: center;
+            background: var(--glass-bg-strong); backdrop-filter: blur(30px);
+            border-bottom: 1.5px solid var(--glass-border); box-shadow: 0 7px 20px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+        .brand-plasma {
+            font-family: 'Orbitron', sans-serif; font-size: 2rem; font-weight: 800; letter-spacing: 4px;
+            background: linear-gradient(90deg, #fff, var(--neon-blue), var(--neon-purple), #fff);
+            background-size: 300% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: plasmaFlow 3.5s linear infinite; text-shadow: var(--text-glow);
+            white-space: nowrap; user-select: none; transition: all 0.3s ease;
+        }
+        @keyframes plasmaFlow { to { background-position: 300% center; } }
+        .header-welcome {
+            font-size: 1em; color: rgba(255, 255, 255, 0.85); margin-top: 8px;
+            text-shadow: 0 0 10px var(--neon-blue); white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; max-width: 220px;
+        }
+        .header-actions { display: flex; gap: 20px; font-size: 1.5rem; }
+        .icon-btn { cursor: pointer; opacity: 0.9; transition: 0.3s; color: var(--neon-blue); }
+        .icon-btn:hover { opacity: 1; text-shadow: var(--text-glow); transform: scale(1.2); color: #fff; }
+
+        /* --- Input/Buttons --- */
+        input[type="text"], input[type="email"], input[type="password"], input[type="number"], textarea, select {
+            width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.4);
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            color: var(--main-text-color); font-size: 14px; margin-top: 5px;
+            font-family: 'Roboto', sans-serif; transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none; border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+            background: var(--input-focus-bg);
+        }
+        textarea { resize: vertical; min-height: 80px; }
+
+        .btn-cosmic {
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            color: white; padding: 12px 20px; border: none; border-radius: 8px;
+            font-family: 'Orbitron', sans-serif; font-weight: bold; cursor: pointer;
+            transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.3);
+        }
+        .btn-cosmic:hover {
+            filter: brightness(1.2); transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 242, 255, 0.5);
+        }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: var(--main-text-color); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+        .btn-danger { background: var(--danger-color); }
+        .btn-danger:hover { background: #ff7777; }
+        .btn-block { width: 100%; }
+        .btn-sm { padding: 8px 12px; font-size: 12px; border-radius: 6px; }
+
+        .loader {
+            border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid #fff;
+            border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite;
+            display: inline-block; margin-right: 8px; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* --- Wallet --- */
+        .wallet-card {
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            padding: 20px; border-radius: 15px; text-align: center;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .credits-num { font-size: 36px; font-weight: 900; font-family: 'Orbitron'; margin-top: 5px; }
+
+        /* --- Characters Grid --- */
+        .char-grid-container {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            max-height: 280px; overflow-y: auto; padding-right: 5px;
+            scrollbar-width: thin; scrollbar-color: var(--neon-blue) transparent;
+        }
+        .char-grid-container::-webkit-scrollbar { width: 8px; }
+        .char-grid-container::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 10px; }
+        .char-grid-container::-webkit-scrollbar-track { background: rgba(0, 242, 255, 0.1); }
+        .char-item {
+            position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+            border: 2px solid var(--glass-border); box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            transition: 0.2s; cursor: pointer;
+        }
+        .char-item:hover { transform: scale(1.05); border-color: var(--neon-green); box-shadow: 0 0 25px rgba(0, 255, 136, 0.5); }
+        .char-item img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+        .char-actions {
+            position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7);
+            padding: 5px; display: flex; justify-content: space-around;
+            transform: translateY(100%); transition: transform 0.2s ease-out;
+        }
+        .char-item:hover .char-actions { transform: translateY(0); }
+        .char-actions button { background: none; border: none; color: white; font-size: 12px; cursor: pointer; }
+
+        /* --- Bobby Chat Widget --- */
+        .bobby-chat-widget {
+            flex-grow: 1; display: flex; flex-direction: column; border-top: 1px solid var(--glass-border); padding-top: 15px;
+        }
+        .bobby-chat-messages {
+            flex-grow: 1; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px;
+            overflow-y: auto; font-size: 13px; line-height: 1.5;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .bobby-chat-messages::-webkit-scrollbar { display: none; }
+        .bobby-chat-input-area { display: flex; gap: 8px; margin-top: 10px; }
+        .bobby-chat-input-area input { margin-top: 0; }
+        .bobby-chat-messages .user-msg { color: var(--neon-blue); font-weight: bold; }
+        .bobby-chat-messages .bot-msg { color: var(--main-text-color); }
+
+        /* --- 3D Mockup Modal --- */
+        #mockupModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 5000; align-items: center; justify-content: center;
+            flex-direction: column;
+        }
+        .mockup-scene { width: 400px; height: 600px; perspective: 1200px; }
+        .book-3d {
+            width: 100%; height: 100%; position: relative;
+            transform-style: preserve-3d; transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: rotateY(-30deg) rotateX(10deg);
+        }
+        .book-face { position: absolute; background-size: cover; background-position: center; }
+        .m-front { width: 300px; height: 450px; transform: translateZ(25px); border-radius: 0 8px 8px 0; }
+        .m-spine { width: 50px; height: 450px; transform: rotateY(-90deg) translateZ(25px); left: -25px; }
+        .m-back { width: 300px; height: 450px; transform: rotateY(180deg) translateZ(25px); border-radius: 8px 0 0 8px; }
+        .mockup-controls button { background: var(--neon-blue); }
+
+        /* --- Auth Card --- */
+        .auth-card h2 { font-family: 'Orbitron'; margin-bottom: 25px; font-size: 2em; color: var(--neon-blue); text-shadow: var(--text-glow); }
+        .auth-card p { font-size: 15px; margin-bottom: 25px; opacity: 0.9; }
+        .auth-card .divider { margin: 20px 0; opacity: 0.6; }
+        .auth-card .auth-toggle { font-size: 14px; margin-top: 15px; cursor: pointer; color: var(--neon-green); }
+        .auth-card .auth-toggle:hover { text-decoration: underline; }
+        #authError { color: var(--danger-color); margin-top: 15px; font-size: 13px; }
+
+        /* --- Toast Notifications --- */
+        #toast {
+            position: fixed; bottom: 20px; right: 20px;
+            padding: 15px 25px; border-radius: 10px;
+            background: var(--glass-card-bg); border: 1px solid var(--glass-border);
+            color: var(--main-text-color); font-size: 14px;
+            transform: translateX(150%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 6000; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #toast.show { transform: translateX(0); }
+        #toast.success { border-left: 5px solid var(--success-color); }
+        #toast.error { border-left: 5px solid var(--danger-color); }
+        #toast.info { border-left: 5px solid var(--info-color); }
+        #toast.warning { border-left: 5px solid var(--warning-color); }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .studio-grid { grid-template-columns: 1fr; }
+            .sidebar { border-right: none; padding: 15px; }
+            .sidebar-right { border-left: none; border-top: 1px solid var(--glass-border); }
+            .main-canvas-area { min-height: 400px; padding: 15px; }
+            canvas { max-width: 95%; max-height: 95%; }
+            header { flex-wrap: wrap; justify-content: center; text-align: center; gap: 10px; }
+            .header-actions { width: 100%; justify-content: center; }
+            .brand-plasma { font-size: 1.5rem; }
+            .wallet-card, .glass-card { padding: 15px; }
+            .credits-num { font-size: 28px; }
+            .char-grid-container { grid-template-columns: 1fr; max-height: 200px; }
+            .mockup-scene { width: 300px; height: 450px; }
+            .m-front, .m-spine, .m-back { width: 300px; height: 450px; }
+        }
     </style>
 </head>
 <body>
 
+<!-- Cosmic Background -->
+<div id="cosmos-container">
+    <div class="nebula-layer"></div>
+    <div class="nebula-layer"></div>
+    <div class="nebula-layer"></div>
+    <img class="cosmic-eagle" src="https://i.imgur.com/gK6w74X.png" alt="Cosmic Eagle">
+</div>
+
+<!-- Authentication Overlay -->
 <div id="authOverlay">
     <div class="auth-card">
-        <h2>ELVION STUDIO</h2>
-        <p style="margin-bottom: 2rem; opacity: 0.8;">Login to harness the Philadelphia AI Engine</p>
+        <h2>✨ Welcome to Philadelphia Studio</h2>
+        <p>Unlock your creative potential. Sign in or register below.</p>
         <button class="auth-btn google-btn" onclick="authAction('google')"><i class="fab fa-google"></i> Continue with Google</button>
         <button class="auth-btn twitter-btn" onclick="authAction('twitter')"><i class="fab fa-twitter"></i> Continue with Twitter</button>
-        <div style="margin: 1rem 0; opacity: 0.5;">OR</div>
+        <div class="divider">OR</div>
         <input type="email" id="email" placeholder="Email Address">
         <input type="password" id="pass" placeholder="Password">
-        <button class="auth-btn email-btn" onclick="authAction('email')">Enter Universe</button>
+        <button class="auth-btn email-btn" id="emailAuthButton" onclick="authAction('email')">Enter the Universe</button>
+        <p id="authError"></p>
+        <div class="auth-toggle" id="authToggle" onclick="toggleAuthMode()">New here? Register with email.</div>
     </div>
 </div>
 
-<div id="toast"></div>
+<!-- Toast Notifications -->
+<div id="toast" class="toast"></div>
 
+<!-- 3D Mockup Modal -->
 <div id="mockupModal" class="modal">
-    <h2 style="font-family:'Orbitron'; margin-bottom: 2rem;">3D Book Preview</h2>
-    <div class="scene">
+    <div class="mockup-scene">
         <div class="book-3d" id="book-3d">
-            <div class="face front" id="m-front"></div>
-            <div class="face spine" id="m-spine"></div>
-            <div class="face back" id="m-back"></div>
+            <div class="book-face m-front" id="m-front"></div>
+            <div class="book-face m-spine" id="m-spine"></div>
+            <div class="book-face m-back" id="m-back"></div>
         </div>
     </div>
-    <div style="margin-top: 40px; display: flex; gap: 10px;">
-        <button class="btn-action" onclick="rotateBook('front')">Front</button>
-        <button class="btn-action" onclick="rotateBook('side')">Spine</button>
-        <button class="btn-action danger" onclick="closeMockup()">Close</button>
+    <div style="margin-top: 40px; display: flex; gap: 15px;">
+        <button class="btn-cosmic" onclick="rotateBook('front')"><i class="fas fa-book"></i> Front View</button>
+        <button class="btn-cosmic" onclick="rotateBook('spine')"><i class="fas fa-barcode"></i> Spine View</button>
+        <button class="btn-cosmic btn-danger" onclick="closeMockup()"><i class="fas fa-times"></i> Close</button>
     </div>
 </div>
 
-<div class="studio-grid" id="studioGrid">
-    <!-- LEFT: GENERATOR -->
-    <aside class="sidebar">
-        <div class="wallet-card">
-            <div style="font-size: 12px; letter-spacing: 1px;">CREDIT BALANCE</div>
-            <div class="credits-num" id="creditDisplay">0</div>
-            <button class="refill-btn" onclick="fundWallet()">+ Fund Wallet</button>
+<!-- Main Studio UI -->
+<div class="ui-container">
+    <header>
+        <div class="header-actions">
+            <div class="icon-btn" onclick="logout()" title="Logout"><i class="fas fa-sign-out-alt"></i></div>
         </div>
-
-        <div class="glass-card">
-            <h3 class="section-header">PHILADELPHIA ENGINE</h3>
-            <select id="modelKey">
-                <option value="v6">V6 (Master Quality)</option>
-                <option value="photoreal">Realistic</option>
-                <option value="movie">Cinematic</option>
-                <option value="illustration">Illustration</option>
-                <option value="anime_core">Anime</option>
-            </select>
-            <textarea id="prompt" placeholder="Describe your cosmic cover..." rows="4"></textarea>
-            <button class="btn-action" id="genBtn" onclick="generate('cover')" style="margin-top: 10px;">
-                <i class="fas fa-magic-sparkles"></i>
-                <span id="genText">Generate Cover (20c)</span>
-                <div class="loading-ring" id="genLoader"></div>
-            </button>
+        <div class="header-center">
+            <div class="brand-plasma">Philadelphia Elite Studio</div>
+            <div class="header-welcome" id="headerWelcome">Welcome, Traveler!</div>
         </div>
-
-        <div class="glass-card" style="flex-grow: 1; display: flex; flex-direction: column;">
-            <h3 class="section-header">PERSISTENT CHARACTERS</h3>
-            <div class="char-scroll" id="charGrid"></div>
-            <button class="btn-action" onclick="generate('char')" style="background:var(--accent-cyan); margin-top: auto;">
-                <i class="fas fa-user-plus"></i> Create Character (10c)
-            </button>
+        <div class="header-actions">
+            <div class="icon-btn" onclick="window.open('https://elvionai.com.ng', '_blank')" title="Elvion AI Homepage"><i class="fas fa-globe"></i></div>
         </div>
-    </aside>
+    </header>
 
-    <!-- CENTER: CANVAS -->
-    <main class="main-canvas-area">
-        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-            <button class="btn-action" style="padding:8px 20px;" onclick="setMode('front')">Front</button>
-            <button class="btn-action secondary" style="padding:8px 20px;" onclick="setMode('full')">Full Wrap</button>
-        </div>
-        <canvas id="c"></canvas>
-    </main>
-
-    <!-- RIGHT: TOOLS -->
-    <aside class="sidebar sidebar-right">
-        <div class="glass-card">
-            <h3 class="section-header">TEXT & FONTS</h3>
-            <button class="btn-action" onclick="addText()"><i class="fas fa-font"></i> Add Text</button>
-            <select onchange="updateText('fontFamily', this.value)" style="margin-top: 10px;">
-                <option value="Cinzel">Cinzel (Fantasy)</option>
-                <option value="Orbitron">Orbitron (Sci-Fi)</option>
-                <option value="Playfair Display">Playfair (Romance)</option>
-                <option value="Bebas Neue">Bebas Neue (Thriller)</option>
-                <option value="Dancing Script">Dancing Script</option>
-                <option value="Courier Prime">Typewriter</option>
-            </select>
-            <div style="display:flex; gap:10px; margin-top: 10px;">
-                <input type="color" value="#ffffff" title="Text Color" onchange="updateText('fill', this.value)">
-                <input type="number" value="60" title="Font Size" oninput="updateText('fontSize', this.value)" style="width: 80px;">
+    <div class="studio-grid">
+        <!-- LEFT SIDEBAR: GENERATION & ASSETS -->
+        <aside class="sidebar">
+            <div class="wallet-card">
+                <div style="font-size: 14px; font-family: 'Roboto', sans-serif; opacity: 0.8;">CREDIT BALANCE</div>
+                <div class="credits-num" id="creditDisplay">0</div>
+                <button class="btn-cosmic btn-sm" onclick="fundWallet()" style="background: rgba(0,0,0,0.2); margin-top: 10px;"><i class="fas fa-wallet"></i> Refill Credits</button>
             </div>
-        </div>
-        
-        <div class="glass-card">
-            <h3 class="section-header">MAGIC TOOLS</h3>
-            <button class="btn-action secondary" onclick="removeBG()"><i class="fas fa-wand-magic-sparkles"></i> Remove Background</button>
-            <button class="btn-action secondary" onclick="toggleErase()" style="margin-top: 10px;"><i class="fas fa-eraser"></i> Magic Brush</button>
-            <button class="btn-action danger" onclick="deleteObj()" style="margin-top: 10px;"><i class="fas fa-trash"></i> Delete Selection</button>
-        </div>
-        
-        <div class="glass-card" style="margin-top: auto; display:flex; flex-direction:column; gap: 10px;">
-            <h3 class="section-header">BOBBY ASSISTANT</h3>
-            <div class="bobby-box" id="chat">
-                <p style="color:var(--accent-cyan)">Bobby: Give me a simple idea. I'll write a masterpiece prompt for you.</p>
-            </div>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="chatIn" placeholder="e.g., a lonely astronaut...">
-                <button onclick="askBobby()" style="background:var(--cosmic-purple); border:none; padding:10px; border-radius:10px; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
-            </div>
-        </div>
 
-        <div style="display:flex; flex-direction:column; gap: 10px; margin-top: 10px;">
-             <button class="btn-action" onclick="openMockup()" style="background:var(--accent-cyan); color:#000;"><i class="fas fa-cube"></i> View 3D Mockup</button>
-            <button class="btn-action" onclick="download()" style="background:var(--starlight); color:#000;"><i class="fas fa-download"></i> Download PNG</button>
-        </div>
-    </aside>
+            <div class="glass-card">
+                <h4 style="font-family: 'Orbitron'; font-size: 14px; margin-bottom: 10px; color: var(--neon-blue);">CREATE YOUR MASTERPIECE</h4>
+                <label style="font-size: 12px; opacity: 0.8;">AI Model</label>
+                <select id="modelKey">
+                    <option value="v6">Philadelphia V6 (Masterpiece)</option>
+                    <option value="photoreal">Philadelphia Photoreal</option>
+                    <option value="movie">Philadelphia Cinematic</option>
+                    <option value="illustration">Philadelphia Artistic</option>
+                    <option value="anime_core">Philadelphia Anime</option>
+                </select>
+                <label style="font-size: 12px; opacity: 0.8; margin-top: 10px;">Describe Your Vision</label>
+                <textarea id="prompt" placeholder="A breathtaking galaxy vista, ancient ruins, floating crystals, epic fantasy book cover" style="margin-bottom: 10px;"></textarea>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-cosmic btn-secondary" onclick="askBobbyToEnhancePrompt()"><i class="fas fa-magic"></i> Enhance</button>
+                    <button class="btn-cosmic" id="genBtn" onclick="generate('cover')" style="flex-grow: 1;">
+                        <span id="genText">Generate Cover (20c)</span>
+                        <div class="loader" id="genLoader" style="display: none;"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card" style="flex-grow: 1; display: flex; flex-direction: column;">
+                <h4 style="font-family: 'Orbitron'; font-size: 14px; margin-bottom: 10px; color: var(--neon-green);">PERSISTENT CHARACTERS</h4>
+                <div class="char-grid-container" id="charGrid">
+                    <p style="text-align: center; opacity: 0.6; padding: 20px;">No characters yet. Create one below!</p>
+                </div>
+                <button class="btn-cosmic" onclick="generate('char')" style="background: var(--neon-green); color: #000; margin-top: auto;">
+                    <i class="fas fa-user-plus"></i> Create New Character (10c)
+                </button>
+            </div>
+        </aside>
+
+        <!-- CENTER AREA: CANVAS EDITOR -->
+        <main class="canvas-area">
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                <button class="btn-cosmic btn-sm" id="btnFrontMode" onclick="setCanvasMode('front')"><i class="fas fa-square"></i> Front Only</button>
+                <button class="btn-cosmic btn-sm btn-secondary" id="btnFullMode" onclick="setCanvasMode('full')"><i class="fas fa-columns"></i> Full Wrap</button>
+            </div>
+            <canvas id="c"></canvas>
+            <div id="canvas-guides"></div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: TOOLS & BOBBY CHAT -->
+        <aside class="sidebar sidebar-right">
+            <div class="glass-card">
+                <h4 style="font-family: 'Orbitron'; font-size: 14px; margin-bottom: 10px; color: var(--neon-blue);">EDIT TOOLS</h4>
+                <button class="btn-cosmic btn-sm" onclick="addText()"><i class="fas fa-font"></i> Add Text Layer</button>
+                <label style="font-size: 12px; opacity: 0.8; margin-top: 10px;">Font Family</label>
+                <select id="fontFamily" onchange="updateSelectedObject('fontFamily', this.value)">
+                    <option value="Orbitron">Orbitron (Sci-Fi)</option>
+                    <option value="Cinzel">Cinzel (Fantasy)</option>
+                    <option value="Playfair Display">Playfair (Elegant)</option>
+                    <option value="Bebas Neue">Bebas Neue (Bold)</option>
+                    <option value="Dancing Script">Dancing Script</option>
+                    <option value="Courier Prime">Typewriter</option>
+                    <option value="Roboto">Roboto (Modern)</option>
+                    <option value="Anton">Anton (Heavy)</option>
+                </select>
+                <label style="font-size: 12px; opacity: 0.8; margin-top: 10px;">Color / Size</label>
+                <div style="display:flex; gap:10px;">
+                    <input type="color" id="textColor" value="#000000" onchange="updateSelectedObject('fill', this.value)">
+                    <input type="number" id="fontSize" value="60" onchange="updateSelectedObject('fontSize', parseInt(this.value))" style="width: 80px;">
+                </div>
+                <label style="font-size: 12px; opacity: 0.8; margin-top: 10px;">Image Controls</label>
+                <button class="btn-cosmic btn-secondary" onclick="removeBackground()"><i class="fas fa-cut"></i> Remove Background</button>
+                <button class="btn-cosmic btn-secondary" onclick="toggleEraseMode()"><i class="fas fa-eraser"></i> Magic Eraser</button>
+                <button class="btn-cosmic btn-danger" onclick="deleteSelectedObject()"><i class="fas fa-trash"></i> Delete Selected</button>
+            </div>
+
+            <div class="glass-card bobby-chat-widget" style="margin-top: auto;">
+                <h4 style="font-family: 'Orbitron'; font-size: 14px; margin-bottom: 10px; color: var(--neon-blue);">BOBBY AI ASSISTANT</h4>
+                <div class="bobby-chat-messages" id="bobbyChatMessages">
+                    <p class="bot-msg">Bobby: Hello! I'm here to help you brainstorm and refine your book cover ideas. Just ask!</p>
+                </div>
+                <div class="bobby-chat-input-area">
+                    <input type="text" id="bobbyChatInput" placeholder="Ask Bobby..." onkeypress="if(event.key==='Enter') sendBobbyChat()">
+                    <button class="btn-cosmic" onclick="sendBobbyChat()" style="width: 50px;"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn-cosmic" onclick="openMockup()" style="background:var(--neon-green); color:#000;"><i class="fas fa-cube"></i> 3D Mockup</button>
+                <button class="btn-cosmic" onclick="downloadCover()" style="background:var(--neon-blue);"><i class="fas fa-download"></i> Download</button>
+            </div>
+        </aside>
+    </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIGURATION ---
+    // --- FIREBASE CONFIGURATION (Provided by User) ---
     const firebaseConfig = {
       apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
       authDomain: "elvionai.firebaseapp.com",
@@ -319,314 +541,747 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    
-    // --- APP CONFIGURATION ---
+
+    // --- GLOBAL CONSTANTS & VARIABLES ---
     const API_URL = "https://web-production-9a18.up.railway.app";
     const ADMIN_EMAIL = "Koladhino@gmail.com";
-    const COVER_COST = 20;
-    const CHAR_COST = 10;
 
-    // --- GLOBAL STATE ---
-    let canvas, userToken, credits = 0;
-    let isErasing = false;
+    let currentUser = null;
+    let authToken = null;
+    let credits = 0;
+    let canvas = null;
+    let isEraseMode = false;
+    let currentAuthMode = 'signin'; // 'signin' or 'register'
 
-    // --- AUTHENTICATION ---
+    // --- DOM REFERENCES ---
+    const authOverlay = document.getElementById('authOverlay');
+    const emailInput = document.getElementById('email');
+    const passInput = document.getElementById('pass');
+    const emailAuthButton = document.getElementById('emailAuthButton');
+    const authErrorDiv = document.getElementById('authError');
+    const authToggle = document.getElementById('authToggle');
+
+    const creditDisplay = document.getElementById('creditDisplay');
+    const promptInput = document.getElementById('prompt');
+    const modelKeySelect = document.getElementById('modelKey');
+    const genBtn = document.getElementById('genBtn');
+    const genLoader = document.getElementById('genLoader');
+    const genText = document.getElementById('genText');
+
+    const charGrid = document.getElementById('charGrid');
+    const bobbyChatMessages = document.getElementById('bobbyChatMessages');
+    const bobbyChatInput = document.getElementById('bobbyChatInput');
+
+    const mockupModal = document.getElementById('mockupModal');
+    const mFront = document.getElementById('m-front');
+    const mSpine = document.getElementById('m-spine');
+    const mBack = document.getElementById('m-back');
+    const book3d = document.getElementById('book-3d');
+
+    const toast = document.getElementById('toast');
+    const headerWelcome = document.getElementById('headerWelcome');
+    const canvasGuides = document.getElementById('canvas-guides');
+    const btnFrontMode = document.getElementById('btnFrontMode');
+    const btnFullMode = document.getElementById('btnFullMode');
+
+    // --- COSMIC BACKGROUND INITIALIZATION ---
+    function igniteCosmos() {
+        const cosmosContainer = document.getElementById('cosmos-container');
+        if (!cosmosContainer) return;
+        cosmosContainer.querySelectorAll('.star').forEach(p => p.remove());
+        for (let i = 0; i < 400; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'star';
+            const size = Math.random() * 3 + 0.5;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.left = `${Math.random() * 100}%`;
+            particle.style.top = `${Math.random() * 100}%`;
+            particle.style.setProperty('--duration', `${Math.random() * 7 + 4}s`);
+            particle.style.opacity = Math.random() * 0.9 + 0.1;
+            cosmosContainer.appendChild(particle);
+        }
+    }
+
+    function launchShootingStar() {
+        const cosmosContainer = document.getElementById('cosmos-container');
+        if (!cosmosContainer) return;
+        const star = document.createElement('div');
+        star.className = 'shooting-star';
+        const startX = Math.random() * window.innerWidth * 2 - window.innerWidth / 2;
+        const startY = Math.random() * window.innerHeight / 2 - window.innerHeight / 4;
+        const travelX = -Math.random() * 1200 - 600;
+        const travelY = Math.random() * 1000 + 500;
+        const duration = Math.random() * 5 + 3;
+        const initialWidth = Math.random() * 120 + 40;
+
+        star.style.setProperty('--startX', `${startX}px`);
+        star.style.setProperty('--startY', `${startY}px`);
+        star.style.setProperty('--travelX', `${travelX}px`);
+        star.style.setProperty('--travelY', `${travelY}px`);
+        star.style.setProperty('--duration', `${duration}s`);
+        star.style.setProperty('--initialWidth', `${initialWidth}px`);
+
+        cosmosContainer.appendChild(star);
+        setTimeout(() => star.remove(), duration * 1000);
+    }
+
+    window.onload = () => {
+        igniteCosmos();
+        setInterval(() => {
+             if (Math.random() < 0.4) launchShootingStar();
+        }, 2500);
+
+        canvas = new fabric.Canvas('c', {
+            width: 600,
+            height: 900,
+            backgroundColor: '#ffffff',
+            preserveObjectStacking: true // Important for layering
+        });
+        
+        // Auto-save on object changes
+        canvas.on('object:added', saveProject);
+        canvas.on('object:modified', saveProject);
+        canvas.on('object:removed', saveProject);
+        canvas.on('selection:updated', updateToolPanelsForSelection);
+        canvas.on('selection:cleared', clearToolPanelsForSelection);
+    };
+
+    // --- AUTHENTICATION LOGIC ---
     auth.onAuthStateChanged(async (user) => {
         if (user) {
-            userToken = await user.getIdToken(true); // Always get a fresh token
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('studioGrid').classList.add('loaded');
-            initApp();
+            currentUser = user;
+            authToken = await user.getIdToken();
+            authOverlay.style.display = 'none';
+            initAppSession();
         } else {
-            document.getElementById('authOverlay').style.display = 'flex';
-            document.getElementById('studioGrid').classList.remove('loaded');
+            currentUser = null;
+            authToken = null;
+            authOverlay.style.display = 'flex';
+            // Clear UI state when logged out
+            creditDisplay.innerText = '0';
+            headerWelcome.innerText = 'Welcome, Traveler!';
+            charGrid.innerHTML = '<p style="text-align: center; opacity: 0.6; padding: 20px;">No characters yet. Create one below!</p>';
+            bobbyChatMessages.innerHTML = '<p class="bot-msg">Bobby: Hello! I\'m here to help you brainstorm and refine your book cover ideas. Just ask!</p>';
+            canvas.clear();
+            canvas.setBackgroundColor('#ffffff');
+            canvas.renderAll();
+            canvasGuides.innerHTML = '';
         }
     });
 
     async function authAction(type) {
+        authErrorDiv.innerText = ''; // Clear previous errors
         try {
-            if(type === 'google') await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-            else if(type === 'twitter') await auth.signInWithPopup(new firebase.auth.TwitterAuthProvider());
-            else if(type === 'email') {
-                const email = document.getElementById('email').value;
-                const pass = document.getElementById('pass').value;
-                await auth.signInWithEmailAndPassword(email, pass)
-                    .catch(() => auth.createUserWithEmailAndPassword(email, pass));
+            if (type === 'google') await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+            else if (type === 'twitter') await auth.signInWithPopup(new firebase.auth.TwitterAuthProvider());
+            else if (type === 'email') {
+                const email = emailInput.value;
+                const password = passInput.value;
+                if (!email || !password || password.length < 6) {
+                    throw new Error("Please enter a valid email and a password of at least 6 characters.");
+                }
+
+                if (currentAuthMode === 'signin') {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else { // Register mode
+                    await auth.createUserWithEmailAndPassword(email, password);
+                    notify("Account created! Please sign in with your new credentials.", 'success');
+                    toggleAuthMode(); // Switch back to sign-in
+                }
             }
-        } catch(err) { notify(err.message, 'error'); }
-    }
-    
-    // --- INITIALIZATION ---
-    function initApp() {
-        canvas = new fabric.Canvas('c', {
-            width: 600, height: 900, backgroundColor: '#ffffff'
-        });
-        fetchCredits();
-        loadLocalData();
-        
-        canvas.on('object:added', saveProject);
-        canvas.on('object:modified', saveProject);
-        canvas.on('object:removed', saveProject);
+        } catch (error) {
+            console.error("Auth error:", error);
+            authErrorDiv.innerText = error.message.replace("Firebase: ", "");
+        }
     }
 
-    async function fetchCredits() {
-        if (!userToken) return;
+    function toggleAuthMode() {
+        if (currentAuthMode === 'signin') {
+            currentAuthMode = 'register';
+            emailAuthButton.innerText = 'Register Account';
+            authToggle.innerText = 'Already have an account? Sign In.';
+        } else {
+            currentAuthMode = 'signin';
+            emailAuthButton.innerText = 'Enter the Universe';
+            authToggle.innerText = 'New here? Register with email.';
+        }
+    }
+
+    function logout() {
+        auth.signOut().then(() => {
+            notify("Logged out successfully.", 'info');
+        }).catch((error) => {
+            console.error("Logout error:", error);
+            notify("Logout failed: " + error.message, 'error');
+        });
+    }
+
+    // --- APP SESSION INITIALIZATION (After Auth) ---
+    function initAppSession() {
+        const displayName = currentUser.displayName || currentUser.email.split('@')[0];
+        headerWelcome.innerText = `Welcome, ${displayName}!`;
+        loadCredits();
+        loadProject();
+        loadCharacters();
+        setCanvasMode('front'); // Default to front cover view
+    }
+
+    // --- API INTERACTION ---
+    async function fetchWithAuth(endpoint, options = {}) {
+        if (!currentUser || !authToken) {
+            notify("You must be logged in to perform this action.", 'error');
+            auth.signOut(); // Force logout
+            return null;
+        }
+        
+        // Refresh token before each request to ensure it's valid
+        authToken = await currentUser.getIdToken(true); 
+        
+        const headers = {
+            'X-Firebase-Token': authToken, // Your backend expects this
+            ...options.headers
+        };
+        
+        let body = options.body;
+        if (body && !(body instanceof FormData) && !(options.headers && options.headers['Content-Type'] === 'application/x-www-form-urlencoded')) {
+            headers['Content-Type'] = 'application/json';
+            body = JSON.stringify(body);
+        }
+
         try {
-            const res = await fetch(`${API_URL}/api/user/keys-and-balance`, {
-                headers: { 'X-Firebase-Token': userToken }
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                ...options,
+                headers: headers,
+                body: body
             });
-            const data = await res.json();
-            credits = (auth.currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) ? 999999 : (data.balance || 0);
-            document.getElementById('creditDisplay').innerText = credits.toLocaleString();
+
+            if (response.status === 401 || response.status === 403) {
+                notify("Session expired or unauthorized. Please log in again.", 'error');
+                auth.signOut();
+                return null;
+            }
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: "Unknown API error" }));
+                throw new Error(errorData.detail || `API Error: ${response.status} - ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("API Call Error:", error);
+            notify(error.message || "An unexpected network error occurred.", 'error');
+            return null;
+        }
+    }
+
+    // --- CREDITS & WALLET ---
+    async function loadCredits() {
+        if (!currentUser) return;
+        
+        const result = await fetchWithAuth('/api/user/keys-and-balance', { method: 'GET' });
+
+        if (result && result.balance !== undefined) {
+            credits = result.balance;
+            creditDisplay.innerText = credits.toLocaleString();
+        } else {
+            // Fallback for admin or if backend fails to return balance (shouldn't happen with correct endpoint)
+            credits = (currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) ? 999999 : 0;
+            creditDisplay.innerText = credits.toLocaleString();
+        }
+    }
+
+    function checkAndDeductCredits(cost) {
+        if (currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+            return true; // Admin is free
+        }
+        if (credits < cost) {
+            notify(`Insufficient credits! You need ${cost} for this action.`, 'error');
+            if(confirm("Fund your wallet now?")) fundWallet();
+            return false;
+        }
+        credits -= cost;
+        creditDisplay.innerText = credits.toLocaleString();
+        notify(`Deducted ${cost} credits. Remaining: ${credits}`, 'info');
+        return true;
+    }
+
+    async function fundWallet() {
+        if (!currentUser) return;
+
+        const amount = prompt("Enter amount (NGN) to add (minimum ₦100):", "1000");
+        const parsedAmount = parseInt(amount);
+
+        if (isNaN(parsedAmount) || parsedAmount < 100) {
+            return notify("Please enter a valid amount (minimum ₦100).", 'warning');
+        }
+
+        notify("Initiating payment via Korapay...", 'info');
+
+        try {
+            const result = await fetchWithAuth('/api/payments/initiate', {
+                method: 'POST',
+                body: { amount: parsedAmount }
+            });
+
+            if (result && result.checkout_url) {
+                const newWindow = window.open(result.checkout_url, '_blank', 'width=600,height=700');
+                
+                const checkInterval = setInterval(async () => {
+                    if (newWindow.closed) {
+                        clearInterval(checkInterval);
+                        notify("Verifying payment...", 'info');
+                        const verifyResult = await fetchWithAuth(`/api/payments/verify?transaction_ref=${result.transaction_ref}`, { method: 'GET' });
+                        
+                        if (verifyResult && verifyResult.status === 'success') {
+                            notify(`Payment Successful! ${verifyResult.credits_added} credits added.`, 'success');
+                            credits = verifyResult.new_balance; // Get actual new balance from backend
+                            creditDisplay.innerText = credits.toLocaleString();
+                        } else {
+                            notify(`Payment verification failed: ${verifyResult?.message || "Unknown error."}`, 'error');
+                        }
+                    }
+                }, 3000); // Check every 3 seconds
+            }
         } catch (e) {
-            console.error("Could not fetch credits:", e);
+            console.error("Payment initiation error:", e);
+            notify(`Payment initiation failed: ${e.message}`, 'error');
+        }
+    }
+
+    // --- CANVAS MANAGEMENT ---
+    function setCanvasMode(mode) {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+
+        if (mode === 'full') {
+            canvas.setWidth(1300); // Back(600) + Spine(100) + Front(600)
+            canvas.setHeight(900);
+            canvasGuides.style.width = '1300px';
+            canvasGuides.innerHTML = `
+                <div class="guide-line" style="left: 600px;"></div>
+                <div class="guide-line" style="left: 700px;"></div>
+                <span class="guide-label" style="left: 620px;">Spine Area</span>
+                <span class="guide-label" style="left: 100px;">Back Cover</span>
+                <span class="guide-label" style="left: 900px;">Front Cover</span>
+            `;
+            btnFullMode.classList.remove('btn-secondary');
+            btnFullMode.classList.add('btn-cosmic');
+            btnFrontMode.classList.remove('btn-cosmic');
+            btnFrontMode.classList.add('btn-secondary');
+
+        } else { // 'front' mode
+            canvas.setWidth(600);
+            canvas.setHeight(900);
+            canvasGuides.style.width = '600px';
+            canvasGuides.innerHTML = '';
+            btnFrontMode.classList.remove('btn-secondary');
+            btnFrontMode.classList.add('btn-cosmic');
+            btnFullMode.classList.remove('btn-cosmic');
+            btnFullMode.classList.add('btn-secondary');
+        }
+        canvas.renderAll();
+        saveProject();
+    }
+
+    function addText() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        const text = new fabric.IText('Your Title', {
+            left: 100, top: 100, fontFamily: 'Orbitron', fill: textColor.value, fontSize: parseInt(fontSize.value),
+            shadow: 'rgba(0,242,255,0.4) 0px 0px 15px'
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        notify("Text layer added. Click to edit!", 'info');
+    }
+
+    function updateSelectedObject(prop, value) {
+        const obj = canvas.getActiveObject();
+        if (obj) {
+            obj.set(prop, value);
+            canvas.renderAll();
+            saveProject();
+        } else {
+            notify("No object selected.", 'warning');
+        }
+    }
+
+    function updateToolPanelsForSelection() {
+        const obj = canvas.getActiveObject();
+        if (obj && obj.type.includes('text')) {
+            document.getElementById('fontFamily').value = obj.fontFamily || 'Orbitron';
+            document.getElementById('textColor').value = obj.fill || '#000000';
+            document.getElementById('fontSize').value = obj.fontSize || 60;
+        }
+        // Add more logic here for other object types if needed
+    }
+
+    function clearToolPanelsForSelection() {
+        // Reset text tool panel when no text object is selected
+        document.getElementById('fontFamily').value = 'Orbitron';
+        document.getElementById('textColor').value = '#000000';
+        document.getElementById('fontSize').value = 60;
+    }
+
+    function toggleEraseMode() {
+        isEraseMode = !isEraseMode;
+        canvas.isDrawingMode = isEraseMode;
+        if (isEraseMode) {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = 40;
+            canvas.freeDrawingBrush.color = canvas.backgroundColor; // Erase by painting with current background color
+            notify("Magic Eraser ON: Click and drag to erase.", 'info');
+        } else {
+            notify("Magic Eraser OFF.", 'info');
+        }
+    }
+
+    async function removeBackground() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+
+        const obj = canvas.getActiveObject();
+        if (!obj || obj.type !== 'image') return notify("Select an image layer to remove its background.", 'warning');
+        
+        notify("Analyzing image for background removal...", 'info');
+        
+        const dataURL = obj.toDataURL({ format: 'png' });
+        const blob = await (await fetch(dataURL)).blob();
+        const formData = new FormData();
+        formData.append('file', blob, 'image.png');
+
+        try {
+            const res = await fetch(`${API_URL}/api/tools/remove-background`, {
+                method: 'POST',
+                body: formData
+                // Note: X-Firebase-Token is not directly added here as remove-background endpoint in your bot.py is not `Depends(get_current_user)`
+                // If you later make it a credited service, you'll need a mechanism (like API key on backend) or alter the backend route.
+            });
+
+            if (res.ok) {
+                const newBlob = await res.blob();
+                fabric.Image.fromURL(URL.createObjectURL(newBlob), (img) => {
+                    img.set({ left: obj.left, top: obj.top, scaleX: obj.scaleX, scaleY: obj.scaleY });
+                    canvas.remove(obj);
+                    canvas.add(img);
+                    canvas.setActiveObject(img);
+                    saveProject();
+                    notify("Background removed!", 'success');
+                });
+            } else {
+                const errorData = await res.json().catch(() => ({ detail: "Unknown error" }));
+                throw new Error(errorData.detail || `API Error: ${res.status} - ${res.statusText}`);
+            }
+        } catch (e) {
+            console.error("Remove BG error:", e);
+            notify(`Background removal failed: ${e.message}`, 'error');
+        }
+    }
+
+    function deleteSelectedObject() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        const obj = canvas.getActiveObject();
+        if (obj) {
+            canvas.remove(obj);
+            saveProject();
+            notify("Object deleted.", 'info');
+        } else {
+            notify("No object selected.", 'warning');
         }
     }
     
-    // --- PHILADELPHIA IMAGE ENGINE ---
+    function clearCanvas() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        if (confirm("Are you sure you want to clear the entire canvas? This cannot be undone.")) {
+            canvas.clear();
+            canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+            saveProject();
+            notify("Canvas cleared!", 'info');
+        }
+    }
+
+    // --- GENERATION LOGIC (Cover & Character) ---
     async function generate(type) {
-        const cost = (type === 'cover') ? COVER_COST : CHAR_COST;
-        const isAdmin = (auth.currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        
+        const cost = (type === 'cover' ? 20 : 10);
+        if (!checkAndDeductCredits(cost)) return;
 
-        if(!isAdmin && credits < cost) return notify("Insufficient credits! Please refill.", 'error');
-
-        const prompt = document.getElementById('prompt').value;
-        const model = document.getElementById('modelKey').value;
-        if(!prompt) return notify("Please describe your vision in the prompt box.", 'info');
+        const genPromptText = promptInput.value.trim();
+        if (!genPromptText) return notify("Please describe what you want to generate.", 'warning');
 
         setLoading(true);
-        try {
-            const res = await fetch(`${API_URL}/generate-image`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: (type === 'char' ? `Expressive character sheet, full body, plain white background, ${prompt}` : prompt),
-                    model: model,
-                    width: (type === 'char' ? 512 : 600), // FIX: Use explicit integer
-                    height: (type === 'char' ? 512 : 900), // FIX: Use explicit integer
-                    use_minimax: false
-                })
-            });
-            const data = await res.json();
 
-            if (data.image_b64) {
+        try {
+            const payload = {
+                prompt: type === 'char' 
+                    ? `Highly detailed character sheet, full body, plain white background, professional digital art, expressive face, dynamic pose, ${genPromptText}` 
+                    : genPromptText,
+                model: modelKeySelect.value, // This sends the key (e.g., 'v6') to your backend
+                width: type === 'char' ? 512 : 600, // Fixed width/height for characters and covers
+                height: type === 'char' ? 512 : 900,
+                use_minimax: false // Always use Thena/Philadelphia as per request
+            };
+            
+            const result = await fetchWithAuth('/generate-image', {
+                method: 'POST',
+                body: payload
+            });
+
+            if (result && result.image_b64) {
                 if (type === 'cover') {
-                    fabric.Image.fromURL('data:image/png;base64,' + data.image_b64, (img) => {
-                        img.scaleToWidth(canvas.width);
-                        canvas.add(img).sendToBack(img);
+                    fabric.Image.fromURL('data:image/png;base64,' + result.image_b64, (img) => {
+                        img.scaleToWidth(canvas.width); // Scale to fit canvas
+                        canvas.add(img);
+                        canvas.sendToBack(img);
+                        saveProject();
                     });
-                } else {
-                    saveCharacter(data.image_b64);
+                    notify("Philadelphia AI generated your cover!", 'success');
+                } else { // Character
+                    persistCharacter(result.image_b64, genPromptText);
+                    notify("Philadelphia AI created a new character!", 'success');
                 }
-                if (!isAdmin) updateCredits(-cost);
-                notify("Philadelphia conjured your image!", 'success');
             } else {
-                throw new Error(data.detail || "Unknown engine error.");
+                throw new Error(result?.detail || "Image generation failed. Check backend logs for 'Thena did not return a valid task ID.' or API key issues.");
             }
-        } catch(e) {
-            notify(e.message, 'error');
+        } catch (e) {
+            console.error("Generation error:", e);
+            notify(`Generation failed: ${e.message}`, 'error');
         } finally {
             setLoading(false);
         }
     }
 
-    // --- CANVAS & TOOLS ---
-    function addText() {
-        const text = new fabric.IText('Enter Title', {
-            left: 50, top: 100, fontFamily: 'Cinzel', fill: '#000', fontSize: 60,
-            shadow: 'rgba(99, 102, 241, 0.5) 0 0 10px'
+    // --- CHARACTER PERSISTENCE ---
+    function persistCharacter(b64, prompt) {
+        if (!currentUser) return;
+        const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
+        chars.push({ b64: b64, prompt: prompt, timestamp: new Date().toISOString() });
+        localStorage.setItem(`chars_${currentUser.uid}`, JSON.stringify(chars));
+        loadCharacters();
+    }
+
+    function loadCharacters() {
+        if (!currentUser) {
+            charGrid.innerHTML = '<p style="text-align: center; opacity: 0.6; padding: 20px;">No characters yet. Create one below!</p>';
+            return;
+        }
+        charGrid.innerHTML = "";
+        const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
+        
+        if (chars.length === 0) {
+            charGrid.innerHTML = '<p style="text-align: center; opacity: 0.6; padding: 20px;">No characters yet. Create one below!</p>';
+            return;
+        }
+
+        chars.forEach((charData, index) => {
+            const div = document.createElement('div');
+            div.className = 'char-item';
+            div.title = charData.prompt;
+            div.innerHTML = `
+                <img src="data:image/png;base64,${charData.b64}" alt="${charData.prompt}">
+                <div class="char-actions">
+                    <button onclick="addCharacterToCanvas(${index})"><i class="fas fa-plus"></i> Use</button>
+                    <button style="color:var(--danger-color);" onclick="deleteCharacter(${index})"><i class="fas fa-trash"></i> Del</button>
+                </div>
+            `;
+            charGrid.appendChild(div);
         });
-        canvas.add(text).setActiveObject(text);
-    }
-
-    function updateText(prop, value) {
-        const obj = canvas.getActiveObject();
-        if(obj) { obj.set(prop, value); canvas.renderAll(); saveProject(); }
-    }
-
-    function toggleErase() {
-        isErasing = !isErasing;
-        canvas.isDrawingMode = isErasing;
-        if(isErasing) {
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.width = 40;
-            canvas.freeDrawingBrush.color = canvas.backgroundColor; // Eraser paints with BG color
-            notify("Magic Brush ON", 'info');
-        } else {
-            notify("Magic Brush OFF", 'info');
-        }
-    }
-
-    async function removeBG() {
-        const obj = canvas.getActiveObject();
-        if(!obj || obj.type !== 'image') return notify("Select an image layer first.", 'info');
-        
-        notify("Analyzing pixels for background removal...", 'info');
-        const blob = await (await fetch(obj.toDataURL())).blob();
-        const fd = new FormData();
-        fd.append('file', blob, 'image.png');
-
-        try {
-            const res = await fetch(`${API_URL}/api/tools/remove-background`, { method: 'POST', body: fd });
-            if (!res.ok) throw new Error("API failed to remove background.");
-            const resBlob = await res.blob();
-            fabric.Image.fromURL(URL.createObjectURL(resBlob), (img) => {
-                img.set({left: obj.left, top: obj.top, scaleX: obj.scaleX, scaleY: obj.scaleY});
-                canvas.remove(obj);
-                canvas.add(img);
-                notify("Background dissolved.", 'success');
-            });
-        } catch (e) {
-            notify(e.message, 'error');
-        }
-    }
-
-    function deleteObj() { if (canvas.getActiveObject()) canvas.remove(canvas.getActiveObject()); }
-
-    // --- 3D MOCKUP ---
-    function openMockup() {
-        const dataURL = canvas.toDataURL();
-        document.getElementById('m-front').style.backgroundImage = `url(${dataURL})`;
-        
-        if (canvas.width > 1000) {
-            // Apply different parts of the wide canvas to the 3D model faces
-            document.getElementById('m-front').style.backgroundPosition = "100% 0";
-            document.getElementById('m-back').style.backgroundImage = `url(${dataURL})`;
-            document.getElementById('m-back').style.backgroundPosition = "0 0";
-            document.getElementById('m-spine').style.backgroundImage = `url(${dataURL})`;
-            document.getElementById('m-spine').style.backgroundPosition = "50% 0";
-        } else {
-            // Reset if not in full wrap mode
-            document.getElementById('m-back').style.backgroundImage = 'none';
-            document.getElementById('m-spine').style.backgroundImage = 'none';
-        }
-
-        document.getElementById('mockupModal').style.display = 'flex';
-        rotateBook('front');
-    }
-
-    function rotateBook(view) {
-        document.getElementById('book-3d').style.transform = (view === 'front') ? "rotateY(-30deg) rotateX(10deg)" : "rotateY(-100deg)";
-    }
-
-    function closeMockup() { document.getElementById('mockupModal').style.display = 'none'; }
-    
-    // --- BOBBY ASSISTANT ---
-    async function askBobby() {
-        const input = document.getElementById('chatIn');
-        const query = input.value;
-        if (!query) return;
-        
-        const chatBox = document.getElementById('chat');
-        chatBox.innerHTML += `<p style="color:#888; font-style:italic;">You: ${query}</p>`;
-        input.value = "";
-
-        try {
-            const res = await fetch(`${API_URL}/api/llama/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    prompt: `Based on this idea: "${query}", write a highly detailed, professional art prompt for a book cover.`,
-                    systemPrompt: "You are Bobby, an expert prompt engineer."
-                })
-            });
-            const data = await res.json();
-            const refinedPrompt = data.response || data.content;
-            chatBox.innerHTML += `<p style="color:var(--accent-cyan);">Bobby: Here is a refined prompt for you. I've placed it in the main prompt box.</p>`;
-            document.getElementById('prompt').value = refinedPrompt; // Auto-fill
-            chatBox.scrollTop = chatBox.scrollHeight;
-        } catch (e) {
-            notify("Bobby is currently offline.", "error");
-        }
-    }
-
-    // --- DATA & HELPERS ---
-    function updateCredits(amount) {
-        credits += amount;
-        document.getElementById('creditDisplay').innerText = credits.toLocaleString();
     }
     
-    function saveCharacter(b64) {
-        const grid = document.getElementById('charGrid');
-        const img = document.createElement('img');
-        img.src = `data:image/png;base64,${b64}`;
-        img.className = 'char-thumb';
-        img.onclick = () => fabric.Image.fromURL(img.src, f => { f.scaleToWidth(300); canvas.add(f); });
-        grid.prepend(img);
-        
-        const saved = JSON.parse(localStorage.getItem(`chars_${auth.currentUser.uid}`) || "[]");
-        saved.unshift(b64); // Add to beginning
-        localStorage.setItem(`chars_${auth.currentUser.uid}`, JSON.stringify(saved.slice(0, 10))); // Limit to 10
+    function addCharacterToCanvas(index) {
+        if (!currentUser) return;
+        const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
+        const charData = chars[index];
+        if (!charData) return;
+
+        fabric.Image.fromURL('data:image/png;base64,' + charData.b64, (img) => {
+            img.scaleToWidth(300); // Default size when added
+            canvas.add(img);
+            canvas.centerObject(img);
+            canvas.setActiveObject(img);
+            saveProject();
+            notify("Character added to canvas.", 'info');
+        });
     }
 
-    function loadLocalData() {
-        const savedChars = JSON.parse(localStorage.getItem(`chars_${auth.currentUser.uid}`) || "[]");
-        savedChars.forEach(saveCharacter);
-        
-        const project = localStorage.getItem(`project_${auth.currentUser.uid}`);
-        if(project) canvas.loadFromJSON(project);
+    function deleteCharacter(index) {
+        if (!currentUser) return;
+        if (!confirm("Are you sure you want to delete this character?")) return;
+
+        const chars = JSON.parse(localStorage.getItem(`chars_${currentUser.uid}`) || "[]");
+        chars.splice(index, 1);
+        localStorage.setItem(`chars_${currentUser.uid}`, JSON.stringify(chars));
+        loadCharacters();
+        notify("Character deleted.", 'info');
     }
 
+    // --- PROJECT SAVE/LOAD ---
     function saveProject() {
-        if(auth.currentUser) {
-            localStorage.setItem(`project_${auth.currentUser.uid}`, JSON.stringify(canvas.toJSON()));
+        if(currentUser) {
+            localStorage.setItem(`project_${currentUser.uid}`, JSON.stringify(canvas.toJSON()));
+            notify("Project auto-saved.", 'info');
         }
     }
 
-    function setMode(mode) {
-        if(mode === 'full') {
-            canvas.setWidth(1300);
-            canvas.add(new fabric.Line([600, 0, 600, 900], { stroke: 'rgba(255,255,255,0.2)', selectable: false, evented: false }));
-            canvas.add(new fabric.Line([700, 0, 700, 900], { stroke: 'rgba(255,255,255,0.2)', selectable: false, evented: false }));
-        } else {
-            canvas.clear();
-            canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
-            canvas.setWidth(600);
-        }
-    }
-
-    function download() {
-        const link = document.createElement('a');
-        link.download = `elvion_cover_${Date.now()}.png`;
-        link.href = canvas.toDataURL({format: 'png', quality: 1});
-        link.click();
-    }
-
-    async function fundWallet() {
-        const amount = prompt("Amount in NGN (min 100):", "1000");
-        if (amount && parseInt(amount) >= 100) {
-            notify("Redirecting to Secure Payment...", 'info');
-            try {
-                const res = await fetch(`${API_URL}/api/payments/initiate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
-                    body: JSON.stringify({ amount: parseInt(amount) })
+    function loadProject() {
+        if(currentUser) {
+            const json = localStorage.getItem(`project_${currentUser.uid}`);
+            if(json) {
+                canvas.loadFromJSON(json, () => {
+                    canvas.renderAll();
+                    notify("Project loaded successfully!", 'success');
                 });
-                const data = await res.json();
-                if (data.checkout_url) {
-                    window.open(data.checkout_url, '_blank');
-                    // In a real app, you'd poll the /verify endpoint after the user returns
-                } else { throw new Error(data.detail); }
-            } catch (e) {
-                notify(e.message, 'error');
+            } else {
+                notify("No saved project found. Starting fresh!", 'info');
             }
         }
     }
 
+    // --- BOBBY AI CHAT WIDGET ---
+    async function askBobbyToEnhancePrompt() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        const currentPrompt = promptInput.value.trim();
+        if (!currentPrompt) return notify("Enter a basic idea in the prompt box first.", 'warning');
+
+        addBobbyChatMessage(`You: Enhance this prompt for a book cover: "${currentPrompt}"`, 'user');
+        
+        try {
+            const result = await fetchWithAuth('/api/llama/chat', {
+                method: 'POST',
+                body: { 
+                    prompt: `Elaborate on this book cover idea to create a highly detailed AI image prompt (under 150 words): "${currentPrompt}". Suggest specific styles, lighting, and composition elements, tailored for a professional Philadelphia AI generation.`,
+                    systemPrompt: "You are Bobby, an expert AI prompt engineer specifically for stunning book cover designs. Be concise and impactful." 
+                }
+            });
+
+            if (result && (result.content || result.response)) {
+                const refinedPrompt = result.content || result.response;
+                promptInput.value = refinedPrompt; // Update the main prompt input
+                addBobbyChatMessage(`Bobby: Here's a refined prompt idea for you!`, 'bot');
+                notify("Prompt enhanced by Bobby!", 'success');
+            } else {
+                throw new Error("Failed to get prompt idea from Bobby.");
+            }
+        } catch (e) {
+            console.error("Bobby error:", e);
+            addBobbyChatMessage(`Bobby: Sorry, I couldn't enhance the prompt right now. (${e.message || 'Error'})`, 'bot');
+            notify("Failed to get prompt idea from Bobby.", 'error');
+        }
+    }
+
+    async function sendBobbyChat() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        const text = bobbyChatInput.value.trim();
+        if (!text) return;
+
+        addBobbyChatMessage(`You: ${text}`, 'user');
+        bobbyChatInput.value = '';
+
+        try {
+            const result = await fetchWithAuth('/api/llama/chat', {
+                method: 'POST',
+                body: { 
+                    prompt: text, 
+                    systemPrompt: "You are Bobby, a friendly and creative AI assistant in the Philadelphia Elite Cover Studio. You help users with book cover ideas, design advice, and general questions. Be concise and helpful." 
+                }
+            });
+            
+            addBobbyChatMessage(`Bobby: ${result.content || result.response || "No response."}`, 'bot');
+        } catch (e) {
+            console.error("Bobby Chat Error:", e);
+            addBobbyChatMessage(`Bobby: Sorry, I had trouble connecting. (${e.message || 'Error'})`, 'bot');
+        }
+    }
+
+    function addBobbyChatMessage(text, type) {
+        const p = document.createElement('p');
+        p.className = `${type}-msg`;
+        p.innerText = text;
+        bobbyChatMessages.appendChild(p);
+        bobbyChatMessages.scrollTop = bobbyChatMessages.scrollHeight;
+    }
+
+    // --- 3D MOCKUP ---
+    function openMockup() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        if (canvas.getObjects().length === 0 && canvas.backgroundColor === '#ffffff') {
+            return notify("Your canvas is empty! Design something first.", 'warning');
+        }
+        
+        const dataUrl = canvas.toDataURL({ format: 'png', quality: 1.0 });
+        mockupModal.style.display = 'flex';
+        
+        const isFullWrap = canvas.width > 1000;
+        
+        // Reset styles first
+        mFront.style.backgroundImage = '';
+        mSpine.style.backgroundImage = '';
+        mBack.style.backgroundImage = '';
+        mFront.style.backgroundPosition = '';
+        mSpine.style.backgroundPosition = '';
+        mBack.style.backgroundPosition = '';
+        mBack.style.backgroundColor = '';
+
+        if (isFullWrap) {
+            // Adjust backgroundSize to fit the full 1300px image onto the 3D faces, then position
+            mFront.style.backgroundImage = `url(${dataUrl})`;
+            mFront.style.backgroundSize = `1300px 900px`;
+            mFront.style.backgroundPosition = "-700px 0"; // Front is the rightmost 600px of 1300px
+
+            mSpine.style.backgroundImage = `url(${dataUrl})`;
+            mSpine.style.backgroundSize = `1300px 900px`;
+            mSpine.style.backgroundPosition = "-600px 0"; // Spine is the middle 100px
+
+            mBack.style.backgroundImage = `url(${dataUrl})`;
+            mBack.style.backgroundSize = `1300px 900px`;
+            mBack.style.backgroundPosition = "0 0"; // Back is the leftmost 600px
+            
+            // Set default text for spine (can be made dynamic later)
+            mSpine.innerText = "YOUR BOOK TITLE"; // or parse from canvas
+        } else {
+            // Only front cover is designed, apply to front, default colors for others
+            mFront.style.backgroundImage = `url(${dataUrl})`;
+            mFront.style.backgroundSize = `cover`; 
+            mSpine.style.backgroundColor = '#222'; 
+            mSpine.innerText = ""; // Clear spine text if not in full mode
+            mBack.style.backgroundColor = '#111';
+        }
+        
+        rotateBook('front'); // Default view
+        notify("3D Mockup loaded!", 'info');
+    }
+
+    function rotateBook(view) {
+        if (view === 'front') book3d.style.transform = "rotateY(-30deg) rotateX(10deg)";
+        else if (view === 'spine') book3d.style.transform = "rotateY(-90deg) rotateX(0deg)";
+        else notify("Invalid 3D view selected.", 'error');
+    }
+
+    function closeMockup() { mockupModal.style.display = 'none'; }
+
+    // --- UTILITIES ---
     function notify(message, type = 'info') {
-        const toast = document.getElementById('toast');
         toast.textContent = message;
-        toast.className = `toast-` + type;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 4000);
+        toast.className = `toast show ${type}`; // Apply type for styling
+        setTimeout(() => toast.classList.remove('show'), 4000); // Increased duration
     }
 
     function setLoading(isLoading) {
-        document.getElementById('genLoader').style.display = isLoading ? 'inline-block' : 'none';
-        document.getElementById('genText').style.display = isLoading ? 'none' : 'inline-block';
-        document.getElementById('genBtn').disabled = isLoading;
+        genLoader.style.display = isLoading ? 'inline-block' : 'none';
+        genText.style.display = isLoading ? 'none' : 'inline-block';
+        genBtn.disabled = isLoading;
     }
-
+    
+    function downloadCover() {
+        if (!currentUser) return notify("Please log in first.", 'warning');
+        if (canvas.getObjects().length === 0 && canvas.backgroundColor === '#ffffff') {
+            return notify("Canvas is empty. Design something first!", 'warning');
+        }
+        const link = document.createElement('a');
+        link.download = `philadelphia_cover_${Date.now()}.png`;
+        link.href = canvas.toDataURL({ format:'png', quality:1.0 });
+        link.click();
+        notify("Cover downloaded!", 'success');
+    }
 </script>
+
 </body>
-</html>
+</html>```
