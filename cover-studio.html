@@ -11,8 +11,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Cosmic Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Cinzel:wght@400;700&family=Playfair+Display:wght@700;900&family=Roboto:wght@300;400;900&family=Bebas+Neue&family=Dancing+Script:wght@700&family=Anton&family=Courier+Prime&display=swap" rel="stylesheet">
+    <!-- Cosmic Fonts from Elvion Theme -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Cinzel:wght@400;700&family=Playfair+Display:wght@700;900&family=Roboto:wght@300;400;900&family=Bebas+Neue&family=Dancing+Script:wght@700&family=Courier+Prime&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -22,7 +22,8 @@
             --panel-bg: rgba(20, 15, 45, 0.7);
             --starlight: #e0e7ff;
             --accent-cyan: #06b6d4;
-            --danger: #ff4757;
+            --danger: #ef4444;
+            --success: #10b981;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -31,8 +32,8 @@
             font-family: 'Roboto', sans-serif;
             background: var(--deep-space);
             background-image: 
-                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+                radial-gradient(circle at 15% 25%, rgba(99, 102, 241, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
             color: var(--starlight);
             height: 100vh;
             overflow: hidden;
@@ -41,129 +42,120 @@
         /* --- AUTH OVERLAY --- */
         #authOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 6, 26, 0.98);
+            background: rgba(11, 6, 26, 0.9);
             z-index: 5000; display: flex; align-items: center; justify-content: center;
             backdrop-filter: blur(15px);
+            transition: opacity 0.5s;
         }
         .auth-card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 3rem; border-radius: 24px; width: 400px;
-            border: 1px solid var(--cosmic-purple);
-            text-align: center; box-shadow: 0 0 50px rgba(99, 102, 241, 0.3);
+            background: var(--panel-bg); padding: 3rem; border-radius: 24px; width: 420px;
+            border: 1px solid var(--cosmic-purple); text-align: center; 
+            box-shadow: 0 0 60px rgba(99, 102, 241, 0.4);
         }
+        .auth-card h2 { font-family: 'Orbitron'; font-size: 2rem; margin-bottom: 1rem; color: #fff; }
         .auth-btn {
-            width: 100%; padding: 12px; margin: 10px 0; border-radius: 50px;
+            width: 100%; padding: 14px; margin: 8px 0; border-radius: 50px;
             border: none; font-weight: bold; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; gap: 10px;
-            font-family: 'Orbitron'; transition: 0.3s;
+            align-items: center; justify-content: center; gap: 12px;
+            font-family: 'Orbitron'; transition: all 0.3s ease;
         }
+        .auth-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .google-btn { background: #fff; color: #333; }
         .twitter-btn { background: #1da1f2; color: #fff; }
-        .email-btn { background: var(--cosmic-purple); color: #fff; }
+        .email-btn { background: linear-gradient(135deg, var(--cosmic-purple), var(--nebula-pink)); color: #fff; }
 
         /* --- APP LAYOUT --- */
         .studio-grid {
-            display: grid;
-            grid-template-columns: 350px 1fr 320px;
-            height: 100vh;
+            display: grid; grid-template-columns: 360px 1fr 340px;
+            height: 100vh; opacity: 0; pointer-events: none; transition: opacity 0.5s;
         }
+        .studio-grid.loaded { opacity: 1; pointer-events: all; }
 
         .sidebar {
-            background: var(--panel-bg);
-            backdrop-filter: blur(15px);
-            border-right: 1px solid rgba(99, 102, 241, 0.3);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            overflow-y: auto;
+            background: var(--panel-bg); backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 20px; display: flex; flex-direction: column; gap: 20px;
+            overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--cosmic-purple) transparent;
         }
+        .sidebar-right { border-right: none; border-left: 1px solid rgba(99, 102, 241, 0.2); }
 
         .main-canvas-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: radial-gradient(circle, #1a1235 0%, #0b061a 100%);
-            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; background: radial-gradient(circle, #1a1235 0%, #0b061a 100%);
         }
 
         /* --- UI COMPONENTS --- */
         .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px; padding: 15px;
+            background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .section-header { font-family: 'Orbitron'; font-size: 14px; margin-bottom: 15px; color: var(--accent-cyan); text-shadow: 0 0 10px var(--accent-cyan); }
 
         .wallet-card {
             background: linear-gradient(135deg, var(--cosmic-purple), var(--nebula-pink));
             padding: 20px; border-radius: 20px; text-align: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
         }
-
-        .credits-num { font-size: 32px; font-weight: 900; font-family: 'Orbitron'; }
+        .credits-num { font-size: 36px; font-weight: 900; font-family: 'Orbitron'; text-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .refill-btn { background:rgba(0,0,0,0.3); border:none; color:white; padding:8px 15px; border-radius:20px; cursor:pointer; margin-top:10px; font-weight: bold; transition: 0.2s; }
+        .refill-btn:hover { background: rgba(0,0,0,0.5); }
 
         input, select, textarea {
-            width: 100%; padding: 12px; background: rgba(0,0,0,0.3);
+            width: 100%; padding: 12px; background: rgba(0,0,0,0.4);
             border: 1px solid var(--cosmic-purple); border-radius: 10px;
-            color: white; margin-top: 5px; font-family: 'Roboto'; font-size: 13px;
+            color: white; margin-top: 5px; font-family: 'Roboto'; font-size: 14px;
         }
-        
-        textarea { resize: vertical; min-height: 80px; }
+        input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 15px var(--cosmic-purple); }
 
         .btn-action {
-            background: var(--cosmic-purple); color: white;
-            padding: 12px; border: none; border-radius: 10px;
+            background: linear-gradient(135deg, var(--cosmic-purple), var(--nebula-pink)); color: white;
+            padding: 14px; border: none; border-radius: 10px;
             font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
             width: 100%; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-action:hover { background: var(--nebula-pink); transform: translateY(-2px); }
-        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-action:hover { box-shadow: 0 0 20px var(--nebula-pink); transform: translateY(-2px); }
+        .btn-action.secondary { background: rgba(255,255,255,0.1); border: 1px solid var(--accent-cyan); }
+        .btn-action.danger { background: var(--danger); }
+        .btn-action:disabled { opacity: 0.5; transform: none; box-shadow: none; cursor: not-allowed; }
 
-        /* --- CANVAS --- */
+        /* --- CANVAS & TOOLS --- */
         canvas {
             border-radius: 5px;
-            box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(99, 102, 241, 0.2);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8), 0 0 30px rgba(99, 102, 241, 0.3);
         }
 
-        /* --- CHARACTERS --- */
         .char-scroll {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-            max-height: 250px; overflow-y: auto;
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            max-height: 280px; overflow-y: auto; padding-right: 5px;
         }
         .char-thumb {
             width: 100%; aspect-ratio: 1; border-radius: 10px;
             cursor: pointer; border: 2px solid transparent; transition: 0.2s;
-            object-fit: cover; position: relative;
+            object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .char-thumb:hover { border-color: var(--accent-cyan); transform: scale(1.05); }
 
-        /* --- BOBBY CHAT --- */
         .bobby-box {
             background: rgba(0,0,0,0.4); border-radius: 15px;
-            height: 150px; overflow-y: auto; padding: 10px;
+            height: 180px; overflow-y: auto; padding: 10px;
             font-size: 13px; border: 1px solid rgba(6, 182, 212, 0.3);
             margin-bottom: 10px;
         }
-        .msg-user { color: var(--accent-cyan); margin-bottom: 5px; }
-        .msg-bot { color: #fff; margin-bottom: 10px; }
 
         /* --- 3D MODAL --- */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 4000;
+            background: rgba(0,0,0,0.9); z-index: 4000;
             align-items: center; justify-content: center; flex-direction: column;
         }
-        .scene { width: 300px; height: 450px; perspective: 1000px; }
+        .scene { width: 300px; height: 450px; perspective: 1200px; }
         .book-3d { 
             width: 100%; height: 100%; position: relative; 
-            transform-style: preserve-3d; transition: 1s;
-            transform: rotateY(-30deg);
+            transform-style: preserve-3d; transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1);
         }
         .face { 
             position: absolute; width: 300px; height: 450px; 
-            background-size: cover; border: 1px solid #000;
+            background-size: cover; background-position: center; border: 1px solid #000;
         }
         .front { transform: translateZ(25px); }
         .spine { 
@@ -175,43 +167,44 @@
         /* --- TOAST --- */
         #toast {
             position: fixed; bottom: 20px; right: 20px;
-            padding: 15px 25px; background: var(--nebula-pink); color: white;
-            border-radius: 10px; transform: translateX(200%);
-            transition: 0.5s; z-index: 6000; font-family: 'Orbitron'; font-size: 12px;
+            padding: 15px 25px; border-radius: 10px; 
+            color: #fff; font-weight: bold;
+            transform: translateX(120%); transition: 0.5s cubic-bezier(0.25, 1, 0.5, 1); 
+            z-index: 6000; box-shadow: 0 5px 20px rgba(0,0,0,0.4);
         }
         #toast.show { transform: translateX(0); }
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        .toast-info { background: var(--cosmic-purple); }
         
+        /* --- LOADER --- */
         .loading-ring {
-            display: none; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite;
+            display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
 
-<!-- AUTH -->
 <div id="authOverlay">
     <div class="auth-card">
-        <h2 style="font-family: 'Orbitron'; margin-bottom: 10px; font-size: 24px;">PHILADELPHIA STUDIO</h2>
-        <p style="margin-bottom: 20px; font-size: 12px; opacity: 0.7; letter-spacing: 1px;">ELVION AI AUTHORING SUITE</p>
-        
-        <button class="auth-btn google-btn" onclick="authAction('google')"><i class="fab fa-google"></i> Google</button>
-        <button class="auth-btn twitter-btn" onclick="authAction('twitter')"><i class="fab fa-twitter"></i> Twitter</button>
-        
-        <div style="margin: 15px 0; opacity: 0.5; font-size: 10px;">OR EMAIL</div>
+        <h2>ELVION STUDIO</h2>
+        <p style="margin-bottom: 2rem; opacity: 0.8;">Login to harness the Philadelphia AI Engine</p>
+        <button class="auth-btn google-btn" onclick="authAction('google')"><i class="fab fa-google"></i> Continue with Google</button>
+        <button class="auth-btn twitter-btn" onclick="authAction('twitter')"><i class="fab fa-twitter"></i> Continue with Twitter</button>
+        <div style="margin: 1rem 0; opacity: 0.5;">OR</div>
         <input type="email" id="email" placeholder="Email Address">
         <input type="password" id="pass" placeholder="Password">
-        <button class="auth-btn email-btn" onclick="authAction('email')">ENTER STUDIO</button>
+        <button class="auth-btn email-btn" onclick="authAction('email')">Enter Universe</button>
     </div>
 </div>
 
-<!-- TOAST -->
-<div id="toast">Message here</div>
+<div id="toast"></div>
 
-<!-- 3D PREVIEW -->
 <div id="mockupModal" class="modal">
-    <h2 style="font-family: 'Orbitron'; margin-bottom: 30px;">3D VISUALIZATION</h2>
+    <h2 style="font-family:'Orbitron'; margin-bottom: 2rem;">3D Book Preview</h2>
     <div class="scene">
         <div class="book-3d" id="book-3d">
             <div class="face front" id="m-front"></div>
@@ -219,133 +212,103 @@
             <div class="face back" id="m-back"></div>
         </div>
     </div>
-    <div style="margin-top: 50px; display: flex; gap: 10px;">
-        <button class="btn-action" style="width: auto;" onclick="rotateBook('front')">Front</button>
-        <button class="btn-action" style="width: auto;" onclick="rotateBook('side')">Spine</button>
-        <button class="btn-action" style="width: auto;" onclick="rotateBook('open')">Dynamic</button>
-        <button class="btn-action" style="background:var(--danger); width: auto;" onclick="closeMockup()">Close</button>
+    <div style="margin-top: 40px; display: flex; gap: 10px;">
+        <button class="btn-action" onclick="rotateBook('front')">Front</button>
+        <button class="btn-action" onclick="rotateBook('side')">Spine</button>
+        <button class="btn-action danger" onclick="closeMockup()">Close</button>
     </div>
 </div>
 
-<!-- MAIN APP -->
-<div class="studio-grid">
-    
+<div class="studio-grid" id="studioGrid">
     <!-- LEFT: GENERATOR -->
     <aside class="sidebar">
-        <!-- WALLET -->
         <div class="wallet-card">
-            <div style="font-size: 10px; letter-spacing: 2px;">CREDIT BALANCE</div>
-            <div class="credits-num" id="creditDisplay">--</div>
-            <button onclick="fundWallet()" style="background:rgba(0,0,0,0.2); border:none; color:white; padding:5px 15px; border-radius:20px; cursor:pointer; margin-top:5px; font-size: 10px; font-weight: bold;">+ FUND WALLET</button>
+            <div style="font-size: 12px; letter-spacing: 1px;">CREDIT BALANCE</div>
+            <div class="credits-num" id="creditDisplay">0</div>
+            <button class="refill-btn" onclick="fundWallet()">+ Fund Wallet</button>
         </div>
 
-        <!-- GENERATOR -->
         <div class="glass-card">
-            <h4 style="font-family: 'Orbitron'; font-size: 12px; margin-bottom: 10px; color: var(--accent-cyan);">PHILADELPHIA ENGINE</h4>
-            
-            <label style="font-size: 10px; opacity: 0.7;">MODEL SELECTION</label>
+            <h3 class="section-header">PHILADELPHIA ENGINE</h3>
             <select id="modelKey">
-                <!-- Values match bot.py keys exactly -->
-                <option value="v6">Philadelphia V6 (Masterpiece)</option>
-                <option value="photoreal">Philadelphia Photoreal</option>
-                <option value="movie">Philadelphia Cinematic</option>
-                <option value="anime_core">Philadelphia Anime</option>
-                <option value="illustration">Philadelphia Illustration</option>
+                <option value="v6">V6 (Master Quality)</option>
+                <option value="photoreal">Realistic</option>
+                <option value="movie">Cinematic</option>
+                <option value="illustration">Illustration</option>
+                <option value="anime_core">Anime</option>
             </select>
-            
-            <label style="font-size: 10px; opacity: 0.7; margin-top: 5px; display: block;">PROMPT</label>
-            <textarea id="prompt" placeholder="A mysterious book cover with a glowing rune..."></textarea>
-            
+            <textarea id="prompt" placeholder="Describe your cosmic cover..." rows="4"></textarea>
             <button class="btn-action" id="genBtn" onclick="generate('cover')" style="margin-top: 10px;">
-                <span id="genText">GENERATE COVER (20c)</span>
+                <i class="fas fa-magic-sparkles"></i>
+                <span id="genText">Generate Cover (20c)</span>
                 <div class="loading-ring" id="genLoader"></div>
             </button>
         </div>
 
-        <!-- CHARACTERS -->
         <div class="glass-card" style="flex-grow: 1; display: flex; flex-direction: column;">
-            <h4 style="font-family: 'Orbitron'; font-size: 12px; margin-bottom: 10px; color: var(--accent-cyan);">PERSISTENT CHARACTERS</h4>
-            <div class="char-scroll" id="charGrid">
-                <!-- Char items injected here -->
-            </div>
-            <button class="btn-action" onclick="generate('char')" style="background:var(--accent-cyan); margin-top: auto;">CREATE CHARACTER (10c)</button>
+            <h3 class="section-header">PERSISTENT CHARACTERS</h3>
+            <div class="char-scroll" id="charGrid"></div>
+            <button class="btn-action" onclick="generate('char')" style="background:var(--accent-cyan); margin-top: auto;">
+                <i class="fas fa-user-plus"></i> Create Character (10c)
+            </button>
         </div>
     </aside>
 
     <!-- CENTER: CANVAS -->
     <main class="main-canvas-area">
         <div style="margin-bottom: 15px; display: flex; gap: 10px;">
-            <button class="btn-action" style="width:auto; padding:8px 20px; font-size: 10px;" onclick="setMode('front')">FRONT ONLY</button>
-            <button class="btn-action" style="width:auto; padding:8px 20px; background:#444; font-size: 10px;" onclick="setMode('full')">FULL WRAP</button>
+            <button class="btn-action" style="padding:8px 20px;" onclick="setMode('front')">Front</button>
+            <button class="btn-action secondary" style="padding:8px 20px;" onclick="setMode('full')">Full Wrap</button>
         </div>
-        <div style="position: relative; box-shadow: 0 0 50px rgba(0,0,0,0.5);">
-            <canvas id="c"></canvas>
-        </div>
+        <canvas id="c"></canvas>
     </main>
 
     <!-- RIGHT: TOOLS -->
-    <aside class="sidebar" style="border-right: none; border-left: 1px solid rgba(99, 102, 241, 0.3);">
+    <aside class="sidebar sidebar-right">
+        <div class="glass-card">
+            <h3 class="section-header">TEXT & FONTS</h3>
+            <button class="btn-action" onclick="addText()"><i class="fas fa-font"></i> Add Text</button>
+            <select onchange="updateText('fontFamily', this.value)" style="margin-top: 10px;">
+                <option value="Cinzel">Cinzel (Fantasy)</option>
+                <option value="Orbitron">Orbitron (Sci-Fi)</option>
+                <option value="Playfair Display">Playfair (Romance)</option>
+                <option value="Bebas Neue">Bebas Neue (Thriller)</option>
+                <option value="Dancing Script">Dancing Script</option>
+                <option value="Courier Prime">Typewriter</option>
+            </select>
+            <div style="display:flex; gap:10px; margin-top: 10px;">
+                <input type="color" value="#ffffff" title="Text Color" onchange="updateText('fill', this.value)">
+                <input type="number" value="60" title="Font Size" oninput="updateText('fontSize', this.value)" style="width: 80px;">
+            </div>
+        </div>
         
-        <!-- TEXT TOOLS -->
         <div class="glass-card">
-            <h4 style="font-family: 'Orbitron'; font-size: 12px; margin-bottom: 10px; color: var(--accent-cyan);">TYPOGRAPHY</h4>
-            <button class="btn-action" onclick="addText()" style="margin-bottom: 10px;">+ ADD TEXT</button>
-            
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                <select onchange="updateText('fontFamily', this.value)">
-                    <option value="Cinzel">Cinzel</option>
-                    <option value="Orbitron">Orbitron</option>
-                    <option value="Playfair Display">Playfair</option>
-                    <option value="Bebas Neue">Bebas</option>
-                    <option value="Dancing Script">Script</option>
-                    <option value="Courier Prime">Typewriter</option>
-                    <option value="Anton">Anton</option>
-                    <option value="Roboto">Roboto</option>
-                </select>
-                <input type="number" value="60" onchange="updateText('fontSize', parseInt(this.value))">
+            <h3 class="section-header">MAGIC TOOLS</h3>
+            <button class="btn-action secondary" onclick="removeBG()"><i class="fas fa-wand-magic-sparkles"></i> Remove Background</button>
+            <button class="btn-action secondary" onclick="toggleErase()" style="margin-top: 10px;"><i class="fas fa-eraser"></i> Magic Brush</button>
+            <button class="btn-action danger" onclick="deleteObj()" style="margin-top: 10px;"><i class="fas fa-trash"></i> Delete Selection</button>
+        </div>
+        
+        <div class="glass-card" style="margin-top: auto; display:flex; flex-direction:column; gap: 10px;">
+            <h3 class="section-header">BOBBY ASSISTANT</h3>
+            <div class="bobby-box" id="chat">
+                <p style="color:var(--accent-cyan)">Bobby: Give me a simple idea. I'll write a masterpiece prompt for you.</p>
             </div>
-            <input type="color" value="#ffffff" onchange="updateText('fill', this.value)" style="height: 30px;">
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="chatIn" placeholder="e.g., a lonely astronaut...">
+                <button onclick="askBobby()" style="background:var(--cosmic-purple); border:none; padding:10px; border-radius:10px; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+            </div>
         </div>
 
-        <!-- IMAGE TOOLS -->
-        <div class="glass-card">
-            <h4 style="font-family: 'Orbitron'; font-size: 12px; margin-bottom: 10px; color: var(--accent-cyan);">MAGIC TOOLS</h4>
-            <button class="btn-action" style="background:#444; margin-bottom: 5px;" onclick="removeBG()">
-                <i class="fas fa-magic"></i> &nbsp; REMOVE BG
-            </button>
-            <button class="btn-action" style="background:#444; margin-bottom: 5px;" onclick="toggleBrush()">
-                <i class="fas fa-paint-brush"></i> &nbsp; BRUSH / ERASE
-            </button>
-            <button class="btn-action" style="background:var(--danger);" onclick="deleteObj()">
-                <i class="fas fa-trash"></i> &nbsp; DELETE
-            </button>
-        </div>
-
-        <!-- BOBBY & EXPORT -->
-        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
-            <div class="glass-card">
-                <h4 style="font-family: 'Orbitron'; font-size: 12px; margin-bottom: 5px; color: var(--accent-cyan);">BOBBY ASSISTANT</h4>
-                <div class="bobby-box" id="chat">
-                    <div class="msg-bot">Bobby: I can write your prompt. Just give me a vague idea!</div>
-                </div>
-                <div style="display:flex; gap:5px;">
-                    <input type="text" id="chatIn" placeholder="E.g. A cyberpunk samurai...">
-                    <button onclick="askBobby()" style="background:var(--cosmic-purple); border:none; padding:0 15px; border-radius:10px; cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
-                </div>
-            </div>
-
-            <button class="btn-action" onclick="openMockup()" style="background:var(--accent-cyan); color:#000;">
-                <i class="fas fa-cube"></i> &nbsp; 3D MOCKUP
-            </button>
-            <button class="btn-action" onclick="download()" style="background:var(--starlight); color:#000;">
-                <i class="fas fa-download"></i> &nbsp; DOWNLOAD
-            </button>
+        <div style="display:flex; flex-direction:column; gap: 10px; margin-top: 10px;">
+             <button class="btn-action" onclick="openMockup()" style="background:var(--accent-cyan); color:#000;"><i class="fas fa-cube"></i> View 3D Mockup</button>
+            <button class="btn-action" onclick="download()" style="background:var(--starlight); color:#000;"><i class="fas fa-download"></i> Download PNG</button>
         </div>
     </aside>
 </div>
 
 <script>
-    // --- 1. CONFIGURATION ---
+    // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
       apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
       authDomain: "elvionai.firebaseapp.com",
@@ -354,372 +317,316 @@
       messagingSenderId: "161078300830",
       appId: "1:161078300830:web:f460df8591704eb0e96b8f"
     };
-    
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     
+    // --- APP CONFIGURATION ---
     const API_URL = "https://web-production-9a18.up.railway.app";
-    const SUPER_ADMIN = "koladhino@gmail.com"; // Case insensitive check later
+    const ADMIN_EMAIL = "Koladhino@gmail.com";
+    const COVER_COST = 20;
+    const CHAR_COST = 10;
 
-    let canvas, userToken;
-    let credits = 0;
-    let isBrushMode = false;
+    // --- GLOBAL STATE ---
+    let canvas, userToken, credits = 0;
+    let isErasing = false;
 
-    // --- 2. AUTHENTICATION ---
+    // --- AUTHENTICATION ---
     auth.onAuthStateChanged(async (user) => {
         if (user) {
-            userToken = await user.getIdToken();
+            userToken = await user.getIdToken(true); // Always get a fresh token
             document.getElementById('authOverlay').style.display = 'none';
-            initStudio();
-            notify(`Welcome, ${user.email}`);
+            document.getElementById('studioGrid').classList.add('loaded');
+            initApp();
         } else {
             document.getElementById('authOverlay').style.display = 'flex';
+            document.getElementById('studioGrid').classList.remove('loaded');
         }
     });
 
     async function authAction(type) {
         try {
             if(type === 'google') await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-            if(type === 'twitter') await auth.signInWithPopup(new firebase.auth.TwitterAuthProvider());
-            if(type === 'email') {
-                const e = document.getElementById('email').value;
-                const p = document.getElementById('pass').value;
-                await auth.signInWithEmailAndPassword(e, p).catch(() => auth.createUserWithEmailAndPassword(e, p));
+            else if(type === 'twitter') await auth.signInWithPopup(new firebase.auth.TwitterAuthProvider());
+            else if(type === 'email') {
+                const email = document.getElementById('email').value;
+                const pass = document.getElementById('pass').value;
+                await auth.signInWithEmailAndPassword(email, pass)
+                    .catch(() => auth.createUserWithEmailAndPassword(email, pass));
             }
-        } catch(err) { alert(err.message); }
+        } catch(err) { notify(err.message, 'error'); }
     }
-
-    // --- 3. STUDIO INITIALIZATION ---
-    function initStudio() {
+    
+    // --- INITIALIZATION ---
+    function initApp() {
         canvas = new fabric.Canvas('c', {
-            width: 600, height: 900, backgroundColor: '#ffffff', preserveObjectStacking: true
+            width: 600, height: 900, backgroundColor: '#ffffff'
         });
+        fetchCredits();
+        loadLocalData();
         
-        loadCredits();
-        loadHistory();
-        
-        // Auto Save
-        canvas.on('object:modified', saveProject);
         canvas.on('object:added', saveProject);
+        canvas.on('object:modified', saveProject);
+        canvas.on('object:removed', saveProject);
     }
 
-    // --- 4. DATA & CREDITS ---
-    async function loadCredits() {
+    async function fetchCredits() {
+        if (!userToken) return;
         try {
             const res = await fetch(`${API_URL}/api/user/keys-and-balance`, {
                 headers: { 'X-Firebase-Token': userToken }
             });
             const data = await res.json();
-            
-            if(auth.currentUser.email.toLowerCase() === SUPER_ADMIN.toLowerCase()) {
-                credits = 999999;
-                document.getElementById('creditDisplay').innerText = "UNLIMITED";
-            } else {
-                credits = data.balance || 0;
-                document.getElementById('creditDisplay').innerText = credits.toLocaleString();
-            }
-        } catch(e) { console.error("Credit load error", e); }
+            credits = (auth.currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) ? 999999 : (data.balance || 0);
+            document.getElementById('creditDisplay').innerText = credits.toLocaleString();
+        } catch (e) {
+            console.error("Could not fetch credits:", e);
+        }
     }
-
-    // --- 5. IMAGE GENERATION (FIXED) ---
+    
+    // --- PHILADELPHIA IMAGE ENGINE ---
     async function generate(type) {
-        const cost = type === 'cover' ? 20 : 10;
-        
-        // Check Credits
-        if(credits < cost) return notify("Insufficient Credits. Please fund wallet.");
+        const cost = (type === 'cover') ? COVER_COST : CHAR_COST;
+        const isAdmin = (auth.currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+
+        if(!isAdmin && credits < cost) return notify("Insufficient credits! Please refill.", 'error');
 
         const prompt = document.getElementById('prompt').value;
-        const model = document.getElementById('modelKey').value; // v6, photoreal, etc.
-        
-        if(!prompt) return notify("Please enter a description!");
+        const model = document.getElementById('modelKey').value;
+        if(!prompt) return notify("Please describe your vision in the prompt box.", 'info');
 
-        // UI State
-        const btn = type === 'cover' ? document.getElementById('genBtn') : null;
-        if(btn) {
-            document.getElementById('genLoader').style.display = 'block';
-            document.getElementById('genText').style.display = 'none';
-            btn.disabled = true;
-        }
-
+        setLoading(true);
         try {
-            // THE FIX: Sending strict integers for width/height and correct payload structure
-            const payload = {
-                prompt: type === 'char' ? `Character sheet, white background, ${prompt}` : prompt,
-                model: model, // This matches bot.py keys exactly
-                width: 600, // INTEGER
-                height: 900, // INTEGER
-                use_minimax: false,
-                creative: false
-            };
-
             const res = await fetch(`${API_URL}/generate-image`, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Firebase-Token': userToken
-                },
-                body: JSON.stringify(payload)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: (type === 'char' ? `Expressive character sheet, full body, plain white background, ${prompt}` : prompt),
+                    model: model,
+                    width: (type === 'char' ? 512 : 600), // FIX: Use explicit integer
+                    height: (type === 'char' ? 512 : 900), // FIX: Use explicit integer
+                    use_minimax: false
+                })
             });
-
             const data = await res.json();
 
-            if(!res.ok) throw new Error(data.detail || "Generation failed");
-
-            // Handle Success
-            if(data.image_b64) {
-                if(type === 'cover') {
+            if (data.image_b64) {
+                if (type === 'cover') {
                     fabric.Image.fromURL('data:image/png;base64,' + data.image_b64, (img) => {
-                        img.scaleToWidth(600);
-                        canvas.add(img);
-                        canvas.sendToBack(img);
-                        saveProject();
+                        img.scaleToWidth(canvas.width);
+                        canvas.add(img).sendToBack(img);
                     });
                 } else {
                     saveCharacter(data.image_b64);
                 }
-                
-                // Update Local Credits (Backend handles actual deduction, this is for UI speed)
-                if(auth.currentUser.email.toLowerCase() !== SUPER_ADMIN.toLowerCase()) {
-                    credits -= cost;
-                    document.getElementById('creditDisplay').innerText = credits.toLocaleString();
-                }
-                notify("Philadelphia Generation Successful!");
+                if (!isAdmin) updateCredits(-cost);
+                notify("Philadelphia conjured your image!", 'success');
+            } else {
+                throw new Error(data.detail || "Unknown engine error.");
             }
-
         } catch(e) {
-            console.error(e);
-            notify(`Error: ${e.message}`);
+            notify(e.message, 'error');
         } finally {
-            if(btn) {
-                document.getElementById('genLoader').style.display = 'none';
-                document.getElementById('genText').style.display = 'block';
-                btn.disabled = false;
-            }
+            setLoading(false);
         }
     }
 
-    // --- 6. CANVAS TOOLS ---
+    // --- CANVAS & TOOLS ---
     function addText() {
-        const text = new fabric.IText('TITLE', {
-            left: 100, top: 100,
-            fontFamily: 'Cinzel',
-            fill: '#ffffff',
-            fontSize: 80,
-            shadow: 'rgba(0,0,0,0.8) 5px 5px 10px'
+        const text = new fabric.IText('Enter Title', {
+            left: 50, top: 100, fontFamily: 'Cinzel', fill: '#000', fontSize: 60,
+            shadow: 'rgba(99, 102, 241, 0.5) 0 0 10px'
         });
-        canvas.add(text);
-        canvas.setActiveObject(text);
+        canvas.add(text).setActiveObject(text);
     }
 
-    function updateText(prop, val) {
+    function updateText(prop, value) {
         const obj = canvas.getActiveObject();
-        if(obj) { obj.set(prop, val); canvas.renderAll(); saveProject(); }
+        if(obj) { obj.set(prop, value); canvas.renderAll(); saveProject(); }
+    }
+
+    function toggleErase() {
+        isErasing = !isErasing;
+        canvas.isDrawingMode = isErasing;
+        if(isErasing) {
+            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            canvas.freeDrawingBrush.width = 40;
+            canvas.freeDrawingBrush.color = canvas.backgroundColor; // Eraser paints with BG color
+            notify("Magic Brush ON", 'info');
+        } else {
+            notify("Magic Brush OFF", 'info');
+        }
     }
 
     async function removeBG() {
         const obj = canvas.getActiveObject();
-        if(!obj || obj.type !== 'image') return notify("Select an image first!");
+        if(!obj || obj.type !== 'image') return notify("Select an image layer first.", 'info');
         
-        notify("Removing background...");
-        
-        // Use FormData as per bot.py
-        const dataURL = obj.toDataURL({format: 'png'});
-        const blob = await (await fetch(dataURL)).blob();
+        notify("Analyzing pixels for background removal...", 'info');
+        const blob = await (await fetch(obj.toDataURL())).blob();
         const fd = new FormData();
         fd.append('file', blob, 'image.png');
 
         try {
-            const res = await fetch(`${API_URL}/api/tools/remove-background`, {
-                method: 'POST',
-                body: fd
-                // No headers needed for FormData, browser sets boundary
-                // API Key handled on backend
-            });
-
-            if(!res.ok) throw new Error("BG Removal Failed");
-
+            const res = await fetch(`${API_URL}/api/tools/remove-background`, { method: 'POST', body: fd });
+            if (!res.ok) throw new Error("API failed to remove background.");
             const resBlob = await res.blob();
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                fabric.Image.fromURL(e.target.result, (img) => {
-                    img.set({ left: obj.left, top: obj.top, scaleX: obj.scaleX, scaleY: obj.scaleY });
-                    canvas.remove(obj);
-                    canvas.add(img);
-                    canvas.setActiveObject(img);
-                    notify("Background Removed!");
-                });
-            };
-            reader.readAsDataURL(resBlob);
-
-        } catch(e) { notify("Error removing BG"); }
-    }
-
-    function toggleBrush() {
-        isBrushMode = !isBrushMode;
-        canvas.isDrawingMode = isBrushMode;
-        if(isBrushMode) {
-            canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-            canvas.freeDrawingBrush.color = "white"; // Simulates erasing on white canvas or brushing effects
-            canvas.freeDrawingBrush.width = 20;
-            notify("Brush Mode: ON");
-        } else {
-            notify("Brush Mode: OFF");
+            fabric.Image.fromURL(URL.createObjectURL(resBlob), (img) => {
+                img.set({left: obj.left, top: obj.top, scaleX: obj.scaleX, scaleY: obj.scaleY});
+                canvas.remove(obj);
+                canvas.add(img);
+                notify("Background dissolved.", 'success');
+            });
+        } catch (e) {
+            notify(e.message, 'error');
         }
     }
 
-    function deleteObj() {
-        const obj = canvas.getActiveObject();
-        if(obj) canvas.remove(obj);
-    }
+    function deleteObj() { if (canvas.getActiveObject()) canvas.remove(canvas.getActiveObject()); }
 
-    function setMode(mode) {
-        if(mode === 'full') {
-            canvas.setWidth(1300); // 600 back + 100 spine + 600 front
-            // Draw guides
-            canvas.add(new fabric.Line([600, 0, 600, 900], { stroke: '#06b6d4', strokeDashArray: [5, 5], selectable: false }));
-            canvas.add(new fabric.Line([700, 0, 700, 900], { stroke: '#06b6d4', strokeDashArray: [5, 5], selectable: false }));
+    // --- 3D MOCKUP ---
+    function openMockup() {
+        const dataURL = canvas.toDataURL();
+        document.getElementById('m-front').style.backgroundImage = `url(${dataURL})`;
+        
+        if (canvas.width > 1000) {
+            // Apply different parts of the wide canvas to the 3D model faces
+            document.getElementById('m-front').style.backgroundPosition = "100% 0";
+            document.getElementById('m-back').style.backgroundImage = `url(${dataURL})`;
+            document.getElementById('m-back').style.backgroundPosition = "0 0";
+            document.getElementById('m-spine').style.backgroundImage = `url(${dataURL})`;
+            document.getElementById('m-spine').style.backgroundPosition = "50% 0";
         } else {
-            canvas.setWidth(600);
+            // Reset if not in full wrap mode
+            document.getElementById('m-back').style.backgroundImage = 'none';
+            document.getElementById('m-spine').style.backgroundImage = 'none';
         }
-        canvas.renderAll();
+
+        document.getElementById('mockupModal').style.display = 'flex';
+        rotateBook('front');
     }
 
-    // --- 7. PERSISTENCE ---
-    function saveCharacter(b64) {
-        const grid = document.getElementById('charGrid');
-        const div = document.createElement('div');
-        div.innerHTML = `<img src="data:image/png;base64,${b64}" class="char-thumb" onclick="addCharToCanvas(this.src)">`;
-        grid.prepend(div);
-        
-        // LocalStorage logic
-        const saved = JSON.parse(localStorage.getItem('elv_chars') || "[]");
-        saved.push(b64);
-        localStorage.setItem('elv_chars', JSON.stringify(saved));
+    function rotateBook(view) {
+        document.getElementById('book-3d').style.transform = (view === 'front') ? "rotateY(-30deg) rotateX(10deg)" : "rotateY(-100deg)";
     }
 
-    function addCharToCanvas(src) {
-        fabric.Image.fromURL(src, (img) => {
-            img.scaleToWidth(300);
-            canvas.add(img);
-            canvas.setActiveObject(img);
-        });
-    }
-
-    function loadHistory() {
-        const saved = JSON.parse(localStorage.getItem('elv_chars') || "[]");
-        saved.forEach(b64 => {
-            const grid = document.getElementById('charGrid');
-            const div = document.createElement('div');
-            div.innerHTML = `<img src="data:image/png;base64,${b64}" class="char-thumb" onclick="addCharToCanvas(this.src)">`;
-            grid.appendChild(div);
-        });
-        
-        const proj = localStorage.getItem('elv_project');
-        if(proj) canvas.loadFromJSON(proj);
-    }
-
-    function saveProject() {
-        localStorage.setItem('elv_project', JSON.stringify(canvas.toJSON()));
-    }
-
-    // --- 8. BOBBY & UTILS ---
+    function closeMockup() { document.getElementById('mockupModal').style.display = 'none'; }
+    
+    // --- BOBBY ASSISTANT ---
     async function askBobby() {
-        const inp = document.getElementById('chatIn');
-        const q = inp.value;
-        if(!q) return;
+        const input = document.getElementById('chatIn');
+        const query = input.value;
+        if (!query) return;
         
-        const box = document.getElementById('chat');
-        box.innerHTML += `<div class="msg-user">You: ${q}</div>`;
-        inp.value = "";
+        const chatBox = document.getElementById('chat');
+        chatBox.innerHTML += `<p style="color:#888; font-style:italic;">You: ${query}</p>`;
+        input.value = "";
 
         try {
             const res = await fetch(`${API_URL}/api/llama/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: `User wants a book cover: "${q}". Write a detailed stable diffusion prompt for it.`,
-                    systemPrompt: "You are Bobby, an expert art director."
+                body: JSON.stringify({ 
+                    prompt: `Based on this idea: "${query}", write a highly detailed, professional art prompt for a book cover.`,
+                    systemPrompt: "You are Bobby, an expert prompt engineer."
                 })
             });
             const data = await res.json();
-            const reply = data.response || data.content;
-            
-            box.innerHTML += `<div class="msg-bot">Bobby: ${reply}</div>`;
-            box.scrollTop = box.scrollHeight;
-            
-            // Auto-fill prompt
-            document.getElementById('prompt').value = reply;
-        } catch(e) { notify("Bobby is sleeping..."); }
-    }
-
-    function openMockup() {
-        const data = canvas.toDataURL();
-        document.getElementById('mockupModal').style.display = 'flex';
-        const isFull = canvas.width > 1000;
-        
-        const front = document.getElementById('m-front');
-        const back = document.getElementById('m-back');
-        const spine = document.getElementById('m-spine');
-
-        front.style.backgroundImage = `url(${data})`;
-        
-        if(isFull) {
-            front.style.backgroundPosition = "100% 0"; // Right side
-            back.style.backgroundImage = `url(${data})`;
-            back.style.backgroundPosition = "0 0"; // Left side
-            spine.style.backgroundImage = `url(${data})`;
-            spine.style.backgroundPosition = "50% 0"; // Center
-        } else {
-            front.style.backgroundPosition = "center";
-            back.style.background = "#222";
-            spine.style.background = "#111";
+            const refinedPrompt = data.response || data.content;
+            chatBox.innerHTML += `<p style="color:var(--accent-cyan);">Bobby: Here is a refined prompt for you. I've placed it in the main prompt box.</p>`;
+            document.getElementById('prompt').value = refinedPrompt; // Auto-fill
+            chatBox.scrollTop = chatBox.scrollHeight;
+        } catch (e) {
+            notify("Bobby is currently offline.", "error");
         }
     }
 
-    function rotateBook(view) {
-        const b = document.getElementById('book-3d');
-        if(view === 'front') b.style.transform = "rotateY(-20deg) rotateX(10deg)";
-        if(view === 'side') b.style.transform = "rotateY(-100deg)";
-        if(view === 'open') b.style.transform = "rotateY(-30deg) rotateX(15deg) scale(0.9)";
+    // --- DATA & HELPERS ---
+    function updateCredits(amount) {
+        credits += amount;
+        document.getElementById('creditDisplay').innerText = credits.toLocaleString();
+    }
+    
+    function saveCharacter(b64) {
+        const grid = document.getElementById('charGrid');
+        const img = document.createElement('img');
+        img.src = `data:image/png;base64,${b64}`;
+        img.className = 'char-thumb';
+        img.onclick = () => fabric.Image.fromURL(img.src, f => { f.scaleToWidth(300); canvas.add(f); });
+        grid.prepend(img);
+        
+        const saved = JSON.parse(localStorage.getItem(`chars_${auth.currentUser.uid}`) || "[]");
+        saved.unshift(b64); // Add to beginning
+        localStorage.setItem(`chars_${auth.currentUser.uid}`, JSON.stringify(saved.slice(0, 10))); // Limit to 10
     }
 
-    function closeMockup() { document.getElementById('mockupModal').style.display = 'none'; }
+    function loadLocalData() {
+        const savedChars = JSON.parse(localStorage.getItem(`chars_${auth.currentUser.uid}`) || "[]");
+        savedChars.forEach(saveCharacter);
+        
+        const project = localStorage.getItem(`project_${auth.currentUser.uid}`);
+        if(project) canvas.loadFromJSON(project);
+    }
+
+    function saveProject() {
+        if(auth.currentUser) {
+            localStorage.setItem(`project_${auth.currentUser.uid}`, JSON.stringify(canvas.toJSON()));
+        }
+    }
+
+    function setMode(mode) {
+        if(mode === 'full') {
+            canvas.setWidth(1300);
+            canvas.add(new fabric.Line([600, 0, 600, 900], { stroke: 'rgba(255,255,255,0.2)', selectable: false, evented: false }));
+            canvas.add(new fabric.Line([700, 0, 700, 900], { stroke: 'rgba(255,255,255,0.2)', selectable: false, evented: false }));
+        } else {
+            canvas.clear();
+            canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+            canvas.setWidth(600);
+        }
+    }
 
     function download() {
-        const a = document.createElement('a');
-        a.download = 'Elvion_Cover.png';
-        a.href = canvas.toDataURL({format:'png', quality:1});
-        a.click();
+        const link = document.createElement('a');
+        link.download = `elvion_cover_${Date.now()}.png`;
+        link.href = canvas.toDataURL({format: 'png', quality: 1});
+        link.click();
     }
 
-    function notify(msg) {
-        const t = document.getElementById('toast');
-        t.innerText = msg;
-        t.classList.add('show');
-        setTimeout(() => t.classList.remove('show'), 3000);
-    }
-
-    function fundWallet() {
-        const amt = prompt("Enter amount (NGN) to fund:");
-        if(amt && amt >= 100) {
-            // Redirect to your payment flow (handled by bot.py logic usually)
-            // Simulating flow for frontend
-            alert("Redirecting to Secure Payment Gateway (Korapay)...");
-            
-            // This replicates the initiate call from frontend side logic
-            fetch(`${API_URL}/api/payments/initiate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
-                body: JSON.stringify({ amount: parseInt(amt) })
-            })
-            .then(r => r.json())
-            .then(d => {
-                if(d.checkout_url) window.open(d.checkout_url, '_blank');
-                else notify("Payment Error");
-            });
+    async function fundWallet() {
+        const amount = prompt("Amount in NGN (min 100):", "1000");
+        if (amount && parseInt(amount) >= 100) {
+            notify("Redirecting to Secure Payment...", 'info');
+            try {
+                const res = await fetch(`${API_URL}/api/payments/initiate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': userToken },
+                    body: JSON.stringify({ amount: parseInt(amount) })
+                });
+                const data = await res.json();
+                if (data.checkout_url) {
+                    window.open(data.checkout_url, '_blank');
+                    // In a real app, you'd poll the /verify endpoint after the user returns
+                } else { throw new Error(data.detail); }
+            } catch (e) {
+                notify(e.message, 'error');
+            }
         }
     }
+
+    function notify(message, type = 'info') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast-` + type;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 4000);
+    }
+
+    function setLoading(isLoading) {
+        document.getElementById('genLoader').style.display = isLoading ? 'inline-block' : 'none';
+        document.getElementById('genText').style.display = isLoading ? 'none' : 'inline-block';
+        document.getElementById('genBtn').disabled = isLoading;
+    }
+
 </script>
 </body>
 </html>
