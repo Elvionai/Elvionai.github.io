@@ -2052,8 +2052,323 @@ ul, ol { margin-left: 1.5em; margin-bottom: 1em; }
                 }
             }
         };
+
+        // ==========================================================================
+        // --- VOICE CALL LOGIC (The Deep Immersion Engine) ---
+        // ==========================================================================
         
-    </script>
+        const callVoices = {
+            gemini: { label: "Philadelphia (Styles)", styles:["podcast", "cinematic", "upbeat", "soft", "dramatic"] },
+            minimax: { label: "Premium Characters", styles:["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"] }
+        };
+
+        function updateCallVoiceStyles() {
+            if (!callVoiceModel || !callVoiceStyle || !callVoiceStyleLabel) return;
+            const selectedModel = callVoiceModel.value;
+            const voicesData = callVoices[selectedModel];
+            callVoiceStyle.innerHTML = (voicesData.styles ||[]).map(v => `<option value="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('');
+            callVoiceStyleLabel.textContent = voicesData.label.includes("Styles") ? "Style:" : "Character:";
+            selectedCallVoiceProvider = selectedModel;
+            selectedCallVoiceId = callVoiceStyle.value;
+        }
+
+        if (callVoiceModel) {
+            callVoiceModel.addEventListener('change', updateCallVoiceStyles);
+            callVoiceStyle.addEventListener('change', () => { selectedCallVoiceId = callVoiceStyle.value; });
+            updateCallVoiceStyles();
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            speechRecognition = new SpeechRecognition();
+            speechRecognition.continuous = true;
+            speechRecognition.interimResults = true;
+            speechRecognition.lang = 'en-US';
+
+            speechRecognition.onstart = () => {
+                isRecognizing = true;
+                userSaidSomething = false;
+                if (!isMuted) {
+                    if (callStatusMessage) callStatusMessage.innerHTML = '<i class="fa-solid fa-microphone-lines"></i> Listening...';
+                    if (userSpeechWave) userSpeechWave.classList.add('active');
+                }
+            };
+
+            speechRecognition.onresult = (event) => {
+                if (!isCallActive || isMuted) return;
+                let interimTranscript = '';
+                let finalTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                if(finalTranscript || interimTranscript) {
+                    userSaidSomething = true;
+                }
+
+                let userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                if (!userMsgEl) {
+                    userMsgEl = document.createElement('div');
+                    userMsgEl.className = 'call-msg user interim';
+                    const waveElement = callConversation.querySelector('#userSpeechWave');
+                    if(waveElement) callConversation.insertBefore(userMsgEl, waveElement);
+                    else callConversation.appendChild(userMsgEl);
+                }
+                userMsgEl.textContent = (finalTranscript + interimTranscript).trim();
+                if(userMsgEl.textContent) callConversation.scrollTop = callConversation.scrollHeight;
+            };
+
+            speechRecognition.onend = () => {
+                isRecognizing = false;
+                if (userSpeechWave) userSpeechWave.classList.remove('active');
+                if (!isCallActive || isMuted) return;
+
+                let finalTranscript = '';
+                const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+                if (userMsgEl) {
+                    finalTranscript = userMsgEl.textContent.trim();
+                    userMsgEl.classList.remove('interim');
+                    if (!finalTranscript) userMsgEl.remove();
+                }
+                
+                if (botIsSpeaking) {
+                    // Wait for bot to finish speaking before listening again.
+                } else if (finalTranscript && userSaidSomething) {
+                    callHistory.push({ role: 'user', content: finalTranscript });
+                    handleCallBotResponse();
+                } else if (isCallActive && !isMuted) {
+                    try { speechRecognition.start(); } catch(e) {}
+                }
+            };
+
+            speechRecognition.onerror = (event) => {
+                isRecognizing = false;
+                if (userSpeechWave) userSpeechWave.classList.remove('active');
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    if (callStatusMessage) callStatusMessage.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Mic access denied.';
+                    setTimeout(endCall, 3000);
+                } else if (isCallActive && !isMuted && event.error !== 'aborted') {
+                    try { speechRecognition.start(); } catch(e) {}
+                }
+            };
+        } else {
+            if (callBtn) callBtn.style.display = 'none'; // Hide call button if browser unsupported
+        }
+
+        function addCallMessage(role, text) {
+            if (!callConversation) return;
+            const msgEl = document.createElement('div');
+            msgEl.className = `call-msg ${role}`;
+            msgEl.innerHTML = escapeHTML(text).replace(/\n/g, '<br>'); // Basic formatting
+            const waveElement = callConversation.querySelector('#userSpeechWave');
+            if(waveElement) callConversation.insertBefore(msgEl, waveElement);
+            else callConversation.appendChild(msgEl);
+            callConversation.scrollTop = callConversation.scrollHeight;
+        }
+
+        async function handleCallBotResponse() {
+            if (!isCallActive || !callStatusMessage || !tapToTalk) return;
+            callStatusMessage.innerHTML = '<i class="fa-solid fa-microchip"></i> Processing semantics...';
+            tapToTalk.style.display = 'none';
+            if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
+            const userLastMessage = callHistory.at(-1)?.content || "";
+            
+            try {
+                const historyForChat = callHistory.map(m => ({ role: m.role, content: m.content || '' }));
+                const res = await fetch(`${API_BASE_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userLastMessage, history: historyForChat.slice(0, -1), call_context: true })
+                });
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let fullBotResponseText = '';
+                let buffer = '';
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    let newlineIndex;
+                    while ((newlineIndex = buffer.indexOf('\n\n')) !== -1) {
+                        const message = buffer.substring(0, newlineIndex);
+                        buffer = buffer.substring(newlineIndex + 2);
+                        if (message.startsWith('data: ')) {
+                            let jsonStr = message.substring(5).trim();
+                            if (jsonStr === '[DONE]') break;
+                            try {
+                                const chunkData = JSON.parse(jsonStr);
+                                if (chunkData.type === 'content' && chunkData.content) {
+                                    // CRITICAL FIX: Strip citations so the TTS engine doesn't read brackets aloud!
+                                    const cleanedContent = chunkData.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
+                                    fullBotResponseText += cleanedContent;
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                const finalBotResponse = fullBotResponseText.trim() || "I'm sorry, I couldn't generate a response.";
+                callHistory.push({ role: 'ai', content: finalBotResponse });
+                addCallMessage('bot', finalBotResponse);
+                speakBotResponse(finalBotResponse);
+            } catch (err) {
+                const errorMsg = `❌ Connection lost: ${err.message}`;
+                addCallMessage('bot', errorMsg);
+                if(callStatusMessage) callStatusMessage.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error. Tap to reset.';
+                if(tapToTalk) tapToTalk.style.display = 'block';
+            }
+        }
+
+        async function speakBotResponse(textToSpeak) {
+            if (!isCallActive || !botImageContainer || !callStatusMessage) return;
+            botIsSpeaking = true;
+            botImageContainer.classList.add('speaking'); // Triggers CSS ripple & nod animation
+            callStatusMessage.innerHTML = '<i class="fa-solid fa-volume-high"></i> Synthesizing audio...';
+            if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
+
+            try {
+                let res;
+                if (selectedCallVoiceProvider === 'gemini') {
+                    const fd = new FormData();
+                    fd.append('text', textToSpeak);
+                    fd.append('style', selectedCallVoiceId);
+                    res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd });
+                } else {
+                    res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ text: textToSpeak, voice_id: selectedCallVoiceId })
+                    });
+                }
+                if (!res.ok) throw new Error(await res.text());
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                
+                currentAudio = new Audio(url);
+                currentAudio.onplay = () => {
+                    callStatusMessage.innerHTML = '<i class="fa-solid fa-wave-square"></i> Transmitting...';
+                };
+                currentAudio.onended = currentAudio.onerror = () => {
+                    botIsSpeaking = false;
+                    if (botImageContainer) botImageContainer.classList.remove('speaking');
+                    currentAudio = null;
+                    URL.revokeObjectURL(url);
+                    if (isCallActive && !isMuted) {
+                        if (callStatusMessage) callStatusMessage.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> Standing by...';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
+                    }
+                };
+                currentAudio.play();
+            } catch (err) {
+                botIsSpeaking = false;
+                if (botImageContainer) botImageContainer.classList.remove('speaking');
+                if (isCallActive && !isMuted) {
+                    if (callStatusMessage) callStatusMessage.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Audio offline. Tap to speak.';
+                    if (tapToTalk) tapToTalk.style.display = 'block';
+                    if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
+                }
+            }
+        }
+
+        function endCall() {
+            isCallActive = false;
+            botIsSpeaking = false;
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+            if (speechRecognition && isRecognizing) try { speechRecognition.abort(); } catch(e) {}
+            isRecognizing = false;
+            if (callModal) callModal.classList.remove('active');
+            if (botImageContainer) botImageContainer.classList.remove('speaking');
+            if (tapToTalk) tapToTalk.style.display = 'none';
+            if (callStatusMessage) callStatusMessage.innerHTML = 'Connection Terminated.';
+            if (userSpeechWave) userSpeechWave.classList.remove('active');
+        }
+
+        function stopBotSpeakingAndStartListening() {
+            if (!isCallActive) return;
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+            botIsSpeaking = false;
+            if(botImageContainer) botImageContainer.classList.remove('speaking');
+            const userMsgEl = callConversation.querySelector('.call-msg.user.interim');
+            if(userMsgEl) userMsgEl.remove();
+            if (!isMuted) {
+                if (callStatusMessage) callStatusMessage.innerHTML = '<i class="fa-solid fa-microphone-lines"></i> Listening...';
+                if (tapToTalk) tapToTalk.style.display = 'none';
+                if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
+            }
+        }
+
+        if (callModal) callModal.addEventListener('click', (e) => {
+            // Prevent interrupting if clicking controls or settings
+            if(!e.target.closest('#callControls') && !e.target.closest('#callSettings')) {
+                stopBotSpeakingAndStartListening();
+            }
+        });
+
+        if (callBtn) {
+            callBtn.addEventListener('click', () => {
+                if (!SpeechRecognition) {
+                    alert("Your browser doesn't support the Web Speech API. Please try Chrome, Edge, or Safari.");
+                    return;
+                }
+                isCallActive = true;
+                isMuted = false;
+                if (muteCallBtn) {
+                    muteCallBtn.classList.remove('muted');
+                    muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                }
+                callModal.classList.add('active');
+                callConversation.innerHTML = `<div class="call-msg status">Initializing secure connection...</div><div id="userSpeechWave"></div>`;
+                callStatusMessage.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Linking to server...';
+                tapToTalk.style.display = 'none';
+                callHistory =[];
+
+                setTimeout(() => {
+                    if (!isCallActive) return;
+                    addCallMessage('status', 'Uplink established. You may speak.');
+                    callStatusMessage.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> Standing by...';
+                    tapToTalk.style.display = 'block';
+                    if (!isMuted && !isRecognizing) try { speechRecognition.start(); } catch(e) {}
+                }, 1500);
+            });
+        }
+
+        if (endCallBtn) endCallBtn.addEventListener('click', endCall);
+
+        if (muteCallBtn) {
+            muteCallBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isMuted = !isMuted;
+                if (isMuted) {
+                    muteCallBtn.classList.add('muted');
+                    muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Unmute';
+                    if (speechRecognition && isRecognizing) try { speechRecognition.stop(); } catch(e) {}
+                    callStatusMessage.innerHTML = '<i class="fa-solid fa-microphone-slash"></i> Audio Muted.';
+                    tapToTalk.style.display = 'none';
+                    if (userSpeechWave) userSpeechWave.classList.remove('active');
+                } else {
+                    muteCallBtn.classList.remove('muted');
+                    muteCallBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Mute';
+                    if (isCallActive && !botIsSpeaking) {
+                        callStatusMessage.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> Standing by...';
+                        if (tapToTalk) tapToTalk.style.display = 'block';
+                        if (!isRecognizing) try { speechRecognition.start(); } catch(e) {}
+                    }
+                }
+            });
+        }
+
+        // Focus input on load for immediate typing
+        if(userInput) userInput.focus();
+    });
+</script>
 </body>
 </html>
 
