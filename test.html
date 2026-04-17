@@ -738,87 +738,687 @@ ul, ol { margin-left: 1.5em; margin-bottom: 1em; }
     </div>
 
         
-    <!-- JavaScript block heavily cleaned up to match the new UI -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, query, orderBy, serverTimestamp, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-        // Keep your original Firebase config here
-        const firebaseConfig = {
-            apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-            authDomain: "elvionai.firebaseapp.com",
-            projectId: "elvionai",
-            storageBucket: "elvionai.appspot.com",
-            messagingSenderId: "161078300830",
-            appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-        };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+    const firebaseConfig = {
+        apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+        authDomain: "elvionai.firebaseapp.com",
+        projectId: "elvionai",
+        storageBucket: "elvionai.appspot.com",
+        messagingSenderId: "161078300830",
+        appId: "1:161078300830:web:f460df8591704eb0e96b8f"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-        const $ = id => document.getElementById(id);
-        const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
-        
-        let chats = [], currentChatId = null, currentMessages =[], uploadedFiles =[], currentUser = null;
-        let currentController = null;
-        let isAIResponding = false;
-        let currentModel = 'gemini';
+    const $ = id => document.getElementById(id);
 
-        // Add extra stars
-        const cosmos = $('cosmos-container');
-        for(let i=0; i<80; i++) {
-            let s = document.createElement('div');
-            s.className = 'star';
-            s.style.top = Math.random()*100+'%';
-            s.style.left = Math.random()*100+'%';
-            s.style.width = s.style.height = (Math.random()*2 + 1)+'px';
-            s.style.setProperty('--duration', (Math.random()*4+2)+'s');
-            cosmos.appendChild(s);
+    // --- API ENDPOINT MANAGEMENT ---
+    const API_BASE_URL = 'https://web-production-9a18.up.railway.app';
+    const API_ENDPOINTS = {
+        gemini: `${API_BASE_URL}/chat`, // Philadelphia
+        perplexity: `${API_BASE_URL}/api/seraphina/chat`, // Seraphina (Kept for Deep Web Research tool only)
+        bobby: `${API_BASE_URL}/api/llama/chat` // Bobby
+    };
+
+    let chats =[];
+    let currentChatId = null;
+    let currentMessages = [];
+    let uploadedFiles =[];
+    let currentUser = null;
+    let currentController = null; 
+    let fileObjectURLs =[]; 
+
+    let chatsUnsubscribe = null;
+    let messagesUnsubscribe = null;
+
+    const cosmos = $('cosmos-container');
+
+    // Call-related state variables
+    let speechRecognition;
+    let isCallActive = false;
+    let callHistory =[];
+    let botIsSpeaking = false;
+    let userSaidSomething = false;
+    let currentAudio = null;
+    let isMuted = false;
+    let isRecognizing = false;
+    let selectedCallVoiceId = 'elder'; 
+    let selectedCallVoiceProvider = 'minimax'; 
+
+    // Comic viewer state
+    let comicPanels =[];
+    let currentComicPanelIndex = 0;
+    
+    // --- MODEL STATE ---
+    let currentModel = 'gemini'; // Default to Philadelphia
+    
+    // --- STREAMING & TYPEWRITER STATE ---
+    let typewriterInterval = null;      
+    let isAIResponding = false;         
+    
+    let currentAIMessageElement = null; 
+    let currentAIContentElement = null; 
+    let currentAIControlsElement = null; 
+    let currentCursorElement = null;
+    let fullResponseContent = '';
+    let typewriterIndex = 0;
+    let currentProcessingMessageElement = null; 
+
+    // --- COSMIC BACKGROUND ANIMATIONS ---
+    function igniteCosmos() {
+        if (cosmos) {
+            cosmos.querySelectorAll('.star').forEach(p => p.remove());
+            for (let i = 0; i < 150; i++) { // Reduced count for cleaner studio look
+                const particle = document.createElement('div');
+                particle.className = 'star';
+                const size = Math.random() * 2 + 0.5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                particle.style.setProperty('--duration', `${Math.random() * 5 + 3}s`);
+                particle.style.opacity = Math.random() * 0.7 + 0.1;
+                cosmos.appendChild(particle);
+            }
         }
+    }
 
-        // Basic UI Toggles
-        window.closeToolMenu = () => { $('toolsMenu').classList.remove('active'); $('toolsMenuBg').classList.remove('active'); };
-        $('toolBtn').onclick = () => { $('toolsMenuBg').classList.add('active'); $('toolsMenu').classList.add('active'); };
-        $('toolsMenuBg').onclick = (e) => { if(e.target.id === 'toolsMenuBg') closeToolMenu(); };
+    function launchShootingStar() {
+        if (!cosmos) return;
+        const star = document.createElement('div');
+        star.className = 'shooting-star';
+        const startX = Math.random() * window.innerWidth * 2 - window.innerWidth / 2;
+        const startY = Math.random() * window.innerHeight / 2 - window.innerHeight / 4;
+        const travelX = -Math.random() * 1000 - 500;
+        const travelY = Math.random() * 800 + 400;
+        const duration = Math.random() * 3 + 2;
+        const initialWidth = Math.random() * 80 + 30;
+
+        star.style.setProperty('--startX', `${startX}px`);
+        star.style.setProperty('--startY', `${startY}px`);
+        star.style.setProperty('--travelX', `${travelX}px`);
+        star.style.setProperty('--travelY', `${travelY}px`);
+        star.style.setProperty('--duration', `${duration}s`);
+        star.style.setProperty('--initialWidth', `${initialWidth}px`);
+
+        cosmos.appendChild(star);
+        setTimeout(() => star.remove(), duration * 1000);
+    }
+
+    igniteCosmos();
+    setInterval(() => {
+         if (Math.random() < 0.3) launchShootingStar();
+    }, 4000);
+
+    // --- THEME INITIALIZATION ---
+    function initTheme() {
+        const savedTheme = localStorage.getItem('studioTheme') || 'dark';
+        document.body.setAttribute('data-theme', savedTheme);
         
-        window.closeProfileMenu = () => { $('profileMenu').classList.remove('active'); $('profileMenuBg').classList.remove('active'); };
-        $('openProfileMenu').onclick = () => { $('profileMenuBg').classList.add('active'); $('profileMenu').classList.add('active'); };
-        $('profileMenuBg').onclick = (e) => { if(e.target.id === 'profileMenuBg') closeProfileMenu(); };
-
-        $('toolFormBackBtn').onclick = () => {
-            $('toolFormModal').classList.remove('active'); $('toolFormModalBg').classList.remove('active');
-            $('toolsMenuBg').classList.add('active'); $('toolsMenu').classList.add('active');
-        };
-
-        // Textarea auto-resize
-        const userInput = $('userInput');
-        userInput.oninput = () => {
-            userInput.style.height = '52px';
-            userInput.style.height = Math.min(userInput.scrollHeight, 200) + 'px';
-        };
-
-        const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-        
-        // Markdown parser
-        function renderMarkdown(text = '') {
-            // Convert code blocks
-            text = escapeHTML(text).replace(/```(\w+)?\n([\s\S]*?)```/g, (m, lang, code) => {
-                return `<pre data-lang="${lang || 'code'}"><button class="copy-btn">Copy</button><code>${code}</code></pre>`;
+        // Setup listeners for theme buttons once DOM is loaded
+        setTimeout(() => {
+            const themeBtns = document.querySelectorAll('.theme-dropdown button');
+            themeBtns.forEach(btn => {
+                if (btn.dataset.setTheme === savedTheme) btn.classList.add('active-theme');
+                
+                btn.addEventListener('click', (e) => {
+                    const theme = e.currentTarget.dataset.setTheme;
+                    document.body.setAttribute('data-theme', theme);
+                    localStorage.setItem('studioTheme', theme);
+                    themeBtns.forEach(b => b.classList.remove('active-theme'));
+                    e.currentTarget.classList.add('active-theme');
+                });
             });
-            // Convert bold/italic
-            text = text.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
-            text = text.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
-            // Convert Links
-            text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" style="color:var(--accent-cyan);">$1</a>');
-            // Convert newlines
-            return text.replace(/\n/g, '<br>');
+        }, 100);
+    }
+    initTheme();
+
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const profileMenuBg = $('profileMenuBg');
+        const profileMenu = $('profileMenu');
+        const linksMenuBg = $('linksMenuBg');
+        const linksMenu = $('linksMenu');
+        const toolsMenuBg = $('toolsMenuBg');
+        const toolsMenu = $('toolsMenu');
+        const toolBtn = $('toolBtn');
+        const logoutBtn = $('logoutBtn');
+        const headerWelcome = $('headerWelcome');
+        const profileMenuUser = $('profileMenuUser');
+        const profileMenuEmail = $('profileMenuEmail');
+        const editName = $('edit-name');
+        const editPhoto = $('edit-photo');
+        const profilePicPreview = $('profilePicPreview');
+        const profileForm = $('profileForm');
+        const chatViewport = $('chat-viewport');
+        const userInput = $('userInput');
+        const sendBtn = $('sendBtn');
+        const stopBtn = $('stopBtn');
+        const chatFile = $('chatFile');
+        const filePreview = $('filePreview');
+        const newChatBtn = $('newChatBtn');
+        const chatsListEl = $('chatsList');
+        const emojiPanel = $('emojiPanel');
+        const emojiBtn = $('emojiBtn');
+        const toolFormModalBg = $('toolFormModalBg');
+        const toolFormModal = $('toolFormModal');
+        const toolForm = $('toolForm');
+        const toolFormTitle = $('toolFormTitle');
+        const toolFormBackBtn = $('toolFormBackBtn');
+        const lightbox = $('lightbox');
+        const inputDock = $('inputDock'); 
+        const brandTitle = $('brandTitle');
+        
+        // Removed old AI image and comic popups here.
+
+        // Call Elements
+        const callBtn = $('callBtn');
+        const callModal = $('callModal');
+        const endCallBtn = $('endCallBtn');
+        const muteCallBtn = $('muteCallBtn');
+        const callVoiceModel = $('callVoiceModel');
+        const callVoiceStyle = $('callVoiceStyle');
+        const callVoiceStyleLabel = $('callVoiceStyleLabel');
+        const callConversation = $('callConversation');
+        const botImageContainer = $('botImageContainer');
+        const callStatusMessage = $('callStatusMessage');
+        const tapToTalk = $('tapToTalk');
+        const userSpeechWave = $('userSpeechWave');
+        
+        if (!chatViewport || !userInput || !inputDock) {
+            console.error("Essential UI elements are missing.");
+            return;
+        }
+        
+        const addWelcomeMessage = () => {
+            const welcomeMsg = `
+            <div class="message-group ai">
+                <div class="msg-bubble">
+                    <div class="ai-content-area">
+                        Greetings, creator. <i class="fa-solid fa-bolt" style="color: var(--accent-main)"></i> The studio is online and fully synchronized. What are we building today?
+                    </div>
+                    <div class="ai-msg-controls">
+                        <div class="meta-text">Studio Initialized</div>
+                        <button type="button" class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+                        <div class="switch-model-btn" title="Change AI Model">
+                            <button><i class="fa-solid fa-layer-group"></i> Switch Model</button>
+                            <div class="model-switch-popup">
+                                <button data-model="gemini" class="${currentModel === 'gemini' ? 'active-model' : ''}"><i class="fa-solid fa-sparkles"></i> Philadelphia</button>
+                                <button data-model="bobby" class="${currentModel === 'bobby' ? 'active-model' : ''}"><i class="fa-solid fa-robot"></i> Bobby</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            if(chatViewport.innerHTML.trim() === '') {
+                chatViewport.innerHTML = welcomeMsg;
+                hookAiMsgControls();
+            }
+        };
+
+        // --- MODEL SELECTION LOGIC ---
+        function setCurrentModel(newModel) {
+            if (!['gemini', 'bobby'].includes(newModel)) {
+                newModel = 'gemini'; 
+            }
+            currentModel = newModel;
+            localStorage.setItem('userPreferredModel', newModel);
+            if (brandTitle) {
+                if (newModel === 'gemini') brandTitle.innerHTML = '<i class="fa-solid fa-sparkles"></i> Philadelphia Studio';
+                else if (newModel === 'bobby') brandTitle.innerHTML = '<i class="fa-solid fa-robot"></i> Bobby Studio';
+            }
         }
 
-        function scrollToBottom() {
-            setTimeout(() => { $('chat-viewport').scrollTop = $('chat-viewport').scrollHeight; }, 50);
+        const savedModel = localStorage.getItem('userPreferredModel');
+        if (savedModel && ['gemini', 'bobby'].includes(savedModel)) {
+            setCurrentModel(savedModel);
+        } else {
+            setCurrentModel('gemini');
+            addWelcomeMessage();
         }
+
+        const emojis =["😀","😂","😍","🥰","😎","👍","🙏","🔥","💯","🎉","😇","🤖","👀","✨","🎨","🚀"];
+        if (emojiBtn && emojiPanel && userInput) {
+            emojiBtn.addEventListener('click', (e) => {
+                emojiPanel.innerHTML = emojis.map(em => `<span class="emoji-pick" role="button">${em}</span>`).join('');
+                emojiPanel.classList.toggle('active');
+                const rect = emojiBtn.getBoundingClientRect();
+                const panelWidth = emojiPanel.offsetWidth || 250; 
+
+                let panelLeft = rect.left;
+                if (panelLeft + panelWidth > window.innerWidth - 10) panelLeft = window.innerWidth - panelWidth - 10;
+                if (panelLeft < 10) panelLeft = 10;
+
+                emojiPanel.style.left = `${panelLeft}px`;
+                emojiPanel.style.bottom = `${inputDock.offsetHeight + 10}px`;
+            });
+            document.addEventListener('click', e => {
+                if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== emojiBtn) {
+                    emojiPanel.classList.remove('active');
+                }
+            });
+            emojiPanel.addEventListener('click', function(e) {
+                if (e.target && e.target.classList.contains('emoji-pick')) {
+                    const text = e.target.textContent || '';
+                    const start = userInput.selectionStart || 0;
+                    const end = userInput.selectionEnd || 0;
+                    userInput.value = userInput.value.slice(0, start) + text + userInput.value.slice(end);
+                    userInput.focus();
+                    userInput.selectionStart = userInput.selectionEnd = start + text.length;
+                    emojiPanel.classList.remove('active');
+                    userInput.dispatchEvent(new Event('input'));
+                }
+            });
+        }
+
+        if (userInput) {
+            const autoResize = () => {
+                if (!userInput) return;
+                userInput.style.height = '54px'; 
+                const newHeight = Math.min(userInput.scrollHeight, 250);
+                userInput.style.height = `${newHeight}px`;
+            };
+            userInput.addEventListener('input', autoResize);
+            autoResize();
+        }
+
+        if (chatFile) {
+            chatFile.addEventListener('change', function() {
+                fileObjectURLs.forEach(url => URL.revokeObjectURL(url));
+                fileObjectURLs =[];
+                uploadedFiles = Array.from(this.files ||[]);
+                renderFilePreview();
+            });
+        }
+
+        if (lightbox) {
+            lightbox.addEventListener('click', () => lightbox.classList.remove('active'));
+        }
+        if (chatViewport) {
+            chatViewport.addEventListener('click', e => {
+                if (e.target && e.target.tagName === 'IMG' && e.target.closest('.message-group.ai .msg-bubble')) {
+                    // Prevent lightbox if it's a UI icon inside a button
+                    if(e.target.classList.contains('icon') || e.target.style.width === '40px') return; 
+                    
+                    e.preventDefault();
+                    const lbImg = lightbox.querySelector('img');
+                    if (lbImg) {
+                        lbImg.src = e.target.src;
+                        lightbox.classList.add('active');
+                    }
+                }
+            });
+        }
+
+        window.closeToolMenu = () => { if (toolsMenu) toolsMenu.classList.remove('active'); if (toolsMenuBg) toolsMenuBg.classList.remove('active'); };
+        window.openToolMenu = () => { if (toolsMenuBg) toolsMenuBg.classList.add('active'); if (toolsMenu) toolsMenu.classList.add('active'); };
+        window.closeProfileMenu = () => { if (profileMenu) profileMenu.classList.remove('active'); if (profileMenuBg) profileMenuBg.classList.remove('active'); };
+        window.closeLinksMenu = () => { if (linksMenu) linksMenu.classList.remove('active'); if (linksMenuBg) linksMenuBg.classList.remove('active'); };
+
+        if (profileMenuBg) {
+            const openProfileBtn = $('openProfileMenu');
+            if (openProfileBtn) {
+                openProfileBtn.addEventListener('click', () => {
+                    if (profileMenuBg) profileMenuBg.classList.add('active');
+                    if (profileMenu) profileMenu.classList.add('active');
+                });
+            }
+            profileMenuBg.addEventListener('click', e => { if (e.target === profileMenuBg) closeProfileMenu(); });
+        }
+
+        if (linksMenuBg) {
+            const openLinksBtn = $('openLinksMenu');
+            if (openLinksBtn) {
+                openLinksBtn.addEventListener('click', () => { if (linksMenuBg) linksMenuBg.classList.add('active'); if (linksMenu) linksMenu.classList.add('active'); });
+            }
+            linksMenuBg.addEventListener('click', e => { if (e.target === linksMenuBg) closeLinksMenu(); });
+        }
+
+        if (toolBtn) toolBtn.addEventListener('click', openToolMenu);
+        if (toolsMenuBg) toolsMenuBg.addEventListener('click', e => { if (e.target === toolsMenuBg) closeToolMenu(); });
+
+        if (toolFormBackBtn) {
+            toolFormBackBtn.addEventListener('click', () => {
+                if (toolFormModal) toolFormModal.classList.remove('active');
+                if (toolFormModalBg) toolFormModalBg.classList.remove('active');
+                openToolMenu();
+            });
+        }
+        if (toolFormModalBg) toolFormModalBg.addEventListener('click', e => { if (e.target === toolFormModalBg) toolFormModalBg.classList.remove('active'); });
+
+        if (logoutBtn) logoutBtn.addEventListener('click', () => { auth.signOut(); window.location.href = 'signup-login.html'; });
+
+        onAuthStateChanged(auth, user => {
+            if (!user) {
+                try { window.location.href = "signup-login.html"; } catch (e) {}
+                return;
+            }
+            currentUser = user;
+            const displayName = user.displayName || (user.email || '').split('@')[0];
+            if (profileMenuUser) profileMenuUser.textContent = displayName;
+            if (profileMenuEmail) profileMenuEmail.textContent = user.email || "";
+            if (editName) editName.value = displayName;
+            if (editPhoto) editPhoto.value = user.photoURL || "";
+            if (profilePicPreview) profilePicPreview.src = user.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
+            if (headerWelcome) headerWelcome.textContent = `Welcome back, ${displayName}`;
+            loadUserChats(user.uid);
+        });
+
+        if (profileForm) {
+            profileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUser) return;
+                const status = $('profileStatusMsg');
+                if (status) status.textContent = 'Saving...';
+                try {
+                    await updateProfile(currentUser, { displayName: editName.value, photoURL: editPhoto.value });
+                    if (auth.currentUser) await auth.currentUser.reload();
+                    if (status) { status.textContent = "Profile updated!"; status.style.color = "var(--success-main)"; }
+                    setTimeout(() => { closeProfileMenu(); }, 800);
+                    if (profilePicPreview) profilePicPreview.src = auth.currentUser?.photoURL || "https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg";
+                    if (headerWelcome) headerWelcome.textContent = `Welcome back, ${auth.currentUser?.displayName || 'User'}`;
+                } catch (err) {
+                    if (status) { status.textContent = err.message; status.style.color = "var(--danger-main)"; }
+                }
+            });
+        }
+
+        async function loadUserChats(userId) {
+            if (chatsUnsubscribe) chatsUnsubscribe();
+            const chatsCol = collection(db, 'users', userId, 'chats');
+            const q = query(chatsCol, orderBy('createdAt', 'desc'));
+            chatsUnsubscribe = onSnapshot(q, async (snapshot) => {
+                if (snapshot.empty) {
+                    await createNewChat(userId);
+                    return;
+                }
+                chats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderChatsListSidebar();
+                if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
+                    currentChatId = chats[0].id;
+                }
+                subscribeToMessages(userId, currentChatId);
+            }, (error) => {
+                console.error("Error fetching chats: ", error);
+                if (chatsListEl) chatsListEl.innerHTML = `<div class="message-group system" style="color: var(--danger-main);">Error loading chats.</div>`;
+            });
+        }
+
+        async function createNewChat(userId) {
+            if (!userId) userId = currentUser?.uid;
+            if (!userId) return;
+            const chatsCol = collection(db, 'users', userId, 'chats');
+            try {
+                const newChatDoc = await addDoc(chatsCol, { name: "New Project", createdAt: serverTimestamp() });
+                currentChatId = newChatDoc.id;
+            } catch (e) {
+                console.error("Error creating new chat: ", e);
+            }
+        }
+
+        function subscribeToMessages(userId, chatId) {
+            if (messagesUnsubscribe) messagesUnsubscribe();
+            if (!userId || !chatId) {
+                renderChatBox([]);
+                return;
+            }
+            const messagesCol = collection(db, 'users', userId, 'chats', chatId, 'messages');
+            const q = query(messagesCol, orderBy('createdAt'));
+            messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+                if (isAIResponding) return;
+                currentMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderChatBox(currentMessages);
+            }, (error) => {
+                console.error("Error fetching messages: ", error);
+                if (chatViewport) chatViewport.innerHTML = `<div class="message-group system" style="color: var(--danger-main); margin-top: 20px;">Error loading messages for this chat.</div>`;
+            });
+        }
+
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', () => { if (currentUser) createNewChat(currentUser.uid); });
+        }
+
+        function renderChatsListSidebar() {
+            if (!chatsListEl) return;
+            chatsListEl.innerHTML = '';
+            if (chats.length === 0) {
+                chatsListEl.innerHTML = `<div class="message-group system" style="padding: 10px;">No chats yet.</div>`;
+                return;
+            }
+            chats.forEach((chat) => {
+                const container = document.createElement('div');
+                if(chat.id === currentChatId) container.style.background = 'var(--accent-bg)';
+
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = chat.name || `New Project`;
+                titleSpan.onclick = () => {
+                    currentChatId = chat.id;
+                    if (currentUser) subscribeToMessages(currentUser.uid, currentChatId);
+                    renderChatsListSidebar();
+                    closeProfileMenu();
+                };
+
+                const renameBtn = document.createElement('button');
+                renameBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                renameBtn.title = 'Rename Chat';
+                renameBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const newName = prompt("Rename project:", chat.name);
+                    if (newName && newName.trim()) {
+                        if (currentUser && chat.id) {
+                            const chatDoc = doc(db, 'users', currentUser.uid, 'chats', chat.id);
+                            await setDoc(chatDoc, { name: newName.trim() }, { merge: true });
+                        }
+                    }
+                };
+
+                const delBtn = document.createElement('button');
+                delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                delBtn.title = 'Delete Chat';
+                delBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Delete "${chat.name}"? This cannot be undone.`)) return;
+
+                    if (currentUser && chat.id) {
+                        const messagesCol = collection(db, 'users', currentUser.uid, 'chats', chat.id, 'messages');
+                        const messagesSnap = await getDocs(messagesCol);
+                        const batch = writeBatch(db);
+                        messagesSnap.docs.forEach(d => batch.delete(d.ref));
+                        await batch.commit();
+
+                        const chatDoc = doc(db, 'users', currentUser.uid, 'chats', chat.id);
+                        await deleteDoc(chatDoc);
+
+                        if (currentChatId === chat.id) currentChatId = null;
+                    }
+                };
+
+                container.appendChild(titleSpan);
+                container.appendChild(renameBtn);
+                container.appendChild(delBtn);
+                chatsListEl.appendChild(container);
+            });
+        }
+        
+        // IMPROVEMENT: Centralized HTML escaping to prevent XSS.
+        const escapeHTML = (str = '') => String(str).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+        function inlineMarkdown(rawText = '') {
+            let s = escapeHTML(String(rawText));
+            
+            // Allow <think> tags to pass through escaping so CSS can style them!
+            s = s.replace(/&lt;think&gt;/gi, '<think>').replace(/&lt;\/think&gt;/gi, '</think>');
+            
+            s = s.replace(/`([^`]+?)`/g, '<code>$1</code>');
+            s = s.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/(^|[\s(])\*([^*]+?)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>');
+            s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+            
+            return s.replace(/\n/g, '<br>');
+        }
+
+        function renderMarkdown(text = '') {
+            const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+            let html = '';
+            let lastIndex = 0;
+            text = text || '';
+            text.replace(codeBlockRegex, (match, lang, code, offset) => {
+                const before = text.slice(lastIndex, offset);
+                html += inlineMarkdown(before);
+                const language = (lang || '').toLowerCase().trim();
+                const safeCode = escapeHTML(code);
+                html += `<pre data-lang="${language || 'plaintext'}"><button class="copy-btn"><i class='fa-solid fa-copy'></i> Copy</button><code class="language-${language || 'plaintext'}">${safeCode}</code></pre>`;
+                lastIndex = offset + match.length;
+                return match;
+            });
+            html += inlineMarkdown(text.slice(lastIndex));
+            return { html };
+        }
+
+        function enhanceCodeBlocks(container) {
+            if (!container) return;
+            container.querySelectorAll('pre').forEach(pre => {
+                const codeEl = pre.querySelector('code');
+                if (window.hljs && codeEl && !pre.classList.contains('highlighted')) {
+                    try { hljs.highlightElement(codeEl); } catch (e) { console.error("Highlight error:", e); }
+                    pre.classList.add('highlighted');
+                }
+                const btn = pre.querySelector('.copy-btn');
+                if (btn && codeEl) {
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+
+                    newBtn.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(codeEl.innerText);
+                            newBtn.innerHTML = "<i class='fa-solid fa-check'></i> Copied!";
+                            setTimeout(() => { if (newBtn) newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1500);
+                        } catch (e) {
+                            newBtn.innerHTML = "<i class='fa-solid fa-times'></i> Failed";
+                            setTimeout(() => { newBtn.innerHTML = "<i class='fa-solid fa-copy'></i> Copy"; }, 1500);
+                        }
+                    });
+                }
+            });
+        }
+
+        function addSystemMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'message-group system';
+            div.innerHTML = `<div class="msg-bubble">${escapeHTML(text)}</div>`;
+            chatViewport.appendChild(div);
+            scrollToBottom();
+        }
+
+        function renderChatBox(messages =[]) {
+            if (!chatViewport) return;
+            chatViewport.innerHTML = ''; 
+
+            if(messages.length === 0) {
+                addWelcomeMessage();
+            } else {
+                (messages ||[]).forEach((msg) => {
+                    const div = document.createElement('div');
+                    div.className = 'message-group ' + (msg.role === 'user' ? 'user' : 'ai');
+                    div.setAttribute('data-message-id', msg.id);
+                    let innerHtml = '';
+
+                    if (msg.role === 'user') {
+                        const fileHtml = (msg.files ||[])
+                            .map(file => {
+                                let icon = 'fa-file';
+                                if (file.type && file.type.startsWith('image/')) icon = 'fa-file-image';
+                                else if (file.type && file.type.startsWith('video/')) icon = 'fa-file-video';
+                                else if (file.type && file.type.startsWith('audio/')) icon = 'fa-file-audio';
+                                else if (file.type === 'application/pdf') icon = 'fa-file-pdf';
+                                return `<div class="file-placeholder"><i class="fa-solid ${icon}"></i> ${escapeHTML(file.name || 'Unknown file')}</div>`;
+                            }).join('');
+                        
+                        const userContent = renderMarkdown(msg.text || '').html;
+
+                        innerHtml = `
+                        <div class="msg-bubble">
+                            ${fileHtml ? `<div class="file-attachments">${fileHtml}</div>` : ''}
+                            ${userContent}
+                        </div>
+                        <div class="user-msg-controls">
+                            <button type="button" class="inline-edit-btn" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button type="button" class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+                        </div>`;
+                    } else {
+                        // AI Message rendering
+                        let content;
+                        if (msg.text && (msg.text.includes('<img') || msg.text.includes('<audio') || msg.text.includes('<video') || msg.text.includes('class="tool-result-box"'))) {
+                            content = msg.text; // Trust rich media generated from tools
+                        } else {
+                            content = renderMarkdown(msg.text || '').html;
+                        }
+                        
+                        const timeDisplay = msg.duration ? `<span class="meta-text">${msg.duration}s</span>` : '';
+                        
+                        innerHtml = `
+                        <div class="msg-bubble">
+                            <div class="ai-content-area">${content}</div>
+                        </div>
+                        <div class="ai-msg-controls">
+                            ${timeDisplay}
+                            <button type="button" class="inline-copy-btn" title="Copy"><i class="fa-solid fa-copy"></i></button>
+                            <button type="button" class="inline-share-btn" title="Share"><i class="fa-solid fa-share-nodes"></i></button>
+                            <button type="button" class="inline-regen-btn" title="Regenerate"><i class="fa-solid fa-arrows-rotate"></i></button>
+                            <div class="switch-model-btn" title="Change AI Model">
+                                <button><i class="fa-solid fa-layer-group"></i> Switch</button>
+                                <div class="model-switch-popup">
+                                    <button data-model="gemini" class="${currentModel === 'gemini' ? 'active-model' : ''}"><i class="fa-solid fa-sparkles"></i> Philadelphia</button>
+                                    <button data-model="bobby" class="${currentModel === 'bobby' ? 'active-model' : ''}"><i class="fa-solid fa-robot"></i> Bobby</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    }
+                    div.innerHTML = innerHtml;
+                    chatViewport.appendChild(div);
+                });
+            }
+            
+            enhanceCodeBlocks(chatViewport);
+            hookAiMsgControls();
+            hookUserMsgControls();
+            scrollToBottom();
+        }
+
+        async function deleteMessagesFrom(messageId) {
+            if (!currentChatId || !currentUser) return;
+            const msgIndex = currentMessages.findIndex(m => m.id === messageId);
+            if (msgIndex === -1) return;
+            const batch = writeBatch(db);
+            const messagesCol = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
+            for (let i = msgIndex; i < currentMessages.length; i++) {
+                const msgToDel = currentMessages[i];
+                if (msgToDel.id && !msgToDel.id.startsWith('temp-id-')) {
+                    const docRef = doc(messagesCol, msgToDel.id);
+                    batch.delete(docRef);
+                }
+            }
+            try { await batch.commit(); } catch (e) { console.error("Delete err:", e); }
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }        
 
         // Welcome Message (REMOVED SERAPHINA FROM SWITCH)
         function addWelcomeMessage() {
