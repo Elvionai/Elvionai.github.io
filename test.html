@@ -1420,216 +1420,639 @@ ul, ol { margin-left: 1.5em; margin-bottom: 1em; }
             });
         }        
 
-        // Welcome Message (REMOVED SERAPHINA FROM SWITCH)
-        function addWelcomeMessage() {
-            const html = `
-                <div class="message-group ai">
-                    <div class="msg-bubble">
-                        Welcome to the Studio. How can I assist your creative process today?
-                        <div class="ai-msg-controls">
-                            <div class="switch-model-btn">
-                                <button><i class="fa-solid fa-layer-group"></i> Switch Model</button>
-                                <div class="model-switch-popup">
-                                    <button data-model="gemini" class="${currentModel==='gemini'?'active-model':''}"><i class="fa-solid fa-sparkles"></i> Philadelphia</button>
-                                    <button data-model="bobby" class="${currentModel==='bobby'?'active-model':''}"><i class="fa-solid fa-robot"></i> Bobby</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            $('chat-viewport').innerHTML = html;
-            hookModelSwitchers();
-        }
+        // ==========================================================================
+        // --- STUDIO MEDIA GENERATORS & BACKGROUND POLLING ---
+        // ==========================================================================
 
-        function hookModelSwitchers() {
-            document.querySelectorAll('.model-switch-popup button').forEach(btn => {
-                btn.onclick = (e) => {
-                    currentModel = e.target.dataset.model;
-                    $('brandTitle').innerText = currentModel === 'gemini' ? 'Philadelphia Studio' : 'Bobby Studio';
-                    document.querySelectorAll('.model-switch-popup').forEach(p => p.style.display = 'none');
-                    addWelcomeMessage(); // Refresh to show active
-                }
-            });
-        }
-
-        // --- THE CHAT ENGINE ---
-        window.sendMessage = async function() {
-            const text = userInput.value.trim();
-            if (!text || isAIResponding) return;
-            
-            isAIResponding = true;
-            if (currentController) currentController.abort();
-            currentController = new AbortController();
-
-            // UI changes
-            userInput.value = ''; userInput.style.height = '52px';
-            $('sendBtn').style.display = 'none'; $('stopBtn').style.display = 'flex';
-
-            // Add User message
-            const userDiv = document.createElement('div');
-            userDiv.className = 'message-group user';
-            userDiv.innerHTML = `<div class="msg-bubble">${renderMarkdown(text)}</div>`;
-            $('chat-viewport').appendChild(userDiv);
-
-            // Add AI Placeholder
-            const aiDiv = document.createElement('div');
-            aiDiv.className = 'message-group ai';
-            aiDiv.innerHTML = `
-                <div class="msg-bubble">
-                    <div class="ai-content-area">
-                        <div class="thinking-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-                    </div>
-                </div>`;
-            $('chat-viewport').appendChild(aiDiv);
-            scrollToBottom();
-
-            const contentArea = aiDiv.querySelector('.ai-content-area');
-            let fullText = '';
-
+        async function handleVideoGeneration(payload, isImageToVideo = false) {
+            displayProcessingMessage('Submitting video render to the cluster...');
             try {
-                const endpoint = currentModel === 'bobby' ? `${API_BASE_URL}/api/llama/chat` : `${API_BASE_URL}/chat`;
-                const payload = currentModel === 'bobby' ? { prompt: text } : { message: text, history:[] };
+                const endpoint = isImageToVideo ? '/api/tools/generate-video-from-image' : '/api/tools/generate-video-from-text';
+                const commonPayload = { model: "MiniMax-Hailuo-02", duration: payload.duration || 6, resolution: payload.resolution || "1080P" };
+                let options;
 
-                const res = await fetch(endpoint, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload), signal: currentController.signal
-                });
-
-                if (!res.ok) throw new Error("Server Error");
-
-                if (currentModel === 'bobby') {
-                    const data = await res.json();
-                    fullText = data.content || "No response";
+                if (isImageToVideo) {
+                    const fd = new FormData();
+                    fd.append('prompt', payload.prompt);
+                    fd.append('file', payload.file); 
+                    options = { method: 'POST', body: fd, signal: currentController?.signal };
                 } else {
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder('utf-8');
-                    let buffer = '';
-                    let isFirstChunk = true;
+                    const finalPayload = { ...payload, ...commonPayload };
+                    options = {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(finalPayload),
+                        signal: currentController?.signal
+                    };
+                }
 
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
-                        buffer += decoder.decode(value, { stream: true });
-                        
-                        let nlIdx;
-                        while ((nlIdx = buffer.indexOf('\n\n')) !== -1) {
-                            const chunk = buffer.substring(0, nlIdx);
-                            buffer = buffer.substring(nlIdx + 2);
-                            
-                            if (!chunk.startsWith('data: ')) continue;
-                            const jsonStr = chunk.substring(6).trim();
-                            if (jsonStr === '[DONE]') break;
+                const startRes = await fetch(API_BASE_URL + endpoint, options);
+                const startData = await startRes.json();
 
-                            try {
-                                const data = JSON.parse(jsonStr);
-                                
-                                // FIX: HANDLE SEARCHING STATUS
-                                if (data.type === 'status') {
-                                    const ind = contentArea.querySelector('.thinking-indicator');
-                                    if (ind) ind.remove();
-                                    
-                                    let pill = contentArea.querySelector('.status-pill');
-                                    if (!pill) {
-                                        pill = document.createElement('div');
-                                        pill.className = 'status-pill';
-                                        contentArea.prepend(pill);
-                                    }
-                                    pill.innerHTML = `<i class="fa-solid fa-bolt"></i> ${escapeHTML(data.content)}`;
-                                }
-                                
-                                if (data.type === 'content' && data.content) {
-                                    if (isFirstChunk) {
-                                        isFirstChunk = false;
-                                        contentArea.innerHTML = '<span class="typewriter-cursor"></span>';
-                                    }
-                                    // Remove citations for clean UI
-                                    const cleanContent = data.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g, '');
-                                    fullText += cleanContent;
-                                    
-                                    // Render live with <think> tag support
-                                    let displayHtml = renderMarkdown(fullText);
-                                    // Make <think> tags look nice natively
-                                    displayHtml = displayHtml.replace(/&lt;think&gt;/g, '<think>').replace(/&lt;\/think&gt;/g, '</think>');
-                                    
-                                    contentArea.innerHTML = displayHtml + '<span class="typewriter-cursor"></span>';
-                                    scrollToBottom();
-                                }
-                            } catch (e) {}
+                if (!startRes.ok || !startData.task_id) throw new Error(startData.detail || startData.error || 'Failed to start video task.');
+
+                await showToolResponse(`<div class="status-pill"><i class="fa-solid fa-satellite-dish"></i> Render Initiated</div>\n\nVideo job submitted! Task ID: \`${startData.task_id}\`.\n\n*The studio cluster is rendering your video. I will notify you when it's ready. This usually takes 2-4 minutes. Please do not close this session.*`);
+
+                const pollInterval = setInterval(async () => {
+                    try {
+                        if (currentController?.signal.aborted) {
+                            clearInterval(pollInterval);
+                            return;
+                        }
+                        const statusRes = await fetch(`${API_BASE_URL}/api/tools/video-status?task_id=${startData.task_id}`, { signal: currentController?.signal });
+                        const statusData = await statusRes.json();
+
+                        if (statusRes.ok && statusData.url) {
+                            clearInterval(pollInterval);
+                            const videoHtml = `
+                                <div class="status-pill" style="color: var(--success-main); border-color: var(--success-main);"><i class="fa-solid fa-check-circle"></i> Render Complete</div>
+                                <video controls src="${statusData.url}" class="chat-media-preview" style="width: 100%;"></video>
+                            `;
+                            await addMessageToChat('ai', videoHtml);
+                        } else if (!statusRes.ok || statusData.status?.toLowerCase().includes('fail')) {
+                            clearInterval(pollInterval);
+                            await addMessageToChat('ai', `❌ Video generation failed. Reason: ${statusData.error || 'Unknown error'}`);
+                        }
+                    } catch (pollErr) {
+                        if (pollErr.name === 'AbortError') {
+                            clearInterval(pollInterval);
                         }
                     }
-                }
+                }, 20000);
             } catch (err) {
-                fullText = err.name === 'AbortError' ? fullText + "\n*(Stopped)*" : `Error: ${err.message}`;
-            }
-
-            // Final Render
-            let finalHtml = renderMarkdown(fullText);
-            finalHtml = finalHtml.replace(/&lt;think&gt;/g, '<think>').replace(/&lt;\/think&gt;/g, '</think>');
-            contentArea.innerHTML = finalHtml;
-            
-            // Add Controls
-            const controls = document.createElement('div');
-            controls.className = 'ai-msg-controls';
-            controls.innerHTML = `
-                <button class="inline-btn"><i class="fa-solid fa-copy"></i></button>
-                <div class="switch-model-btn">
-                    <button><i class="fa-solid fa-layer-group"></i> Switch</button>
-                    <div class="model-switch-popup">
-                        <button data-model="gemini"><i class="fa-solid fa-sparkles"></i> Philadelphia</button>
-                        <button data-model="bobby"><i class="fa-solid fa-robot"></i> Bobby</button>
-                    </div>
-                </div>
-            `;
-            aiDiv.querySelector('.msg-bubble').appendChild(controls);
-            hookModelSwitchers();
-            
-            isAIResponding = false;
-            $('sendBtn').style.display = 'flex'; $('stopBtn').style.display = 'none';
-        };
-
-        $('sendBtn').onclick = sendMessage;
-        $('userInput').onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
-
-        // INITIALIZE
-        addWelcomeMessage();
-        
-        // Auth Logic (Minimal setup for UI logic)
-        onAuthStateChanged(auth, user => {
-            if(!user) { window.location.href = 'signup-login.html'; return; }
-            currentUser = user;
-            // Load chats logic here...
-        });
-
-        // Setup Tools UI (Example of binding the Visuals)
-        document.querySelectorAll('.tool-link').forEach(link => {
-            link.onclick = (e) => {
-                e.preventDefault();
-                const tool = e.target.closest('.tool-link').dataset.tool;
-                
-                // Show form based on tool
-                $('toolsMenuBg').classList.remove('active');
-                $('toolFormTitle').innerText = e.target.innerText;
-                
-                let formHtml = '';
-                if(tool === 'image') {
-                    formHtml = `
-                        <label>Prompt</label><textarea placeholder="Describe image..."></textarea>
-                        <button class="submit-btn" type="submit">Generate</button>
-                    `;
-                } else if (tool === 'website') {
-                    formHtml = `
-                        <label>Description</label><textarea placeholder="Describe website..."></textarea>
-                        <button class="submit-btn" type="submit">Deploy</button>
-                    `;
-                } else {
-                    formHtml = `<div style="padding:20px; color:var(--text-muted);">Feature connected to backend.</div>`;
+                if (err.name !== 'AbortError') {
+                    await showToolResponse(`❌ Could not start video generation: ${err.message}`);
                 }
-                
-                $('toolForm').innerHTML = formHtml;
-                $('toolFormModalBg').classList.add('active'); $('toolFormModal').classList.add('active');
+            } finally {
+                removeProcessingMessage();
             }
-        });
+        }
+        
+        // --- STUDIO MODEL CONFIGURATIONS ---
+        const thenaImageStyles =[ 
+            { value: 'v6', text: 'V1: General/Illustration (Recommended)' },
+            { value: 'photoreal', text: 'V1: Photoreal (Realistic)' },
+            { value: 'movie', text: 'V1: Cinematic' },
+            { value: 'anime', text: 'V1: Anime Fast' },
+            { value: 'anime_core', text: 'V1: Anime Core' },
+            { value: 'max', text: 'V1: Max Resolution' }
+        ];
 
+        const thenaComicStyles =[ 
+            { value: 'v6', text: 'V1: General/Illustration' },
+            { value: 'photoreal', text: 'V1: Photoreal' },
+            { value: 'anime', text: 'V1: Anime' }
+        ];
+        
+        const minimaxComicStyles =[
+            { value: 'anime', text: 'Anime' },
+            { value: 'american', text: 'American Comic' },
+            { value: 'manga', text: 'Manga' }
+        ];
+
+        // ==========================================================================
+        // --- STUDIO TOOLS REGISTRY ---
+        // ==========================================================================
+        const toolDefinitions = {
+            "image": {
+                title: "Generate Image",
+                description: "Create stunning visuals from a text prompt. Optimized for high-fidelity outputs.",
+                buildForm: () => `
+                    <label for="tool-provider">Render Engine</label>
+                    <select id="tool-provider">
+                        <option value="thena">Engine V1 (Stylized & Fast)</option>
+                        <option value="minimax">Engine V2 (Creative & Text-Capable)</option>
+                    </select>
+                    <label for="tool-prompt">Visual Prompt</label>
+                    <textarea id="tool-prompt" placeholder="A bioluminescent forest at night, highly detailed, unreal engine 5 render..." required></textarea>
+                    <label for="tool-style">Art Style (Engine V1)</label>
+                    <select id="tool-style">${thenaImageStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')}</select>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-sparkles"></i> Render Image</button>`,
+                handleSubmit: async (form) => {
+                    const use_minimax = form.querySelector('#tool-provider')?.value === 'minimax';
+                    const prompt = form.querySelector('#tool-prompt')?.value;
+                    const style = form.querySelector('#tool-style')?.value;
+                    if (!prompt) return "Please provide an image prompt.";
+                    
+                    const payload = { prompt, model: style, use_minimax, creative: false, width: null, height: null, fastMode: false, denseMode: false };
+
+                    await addMessageToChat('user', `Image Request: "${prompt}"`);
+                    displayProcessingMessage('Rendering image data...');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/generate-image`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload), signal: currentController?.signal
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || data.detail || res.statusText);
+                        
+                        // INLINE IMAGE INJECTION
+                        return `
+                            <div class="status-pill" style="color: var(--success-main); border-color: var(--success-main);"><i class="fa-solid fa-check"></i> Render Complete</div>
+                            <img src="data:image/png;base64,${data.image_b64}" alt="Generated Image" class="chat-media-preview">
+                            <div style="margin-top: 15px;">
+                                <a href="data:image/png;base64,${data.image_b64}" download="studio_render.png" class="inline-btn" style="background: var(--bg-surface); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-light);"><i class="fa-solid fa-download"></i> Save Image</a>
+                            </div>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Image generation aborted.';
+                        return `❌ Engine failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "edit-photo": {
+                title: "Photo Editor",
+                description: "Upload a base image and describe the alterations required.",
+                buildForm: () => `
+                    <label for="tool-prompt">Alteration Prompt</label>
+                    <textarea id="tool-prompt" placeholder="Change the background to a cyberpunk city alleyway..." required></textarea>
+                    <label for="tool-file">Base Image</label>
+                    <input type="file" id="tool-file" accept="image/*" required>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Process Image</button>`,
+                handleSubmit: async (form) => {
+                    const file = form.querySelector('#tool-file')?.files[0];
+                    const prompt = form.querySelector('#tool-prompt')?.value;
+                    if (!file || !prompt) return "Missing file or prompt.";
+                    
+                    const fd = new FormData(); fd.append('file', file); fd.append('prompt', prompt);
+                    await addMessageToChat('user', `Edit Request: "${prompt}"`, [{name: file.name, type: file.type}]);
+                    displayProcessingMessage('Applying neural filters...');
+                    
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/edit-photo`, { method: 'POST', body: fd, signal: currentController?.signal });
+                        if (!res.ok) throw new Error((await res.json())?.error || 'Failed to edit photo.');
+                        const blob = await res.blob();
+                        const base64String = await blobToBase64(blob);
+                        
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-layer-group"></i> Processing Complete</div>
+                            <img src="${base64String}" alt="Edited Photo" class="chat-media-preview">
+                            <div style="margin-top: 15px;">
+                                <a href="${base64String}" download="studio_edit.png" class="inline-btn" style="background: var(--bg-surface); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-light);"><i class="fa-solid fa-download"></i> Save Result</a>
+                            </div>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Photo edit stopped.';
+                        return `❌ Editor failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "remove-bg": {
+                title: "Background Removal",
+                description: "Extract subjects from their backgrounds using AI segmentation.",
+                buildForm: () => `
+                    <label for="tool-file">Subject Image</label>
+                    <input type="file" id="tool-file" accept="image/*" required>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-scissors"></i> Extract Subject</button>`,
+                handleSubmit: async (form) => {
+                    const file = form.querySelector('#tool-file')?.files[0];
+                    if (!file) return "Please select a file.";
+                    await addMessageToChat('user', `Background removal request for: "${file.name}"`,[{name: file.name, type: file.type}]);
+                    displayProcessingMessage('Isolating subject...');
+                    
+                    const fd = new FormData(); fd.append('file', file);
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/remove-background`, { method: 'POST', body: fd, signal: currentController?.signal });
+                        if (!res.ok) throw new Error(res.statusText);
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-crop-simple"></i> Subject Isolated</div>
+                            <img src="${url}" alt="Isolated Subject" class="chat-media-preview" style="background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMUlEQVQ4T2NkYNgfRMxg/A8EmAghg1A2jA5QQ2MwjI8OYNM6OhpGBxhNRuMRERwNAQBlEjkxXoP22gAAAABJRU5ErkJggg==');">
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Background removal stopped.';
+                        return `❌ Segmentation failed: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "comic": {
+                title: "Comic Architect",
+                description: "Transform scripts into multi-panel comic strips. Use [NARRATION], [DIALOGUE], and [INSTRUCTION].",
+                buildForm: () => `
+                    <label for="tool-provider">Render Engine</label>
+                    <select id="tool-provider">
+                        <option value="thena">Engine V1 (Stylized)</option>
+                        <option value="minimax">Engine V2 (Creative)</option>
+                    </select>
+                    <label for="tool-story">Script</label>
+                    <textarea id="tool-story" placeholder="[INSTRUCTION] Close up on protagonist\n[DIALOGUE] Hero: It's over!" required></textarea>
+                    <label for="tool-style">Art Style</label>
+                    <select id="tool-style"></select> 
+                    <label for="tool-panels">Panel Count</label>
+                    <input type="number" id="tool-panels" value="3" min="1" max="6" />
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-book-open"></i> Generate Comic</button>`,
+                onFormReady: () => {
+                    const providerSelect = $('tool-provider');
+                    const styleSelect = $('tool-style');
+                    const updateComicStyles = () => {
+                        const selectedProvider = providerSelect.value;
+                        styleSelect.innerHTML = selectedProvider === 'thena' 
+                            ? thenaComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('')
+                            : minimaxComicStyles.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+                    };
+                    providerSelect.addEventListener('change', updateComicStyles);
+                    updateComicStyles();
+                },
+                handleSubmit: async (form) => {
+                    const modelProvider = form.querySelector('#tool-provider')?.value;
+                    const story = form.querySelector('#tool-story')?.value;
+                    const selectedStyle = form.querySelector('#tool-style')?.value; 
+                    const panels = parseInt(form.querySelector('#tool-panels')?.value, 10);
+                    if (!story || !selectedStyle) return "Missing script or style.";
+
+                    let payload = { story, panels, user: currentUser?.displayName || "Studio User", model_provider: modelProvider };
+                    if (modelProvider === 'thena') {
+                        payload.thena_model_key = selectedStyle; 
+                        payload.style = thenaComicStyles.find(s => s.value === selectedStyle)?.text.replace('V1: ', '').trim().toLowerCase() || 'illustration'; 
+                    } else { 
+                        payload.style = selectedStyle; 
+                    }
+                    
+                    await addMessageToChat('user', `Comic Script Submitted (${panels} panels)`);
+                    displayProcessingMessage('Generating sequential art...');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/generate-comic`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload), signal: currentController?.signal
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || res.statusText);
+                        
+                        // INLINE COMIC GRID INJECTION
+                        let comicHtml = `
+                            <div class="status-pill"><i class="fa-solid fa-book"></i> Sequential Art Rendered</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px;">
+                        `;
+                        data.images.forEach((b64, i) => {
+                            comicHtml += `<img src="data:image/png;base64,${b64}" class="chat-media-preview" style="margin-top: 0; width: 100%; border-color: var(--border-focus);" alt="Panel ${i+1}">`;
+                        });
+                        comicHtml += `</div>`;
+                        return comicHtml;
+
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Comic generation aborted.';
+                        return `❌ Render pipeline failed: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "voice-gen": {
+                title: "Voice Synthesizer",
+                description: "Generate studio-quality voiceovers from text.",
+                buildForm: () => `
+                    <label for="tool-provider">Voice Engine</label>
+                    <select id="tool-provider">
+                        <option value="gemini">Philadelphia (Styles)</option>
+                        <option value="minimax">Premium Characters</option>
+                    </select>
+                    <label for="tool-prompt">Script</label>
+                    <textarea id="tool-prompt" placeholder="Enter dialogue here..." required></textarea>
+                    <label for="tool-style">Vocal Profile</label>
+                    <select id="tool-style"></select>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-microphone-lines"></i> Synthesize Audio</button>`,
+                onFormReady: () => {
+                    const providerSelect = $('tool-provider'), styleSelect = $('tool-style');
+                    const voices = {
+                        gemini:["podcast", "cinematic", "upbeat", "soft", "dramatic"],
+                        minimax:["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
+                    };
+                    const updateStyles = () => {
+                        styleSelect.innerHTML = (voices[providerSelect.value] ||[]).map(v => `<option value="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('');
+                    };
+                    providerSelect.addEventListener('change', updateStyles);
+                    updateStyles();
+                },
+                handleSubmit: async (form) => {
+                    const provider = form.querySelector('#tool-provider')?.value;
+                    const text = form.querySelector('#tool-prompt')?.value;
+                    const style = form.querySelector('#tool-style')?.value;
+                    if (!text) return "Please provide text to synthesize.";
+                    
+                    await addMessageToChat('user', `Synthesize Audio: "${text.substring(0,30)}..."`);
+                    displayProcessingMessage('Synthesizing vocal patterns...');
+                    try {
+                        let res;
+                        if (provider === 'gemini') {
+                            const fd = new FormData(); fd.append('text', text); fd.append('style', style);
+                            res = await fetch(`${API_BASE_URL}/voicegen`, { method: 'POST', body: fd, signal: currentController?.signal });
+                        } else {
+                            res = await fetch(`${API_BASE_URL}/api/tools/text-to-speech`, {
+                                method: 'POST', headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ text, voice_id: style }), signal: currentController?.signal
+                            });
+                        }
+                        if (!res.ok) throw new Error(await res.text());
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-wave-square"></i> Audio Synthesized</div>
+                            <audio controls src="${url}" class="chat-media-preview" style="width: 100%; border: none; background: var(--bg-surface);"></audio>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Synthesis aborted.';
+                        return `❌ Synthesis failed: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "audio-narration": {
+                title: "Document Narrator",
+                description: "Convert documents (PDF, TXT) into professional podcast-style summaries.",
+                buildForm: () => `
+                    <label for="tool-file">Source Document</label>
+                    <input type="file" id="tool-file" accept="application/pdf, text/plain" required>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-file-audio"></i> Process & Narrate</button>`,
+                handleSubmit: async (form) => {
+                    const file = form.querySelector('#tool-file')?.files[0];
+                    if (!file) return "Please select a file.";
+                    
+                    await addMessageToChat('user', `Narrate Document: "${file.name}"`, [{name: file.name, type: file.type}]);
+                    displayProcessingMessage('Parsing document and generating narration...');
+                    
+                    const fd = new FormData(); fd.append('file', file); fd.append('style', 'podcast');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/audio-narration`, { method: 'POST', body: fd, signal: currentController?.signal });
+                        if (!res.ok) throw new Error(res.statusText);
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-headphones"></i> Narration Ready</div>
+                            <audio controls src="${url}" class="chat-media-preview" style="width: 100%; border: none; background: var(--bg-surface);"></audio>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Narration aborted.';
+                        return `❌ Engine failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "video-text": {
+                title: "Text-to-Video Engine",
+                description: "Direct the studio cluster to generate video from a descriptive prompt.",
+                buildForm: () => `
+                    <label for="video-prompt">Director's Prompt</label>
+                    <textarea id="video-prompt" placeholder="A cinematic drone shot over a neon city..." required></textarea>
+                    <label for="video-duration">Duration (Seconds)</label>
+                    <input type="number" id="video-duration" value="6" min="2" max="15">
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-film"></i> Initialize Render</button>`,
+                handleSubmit: async (form) => {
+                    const prompt = form.querySelector('#video-prompt')?.value;
+                    const duration = parseInt(form.querySelector('#video-duration')?.value, 10);
+                    if (!prompt) return "Prompt required.";
+                    
+                    await addMessageToChat('user', `Text-to-Video Render: "${prompt}"`);
+                    await handleVideoGeneration({ prompt, duration, resolution: "1080P" });
+                    return null; // Output handled by the polling function
+                }
+            },
+            "video-image": {
+                title: "Image-to-Video Engine",
+                description: "Animate a static image using a director's prompt.",
+                buildForm: () => `
+                    <label for="video-image-prompt">Animation Instructions</label>
+                    <textarea id="video-image-prompt" placeholder="Pan right slowly, add volumetric fog..." required></textarea>
+                    <label for="video-image-file">Base Frame (Image)</label>
+                    <input type="file" id="video-image-file" accept="image/*" required>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-photo-film"></i> Initialize Render</button>`,
+                handleSubmit: async (form) => {
+                    const file = form.querySelector('#video-image-file')?.files[0];
+                    const prompt = form.querySelector('#video-image-prompt')?.value;
+                    if (!file || !prompt) return "Missing inputs.";
+                    
+                    await addMessageToChat('user', `Image-to-Video Render: ${file.name}`,[{name: file.name, type: file.type}]);
+                    const fd = new FormData(); fd.append('prompt', prompt); fd.append('file', file);
+                    await handleVideoGeneration(fd, true);
+                    return null;
+                }
+            },
+            "music": {
+                title: "Music Composer",
+                description: "Generate full studio tracks. Upload reference audio to clone styles.",
+                buildForm: () => `
+                    <label for="music-prompt">Track Vibe/Genre</label>
+                    <textarea id="music-prompt" placeholder="Aggressive synthwave with heavy bass..." required></textarea>
+                    <label for="music-lyrics">Lyrics (Optional)</label>
+                    <textarea id="music-lyrics" placeholder="Enter lyrics here..."></textarea>
+                    <label for="music-ref">Reference Audio (Optional)</label>
+                    <input type="file" id="music-ref" accept="audio/*">
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-compact-disc"></i> Compose Track</button>`,
+                handleSubmit: async (form) => {
+                    const prompt = form.querySelector('#music-prompt')?.value;
+                    const lyrics = form.querySelector('#music-lyrics')?.value;
+                    const refFile = form.querySelector('#music-ref')?.files[0];
+                    if (!prompt) return "Vibe prompt required.";
+                    
+                    const payload = { prompt, lyrics, model: 'music-1.5' };
+                    await addMessageToChat('user', `Compose Track: "${prompt}"`);
+                    displayProcessingMessage('Initializing audio engine...');
+                    
+                    try {
+                        if (refFile) {
+                            displayProcessingMessage('Analyzing reference audio...');
+                            const fd = new FormData(); fd.append('file', refFile);
+                            const uploadRes = await fetch(`${API_BASE_URL}/api/tools/upload-music`, { method: 'POST', body: fd, signal: currentController?.signal });
+                            const uploadData = await uploadRes.json();
+                            if (!uploadRes.ok) throw new Error(uploadData.error || "Reference upload failed.");
+                            if (uploadData.instrumental_id) payload.instrumental_id = uploadData.instrumental_id;
+                            if (uploadData.voice_id) payload.voice_id = uploadData.voice_id;
+                            displayProcessingMessage('Reference acquired. Composing track...');
+                        }
+                        const res = await fetch(`${API_BASE_URL}/api/tools/generate-music`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload), signal: currentController?.signal
+                        });
+                        if (!res.ok) throw new Error((await res.json())?.detail || 'API request failed.');
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-music"></i> Master Track Exported</div>
+                            <audio controls src="${url}" class="chat-media-preview" style="width: 100%; border: none; background: var(--bg-surface);"></audio>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Composition aborted.';
+                        return `❌ Audio engine failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "website": {
+                title: "Deploy Website",
+                description: "Describe a web app. The studio will code and deploy it to Vercel instantly.",
+                buildForm: () => `
+                    <label for="website-prompt">Architecture Blueprint</label>
+                    <textarea id="website-prompt" placeholder="A dark-themed dashboard for crypto trading..." required></textarea>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-globe"></i> Build & Deploy</button>`,
+                handleSubmit: async (form) => {
+                    const prompt = form.querySelector('#website-prompt')?.value;
+                    if (!prompt) return "Blueprint required.";
+                    
+                    await addMessageToChat('user', `Deployment Request: "${prompt.substring(0, 50)}..."`);
+                    displayProcessingMessage('Writing HTML/CSS and pushing to Vercel...');
+                    
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/create-website`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt, user_id: currentUser?.uid }), signal: currentController?.signal
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || res.statusText);
+                        
+                        return `
+                            <div class="status-pill" style="color: var(--success-main); border-color: var(--success-main);"><i class="fa-solid fa-check"></i> Deployment Live</div>
+                            <div class="tool-result-box">
+                                <div style="font-size: 2rem; color: var(--accent-main);"><i class="fa-solid fa-server"></i></div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary);">Vercel Network</div>
+                                    <a href="${data.url}" target="_blank" rel="noopener noreferrer">Access Live Environment <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8em; margin-left: 4px;"></i></a>
+                                </div>
+                            </div>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Deployment aborted.';
+                        return `❌ Build failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "edit-website": {
+                title: "Patch Last Website",
+                description: "Deploy a hotfix to your most recently generated web app.",
+                buildForm: () => `
+                    <label for="edit-instruction">Patch Instructions</label>
+                    <textarea id="edit-instruction" placeholder="Change the nav bar background to solid black..." required></textarea>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-code-merge"></i> Push Hotfix</button>`,
+                handleSubmit: async (form) => {
+                    const instruction = form.querySelector('#edit-instruction')?.value;
+                    if (!instruction) return "Instructions required.";
+                    
+                    await addMessageToChat('user', `Hotfix Request: "${instruction.substring(0, 50)}..."`);
+                    displayProcessingMessage('Injecting code and redeploying...');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/edit-website`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ instruction, user_id: currentUser?.uid }), signal: currentController?.signal
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || res.statusText);
+                        
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-check-double"></i> Patch Successful</div>
+                            <div class="tool-result-box">
+                                <div style="font-size: 2rem; color: var(--accent-main);"><i class="fa-solid fa-shield-check"></i></div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary);">Vercel Network (Updated)</div>
+                                    <a href="${data.url}" target="_blank" rel="noopener noreferrer">Verify Live Build <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8em; margin-left: 4px;"></i></a>
+                                </div>
+                            </div>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Patch aborted.';
+                        return `❌ Patch failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "my-sites": {
+                isAction: true,
+                runAction: async () => {
+                    if (!currentUser) return "Authentication required.";
+                    await addMessageToChat('user', 'Retrieve my Vercel deployments.');
+                    displayProcessingMessage('Querying deployment registry...');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/my-sites/${currentUser.uid}`, { signal: currentController?.signal });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || 'Registry error.');
+                        if (!data.sites || data.sites.length === 0) return "No active deployments found in registry.";
+                        
+                        const siteList = data.sites.map(site => `- <a href="${site.site_url}" target="_blank" rel="noopener noreferrer">${site.site_url}</a> (Deployed: ${new Date(site.created_at).toLocaleString()})`).join('\n');
+                        return `<div class="status-pill"><i class="fa-solid fa-database"></i> Registry Accessed</div>\n\n**Active Deployments:**\n${siteList}`;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Query aborted.';
+                        return `❌ Registry failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "research-report": {
+                title: "Data Synthesis (Standard)",
+                description: "Compile a structured, citation-backed PDF report on any topic.",
+                buildForm: () => `
+                    <label for="research-topic">Data Target</label>
+                    <input type="text" id="research-topic" placeholder="Advancements in Quantum Networking..." required>
+                    <button type="submit" class="submit-btn"><i class="fa-solid fa-file-pdf"></i> Compile PDF</button>`,
+                handleSubmit: async (form) => {
+                    const topic = form.querySelector('#research-topic')?.value;
+                    if (!topic) return "Target required.";
+                    
+                    await addMessageToChat('user', `Data Synthesis Target: "${topic}"`);
+                    displayProcessingMessage('Aggregating data and compiling PDF...');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/tools/research`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ topic }), signal: currentController?.signal
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || 'Server error');
+
+                        const blob = await (await fetch(data.download_url)).blob();
+                        const cleanUrl = URL.createObjectURL(blob);
+
+                        return `
+                            <div class="status-pill"><i class="fa-solid fa-check"></i> Synthesis Complete</div>
+                            <div class="tool-result-box" style="border-color: var(--border-focus);">
+                                <div style="font-size: 2rem; color: #EF4444;"><i class="fa-solid fa-file-pdf"></i></div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${topic}</div>
+                                    <a href="${cleanUrl}" download="${data.filename}">Download Encrypted PDF <i class="fa-solid fa-download" style="font-size: 0.8em; margin-left: 4px;"></i></a>
+                                </div>
+                            </div>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Synthesis aborted.';
+                        return `❌ Aggregation failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            },
+            "seraphina-research": {
+                title: "Deep Web Synthesis",
+                description: "Utilize advanced Sonar modeling to extract high-density research from the deep web.",
+                buildForm: () => `
+                    <label for="sera-topic">Target Vector</label>
+                    <input type="text" id="sera-topic" placeholder="Undiscovered biotech startups 2025..." required>
+                    <button type="submit" class="submit-btn" style="background: var(--accent-main); color: #000;"><i class="fa-solid fa-network-wired"></i> Execute Deep Scan</button>`,
+                handleSubmit: async (form) => {
+                    const topic = form.querySelector('#sera-topic')?.value;
+                    if (!topic) return "Target required.";
+                    
+                    await addMessageToChat('user', `Deep Web Scan: "${topic}"`);
+                    displayProcessingMessage('Bypassing surface networks. Initiating deep scan...');
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/api/seraphina/research-report`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ topic }), signal: currentController?.signal
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.detail || 'Server error');
+
+                        const blob = await (await fetch(data.download_url)).blob();
+                        const cleanUrl = URL.createObjectURL(blob);
+
+                        return `
+                            <div class="status-pill" style="color: #A855F7; border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.1);"><i class="fa-solid fa-radar"></i> Deep Scan Complete</div>
+                            <div class="tool-result-box" style="border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.05);">
+                                <div style="font-size: 2rem; color: #A855F7;"><i class="fa-solid fa-file-shield"></i></div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Classified Intel: ${topic}</div>
+                                    <a href="${cleanUrl}" download="${data.filename}" style="color: #A855F7;">Extract Data Packet <i class="fa-solid fa-download" style="font-size: 0.8em; margin-left: 4px;"></i></a>
+                                </div>
+                            </div>
+                        `;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return '❌ Scan aborted.';
+                        return `❌ Deep scan failure: ${err.message}`;
+                    } finally { removeProcessingMessage(); }
+                }
+            }
+        };
+        
     </script>
 </body>
 </html>
