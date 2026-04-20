@@ -2,1886 +2,813 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Philadelphia Studio Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Playfair+Display:ital,wght@0,700;1,400&family=Great+Vibes&family=Orbitron:wght@500;700&family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Philadelphia Studio Pro | Elvion AI</title>
+
+<!-- Fonts & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- Fabric.js for Canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
 <style>
-/* ═══ TOKENS ═══ */
-:root{
-  --void:#02040b;--deep:#06090f;--surf:#0b0f18;--card:#10141e;
-  --bdr:rgba(255,255,255,.07);--bdr-g:rgba(200,165,100,.22);
-  --gold:#c9a96e;--gob:#f0c878;--gog:rgba(201,169,110,.28);--god:rgba(201,169,110,.13);
-  --pur:#8b5cf6;--blu:#3b82f6;--grn:#10b981;--red:#ef4444;--ora:#f59e0b;
-  --t1:#f0eff5;--t2:#8a94a8;--t3:#45505e;
-  --r8:8px;--r12:12px;--r16:16px;--r22:22px;
-  --nh:54px;--bnh:62px;
-  --ft:'Cinzel',serif;--fb:'DM Sans',sans-serif;
+/* ==========================================================================
+   DESIGN TOKENS & RESET
+   ========================================================================== */
+:root {
+  --bg-main: #050505;
+  --bg-panel: #0d0f14;
+  --bg-card: #151822;
+  --gold: #c9a96e;
+  --gold-glow: rgba(201, 169, 110, 0.3);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(201, 169, 110, 0.2);
+  --text-main: #f0f0f0;
+  --text-muted: #8a94a8;
+  --accent-blue: #3b82f6;
+  --accent-red: #ef4444;
+  --accent-green: #10b981;
+  --font-body: 'Inter', sans-serif;
+  --font-heading: 'Cinzel', serif;
+  --header-height: 60px;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;outline:none;}
-html,body{height:100%;width:100%;background:var(--void);color:var(--t1);font-family:var(--fb);overflow:hidden;}
 
-/* ═══ BACKGROUND ═══ */
-#aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
-.aorb{position:absolute;border-radius:50%;filter:blur(120px);animation:ao 18s ease-in-out infinite;}
-.a1{width:500px;height:500px;background:radial-gradient(circle,rgba(139,92,246,.14),transparent 70%);top:-180px;left:-80px;}
-.a2{width:400px;height:400px;background:radial-gradient(circle,rgba(201,169,110,.09),transparent 70%);bottom:-120px;right:-60px;animation-delay:-9s;}
-.a3{width:320px;height:320px;background:radial-gradient(circle,rgba(59,130,246,.07),transparent 70%);top:45%;left:40%;animation-delay:-5s;}
-@keyframes ao{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(28px,-20px) scale(1.06)}66%{transform:translate(-15px,32px) scale(.93)}}
-.part{position:fixed;inset:0;z-index:0;pointer-events:none;}
-.p{position:absolute;width:1.5px;height:1.5px;background:rgba(201,169,110,.4);border-radius:50%;animation:pf var(--d,8s) ease-in-out infinite var(--dl,0s);}
-@keyframes pf{0%,100%{opacity:0;transform:translateY(0)}10%{opacity:.6}90%{opacity:.5}to{transform:translateY(-80px)}}
+* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+body { background: var(--bg-main); color: var(--text-main); font-family: var(--font-body); overflow: hidden; height: 100vh; }
 
-/* ═══ AUTH GATE ═══ */
-#auth-gate{position:fixed;inset:0;z-index:8000;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(14px);padding:0;}
-#auth-gate.open{display:flex;animation:fd .2s ease;}
-.auth-sh{background:linear-gradient(180deg,var(--card),var(--deep));border:1px solid var(--bdr-g);border-radius:var(--r22) var(--r22) 0 0;padding:28px 20px 40px;width:100%;max-width:420px;animation:sup .36s cubic-bezier(.34,1.56,.64,1);text-align:center;}
-.auth-logo{width:60px;height:60px;border-radius:14px;border:1.5px solid var(--gold);margin:0 auto 16px;display:block;animation:lp 3s ease-in-out infinite;}
-@keyframes lp{0%,100%{box-shadow:0 0 22px var(--gog)}50%{box-shadow:0 0 44px rgba(201,169,110,.5)}}
-.auth-sh h2{font-family:var(--ft);font-size:1.5rem;color:var(--gold);letter-spacing:4px;margin-bottom:5px;}
-.auth-sh p{font-size:.82rem;color:var(--t2);margin-bottom:26px;line-height:1.6;}
-.g-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 20px;border-radius:var(--r12);background:rgba(255,255,255,.06);border:1px solid var(--bdr-g);color:var(--t1);font-size:.9rem;font-weight:600;cursor:pointer;font-family:var(--fb);transition:.25s;}
-.g-btn:hover{background:rgba(201,169,110,.1);border-color:var(--gold);}
-.auth-skip{background:none;border:none;color:var(--t3);font-size:.74rem;cursor:pointer;margin-top:12px;font-family:var(--fb);text-decoration:underline;}
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 
-/* ═══ TOUR SPOTLIGHT ═══ */
-#tour-wrap{position:fixed;inset:0;z-index:7000;pointer-events:none;display:none;}
-#tour-wrap.on{display:block;}
-#tour-mask{position:absolute;inset:0;pointer-events:all;}
-.tour-tip{position:fixed;z-index:7001;background:linear-gradient(135deg,var(--card),var(--surf));border:1.5px solid var(--bdr-g);border-radius:var(--r16);padding:16px 16px 12px;max-width:300px;width:calc(100vw - 28px);box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 20px var(--gog);animation:tp .38s cubic-bezier(.34,1.56,.64,1);pointer-events:all;}
-@keyframes tp{from{opacity:0;transform:scale(.9) translateY(8px)}to{opacity:1;transform:none}}
-.tour-num{font-size:.62rem;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
-.tour-h{font-family:var(--ft);font-size:.9rem;color:var(--t1);margin-bottom:5px;letter-spacing:1px;}
-.tour-b{font-size:.78rem;color:var(--t2);line-height:1.55;margin-bottom:12px;}
-.tour-dots{display:flex;gap:4px;margin-bottom:10px;}
-.td{width:6px;height:6px;border-radius:50%;background:var(--bdr);transition:.3s;}
-.td.on{background:var(--gold);transform:scale(1.2);}
-.tour-acts{display:flex;gap:8px;align-items:center;}
-.t-skip{background:none;border:none;color:var(--t3);font-size:.72rem;cursor:pointer;padding:4px 6px;}
-.t-next{padding:8px 18px;background:linear-gradient(135deg,rgba(201,169,110,.2),rgba(201,169,110,.08));border:1px solid var(--bdr-g);border-radius:8px;color:var(--gob);font-size:.78rem;font-weight:600;cursor:pointer;font-family:var(--ft);letter-spacing:1px;transition:.2s;margin-left:auto;}
-.t-next:hover{background:rgba(201,169,110,.22);}
-.tour-glow{box-shadow:0 0 0 3px var(--gold),0 0 0 8px rgba(201,169,110,.2) !important;border-radius:10px;position:relative;z-index:6999;}
-/* Animated arrow pointing to element */
-.tour-arrow{position:fixed;z-index:7002;animation:arrowBounce 1s ease-in-out infinite;pointer-events:none;font-size:1.5rem;color:var(--gold);}
-@keyframes arrowBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-
-/* ═══ CONTEXT GUIDE (Bobby Suggests) ═══ */
-#ctx{position:fixed;bottom:calc(var(--bnh) + 12px);right:12px;z-index:400;max-width:240px;display:none;animation:ctp .38s cubic-bezier(.34,1.56,.64,1);}
-#ctx.on{display:block;}
-@keyframes ctp{from{opacity:0;transform:translateY(12px) scale(.93)}to{opacity:1;transform:none}}
-.ctx-bub{background:linear-gradient(135deg,rgba(139,92,246,.18),rgba(14,18,28,.96));border:1px solid rgba(139,92,246,.3);border-radius:var(--r12);padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.6);position:relative;}
-.ctx-close{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--t3);cursor:pointer;font-size:.72rem;}
-.ctx-hdr{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
-.ctx-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--pur),#6366f1);display:flex;align-items:center;justify-content:center;font-size:.72rem;animation:ag 3s ease-in-out infinite;flex-shrink:0;}
-@keyframes ag{0%,100%{box-shadow:0 0 8px rgba(139,92,246,.4)}50%{box-shadow:0 0 16px rgba(139,92,246,.7)}}
-.ctx-name{font-size:.7rem;font-weight:600;color:#c4b5fd;}
-.ctx-msg{font-size:.76rem;color:var(--t1);line-height:1.5;margin-bottom:8px;}
-.ctx-btns{display:flex;flex-wrap:wrap;gap:4px;}
-.ctx-btn{padding:4px 9px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.25);border-radius:10px;font-size:.66rem;color:#c4b5fd;cursor:pointer;transition:.18s;}
-.ctx-btn:hover{background:rgba(139,92,246,.28);}
-
-/* ═══ HEADER ═══ */
-#hdr{position:fixed;top:0;left:0;right:0;height:var(--nh);z-index:500;display:flex;align-items:center;gap:9px;padding:0 12px;background:rgba(6,8,14,.97);border-bottom:1px solid var(--bdr);backdrop-filter:blur(20px);}
-.hdr-logo{width:32px;height:32px;border-radius:8px;border:1px solid var(--god);flex-shrink:0;}
-.hdr-brand{font-family:var(--ft);font-size:.85rem;color:var(--gold);letter-spacing:2.5px;line-height:1.1;}
-.hdr-brand span{display:block;font-family:var(--fb);font-size:.55rem;color:var(--t3);letter-spacing:2px;text-transform:uppercase;}
-.hsp{flex:1;}
-.cc{display:flex;align-items:center;gap:5px;padding:6px 10px;background:rgba(201,169,110,.07);border:1px solid var(--bdr-g);border-radius:30px;cursor:pointer;transition:.2s;}
-.cc:hover{background:rgba(201,169,110,.12);}
-.cc .coin{color:var(--gold);font-size:.8rem;}
-.cc .val{font-family:var(--ft);font-size:.78rem;color:var(--gob);letter-spacing:.5px;}
-.cc .lbl{font-size:.56rem;color:var(--t3);text-transform:uppercase;letter-spacing:1px;}
-@keyframes cf{0%,100%{background:rgba(201,169,110,.07)}50%{background:rgba(201,169,110,.26)}}
-.cc.fl{animation:cf .6s ease;}
-.hbtn{width:32px;height:32px;border-radius:7px;background:var(--card);border:1px solid var(--bdr);color:var(--t2);display:flex;align-items:center;justify-content:center;font-size:.8rem;cursor:pointer;transition:.2s;flex-shrink:0;}
-.hbtn:hover{background:rgba(255,255,255,.07);color:var(--t1);}
-.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--pur),var(--gold));display:flex;align-items:center;justify-content:center;font-size:.68rem;overflow:hidden;flex-shrink:0;cursor:pointer;}
-.av img{width:100%;height:100%;object-fit:cover;}
-
-/* ═══ NOTIF BAR ═══ */
-#notif-bar{display:none;position:fixed;top:var(--nh);left:0;right:0;z-index:490;align-items:center;gap:9px;padding:7px 12px;background:rgba(59,130,246,.06);border-bottom:1px solid rgba(59,130,246,.15);font-size:.74rem;color:var(--t2);}
-#notif-bar.on{display:flex;}
-.nb-e{padding:4px 11px;border-radius:7px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.28);color:var(--blu);font-size:.68rem;cursor:pointer;}
-.nb-x{margin-left:auto;background:none;border:none;color:var(--t3);cursor:pointer;}
-
-/* ═══ MAIN SCROLL ═══ */
-#app{position:fixed;inset:0;top:var(--nh);bottom:var(--bnh);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;z-index:10;}
-#app::-webkit-scrollbar{width:2px;}
-#app::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px;}
-
-/* ═══ TABS ═══ */
-.tab{display:none;padding:10px 10px 16px;min-height:100%;animation:ti .26s ease;}
-.tab.active{display:block;}
-@keyframes ti{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-
-/* ═══ CARD ═══ */
-.card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--r12);padding:13px;margin-bottom:9px;}
-.clab{font-size:.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:2px;font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:10px;}
-
-/* ═══ CANVAS ═══ */
-#cs{border-radius:var(--r12);overflow:hidden;margin-bottom:9px;background:#03050c;border:1px solid var(--bdr);}
-.ctb{display:flex;align-items:center;gap:4px;padding:7px 9px;background:rgba(3,5,12,.93);border-bottom:1px solid var(--bdr);overflow-x:auto;scrollbar-width:none;}
-.ctb::-webkit-scrollbar{display:none;}
-.cb{display:flex;align-items:center;gap:3px;white-space:nowrap;padding:4px 8px;border-radius:5px;font-size:.66rem;color:var(--t2);background:rgba(255,255,255,.04);border:1px solid var(--bdr);cursor:pointer;transition:.18s;flex-shrink:0;}
-.cb:hover,.cb.on{background:rgba(201,169,110,.09);color:var(--gold);border-color:var(--bdr-g);}
-.cb-sep{width:1px;height:14px;background:var(--bdr);flex-shrink:0;}
-#cw{position:relative;display:flex;align-items:center;justify-content:center;min-height:280px;background:repeating-conic-gradient(#0c1016 0% 25%,#080b10 0% 50%) 0 0/14px 14px;}
-#cv{display:block;max-width:100%;max-height:100%;}
-#gl{position:absolute;inset:0;background:rgba(0,0,0,.86);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;backdrop-filter:blur(8px);z-index:20;}
-.lr{width:48px;height:48px;border:2.5px solid rgba(201,169,110,.2);border-top-color:var(--gold);border-radius:50%;animation:sp 1s linear infinite;}
-@keyframes sp{to{transform:rotate(360deg)}}
-.lt{font-family:var(--ft);font-size:.85rem;color:var(--gold);letter-spacing:3px;animation:br 1.5s ease-in-out infinite;}
-@keyframes br{0%,100%{opacity:.4}50%{opacity:1}}
-.lb-w{width:140px;height:2px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;}
-.lb{height:100%;background:linear-gradient(90deg,var(--pur),var(--gold));animation:lp2 3s ease-in-out infinite;}
-@keyframes lp2{0%{width:5%}60%{width:76%}100%{width:93%}}
-#es{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;pointer-events:none;}
-.es-i{font-size:2.8rem;color:rgba(201,169,110,.1);}
-.es-t{font-family:'Playfair Display',serif;font-size:1rem;color:rgba(240,200,120,.15);text-align:center;}
-.es-h{font-size:.72rem;color:rgba(255,255,255,.07);text-align:center;max-width:220px;line-height:1.6;}
-#qg{display:none;grid-template-columns:1fr 1fr;gap:5px;padding:8px;background:rgba(2,4,8,.95);}
-.qi{position:relative;border-radius:7px;overflow:hidden;border:2px solid transparent;cursor:pointer;aspect-ratio:.65/1;transition:.2s;}
-.qi:hover{border-color:var(--gold);}
-.qi img{width:100%;height:100%;object-fit:cover;display:block;}
-.qp{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);background:rgba(201,169,110,.93);color:#000;border:none;padding:4px 12px;border-radius:11px;font-weight:700;font-size:.68rem;cursor:pointer;opacity:0;transition:.18s;white-space:nowrap;}
-.qi:hover .qp,.qi:focus .qp{opacity:1;}
-.rb{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);border-radius:7px;font-size:.58rem;color:var(--blu);}
-
-/* ═══ FORMS ═══ */
-.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;}
-.fg:last-child{margin-bottom:0;}
-.fl{font-size:.65rem;color:var(--t2);text-transform:uppercase;letter-spacing:1px;}
-input[type=text],input[type=number],input[type=email],textarea,select{width:100%;background:rgba(0,0,0,.45);border:1px solid var(--bdr);color:var(--t1);padding:9px 11px;border-radius:var(--r8);font-family:var(--fb);font-size:.85rem;transition:.2s;-webkit-appearance:none;}
-input:focus,textarea:focus,select:focus{border-color:var(--bdr-g);box-shadow:0 0 0 3px rgba(201,169,110,.06);}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%238a94a8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:32px;}
-select option{background:#111;}
-textarea{resize:vertical;min-height:80px;line-height:1.5;}
-/* ═══ COVER TYPE ═══ */
-.ctype-g{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
-.ct-btn{padding:9px 5px;background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r8);font-size:.64rem;color:var(--t2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;transition:.18s;}
-.ct-btn i{font-size:.9rem;color:var(--t3);}
-.ct-btn.on,.ct-btn:hover{background:rgba(201,169,110,.09);border-color:var(--bdr-g);color:var(--gold);}
-.ct-btn.on i,.ct-btn:hover i{color:var(--gold);}
-/* ═══ CHIPS ═══ */
-.chips{display:flex;flex-wrap:wrap;gap:4px;}
-.chip{padding:4px 10px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:18px;font-size:.68rem;color:var(--t2);cursor:pointer;transition:.18s;}
-.chip.on,.chip:hover{background:rgba(201,169,110,.09);border-color:var(--bdr-g);color:var(--gob);}
-.chip.comic{border-color:rgba(239,68,68,.2);color:#fca5a5;}
-.chip.comic.on,.chip.comic:hover{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.45);color:#f87171;}
-/* ═══ PROMPT ACTIONS ═══ */
-.pa{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:5px;}
-.pab{padding:7px 5px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:var(--r8);font-size:.66rem;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:.18s;}
-.pab:hover{background:rgba(255,255,255,.08);color:var(--t1);}
-.pab.pur{color:var(--pur);border-color:rgba(139,92,246,.22);}
-.pab.pur:hover{background:rgba(139,92,246,.1);}
-/* Char lock */
-.char-ban{display:none;background:rgba(139,92,246,.09);border:1px solid rgba(139,92,246,.25);border-radius:var(--r8);padding:7px 11px;font-size:.72rem;color:#c4b5fd;align-items:center;gap:7px;margin-bottom:9px;}
-.char-ban.on{display:flex;}
-.char-ban button{background:none;border:none;color:#c4b5fd;cursor:pointer;font-size:.68rem;margin-left:auto;}
-/* Quad row */
-.qrow{display:flex;align-items:center;gap:9px;padding:9px 11px;background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r8);cursor:pointer;transition:.18s;margin-bottom:9px;}
-.qrow.on{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.26);}
-.ql{flex:1;}
-.qt{font-size:.78rem;color:var(--t1);}
-.qc{font-size:.64rem;color:var(--t3);margin-top:1px;}
-.tog{width:32px;height:18px;background:var(--bdr);border-radius:9px;position:relative;transition:.24s;flex-shrink:0;}
-.tog.on{background:var(--blu);}
-.tok{width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:.24s;}
-.tog.on .tok{left:16px;}
-/* Gen button */
-.gbtn{width:100%;padding:14px;border-radius:var(--r12);cursor:pointer;background:linear-gradient(135deg,rgba(201,169,110,.15),rgba(201,169,110,.05));border:1px solid var(--bdr-g);font-family:var(--ft);font-size:.9rem;color:var(--gob);letter-spacing:2px;display:flex;align-items:center;justify-content:center;gap:9px;transition:.3s;position:relative;overflow:hidden;}
-.gbtn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(201,169,110,.2),transparent);opacity:0;transition:.3s;}
-.gbtn:hover{border-color:var(--gold);box-shadow:0 0 26px var(--gog);}
-.gbtn:hover::before{opacity:1;}
-.gbtn:disabled{opacity:.3;cursor:not-allowed;}
-.gh{text-align:center;font-size:.66rem;color:var(--t3);margin-top:5px;}
-
-/* ═══ TEMPLATE PICKER ═══ */
-.tpl-colors{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
-.tc{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.2s;flex-shrink:0;}
-.tc.on{border-color:#fff;transform:scale(1.1);}
-.blank-tpl-btn{display:flex;align-items:center;gap:9px;padding:12px 14px;background:rgba(201,169,110,.07);border:1px solid var(--bdr-g);border-radius:var(--r8);font-size:.82rem;color:var(--gold);cursor:pointer;transition:.2s;width:100%;margin-bottom:7px;}
-.blank-tpl-btn:hover{background:rgba(201,169,110,.13);}
-.blank-tpl-btn i{font-size:1rem;}
-
-/* ═══ EDIT TAB ═══ */
-.tg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-.et{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r8);padding:11px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:.68rem;color:var(--t2);transition:.18s;text-align:center;}
-.et i{font-size:1rem;color:var(--t3);}
-.et:hover,.et.on{background:rgba(201,169,110,.08);border-color:var(--bdr-g);color:var(--gold);}
-.et:hover i,.et.on i{color:var(--gold);}
-.pp{display:none;background:rgba(0,0,0,.32);border:1px solid var(--bdr);border-radius:var(--r8);padding:11px;margin-top:7px;}
-.pp.on{display:block;}
-.pr{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
-.pr:last-child{margin-bottom:0;}
-.pr label{font-size:.66rem;color:var(--t2);width:58px;flex-shrink:0;}
-input[type=range]{flex:1;accent-color:var(--gold);height:3px;}
-input[type=color]{width:32px;height:32px;border:1px solid var(--bdr);border-radius:5px;cursor:pointer;background:none;padding:2px;}
-.rv{font-size:.66rem;color:var(--gold);width:30px;text-align:right;flex-shrink:0;}
-.fp{font-size:1.25rem;text-align:center;padding:7px;background:rgba(0,0,0,.3);border:1px solid var(--bdr);border-radius:var(--r8);color:var(--t1);margin-top:5px;min-height:42px;display:flex;align-items:center;justify-content:center;}
-.fbs{display:flex;gap:4px;flex-wrap:wrap;margin-top:7px;}
-.fbtn{flex:1;min-width:32px;padding:6px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:5px;font-size:.72rem;color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.18s;}
-.fbtn:hover{background:rgba(255,255,255,.08);color:var(--t1);}
-.eb{display:flex;align-items:center;gap:8px;padding:10px 13px;background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r8);font-size:.78rem;color:var(--t2);cursor:pointer;transition:.18s;width:100%;margin-bottom:6px;}
-.eb:last-child{margin-bottom:0;}
-.eb:hover{background:rgba(255,255,255,.07);color:var(--t1);border-color:rgba(255,255,255,.12);}
-.eb i{color:var(--t3);width:16px;text-align:center;}
-.eb.p{background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.22);color:var(--grn);}
-.eb.p i{color:var(--grn);}
-.vbs{display:flex;gap:5px;}
-.vb{flex:1;padding:9px 6px;background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r8);font-size:.68rem;color:var(--t2);cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;transition:.18s;}
-.vb i{font-size:.9rem;}
-.vb:hover,.vb.on{background:rgba(201,169,110,.08);border-color:var(--bdr-g);color:var(--gold);}
-
-/* ═══ BOBBY ═══ */
-.bwrap{display:flex;flex-direction:column;height:calc(100vh - var(--nh) - var(--bnh) - 22px);min-height:400px;}
-.bhdr{display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r12) var(--r12) 0 0;flex-shrink:0;}
-.bav{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--pur),#6366f1);display:flex;align-items:center;justify-content:center;font-size:.8rem;animation:ag 3s ease-in-out infinite;flex-shrink:0;}
-.bname{font-size:.84rem;font-weight:600;}
-.brole{font-size:.6rem;color:var(--pur);letter-spacing:1px;}
-.bco{margin-left:auto;font-size:.6rem;color:var(--t3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:7px;border:1px solid var(--bdr);}
-.bmsgs{flex:1;overflow-y:auto;padding:11px;background:rgba(5,7,13,.72);border-left:1px solid var(--bdr);border-right:1px solid var(--bdr);display:flex;flex-direction:column;gap:7px;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent;}
-.bm{padding:9px 11px;border-radius:var(--r8);font-size:.8rem;line-height:1.55;max-width:88%;animation:mi .2s ease;}
-@keyframes mi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.bm.bot{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.17);align-self:flex-start;border-bottom-left-radius:3px;}
-.bm.usr{background:rgba(201,169,110,.07);border:1px solid var(--bdr-g);align-self:flex-end;border-bottom-right-radius:3px;}
-.bm.think{color:var(--t3);font-style:italic;align-self:flex-start;}
-.bsug{display:flex;flex-wrap:wrap;gap:4px;padding:7px 11px;background:rgba(5,7,13,.72);border-left:1px solid var(--bdr);border-right:1px solid var(--bdr);flex-shrink:0;}
-.bs{padding:3px 9px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);border-radius:11px;font-size:.64rem;color:#c4b5fd;cursor:pointer;transition:.16s;}
-.bs:hover{background:rgba(139,92,246,.15);}
-.binp{display:flex;gap:6px;padding:9px 11px;background:var(--card);border:1px solid var(--bdr);border-radius:0 0 var(--r12) var(--r12);flex-shrink:0;}
-.binp input{flex:1;padding:8px 11px;border-radius:18px;font-size:.8rem;}
-.bsnd{width:36px;height:36px;border-radius:50%;background:rgba(139,92,246,.17);border:1px solid rgba(139,92,246,.26);color:#c4b5fd;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.82rem;transition:.18s;flex-shrink:0;}
-.bsnd:hover{background:rgba(139,92,246,.28);}
-
-/* ═══ LIBRARY ═══ */
-.lib-g{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
-.lc{position:relative;border-radius:var(--r8);overflow:hidden;border:2px solid transparent;cursor:pointer;aspect-ratio:.65/1;background:rgba(255,255,255,.04);transition:.22s;}
-.lc:hover{border-color:var(--gold);transform:translateY(-2px);}
-.lc img{width:100%;height:100%;object-fit:cover;display:block;}
-.lc-del{position:absolute;top:3px;right:3px;width:20px;height:20px;background:rgba(0,0,0,.75);border:none;color:var(--red);border-radius:50%;font-size:.6rem;cursor:pointer;display:none;align-items:center;justify-content:center;}
-.lc:hover .lc-del{display:flex;}
-.lc-n{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.82));font-size:.56rem;color:var(--t2);padding:14px 4px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tg2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.tc2{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:var(--r8);padding:12px 9px;cursor:pointer;transition:.18s;text-align:center;}
-.tc2:hover{background:rgba(201,169,110,.08);border-color:var(--bdr-g);}
-.ti{font-size:1.5rem;margin-bottom:4px;}
-.tn{font-size:.74rem;font-weight:600;color:var(--t1);margin-bottom:2px;}
-.td2{font-size:.6rem;color:var(--t3);line-height:1.3;}
-.ls{display:flex;gap:7px;overflow-x:auto;padding:3px 0;scrollbar-width:none;}
-.ls::-webkit-scrollbar{display:none;}
-.lsi{min-width:50px;height:70px;border-radius:5px;border:2px solid transparent;cursor:pointer;overflow:hidden;flex-shrink:0;background:rgba(255,255,255,.04);transition:.18s;}
-.lsi:hover{border-color:var(--gold);}
-.lsi img{width:100%;height:100%;object-fit:cover;display:block;}
-
-/* ═══ BOTTOM NAV ═══ */
-#nav{position:fixed;bottom:0;left:0;right:0;height:var(--bnh);z-index:500;display:flex;background:rgba(5,7,13,.98);border-top:1px solid var(--bdr);backdrop-filter:blur(20px);}
-.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;background:none;border:none;color:var(--t3);font-size:.58rem;transition:.18s;font-family:var(--fb);text-transform:uppercase;letter-spacing:.5px;padding:7px 0;position:relative;}
-.nb i{font-size:1.05rem;}
-.nb.on{color:var(--gold);}
-.nb.on i{text-shadow:0 0 10px var(--gog);}
-.nb.on::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2px;background:var(--gold);border-radius:0 0 4px 4px;}
-
-/* ═══ 3D BOOK OVERLAY (FULL IMAGE) ═══ */
-#b3d-ov{position:fixed;inset:0;z-index:2000;background:radial-gradient(ellipse at 50% 30%,#0a0e1a 0%,var(--void) 100%);display:none;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 14px 24px;overflow-y:auto;}
-.b3d-x{position:fixed;top:14px;right:14px;background:rgba(255,255,255,.06);border:1px solid var(--bdr);color:var(--t2);width:36px;height:36px;border-radius:7px;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:.18s;z-index:2001;}
-.b3d-x:hover{color:var(--t1);}
-.b3d-title{font-family:var(--ft);font-size:1rem;color:var(--gold);letter-spacing:3px;text-align:center;margin-bottom:14px;}
-/* View tabs */
-.b3d-tabs{display:flex;gap:5px;padding:3px;background:rgba(0,0,0,.4);border-radius:10px;border:1px solid var(--bdr);margin-bottom:20px;}
-.b3d-tab{padding:6px 12px;border-radius:7px;font-size:.68rem;color:var(--t2);cursor:pointer;transition:.18s;font-family:var(--fb);}
-.b3d-tab.on{background:rgba(201,169,110,.1);color:var(--gold);border:1px solid var(--bdr-g);}
-/* View panels */
-.b3d-panel{display:none;width:100%;align-items:center;justify-content:center;}
-.b3d-panel.on{display:flex;}
-
-/* ─── FLOAT VIEW (The key: background-image on face div) ─── */
-.b3d-scene{perspective:900px;display:flex;align-items:center;justify-content:center;padding:20px 30px 40px;}
-.book3d{
-  position:relative;
-  transform:rotateY(-32deg) rotateX(4deg);
-  animation:bf 5s ease-in-out infinite;
-  filter:drop-shadow(20px 30px 30px rgba(0,0,0,.7));
+/* ==========================================================================
+   LAYOUT (ONE-PAGE ARCHITECTURE)
+   ========================================================================== */
+#header {
+  height: var(--header-height); background: var(--bg-panel); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; position: relative;
 }
-@keyframes bf{0%,100%{transform:rotateY(-32deg) rotateX(4deg) translateY(0)}50%{transform:rotateY(-26deg) rotateX(3deg) translateY(-10px)}}
-.book3d.spinning{animation:bspin 8s linear infinite !important;}
-@keyframes bspin{from{transform:rotateY(0) translateY(-5px)}to{transform:rotateY(360deg) translateY(-5px)}}
-/* THE FIX: .b3d-front uses background-image, NOT an img tag → no clipping */
-.b3d-front{
-  width:200px;height:300px;
-  /* Background image set via JS */
-  background-size:100% 100%;
-  background-position:center;
-  background-repeat:no-repeat;
-  border-radius:2px 7px 7px 2px;
-  position:relative;
-  box-shadow:4px 8px 20px rgba(0,0,0,.5);
+
+#workspace {
+  display: flex; height: calc(100vh - var(--header-height)); width: 100%; overflow: hidden;
 }
-.b3d-spine-side{
-  position:absolute;top:0;left:-26px;
-  width:26px;height:100%;
-  background:linear-gradient(to right,#060606,#1a1a1a);
-  border-radius:4px 0 0 4px;
-  display:flex;align-items:center;justify-content:center;
-  /* Skew to simulate 3D */
-  transform:skewY(0) perspective(200px) rotateY(-60deg);
-  transform-origin:right center;
-  box-shadow:-2px 0 8px rgba(0,0,0,.5);
+
+.sidebar {
+  width: 340px; background: var(--bg-panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto; padding: 20px; flex-shrink: 0;
 }
-.b3d-spine-txt{writing-mode:vertical-rl;font-family:var(--ft);font-size:.5rem;color:var(--gold);letter-spacing:2px;text-align:center;}
-.b3d-pages{
-  position:absolute;top:2px;right:-18px;
-  width:18px;height:calc(100% - 4px);
-  background:repeating-linear-gradient(to right,#f5f5f5,#d5d5d5 1px,#f0f0f0 2px);
-  border-radius:0 3px 3px 0;
-  /* Skew to simulate 3D */
-  transform:perspective(200px) rotateY(50deg);
-  transform-origin:left center;
-  box-shadow:2px 0 8px rgba(0,0,0,.3);
+.sidebar.right { border-right: none; border-left: 1px solid var(--border); }
+
+#center-stage {
+  flex: 1; display: flex; flex-direction: column; position: relative;
+  background: radial-gradient(circle at center, #111520 0%, #050505 100%);
+  overflow: hidden;
 }
-.b3d-shadow{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%);width:180px;height:18px;background:radial-gradient(ellipse,rgba(0,0,0,.5),transparent 70%);border-radius:50%;animation:sh 5s ease-in-out infinite;}
-@keyframes sh{0%,100%{width:180px;opacity:.5}50%{width:200px;opacity:.25}}
 
-/* ─── FLAT WRAP VIEW ─── */
-.wrap-view{display:flex;align-items:stretch;margin:10px auto;border-radius:6px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.7);}
-.w-back{width:160px;min-height:260px;background:#111;position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;border-radius:4px 0 0 4px;flex-shrink:0;}
-.w-back-img{position:absolute;inset:0;background-size:100% 100%;background-repeat:no-repeat;border-radius:4px 0 0 4px;opacity:.3;}
-.w-back-content{position:relative;z-index:1;}
-.w-btitle{font-family:var(--ft);font-size:.56rem;color:var(--gold);margin-bottom:5px;letter-spacing:1px;}
-.w-bline{width:40px;height:1px;background:var(--gold);opacity:.4;margin-bottom:6px;}
-.w-btext{font-size:.5rem;color:rgba(255,255,255,.7);line-height:1.5;}
-.w-spine{width:28px;min-height:260px;background:linear-gradient(to right,#060606,#1d1d1d);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.w-spine-t{writing-mode:vertical-rl;font-family:var(--ft);font-size:.46rem;color:var(--gold);letter-spacing:2px;text-align:center;}
-.w-front{width:160px;min-height:260px;background-size:100% 100%;background-repeat:no-repeat;border-radius:0 4px 4px 0;flex-shrink:0;}
-
-/* ─── STAND VIEW ─── */
-.stand-view{perspective:800px;padding:20px 30px 50px;display:flex;justify-content:center;}
-.book-stand{
-  position:relative;
-  transform:rotateX(8deg) rotateY(-20deg);
-  animation:stf 5s ease-in-out infinite;
-  filter:drop-shadow(15px 25px 28px rgba(0,0,0,.8));
+@media (max-width: 1024px) {
+  #workspace { flex-direction: column; overflow-y: auto; }
+  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible; }
+  #center-stage { min-height: 70vh; }
 }
-@keyframes stf{0%,100%{transform:rotateX(8deg) rotateY(-20deg) translateY(0)}50%{transform:rotateX(6deg) rotateY(-15deg) translateY(-8px)}}
-.bs-front{width:180px;height:270px;background-size:100% 100%;background-repeat:no-repeat;border-radius:2px 6px 6px 2px;box-shadow:4px 8px 18px rgba(0,0,0,.5);}
-.bs-spine{position:absolute;top:0;left:-22px;width:22px;height:100%;background:linear-gradient(to right,#050505,#181818);border-radius:4px 0 0 4px;transform:perspective(200px) rotateY(-60deg);transform-origin:right center;}
-.bs-pages{position:absolute;top:2px;right:-15px;width:15px;height:calc(100%-4px);background:repeating-linear-gradient(to right,#f5f5f5,#d0d0d0 1px,#eee 2px);border-radius:0 3px 3px 0;transform:perspective(200px) rotateY(50deg);transform-origin:left center;}
-.bs-ground{position:absolute;bottom:-20px;left:0;right:0;height:20px;background:linear-gradient(to bottom,rgba(0,0,0,.4),transparent);}
 
-/* 3D controls */
-.b3d-ctrls{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:14px;}
-.b3c{padding:7px 14px;background:rgba(255,255,255,.05);border:1px solid var(--bdr);border-radius:7px;font-size:.72rem;color:var(--t2);cursor:pointer;transition:.18s;}
-.b3c:hover{background:rgba(201,169,110,.09);color:var(--gold);border-color:var(--bdr-g);}
+/* ==========================================================================
+   COMPONENTS
+   ========================================================================== */
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-heading); color: var(--gold); font-size: 1.1rem; letter-spacing: 2px; font-weight: 900; }
+.brand img { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--gold); }
 
-/* ═══ MODALS ═══ */
-.mbg{position:fixed;inset:0;background:rgba(0,0,0,.86);backdrop-filter:blur(14px);z-index:3000;display:none;align-items:flex-end;justify-content:center;padding:0;}
-.mbg.open{display:flex;animation:fd .2s ease;}
-@keyframes fd{from{opacity:0}to{opacity:1}}
-.modal{background:linear-gradient(180deg,var(--card),var(--deep));border:1px solid var(--bdr-g);border-radius:var(--r22) var(--r22) 0 0;padding:20px 18px 36px;width:100%;max-width:440px;position:relative;box-shadow:0 -10px 40px rgba(0,0,0,.6);animation:sup .34s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto;}
-@keyframes sup{from{transform:translateY(100%)}to{transform:none}}
-.m-hnd{width:34px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 16px;}
-.m-x{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--t3);cursor:pointer;font-size:.95rem;}
-.m-ico{font-size:2rem;text-align:center;margin-bottom:12px;color:var(--gold);}
-.m-ttl{font-family:var(--ft);font-size:.98rem;color:var(--gold);text-align:center;letter-spacing:2px;margin-bottom:5px;}
-.m-sub{font-size:.76rem;color:var(--t3);text-align:center;margin-bottom:18px;line-height:1.5;}
-.mf{margin-bottom:11px;}
-.mf label{display:block;font-size:.66rem;color:var(--t2);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;}
-.ma{display:flex;flex-direction:column;gap:6px;margin-top:16px;}
-.mbtn{padding:12px;border:none;border-radius:var(--r8);font-weight:600;font-size:.84rem;cursor:pointer;transition:.22s;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--fb);letter-spacing:.3px;}
-.mbtn.p{background:linear-gradient(135deg,var(--gold),#d4a860);color:#000;}
-.mbtn.p:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(201,169,110,.3);}
-.mbtn.s{background:rgba(255,255,255,.05);border:1px solid var(--bdr);color:var(--t2);}
-.mbtn.s:hover{background:rgba(255,255,255,.09);color:var(--t1);}
-.mbtn.g{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.22);color:var(--grn);}
-.mbtn.w{background:rgba(37,211,102,.09);border:1px solid rgba(37,211,102,.28);color:#25d366;}
-.keybox{background:rgba(0,0,0,.45);border:1px dashed rgba(16,185,129,.3);border-radius:var(--r8);padding:11px;font-family:monospace;font-size:.72rem;color:var(--grn);word-break:break-all;text-align:center;margin:9px 0;position:relative;}
-.kcopy{position:absolute;top:6px;right:7px;background:none;border:none;color:var(--t3);cursor:pointer;font-size:.76rem;}
-.kcopy:hover{color:var(--grn);}
-#vn{display:none;margin-top:9px;padding:9px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.18);border-radius:var(--r8);font-size:.74rem;color:var(--gold);text-align:center;}
-/* TOI modal */
-.toi-g{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0;}
-.toi-o{padding:14px 10px;background:rgba(255,255,255,.04);border:2px solid var(--bdr);border-radius:var(--r12);cursor:pointer;text-align:center;transition:.22s;}
-.toi-o:hover,.toi-o.on{background:rgba(201,169,110,.09);border-color:var(--bdr-g);}
-.toi-o i{font-size:1.7rem;color:var(--t3);margin-bottom:7px;display:block;}
-.toi-o.on i{color:var(--gold);}
-.toi-nm{font-size:.78rem;font-weight:600;color:var(--t1);margin-bottom:2px;}
-.toi-ds{font-size:.64rem;color:var(--t3);line-height:1.3;}
+.wallet-badge { display: flex; align-items: center; gap: 8px; background: rgba(201,169,110,0.1); border: 1px solid var(--border-gold); padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: 0.2s; }
+.wallet-badge:hover { background: rgba(201,169,110,0.2); }
+.wallet-badge i { color: var(--gold); }
+.wallet-badge span { font-weight: 700; color: #fff; font-size: 0.9rem; }
 
-/* ═══ WIZARD ═══ */
-#wiz{position:fixed;inset:0;background:rgba(0,0,0,.92);backdrop-filter:blur(18px);z-index:4000;display:none;align-items:flex-end;justify-content:center;}
-.wbox{background:linear-gradient(180deg,var(--card),var(--deep));border:1px solid var(--bdr-g);border-radius:var(--r22) var(--r22) 0 0;padding:20px 16px 36px;width:100%;max-width:440px;animation:sup .34s cubic-bezier(.34,1.56,.64,1);max-height:88vh;overflow-y:auto;}
-.wprog{display:flex;gap:4px;margin-bottom:14px;}
-.wd{height:3px;flex:1;background:var(--bdr);border-radius:2px;transition:.28s;}
-.wd.on{background:var(--gold);}
-.ws{display:none;}
-.ws.on{display:block;animation:fd .22s ease;}
-.wt{font-family:var(--ft);font-size:.9rem;color:var(--gold);margin-bottom:4px;letter-spacing:2px;}
-.wsb{font-size:.76rem;color:var(--t2);margin-bottom:12px;}
-.wo-g{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:13px;}
-.wo{padding:9px 7px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:var(--r8);cursor:pointer;text-align:center;font-size:.74rem;color:var(--t2);transition:.18s;}
-.wo:hover,.wo.sel{background:rgba(201,169,110,.09);border-color:var(--bdr-g);color:var(--gold);}
-.wa{display:flex;gap:7px;}
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.card-title { font-size: 0.75rem; color: var(--gold); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 
-/* ═══ TOASTS ═══ */
-#toasts{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
-.toast{padding:8px 16px;border-radius:18px;font-size:.78rem;font-weight:600;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:6px;backdrop-filter:blur(10px);animation:tIn .32s cubic-bezier(.34,1.56,.64,1),tOut .38s ease 2.6s forwards;}
-@keyframes tIn{from{opacity:0;transform:translateY(-14px) scale(.9)}to{opacity:1;transform:none}}
-@keyframes tOut{to{opacity:0;transform:translateY(-8px) scale(.95)}}
-.toast.s{background:rgba(16,185,129,.92);color:#fff;}
-.toast.e{background:rgba(239,68,68,.9);color:#fff;}
-.toast.i{background:rgba(59,130,246,.9);color:#fff;}
-.toast.g{background:rgba(201,169,110,.95);color:#000;}
+input, select, textarea {
+  width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: #fff;
+  padding: 10px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 0.85rem; margin-bottom: 10px; transition: 0.2s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-glow); }
+textarea { resize: vertical; min-height: 80px; }
 
-/* ═══ COMIC MODE ═══ */
-#comic-card{display:none;border-color:rgba(239,68,68,.22);}
-.comic-panels{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
-.cp{padding:6px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:.68rem;color:#f87171;cursor:pointer;transition:.18s;}
-.cp:hover,.cp.on{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.05); color: #fff; font-weight: 600; font-size: 0.85rem;
+  cursor: pointer; transition: 0.2s; font-family: var(--font-body);
+}
+.btn:hover { background: rgba(255,255,255,0.1); }
+.btn-gold { background: linear-gradient(135deg, #c9a96e, #f0c878); color: #000; border: none; font-weight: 800; }
+.btn-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--gold-glow); }
+.btn-small { padding: 8px 12px; font-size: 0.75rem; width: auto; }
 
-/* ═══ SERIES ROW ═══ */
-.sr{display:flex;gap:7px;align-items:flex-end;}
-.sr .fg{flex:1;margin-bottom:0;}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
-/* ═══ TEMPLATE PREVIEW ═══ */
-#tpl-preview-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.92);backdrop-filter:blur(14px);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
-#tpl-preview-overlay.on{display:flex;}
-.tpl-pv-box{background:var(--card);border:1px solid var(--bdr-g);border-radius:var(--r16);padding:20px;width:100%;max-width:380px;text-align:center;}
-.tpl-pv-title{font-family:var(--ft);font-size:1rem;color:var(--gold);letter-spacing:2px;margin-bottom:6px;}
-.tpl-pv-sub{font-size:.76rem;color:var(--t2);margin-bottom:16px;}
-.tpl-colors-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;}
-.tpc{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.2s;position:relative;}
-.tpc.on::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#fff;font-weight:700;}
-.tpc:hover,.tpc.on{border-color:rgba(255,255,255,.6);transform:scale(1.1);}
+.chip { padding: 6px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: inline-block; margin: 0 4px 6px 0; }
+.chip.active { background: rgba(201,169,110,0.15); border-color: var(--gold); color: var(--gold); }
 
-/* ═══ ADMIN ═══ */
-#admin-card{display:none;border-color:rgba(245,158,11,.25);}
+/* ==========================================================================
+   CANVAS & TOOLBAR
+   ========================================================================== */
+.canvas-header { display: flex; justify-content: space-between; padding: 12px 20px; background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); align-items: center; }
+.toolbar { display: flex; gap: 8px; }
+.tool-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+.tool-btn:hover, .tool-btn.active { background: rgba(201,169,110,0.2); color: var(--gold); border-color: var(--gold); }
+
+#canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; overflow: auto; }
+canvas { box-shadow: 0 10px 50px rgba(0,0,0,0.8); background: #fff; }
+
+#loader-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; }
+.spinner { width: 50px; height: 50px; border: 3px solid var(--border-gold); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   TRUE 3D BOOK ENGINE
+   ========================================================================== */
+#book-3d-viewer { position: absolute; inset: 0; background: radial-gradient(circle at center, #111 0%, #000 100%); z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; }
+.close-3d { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
+
+.scene { perspective: 1200px; width: 100%; height: 60vh; display: flex; align-items: center; justify-content: center; }
+.book { width: 260px; height: 390px; position: relative; transform-style: preserve-3d; transform: rotateY(-30deg) rotateX(5deg); animation: floatBook 6s ease-in-out infinite; }
+@keyframes floatBook { 0%, 100% { transform: rotateY(-30deg) rotateX(5deg) translateY(0); } 50% { transform: rotateY(-20deg) rotateX(2deg) translateY(-15px); } }
+.book.spin { animation: spinBook 10s linear infinite; }
+@keyframes spinBook { from { transform: rotateY(0deg) rotateX(5deg); } to { transform: rotateY(360deg) rotateX(5deg); } }
+
+.face { position: absolute; width: 100%; height: 100%; border-radius: 3px; background-size: 100% 100%; background-position: center; }
+.face-front { transform: translateZ(18px); box-shadow: inset 4px 0 10px rgba(0,0,0,0.3); }
+.face-back { transform: rotateY(180deg) translateZ(18px); background: #111; }
+/* Spine width is 36px */
+.face-spine { width: 36px; transform: rotateY(-90deg) translateZ(18px); left: -18px; background: linear-gradient(to right, #111, #333, #111); display: flex; align-items: center; justify-content: center; }
+.spine-text { writing-mode: vertical-rl; color: var(--gold); font-family: var(--font-heading); font-size: 14px; letter-spacing: 2px; }
+/* Pages */
+.face-pages-right { width: 36px; transform: rotateY(90deg) translateZ(242px); left: auto; right: -18px; background: repeating-linear-gradient(to bottom, #f4f4f4, #dcdcdc 1px, #f4f4f4 3px); }
+.face-pages-top { height: 36px; width: 100%; transform: rotateX(90deg) translateZ(18px); top: -18px; background: #eee; }
+.face-pages-bottom { height: 36px; width: 100%; transform: rotateX(-90deg) translateZ(372px); bottom: -18px; background: #ccc; }
+
+.shadow { position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); width: 120%; height: 20px; background: radial-gradient(ellipse, rgba(0,0,0,0.8), transparent 70%); border-radius: 50%; filter: blur(5px); }
+
+/* ==========================================================================
+   INTERACTIVE TOUR GUIDE
+   ========================================================================== */
+#tour-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9000; display: none; }
+.tour-highlight { position: relative; z-index: 9001 !important; box-shadow: 0 0 0 4px var(--gold), 0 0 20px rgba(201,169,110,0.6) !important; border-radius: inherit; background: var(--bg-card); pointer-events: none; }
+.tour-tooltip { position: absolute; background: var(--bg-panel); border: 2px solid var(--gold); padding: 20px; border-radius: 12px; width: 300px; z-index: 9002; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: all 0.3s ease; }
+.tour-tooltip h3 { font-family: var(--font-heading); color: var(--gold); margin-bottom: 8px; font-size: 1.1rem; }
+.tour-tooltip p { font-size: 0.85rem; color: #ddd; line-height: 1.5; margin-bottom: 15px; }
+
+/* ==========================================================================
+   MODALS & TOASTS
+   ========================================================================== */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; z-index: 8000; }
+.modal-bg.active { display: flex; animation: fadeIn 0.2s; }
+.modal-content { background: var(--bg-panel); border: 1px solid var(--border-gold); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; }
+.modal-content h2 { color: var(--gold); font-family: var(--font-heading); margin-bottom: 10px; }
+
+#toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast { background: var(--gold); color: #000; padding: 10px 20px; border-radius: 30px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 5px 15px rgba(0,0,0,0.5); animation: popUp 0.3s ease, fadeOut 0.3s ease 3s forwards; }
+@keyframes popUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+/* Color Picker UI */
+.color-picker-wrap { display: flex; gap: 10px; align-items: center; }
+.color-preview { width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--border); }
 </style>
 </head>
 <body>
-<div id="aurora"><div class="aorb a1"></div><div class="aorb a2"></div><div class="aorb a3"></div></div>
-<div class="part" id="pt"></div>
-<div id="toasts"></div>
 
 <!-- AUTH GATE -->
-<div id="auth-gate">
-  <div class="auth-sh">
-    <img class="auth-logo" src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="">
-    <h2>PHILADELPHIA</h2>
-    <p>The most intelligent AI book cover studio. Sign in to start creating.</p>
-    <button class="g-btn" onclick="login()">
-      <svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Sign In with Google
-    </button>
-    <button class="auth-skip" onclick="document.getElementById('auth-gate').classList.remove('open')">Continue browsing →</button>
+<div class="modal-bg" id="auth-gate">
+  <div class="modal-content">
+    <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" style="width:60px; border-radius:10px; border: 1px solid var(--gold); margin-bottom:15px;">
+    <h2>Philadelphia Studio</h2>
+    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Sign in to access the ultimate AI book cover creator.</p>
+    <button class="btn" style="background:#fff; color:#000; margin-bottom:10px;" onclick="login()"><i class="fab fa-google" style="color:#4285F4"></i> Continue with Google</button>
   </div>
-</div>
-
-<!-- TOUR -->
-<div id="tour-wrap">
-  <canvas id="tour-mask-canvas" style="position:absolute;inset:0;pointer-events:all;"></canvas>
-  <div class="tour-tip" id="tour-tip" style="bottom:80px;left:14px;">
-    <div class="tour-dots" id="tour-dots"></div>
-    <div class="tour-num" id="tour-num"><i class="fas fa-compass"></i> Step 1 of 9</div>
-    <div class="tour-h" id="tour-h">Welcome to Philadelphia Studio</div>
-    <div class="tour-b" id="tour-b">The most powerful AI book cover creator. I'll walk you through every feature — step by step.</div>
-    <div class="tour-acts">
-      <button class="t-skip" onclick="closeTour()">Skip</button>
-      <button class="t-next" onclick="nextTour()">Next →</button>
-    </div>
-  </div>
-  <div class="tour-arrow" id="tour-arrow" style="display:none;bottom:150px;left:50%;transform:translateX(-50%)">
-    <i class="fas fa-hand-pointer"></i>
-  </div>
-</div>
-
-<!-- CONTEXT GUIDE -->
-<div id="ctx">
-  <div class="ctx-bub">
-    <button class="ctx-close" onclick="hideCtx()"><i class="fas fa-times"></i></button>
-    <div class="ctx-hdr"><div class="ctx-av"><i class="fas fa-robot"></i></div><span class="ctx-name">Bobby suggests</span></div>
-    <div class="ctx-msg" id="ctx-msg">Your cover looks great!</div>
-    <div class="ctx-btns" id="ctx-btns"></div>
-  </div>
-</div>
-
-<!-- NOTIF BAR -->
-<div id="notif-bar">
-  <i class="fas fa-bell" style="color:var(--blu)"></i>
-  <span>Get notified when your cover is ready</span>
-  <button class="nb-e" onclick="reqNotif()">Enable</button>
-  <button class="nb-x" onclick="this.parentElement.classList.remove('on')"><i class="fas fa-times"></i></button>
 </div>
 
 <!-- HEADER -->
-<header id="hdr">
-  <img class="hdr-logo" src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="">
-  <div class="hdr-brand">PHILADELPHIA<span>Studio Pro · Elvion AI</span></div>
-  <div class="hsp"></div>
-  <div class="cc" id="cc" onclick="authA(()=>openM('fund-modal'))">
-    <i class="fas fa-coins coin"></i>
-    <span class="val" id="cv">—</span>
-    <span class="lbl">Credits</span>
+<header id="header">
+  <div class="brand">
+    <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Logo">
+    PHILADELPHIA PRO
   </div>
-  <button class="hbtn" onclick="authA(()=>openM('fund-modal'))"><i class="fas fa-plus"></i></button>
-  <button class="hbtn" onclick="openTour()" title="Guide"><i class="fas fa-compass"></i></button>
-  <div class="av" id="av"><i class="fas fa-user" style="font-size:.68rem"></i></div>
-  <button class="hbtn" onclick="signOutUser()"><i class="fas fa-sign-out-alt"></i></button>
+  <div style="display:flex; gap:15px; align-items:center;">
+    <button class="btn btn-small" onclick="startTour()"><i class="fas fa-compass"></i> Tour</button>
+    <div class="wallet-badge" onclick="document.getElementById('fund-modal').classList.add('active')">
+      <i class="fas fa-coins"></i>
+      <span id="credit-display">--</span>
+    </div>
+    <button class="btn btn-small" onclick="signOutUser()" style="background:transparent; border:none;"><i class="fas fa-sign-out-alt"></i></button>
+  </div>
 </header>
 
-<!-- ═══════════ APP ═══════════ -->
-<div id="app">
+<!-- ONE-PAGE WORKSPACE -->
+<div id="workspace">
 
-<!-- ░░░ TAB: GENERATE ░░░ -->
-<div id="tab-gen" class="tab active">
+  <!-- LEFT PANEL: GENERATION -->
+  <aside class="sidebar" id="left-panel">
+    <div class="card" id="tour-step-1">
+      <div class="card-title"><i class="fas fa-magic"></i> Generate Cover</div>
+      
+      <label>1. What part are you making?</label>
+      <div class="grid-3" style="margin-bottom: 15px;">
+        <button class="btn btn-small" onclick="setDimension('front')" style="border-color:var(--gold); color:var(--gold)">Front</button>
+        <button class="btn btn-small" onclick="setDimension('back')">Back</button>
+        <button class="btn btn-small" onclick="setDimension('spine')">Spine</button>
+      </div>
 
-  <!-- CANVAS -->
-  <div id="cs">
-    <div class="ctb">
-      <button class="cb" onclick="zoomC(1.14)"><i class="fas fa-magnifying-glass-plus"></i></button>
-      <button class="cb" onclick="zoomC(.88)"><i class="fas fa-magnifying-glass-minus"></i></button>
-      <button class="cb" onclick="fitC()"><i class="fas fa-expand-arrows-alt"></i></button>
-      <div class="cb-sep"></div>
-      <button class="cb on" id="st" onclick="setTool('sel')"><i class="fas fa-arrow-pointer"></i> Select</button>
-      <button class="cb" id="bt" onclick="authA(()=>setTool('brush'))"><i class="fas fa-paint-brush"></i> Paint</button>
-      <button class="cb" id="et" onclick="authA(()=>setTool('erase'))"><i class="fas fa-eraser"></i> Erase</button>
-      <div class="cb-sep"></div>
-      <button class="cb" id="add-text-btn" onclick="authA(addText)"><i class="fas fa-font"></i> Text</button>
-      <button class="cb" onclick="undoC()"><i class="fas fa-undo"></i></button>
-      <button class="cb" onclick="redoC()"><i class="fas fa-redo"></i></button>
-      <button class="cb" id="b3d-open-btn" style="display:none" onclick="openBook3D()"><i class="fas fa-cube"></i> 3D</button>
-      <span id="rb"></span>
+      <label>2. Pick a Genre</label>
+      <div id="genre-chips">
+        <span class="chip active" onclick="setGenre('Dark Fantasy', this)">Dark Fantasy</span>
+        <span class="chip" onclick="setGenre('Romance', this)">Romance</span>
+        <span class="chip" onclick="setGenre('Thriller', this)">Thriller</span>
+        <span class="chip" onclick="setGenre('Sci-Fi', this)">Sci-Fi</span>
+        <span class="chip" onclick="setGenre('Non-Fiction', this)">Non-Fiction</span>
+      </div>
+
+      <label style="margin-top:10px;">3. Visual Prompt</label>
+      <textarea id="prompt-input" placeholder="Describe the scene... e.g., A glowing sword rising from a dark ocean, storm clouds..."></textarea>
+      <button class="btn" style="margin-bottom:15px; color:var(--accent-blue); border-color:var(--accent-blue);" onclick="askBobby()"><i class="fas fa-robot"></i> Bobby: Enhance Prompt</button>
+
+      <button class="btn btn-gold" id="generate-btn" onclick="generateAIImage()"><i class="fas fa-bolt"></i> Generate Image (20 CR)</button>
     </div>
-    <div id="cw">
-      <div id="es"><i class="fas fa-wand-magic-sparkles es-i"></i><div class="es-t">Philadelphia Studio</div><div class="es-h">Describe your cover below and tap <strong>Generate</strong>.</div></div>
-      <div id="gl"><div class="lr"></div><div class="lt" id="lt">Generating...</div><div class="lb-w"><div class="lb"></div></div><div style="font-size:.62rem;color:var(--t3);letter-spacing:2px" id="ls2">Philadelphia Engine</div></div>
-      <canvas id="cv-el"></canvas>
-      <div id="qg"></div>
+
+    <div class="card" id="tour-step-5">
+      <div class="card-title"><i class="fas fa-layer-group"></i> Professional Templates</div>
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Need a full wrap? Load a pre-designed layout.</p>
+      <button class="btn" onclick="loadBlankWrapTemplate()"><i class="fas fa-panorama"></i> Load Blank Full Wrap Template</button>
     </div>
-  </div>
+  </aside>
 
-  <!-- Recent saves strip -->
-  <div class="card" style="padding:11px 13px">
-    <div class="clab" style="margin-bottom:7px"><i class="fas fa-clock-rotate-left"></i> Recent Saves</div>
-    <div class="ls" id="ls-strip"><span style="font-size:.72rem;color:var(--t3)">Saved covers appear here</span></div>
-  </div>
-
-  <!-- BLANK TEMPLATE -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-file-image"></i> Start with a Template</div>
-    <button class="blank-tpl-btn" id="blank-tpl-btn" onclick="authA(openTemplateSelector)">
-      <i class="fas fa-book"></i>
-      <div><div style="font-size:.82rem;font-weight:600;color:var(--gold)">Blank Professional Template</div><div style="font-size:.68rem;color:var(--t2);margin-top:2px">Pre-designed front + back + spine with editable text areas</div></div>
-      <i class="fas fa-chevron-right" style="margin-left:auto;font-size:.75rem;color:var(--t3)"></i>
-    </button>
-  </div>
-
-  <!-- COVER TYPE -->
-  <div class="card" id="ctype-card">
-    <div class="clab"><i class="fas fa-book-open"></i> Cover Type</div>
-    <div class="ctype-g">
-      <button class="ct-btn on" onclick="setCT('front',this)"><i class="fas fa-book"></i>Front</button>
-      <button class="ct-btn" onclick="setCT('back',this)"><i class="fas fa-book-open"></i>Back</button>
-      <button class="ct-btn" onclick="setCT('spine',this)"><i class="fas fa-ruler-vertical"></i>Spine</button>
-      <button class="ct-btn" onclick="setCT('char',this)"><i class="fas fa-person"></i>Character</button>
-      <button class="ct-btn" onclick="setCT('scene',this)"><i class="fas fa-mountain-sun"></i>Scene</button>
-      <button class="ct-btn" onclick="setCT('wrap',this)"><i class="fas fa-panorama"></i>Full Wrap</button>
-    </div>
-  </div>
-
-  <!-- GENRE -->
-  <div class="card" id="genre-card">
-    <div class="clab"><i class="fas fa-palette"></i> Genre Style</div>
-    <div class="chips" id="style-chips">
-      <span class="chip on" data-s="dark fantasy">Dark Fantasy</span>
-      <span class="chip" data-s="romance">Romance</span>
-      <span class="chip" data-s="thriller">Thriller</span>
-      <span class="chip" data-s="sci-fi">Sci-Fi</span>
-      <span class="chip" data-s="horror">Horror</span>
-      <span class="chip" data-s="mystery">Mystery</span>
-      <span class="chip" data-s="children's">Children's</span>
-      <span class="chip" data-s="literary fiction">Literary</span>
-      <span class="chip" data-s="non-fiction">Non-Fiction</span>
-      <span class="chip" data-s="epic fantasy">Epic Fantasy</span>
-      <span class="chip comic" data-s="comic book art">🎨 Comic</span>
-    </div>
-  </div>
-
-  <!-- PROMPT -->
-  <div class="card" id="prompt-card">
-    <div class="clab"><i class="fas fa-pencil"></i> Your Prompt</div>
-    <div class="char-ban" id="char-ban"><i class="fas fa-lock"></i><span>Character locked: <strong id="char-nm"></strong></span><button onclick="clearCharLock()">Clear</button></div>
-    <div class="fg"><label class="fl">Book Title</label><input type="text" id="book-title" placeholder="e.g. The Crimson Throne" oninput="updateFPrev()"></div>
-    <div class="fg"><label class="fl">Author Name</label><input type="text" id="author-name" placeholder="e.g. Kolade Philip Ogunlana"></div>
-    <div class="fg"><label class="fl">Visual Prompt</label><textarea id="pi" placeholder="Describe your cover art... e.g. A glowing sword rising from dark ocean waves at midnight, storm clouds, moonlight rays piercing through..."></textarea></div>
-    <div class="pa">
-      <button class="pab pur" onclick="authA(bobbify)"><i class="fas fa-magic-wand-sparkles"></i> Enhance</button>
-      <button class="pab" onclick="openWizard()"><i class="fas fa-hat-wizard"></i> Wizard</button>
-      <button class="pab" onclick="authA(()=>openM('char-modal'))"><i class="fas fa-lock"></i> Lock Char</button>
-    </div>
-  </div>
-
-  <!-- COMIC MODE -->
-  <div class="card" id="comic-card">
-    <div class="clab" style="color:#f87171"><i class="fas fa-book-open"></i> Comic Mode</div>
-    <div class="fg"><label class="fl">Comic Style</label>
-      <select id="comic-style">
-        <option value="american comic book">American Comic (Marvel/DC style)</option>
-        <option value="manga anime">Manga / Anime</option>
-        <option value="graphic novel">Graphic Novel</option>
-        <option value="vintage retro comic">Vintage 1950s Comic</option>
-        <option value="webtoon manhwa">Webtoon / Manhwa</option>
-      </select>
-    </div>
-    <div style="font-size:.72rem;color:var(--t2);margin-bottom:8px">Add comic panels to canvas:</div>
-    <div class="comic-panels">
-      <button class="cp" onclick="addComicPanels(2,2)">2×2 Grid</button>
-      <button class="cp" onclick="addComicPanels(3,2)">3×2 Grid</button>
-      <button class="cp" onclick="addComicPanels(1,3)">Strip (1×3)</button>
-      <button class="cp" onclick="addComicPanels('splash')">Splash Page</button>
-      <button class="cp" onclick="addSpeechBubble()"><i class="fas fa-comment"></i> Speech Bubble</button>
-    </div>
-  </div>
-
-  <!-- MODEL -->
-  <div class="card" id="model-card">
-    <div class="clab"><i class="fas fa-microchip"></i> Model & Resolution</div>
-    <div class="fg"><label class="fl">Model</label>
-      <select id="ms">
-        <option value="v6">Philadelphia V6 — Illustration (Best)</option>
-        <option value="photoreal">Philadelphia Photoreal — Cinematic</option>
-        <option value="anime_core">Philadelphia Anime — Stylized</option>
-        <option value="movie">Philadelphia Movie — Dramatic</option>
-        <option value="max">Philadelphia Max — HD Resolution</option>
-      </select>
-    </div>
-    <div class="fg"><label class="fl">Resolution</label>
-      <select id="res" onchange="resizeC()">
-        <option value="768x1024">768 × 1024 — Standard Cover</option>
-        <option value="1024x1024">1024 × 1024 — Square</option>
-        <option value="1024x1536">1024 × 1536 — Large Cover</option>
-        <option value="512x1024">512 × 1024 — Spine Only</option>
-        <option value="1536x1024">1536 × 1024 — Wide / Back</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- QUAD + GEN -->
-  <div class="qrow" id="qrow" onclick="authA(toggleQuad)">
-    <div class="ql"><div class="qt">Quad Generate</div><div class="qc" id="qch">4 variations · 60 credits</div></div>
-    <div class="tog" id="qtog"><div class="tok"></div></div>
-  </div>
-  <button class="gbtn" id="genbtn" onclick="authA(handleGen)">
-    <i class="fas fa-bolt"></i>
-    <span id="gbl">Generate Cover</span>
-    <span id="gco" style="font-size:.66rem;opacity:.58;font-family:var(--fb)">(15 credits)</span>
-  </button>
-  <div class="gh" id="gh">15 credits per generation</div>
-
-  <!-- BACK COVER INFO -->
-  <div class="card" style="margin-top:9px">
-    <div class="clab"><i class="fas fa-user-pen"></i> Back Cover Content</div>
-    <div class="fg"><label class="fl">About the Book</label><textarea id="about-book" style="min-height:70px" placeholder="A heartfelt story of courage and destiny..."></textarea></div>
-    <div class="fg"><label class="fl">About the Author</label><textarea id="about-author" style="min-height:60px" placeholder="[Your Name] is an award-winning author..."></textarea></div>
-  </div>
-
-  <!-- SERIES -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-layer-group"></i> Series Cover</div>
-    <div class="sr">
-      <div class="fg"><label class="fl">Series Name</label><input type="text" id="series-name" placeholder="The Shadow Chronicles"></div>
-      <div class="fg" style="width:88px;flex-shrink:0"><label class="fl">Book #</label>
-        <select id="sn"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+  <!-- CENTER: CANVAS -->
+  <main id="center-stage">
+    <div class="canvas-header">
+      <div class="toolbar" id="tour-step-2">
+        <button class="tool-btn active" title="Select" onclick="setCanvasMode('select', this)"><i class="fas fa-mouse-pointer"></i></button>
+        <button class="tool-btn" title="Add Text" onclick="addCanvasText()"><i class="fas fa-font"></i></button>
+        <div style="width:1px; background:var(--border); margin: 0 5px;"></div>
+        <button class="tool-btn" title="Paint Brush" onclick="setCanvasMode('brush', this)"><i class="fas fa-paint-brush"></i></button>
+        <!-- The Perfect Eraser / Heal Tool -->
+        <button class="tool-btn" title="Remove AI Text (Eyedropper)" onclick="activateHealTool(this)"><i class="fas fa-eye-dropper"></i></button>
+      </div>
+      <div class="toolbar" id="tour-step-4">
+        <button class="btn btn-gold btn-small" onclick="open3DViewer()"><i class="fas fa-cube"></i> View 3D Mockup</button>
+        <button class="btn btn-small" onclick="exportCanvas()"><i class="fas fa-download"></i> Save PNG</button>
       </div>
     </div>
-    <button class="gbtn" style="padding:10px;font-size:.78rem;margin-top:7px" onclick="authA(genSeries)">
-      <i class="fas fa-layer-group"></i> Generate Series Cover
-    </button>
-  </div>
 
-  <!-- DIM PRESET -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-sliders"></i> Dimension Preset</div>
-    <select id="dim-pre" onchange="applyDim(this.value)">
-      <option value="standard">Standard Cover (768×1024)</option>
-      <option value="kindle">Kindle Direct (1600×2560)</option>
-      <option value="wide">Wide Paperback (1800×2700)</option>
-      <option value="square">Square (1024×1024)</option>
-      <option value="spine">Spine (512×1024)</option>
-    </select>
-  </div>
-
-</div><!-- /tab-gen -->
-
-<!-- ░░░ TAB: EDIT ░░░ -->
-<div id="tab-edit" class="tab">
-  <div class="card">
-    <div class="clab"><i class="fas fa-tools"></i> Canvas Tools</div>
-    <div class="tg">
-      <button class="et" onclick="authA(addText)"><i class="fas fa-font"></i>Add Text</button>
-      <button class="et" id="bt2" onclick="authA(()=>setTool('brush'))"><i class="fas fa-paint-brush"></i>Paint</button>
-      <button class="et" id="et2" onclick="authA(()=>setTool('erase'))"><i class="fas fa-eraser"></i>Erase</button>
-      <button class="et" onclick="authA(deleteSelected)"><i class="fas fa-trash-can"></i>Delete</button>
-      <button class="et" onclick="authA(clearCanvas)"><i class="fas fa-file"></i>Clear All</button>
-      <button class="et" onclick="authA(upscale)"><i class="fas fa-up-right-and-down-left-from-center"></i>Upscale</button>
-      <button class="et" onclick="authA(dupSelected)"><i class="fas fa-clone"></i>Duplicate</button>
-      <button class="et" onclick="authA(bringFront)"><i class="fas fa-arrow-up"></i>Bring Fwd</button>
-      <button class="et" onclick="authA(sendBack)"><i class="fas fa-arrow-down"></i>Send Back</button>
+    <div id="canvas-container">
+      <canvas id="main-canvas"></canvas>
+      
+      <div id="loader-overlay">
+        <div class="spinner"></div>
+        <h3 style="color:var(--gold); margin-top:20px; font-family:var(--font-heading);">Generating Magic...</h3>
+        <p style="color:var(--text-muted); font-size:0.8rem; margin-top:5px;">Please wait while Philadelphia creates.</p>
+      </div>
     </div>
-    <!-- Brush props -->
-    <div class="pp" id="brush-pp">
-      <div class="clab" style="margin-bottom:9px"><i class="fas fa-paint-brush"></i> Brush</div>
-      <div class="pr"><label>Size</label><input type="range" min="3" max="80" value="22" id="bsz" oninput="updateBrush()"><span class="rv" id="bsv">22px</span></div>
-      <div class="pr"><label>Color</label><input type="color" id="bcol" value="#ffffff" onchange="updateBrush()"></div>
-      <div class="pr"><label>Opacity</label><input type="range" min="5" max="100" value="100" id="bop" oninput="updateBrush()"><span class="rv" id="bov">100%</span></div>
-    </div>
-    <!-- Text props -->
-    <div class="pp" id="text-pp">
-      <div class="clab" style="margin-bottom:9px"><i class="fas fa-font"></i> Typography</div>
-      <div class="fg">
-        <label class="fl">Font Family</label>
-        <select id="ff" onchange="utp('fontFamily',this.value);updateFPrev()">
-          <option value="Cinzel">Cinzel — Fantasy / Epic</option>
-          <option value="Playfair Display">Playfair Display — Classic</option>
-          <option value="Great Vibes">Great Vibes — Script</option>
-          <option value="Cormorant Garamond">Cormorant Garamond — Luxury</option>
-          <option value="Bebas Neue">Bebas Neue — Bold Action</option>
-          <option value="Orbitron">Orbitron — Sci-Fi</option>
-          <option value="DM Sans">DM Sans — Clean</option>
+  </main>
+
+  <!-- RIGHT PANEL: EDITING -->
+  <aside class="sidebar right" id="right-panel">
+    <div class="card" id="tour-step-3">
+      <div class="card-title"><i class="fas fa-sliders-h"></i> Properties</div>
+      
+      <!-- Text Editing -->
+      <div id="prop-text" style="display:none;">
+        <label>Font Family</label>
+        <select id="font-family" onchange="updateSelectedText('fontFamily', this.value)">
+          <option value="Cinzel">Cinzel (Fantasy)</option>
+          <option value="Playfair Display">Playfair (Classic)</option>
+          <option value="Orbitron">Orbitron (Sci-Fi)</option>
+          <option value="Bebas Neue">Bebas Neue (Action)</option>
+          <option value="Great Vibes">Great Vibes (Romance)</option>
+          <option value="Inter">Inter (Clean)</option>
         </select>
-        <div class="fp" id="fprev">Title Here</div>
-      </div>
-      <div class="pr"><label>Size</label><input type="range" min="10" max="200" value="54" id="tsz" oninput="utp('fontSize',parseInt(this.value));document.getElementById('tsv').textContent=this.value+'px'"><span class="rv" id="tsv">54px</span></div>
-      <div class="pr"><label>Color</label><input type="color" id="tcol" value="#ffffff" onchange="utp('fill',this.value)"></div>
-      <div class="pr"><label>Opacity</label><input type="range" min="0" max="100" value="100" id="top2" oninput="utp('opacity',this.value/100);document.getElementById('tov').textContent=this.value+'%'"><span class="rv" id="tov">100%</span></div>
-      <div class="fbs">
-        <button class="fbtn" onclick="utp('fontWeight','bold')"><i class="fas fa-bold"></i></button>
-        <button class="fbtn" onclick="utp('fontStyle','italic')"><i class="fas fa-italic"></i></button>
-        <button class="fbtn" onclick="utp('textAlign','left')"><i class="fas fa-align-left"></i></button>
-        <button class="fbtn" onclick="utp('textAlign','center')"><i class="fas fa-align-center"></i></button>
-        <button class="fbtn" onclick="addGlow()" title="Gold Glow"><i class="fas fa-star-of-life"></i></button>
-        <button class="fbtn" onclick="addStroke()" title="Text Outline"><i class="fas fa-border-style"></i></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Undo/redo history -->
-  <div class="card" id="hist-card" style="display:none">
-    <div class="clab"><i class="fas fa-clock-rotate-left"></i> History</div>
-    <div style="display:flex;gap:5px">
-      <button class="eb" style="flex:1;margin:0" onclick="undoC()"><i class="fas fa-undo"></i> Undo</button>
-      <button class="eb" style="flex:1;margin:0" onclick="redoC()"><i class="fas fa-redo"></i> Redo</button>
-    </div>
-  </div>
-
-  <!-- EXPORT -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-download"></i> Export & Preview</div>
-    <button class="eb p" onclick="authA(exportPNG)"><i class="fas fa-image"></i> Export High-Res PNG</button>
-    <button class="eb" id="eb-3d" onclick="authA(openBook3D)"><i class="fas fa-cube"></i> Full Book 3D Preview</button>
-    <button class="eb" onclick="authA(openWrapView)"><i class="fas fa-panorama"></i> Full Wrap Mockup</button>
-    <button class="eb" onclick="authA(saveProgress)"><i class="fas fa-floppy-disk"></i> Save Progress</button>
-    <button class="eb" onclick="authA(animPreview)"><i class="fas fa-film"></i> Animated Preview</button>
-  </div>
-
-  <!-- VIEW MODES -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-eye"></i> View Mode</div>
-    <div class="vbs">
-      <button class="vb on" onclick="selVB(this)"><i class="fas fa-image"></i>2D Flat</button>
-      <button class="vb" onclick="authA(openBook3D)"><i class="fas fa-cube"></i>3D Float</button>
-      <button class="vb" onclick="authA(openWrapView)"><i class="fas fa-panorama"></i>Full Wrap</button>
-      <button class="vb" onclick="authA(animPreview)"><i class="fas fa-film"></i>Animated</button>
-    </div>
-  </div>
-
-  <!-- ADMIN -->
-  <div class="card" id="admin-card">
-    <div class="clab" style="color:var(--ora)"><i class="fas fa-crown"></i> Admin</div>
-    <div class="fg"><label class="fl">Gift to Email</label><input type="email" id="ag-email" placeholder="user@example.com"></div>
-    <div class="fg"><label class="fl">Amount</label><input type="number" id="ag-amt" placeholder="500"></div>
-    <button class="mbtn g" style="margin-top:5px" onclick="adminGift()"><i class="fas fa-gift"></i> Gift Credits</button>
-  </div>
-</div><!-- /tab-edit -->
-
-<!-- ░░░ TAB: BOBBY ░░░ -->
-<div id="tab-bobby" class="tab">
-  <div class="bwrap">
-    <div class="bhdr">
-      <div class="bav"><i class="fas fa-robot"></i></div>
-      <div><div class="bname">Bobby AI</div><div class="brole">Design Advisor</div></div>
-      <span class="bco">2 credits / msg</span>
-    </div>
-    <div class="bmsgs" id="bmsgs">
-      <div class="bm bot">Hey! I'm Bobby — your creative design advisor for Philadelphia Studio. Ask me anything about book cover design, typography, color palettes, prompts, and visual storytelling. What are you working on?</div>
-    </div>
-    <div class="bsug">
-      <button class="bs" onclick="authA(()=>bobbyQ('Best font for dark fantasy?'))">Font advice</button>
-      <button class="bs" onclick="authA(()=>bobbyQ('Prompt ideas for my romance'))">Prompt ideas</button>
-      <button class="bs" onclick="authA(()=>bobbyQ('What makes a bestselling cover?'))">Cover tips</button>
-      <button class="bs" onclick="authA(()=>bobbyQ('Back cover design tips'))">Back cover</button>
-      <button class="bs" onclick="authA(()=>bobbyQ('Comic book cover composition tips'))">Comic tips</button>
-    </div>
-    <div class="binp">
-      <input type="text" id="bi" placeholder="Ask Bobby anything..." onkeypress="if(event.key==='Enter')authA(sendBobby)">
-      <button class="bsnd" onclick="authA(sendBobby)"><i class="fas fa-paper-plane"></i></button>
-    </div>
-  </div>
-</div><!-- /tab-bobby -->
-
-<!-- ░░░ TAB: LIBRARY ░░░ -->
-<div id="tab-lib" class="tab">
-  <div class="card">
-    <div class="clab" style="margin-bottom:9px">
-      <i class="fas fa-images"></i> Saved Projects
-      <button class="pab" style="margin-left:auto;padding:5px 9px;font-size:.62rem" onclick="authA(()=>saveProgress())"><i class="fas fa-save"></i> Save</button>
-    </div>
-    <div id="lib-grid" class="lib-g">
-      <div style="grid-column:1/-1;color:var(--t3);font-size:.76rem;text-align:center;padding:22px 0">Generate and save to build your library.</div>
-    </div>
-  </div>
-
-  <!-- Gift Credits -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-gift"></i> Gift Credits</div>
-    <div class="fg"><label class="fl">Recipient Email</label><input type="email" id="ge" placeholder="friend@example.com"></div>
-    <div class="fg"><label class="fl">Amount</label><input type="number" id="ga" placeholder="100" min="10"></div>
-    <button class="mbtn g" style="margin-top:4px" onclick="authA(giftCredits)"><i class="fas fa-paper-plane"></i> Send Credits</button>
-  </div>
-
-  <!-- Templates -->
-  <div class="card">
-    <div class="clab"><i class="fas fa-layer-group"></i> Quick Templates</div>
-    <div class="tg2" id="tpl-grid"></div>
-  </div>
-</div><!-- /tab-lib -->
-
-</div><!-- /app -->
-
-<!-- BOTTOM NAV -->
-<nav id="nav">
-  <button class="nb on" id="nb-gen" onclick="switchTab('gen',this)"><i class="fas fa-bolt"></i>Generate</button>
-  <button class="nb" id="nb-edit" onclick="switchTab('edit',this)"><i class="fas fa-tools"></i>Edit</button>
-  <button class="nb" id="nb-bobby" onclick="switchTab('bobby',this)"><i class="fas fa-robot"></i>Bobby</button>
-  <button class="nb" id="nb-lib" onclick="switchTab('lib',this)"><i class="fas fa-images"></i>Library</button>
-</nav>
-
-<!-- 3D BOOK OVERLAY -->
-<div id="b3d-ov" style="display:none;flex-direction:column;align-items:center;">
-  <button class="b3d-x" onclick="closeBook3D()"><i class="fas fa-times"></i></button>
-  <div class="b3d-title" id="b3d-title">Cover Preview</div>
-
-  <div class="b3d-tabs">
-    <div class="b3d-tab on" onclick="setB3DView('float',this)">3D Float</div>
-    <div class="b3d-tab" onclick="setB3DView('stand',this)">Stand</div>
-    <div class="b3d-tab" onclick="setB3DView('wrap',this)">Full Wrap</div>
-    <div class="b3d-tab" onclick="setB3DView('front',this)">Front</div>
-    <div class="b3d-tab" onclick="setB3DView('back',this)">Back</div>
-  </div>
-
-  <!-- FLOAT VIEW -->
-  <div class="b3d-panel on" id="pv-float">
-    <div class="b3d-scene">
-      <div style="position:relative;">
-        <div class="book3d" id="book3d">
-          <!-- The cover IS the face div with background-image (no img tag = no clipping) -->
-          <div class="b3d-front" id="b3d-face">
-            <div class="b3d-spine-side"><div class="b3d-spine-txt" id="b3d-spine-txt">TITLE</div></div>
-            <div class="b3d-pages"></div>
+        
+        <div class="grid-2">
+          <div>
+            <label>Color</label>
+            <input type="color" id="text-color" value="#ffffff" onchange="updateSelectedText('fill', this.value)">
+          </div>
+          <div>
+            <label>Size</label>
+            <input type="number" id="text-size" value="50" onchange="updateSelectedText('fontSize', parseInt(this.value))">
           </div>
         </div>
-        <div class="b3d-shadow"></div>
-      </div>
-    </div>
-  </div>
 
-  <!-- STAND VIEW -->
-  <div class="b3d-panel" id="pv-stand">
-    <div class="stand-view">
-      <div style="position:relative;">
-        <div class="book-stand">
-          <div class="bs-front" id="bs-face"></div>
-          <div class="bs-spine"></div>
-          <div class="bs-pages"></div>
-        </div>
-        <div class="bs-ground"></div>
+        <button class="btn" style="margin-top:10px;" onclick="addTextShadow()"><i class="fas fa-star"></i> Add Gold Glow</button>
+        <button class="btn" style="margin-top:10px; color:var(--accent-red); border-color:rgba(239,68,68,0.3);" onclick="deleteSelected()"><i class="fas fa-trash"></i> Delete Selected</button>
       </div>
-    </div>
-  </div>
 
-  <!-- FULL WRAP VIEW -->
-  <div class="b3d-panel" id="pv-wrap" style="flex-direction:column;align-items:center;">
-    <div class="wrap-view" id="wrap-view">
-      <div class="w-back" id="w-back">
-        <div class="w-back-img" id="w-back-img"></div>
-        <div class="w-back-content">
-          <div class="w-btitle" id="w-btitle">About This Book</div>
-          <div class="w-bline"></div>
-          <div class="w-btext" id="w-btext">Add your synopsis in the Generate tab.</div>
+      <!-- Brush / Heal Editing -->
+      <div id="prop-brush" style="display:none;">
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;"><strong>How to remove AI Text:</strong><br>1. Use the eyedropper tool to click the background color next to the text.<br>2. Brush over the text to hide it.</p>
+        
+        <label>Brush Size</label>
+        <input type="range" id="brush-size" min="5" max="100" value="30" onchange="updateBrushProps()">
+        
+        <label>Current Color</label>
+        <div class="color-picker-wrap">
+          <input type="color" id="brush-color" value="#050505" onchange="updateBrushProps()">
+          <div class="color-preview" id="color-preview" style="background:#050505;"></div>
         </div>
       </div>
-      <div class="w-spine"><div class="w-spine-t" id="w-spine-t">TITLE</div></div>
-      <div class="w-front" id="w-front"></div>
-    </div>
-  </div>
 
-  <!-- FRONT ONLY -->
-  <div class="b3d-panel" id="pv-front" style="padding:20px;flex-direction:column;align-items:center;">
-    <div id="front-only" style="max-width:260px;border-radius:8px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.8);"></div>
-  </div>
-
-  <!-- BACK ONLY -->
-  <div class="b3d-panel" id="pv-back" style="padding:20px;flex-direction:column;align-items:center;max-width:300px;width:100%">
-    <div style="background:#111;border-radius:8px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.8);width:100%;min-height:340px;display:flex;flex-direction:column;">
-      <div style="font-family:var(--ft);font-size:.85rem;color:var(--gold);margin-bottom:8px;" id="bov-title">About This Book</div>
-      <div style="width:50px;height:1px;background:var(--gold);opacity:.5;margin-bottom:14px;"></div>
-      <div style="font-size:.75rem;color:rgba(255,255,255,.7);line-height:1.65;flex:1;" id="bov-text">Add your back cover synopsis in the Generate tab to see it here.</div>
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);">
-        <div style="font-size:.6rem;color:var(--t2);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">About the Author</div>
-        <div style="font-size:.7rem;color:rgba(255,255,255,.6);line-height:1.55;" id="bov-author">Author bio will appear here.</div>
+      <div id="prop-empty">
+        <p style="font-size:0.8rem; color:var(--text-muted); text-align:center; margin-top:20px;">Select text on the canvas or pick a tool to see properties here.</p>
       </div>
     </div>
-  </div>
 
-  <div class="b3d-ctrls">
-    <button class="b3c" onclick="spinBook(true)"><i class="fas fa-play"></i> Spin</button>
-    <button class="b3c" onclick="spinBook(false)"><i class="fas fa-pause"></i> Float</button>
-    <button class="b3c" onclick="downloadCover()"><i class="fas fa-download"></i> Save</button>
-    <button class="b3c" onclick="authA(()=>openM('gen-back-modal'))"><i class="fas fa-magic"></i> Gen Back Cover</button>
-  </div>
-</div>
-
-<!-- TEMPLATE SELECTOR -->
-<div id="tpl-preview-overlay">
-  <div class="tpl-pv-box">
-    <button class="m-x" onclick="document.getElementById('tpl-preview-overlay').classList.remove('on')" style="position:relative;top:0;right:0;margin-bottom:12px;display:block;margin-left:auto"><i class="fas fa-times"></i></button>
-    <div class="tpl-pv-title">Choose Color Theme</div>
-    <div class="tpl-pv-sub">Select a color theme for your blank template. You can change all text after.</div>
-    <div class="tpl-colors-row" id="tpl-colors-row"></div>
-    <div class="ma">
-      <button class="mbtn p" onclick="applyBlankTemplate()"><i class="fas fa-check"></i> Apply Template</button>
-      <button class="mbtn s" onclick="document.getElementById('tpl-preview-overlay').classList.remove('on')">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ MODALS ═══ -->
-
-<!-- FUND -->
-<div class="mbg" id="fund-modal">
-  <div class="modal">
-    <div class="m-hnd"></div>
-    <button class="m-x" onclick="closeM('fund-modal')"><i class="fas fa-times"></i></button>
-    <div class="m-ico"><i class="fas fa-wallet"></i></div>
-    <div class="m-ttl">Fund Wallet</div>
-    <div class="m-sub">Credits power every generation.<br>1000 NGN ≈ 1000 Credits</div>
-    <div class="mf"><label>Amount (NGN)</label><input type="number" id="fund-amt" value="1000" min="100"></div>
-    <div class="ma">
-      <button class="mbtn p" onclick="initPayment()"><i class="fas fa-lock"></i> Pay with Korapay</button>
-      <button class="mbtn s" onclick="openM('req-modal');closeM('fund-modal')"><i class="fas fa-hand-holding-dollar"></i> Request Credits</button>
-      <button class="mbtn s" onclick="closeM('fund-modal')">Cancel</button>
-    </div>
-    <div id="vn"><i class="fas fa-spinner fa-spin"></i> Verifying payment...</div>
-  </div>
-</div>
-
-<!-- API KEY -->
-<div class="mbg" id="api-modal">
-  <div class="modal">
-    <div class="m-hnd"></div>
-    <div class="m-ico"><i class="fas fa-key"></i></div>
-    <div class="m-ttl">Studio Activation</div>
-    <div class="m-sub">Access Philadelphia generation engines. One-time cost: 100 Credits.</div>
-    <div id="key-disp" style="display:none"><div class="keybox" id="key-val">—<button class="kcopy" onclick="copyKey()"><i class="fas fa-copy"></i></button></div></div>
-    <div class="ma">
-      <button class="mbtn p" id="gen-key-btn" onclick="generateKey()"><i class="fas fa-key"></i> Activate Studio (100 Credits)</button>
-      <button class="mbtn s" onclick="openM('fund-modal');closeM('api-modal')"><i class="fas fa-plus"></i> Fund Wallet First</button>
-    </div>
-  </div>
-</div>
-
-<!-- CHAR LOCK -->
-<div class="mbg" id="char-modal">
-  <div class="modal">
-    <div class="m-hnd"></div>
-    <button class="m-x" onclick="closeM('char-modal')"><i class="fas fa-times"></i></button>
-    <div class="m-ico" style="color:var(--pur)"><i class="fas fa-lock"></i></div>
-    <div class="m-ttl" style="color:var(--pur)">Character Lock</div>
-    <div class="m-sub">Lock a character's appearance for consistent generation.</div>
-    <div class="mf"><label>Character Name</label><input type="text" id="cn" placeholder="e.g. Amara — the shadow queen"></div>
-    <div class="mf"><label>Appearance</label><textarea id="cd" rows="4" placeholder="Tall dark-skinned woman, silver braided hair, golden eyes, obsidian armor with glowing runes..."></textarea></div>
-    <div class="ma"><button class="mbtn p" onclick="saveChar()"><i class="fas fa-lock"></i> Lock Character</button></div>
-  </div>
-</div>
-
-<!-- REQUEST CREDITS -->
-<div class="mbg" id="req-modal">
-  <div class="modal">
-    <div class="m-hnd"></div>
-    <button class="m-x" onclick="closeM('req-modal')"><i class="fas fa-times"></i></button>
-    <div class="m-ico" style="color:var(--grn)"><i class="fas fa-hand-holding-dollar"></i></div>
-    <div class="m-ttl" style="color:var(--grn)">Request Credits</div>
-    <div class="m-sub">Having trouble funding? Contact us — we respond instantly.</div>
-    <div class="ma">
-      <button class="mbtn w" onclick="window.open('https://wa.me/2348159983206?text=Hello+Elvion,+I+need+credits.+Email:+'+encodeURIComponent(window.curUser?.email||''),'_blank')"><i class="fab fa-whatsapp"></i> WhatsApp Support</button>
-      <button class="mbtn s" onclick="window.open('mailto:elvionailabs@gmail.com?subject=Credit+Request','_blank')"><i class="fas fa-envelope"></i> Email Us</button>
-      <button class="mbtn s" onclick="closeM('req-modal')">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- TEXT ON IMAGE -->
-<div class="mbg" id="toi-modal">
-  <div class="modal">
-    <div class="m-hnd"></div>
-    <button class="m-x" onclick="closeM('toi-modal')"><i class="fas fa-times"></i></button>
-    <div class="m-ico"><i class="fas fa-font"></i></div>
-    <div class="m-ttl">Include Text in Image?</div>
-    <div class="m-sub">Should Philadelphia V6 render text/typography in the AI artwork?</div>
-    <div class="toi-g">
-      <div class="toi-o on" id="toi-yes" onclick="selToi('yes')"><i class="fas fa-text-height"></i><div class="toi-nm">Yes — include text</div><div class="toi-ds">AI adds title & author to artwork</div></div>
-      <div class="toi-o" id="toi-no" onclick="selToi('no')"><i class="fas fa-eye-slash"></i><div class="toi-nm">No — clean art</div><div class="toi-ds">Plain artwork, you add text via canvas</div></div>
-    </div>
-    <div class="ma"><button class="mbtn p" onclick="confirmToi()"><i class="fas fa-bolt"></i> Generate Now</button></div>
-  </div>
-</div>
-
-<!-- GEN BACK COVER -->
-<div class="mbg" id="gen-back-modal">
-  <div class="modal">
-    <div class="m-hnd"></div>
-    <button class="m-x" onclick="closeM('gen-back-modal')"><i class="fas fa-times"></i></button>
-    <div class="m-ico"><i class="fas fa-book-open"></i></div>
-    <div class="m-ttl">Generate Back Cover</div>
-    <div class="m-sub">Create a matching back cover for your book.</div>
-    <div class="mf"><label>Description</label><textarea id="bc-prompt" rows="3" placeholder="Dark gradient matching front, space for text, subtle pattern..."></textarea></div>
-    <div class="ma"><button class="mbtn p" onclick="genBackCover()"><i class="fas fa-bolt"></i> Generate Back Cover (15 credits)</button></div>
-  </div>
-</div>
-
-<!-- WIZARD -->
-<div id="wiz" style="display:none;align-items:flex-end;justify-content:center;">
-  <div class="wbox">
-    <div class="m-hnd"></div>
-    <div class="wprog"><div class="wd on" id="wd0"></div><div class="wd" id="wd1"></div><div class="wd" id="wd2"></div><div class="wd" id="wd3"></div></div>
-    <div class="ws on" id="ws0">
-      <div class="wt">Genre</div><div class="wsb">What genre is your book?</div>
-      <div class="wo-g">
-        <div class="wo" data-v="dark epic fantasy">Dark Fantasy</div><div class="wo" data-v="gothic romance">Romance</div>
-        <div class="wo" data-v="sci-fi cyberpunk">Sci-Fi</div><div class="wo" data-v="psychological thriller">Thriller</div>
-        <div class="wo" data-v="horror supernatural">Horror</div><div class="wo" data-v="literary fiction">Literary</div>
-        <div class="wo" data-v="historical fiction">Historical</div><div class="wo" data-v="children's adventure">Children's</div>
+    <!-- History / Layers -->
+    <div class="card">
+      <div class="card-title"><i class="fas fa-layer-group"></i> Canvas Actions</div>
+      <div class="grid-2">
+        <button class="btn" onclick="canvas.undo()"><i class="fas fa-undo"></i> Undo</button>
+        <button class="btn" onclick="canvas.clear(); canvas.backgroundColor='#111'; canvas.renderAll();"><i class="fas fa-trash-alt"></i> Clear</button>
       </div>
+      <button class="btn" style="margin-top:10px;" onclick="saveToLibrary()"><i class="fas fa-save"></i> Save to Library</button>
     </div>
-    <div class="ws" id="ws1">
-      <div class="wt">Mood</div><div class="wsb">What feeling should your cover evoke?</div>
-      <div class="wo-g">
-        <div class="wo" data-v="dramatic and intense">Dramatic</div><div class="wo" data-v="mysterious and eerie">Mysterious</div>
-        <div class="wo" data-v="romantic and passionate">Romantic</div><div class="wo" data-v="epic and majestic">Epic & Majestic</div>
-        <div class="wo" data-v="dark and brooding">Dark & Brooding</div><div class="wo" data-v="bright and adventurous">Adventurous</div>
-      </div>
+  </aside>
+
+</div>
+
+<!-- 3D BOOK VIEWER OVERLAY -->
+<div id="book-3d-viewer">
+  <button class="close-3d" onclick="document.getElementById('book-3d-viewer').style.display='none'"><i class="fas fa-times"></i></button>
+  
+  <div style="display:flex; gap:10px; margin-bottom:40px; z-index:100;">
+    <button class="btn" style="width:auto; background:var(--gold); color:#000;" onclick="toggle3DSpin()"><i class="fas fa-sync"></i> Spin / Stop</button>
+  </div>
+
+  <div class="scene">
+    <div class="book" id="the-3d-book">
+      <!-- Front Cover -->
+      <div class="face face-front" id="3d-front"></div>
+      <!-- Spine -->
+      <div class="face face-spine"><div class="spine-text" id="3d-spine-text">BOOK TITLE</div></div>
+      <!-- Back Cover -->
+      <div class="face face-back" id="3d-back"></div>
+      <!-- Pages -->
+      <div class="face face-pages-right"></div>
+      <div class="face face-pages-top"></div>
+      <div class="face face-pages-bottom"></div>
     </div>
-    <div class="ws" id="ws2">
-      <div class="wt">Setting</div><div class="wsb">Where is your story set?</div>
-      <div class="wo-g">
-        <div class="wo" data-v="ancient magical kingdom">Magical Kingdom</div><div class="wo" data-v="dark gothic city">Gothic City</div>
-        <div class="wo" data-v="futuristic neon megacity">Sci-Fi City</div><div class="wo" data-v="enchanted forest with ruins">Enchanted Forest</div>
-        <div class="wo" data-v="vast stormy ocean">Stormy Ocean</div><div class="wo" data-v="desolate wasteland">Wasteland</div>
-      </div>
-    </div>
-    <div class="ws" id="ws3">
-      <div class="wt">Main Element</div><div class="wsb">What is the central visual?</div>
-      <div class="wo-g">
-        <div class="wo" data-v="a powerful lone warrior in dramatic pose">Lone Hero</div><div class="wo" data-v="two figures locked in emotional tension">Two Characters</div>
-        <div class="wo" data-v="an ancient glowing artifact or relic">Magical Artifact</div><div class="wo" data-v="a majestic creature or dragon">Creature / Beast</div>
-        <div class="wo" data-v="a vast sweeping landscape">Landscape</div><div class="wo" data-v="abstract symbolic imagery">Abstract</div>
-      </div>
-    </div>
-    <div class="wa">
-      <button class="mbtn s" onclick="wizPrev()" style="flex:1;padding:10px">Back</button>
-      <button class="mbtn p" id="wizNext" onclick="wizNext()" style="flex:2;padding:10px">Next →</button>
-    </div>
-    <button style="background:none;border:none;color:var(--t3);font-size:.72rem;cursor:pointer;margin-top:9px;width:100%;text-align:center" onclick="closeWiz()">Cancel</button>
+    <div class="shadow"></div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<!-- INTERACTIVE TOUR -->
+<div id="tour-overlay"></div>
+<div class="tour-tooltip" id="tour-tooltip" style="display:none;">
+  <h3 id="tour-title">Title</h3>
+  <p id="tour-text">Description goes here.</p>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <span style="font-size:0.7rem; color:var(--gold);" id="tour-progress">1/5</span>
+    <button class="btn btn-gold btn-small" onclick="tourManager.next()">Next</button>
+  </div>
+</div>
+
+<!-- FUND WALLET MODAL -->
+<div class="modal-bg" id="fund-modal">
+  <div class="modal-content">
+    <h2 style="color:var(--gold); font-family:var(--font-heading);">Fund Wallet</h2>
+    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Secure payments powered by Korapay.</p>
+    <label style="text-align:left; display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Amount (NGN)</label>
+    <input type="number" id="fund-amount" value="1000">
+    <div style="display:flex; gap:10px; margin-top:15px;">
+      <button class="btn btn-gold" onclick="initPayment()">Pay Now</button>
+      <button class="btn" onclick="document.getElementById('fund-modal').classList.remove('active')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- FIREBASE & LOGIC -->
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-const API="https://web-production-9a18.up.railway.app";
-const ADMIN="koladhino@gmail.com";
-const fbApp=initializeApp({apiKey:"AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",authDomain:"elvionai.firebaseapp.com",projectId:"elvionai",storageBucket:"elvionai.appspot.com",messagingSenderId:"161078300830",appId:"1:161078300830:web:f460df8591704eb0e96b8f"});
-const auth=getAuth(fbApp);const prov=new GoogleAuthProvider();
-window.curUser=null;let tok=null,apiKey=null,bal=0;
-let canvas,genType="front",style="dark fantasy",quadMode=false,charLock=null,curB64=null;
-let hist=[],hIdx=-1,wizStep=0,wizData={},toiChoice='yes';
-let tplColor={bg:"#0f1422",title:"#f0c878",text:"#e0d8c8",accent:"#c9a96e",spine:"#080c14"};
-let currentTool="sel";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-/* ─── AUTH ─── */
-window.login=async()=>{try{await signInWithPopup(auth,prov);}catch(e){toast("Sign-in failed","e");}};
-window.signOutUser=async()=>{await signOut(auth);window.location.reload();};
-window.authA=(fn)=>{if(!window.curUser){document.getElementById("auth-gate").classList.add("open");return;}fn();};
-
-onAuthStateChanged(auth,async u=>{
-  if(!u){document.getElementById("auth-gate").classList.add("open");return;}
-  window.curUser=u;
-  document.getElementById("auth-gate").classList.remove("open");
-  if(u.photoURL)document.getElementById("av").innerHTML=`<img src="${u.photoURL}" alt="">`;
-  if(u.email.toLowerCase()===ADMIN)document.getElementById("admin-card").style.display="block";
-  tok=await u.getIdToken(true);
-  await loadUser();checkNotif();checkPayReturn();loadLib();renderTpls();
-  if(!localStorage.getItem("phl_td"))setTimeout(openTour,1200);
+// Configuration
+const API = "https://web-production-9a18.up.railway.app";
+const fbApp = initializeApp({
+  apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+  authDomain: "elvionai.firebaseapp.com",
+  projectId: "elvionai",
+  storageBucket: "elvionai.appspot.com",
+  messagingSenderId: "161078300830",
+  appId: "1:161078300830:web:f460df8591704eb0e96b8f"
 });
+const auth = getAuth(fbApp);
 
-async function loadUser(){
-  try{const r=await fetch(`${API}/api/user/keys-and-balance`,{headers:{"X-Firebase-Token":tok}});
-  const d=await r.json();
-  if(r.ok){bal=d.balance||0;updateBal();const k=(d.keys||[]).find(x=>x.is_active);if(k)apiKey=k.api_key;else openM("api-modal");}
-  }catch(e){toast("Network error","e");}
-}
-function updateBal(){document.getElementById("cv").textContent=bal.toLocaleString();const c=document.getElementById("cc");c.classList.add("fl");setTimeout(()=>c.classList.remove("fl"),700);}
+// State
+window.canvas = null;
+let currentToken = null;
+let currentGenre = "Dark Fantasy";
+let currentDim = { w: 768, h: 1024, type: "front" };
+let isEyedropperActive = false;
 
-/* ─── CANVAS INIT ─── */
-window.onload=()=>{initCanvas();buildParticles();};
-
-function initCanvas(){
-  canvas=new fabric.Canvas("cv-el",{preserveObjectStacking:true,selection:true});
-  resizeC();
-  window.addEventListener("resize",resizeC);
-  canvas.on("selection:created",onSel);
-  canvas.on("selection:updated",onSel);
-  canvas.on("selection:cleared",()=>{
-    document.getElementById("text-pp").classList.remove("on");
-    document.getElementById("brush-pp").classList.remove("on");
-  });
-  canvas.on("object:modified",pushH);
-  canvas.on("path:created",e=>{
-    // Smart eraser: destination-out composite on drawn paths when in erase mode
-    if(currentTool==="erase"){
-      const path=e.path;
-      path.set({globalCompositeOperation:"destination-out",stroke:"rgba(0,0,0,1)",strokeWidth:path.strokeWidth,fill:"rgba(0,0,0,0)"});
-      canvas.renderAll();
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+window.onload = () => {
+  initFabric();
+  
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      document.getElementById('auth-gate').classList.remove('active');
+      currentToken = await user.getIdToken(true);
+      fetchBalance();
+    } else {
+      document.getElementById('auth-gate').classList.add('active');
     }
-    pushH();
   });
-  // Double-tap canvas to add text
-  canvas.on("mouse:dblclick",e=>{if(!e.target&&curB64)authA(addText);});
+};
+
+window.login = () => signInWithPopup(auth, new GoogleAuthProvider());
+window.signOutUser = () => signOut(auth);
+
+async function fetchBalance() {
+  try {
+    const res = await fetch(`${API}/api/user/keys-and-balance`, { headers: { "X-Firebase-Token": currentToken } });
+    const data = await res.json();
+    if(res.ok) document.getElementById('credit-display').textContent = data.balance.toLocaleString();
+  } catch(e) { console.error(e); }
 }
 
-window.resizeC=function(){
-  if(!canvas)return;
-  const w=document.getElementById("cw");
-  const[lw,lh]=getDims();
-  const aw=w.clientWidth-4;
-  const ah=Math.min(w.clientHeight||400,window.innerHeight*.46);
-  const sc=Math.min(aw/lw,ah/lh,1.6);
-  canvas.setWidth(lw*sc);canvas.setHeight(lh*sc);canvas.setZoom(sc);canvas.renderAll();
-};
+// ============================================================================
+// FABRIC.JS CANVAS SETUP
+// ============================================================================
+function initFabric() {
+  canvas = new fabric.Canvas('main-canvas', { backgroundColor: '#111520', preserveObjectStacking: true });
+  resizeCanvasToFit();
+  window.addEventListener('resize', resizeCanvasToFit);
 
-function getDims(){return document.getElementById("res").value.split("x").map(Number);}
-window.zoomC=f=>canvas.setZoom(canvas.getZoom()*f);
-window.fitC=resizeC;
+  // Undo/Redo logic
+  canvas.historyInit = function() { this.history =[]; this.historyProcessing = false; this.on('object:modified', this.saveHistory); this.on('object:added', this.saveHistory); }
+  canvas.saveHistory = function() { if(!this.historyProcessing) { this.history.push(JSON.stringify(this)); if(this.history.length > 20) this.history.shift(); } }
+  canvas.undo = function() { if(this.history.length > 1) { this.historyProcessing = true; this.history.pop(); this.loadFromJSON(this.history[this.history.length-1], () => { this.renderAll(); this.historyProcessing = false; }); } }
+  canvas.historyInit();
 
-function onSel(e){
-  const o=e.selected&&e.selected[0];if(!o)return;
-  if(o.type==="i-text"||o.type==="text"){
-    document.getElementById("text-pp").classList.add("on");
-    document.getElementById("ff").value=o.fontFamily||"Cinzel";
-    document.getElementById("tcol").value=o.fill||"#ffffff";
-    document.getElementById("tsz").value=o.fontSize||54;
-    document.getElementById("tsv").textContent=(o.fontSize||54)+"px";
-    updateFPrev();
-    showCtx("Text selected! Adjust font, size, and color in the panel below. Double-tap the text to edit it directly.","",false,false);
-  }
-}
+  // Event Listeners for UI
+  canvas.on('selection:created', showTextProps);
+  canvas.on('selection:updated', showTextProps);
+  canvas.on('selection:cleared', showEmptyProps);
 
-window.updateFPrev=()=>{
-  const fp=document.getElementById("fprev");if(!fp)return;
-  fp.style.fontFamily=document.getElementById("ff")?.value||"Cinzel";
-  fp.textContent=document.getElementById("book-title")?.value||"Title Here";
-};
-
-window.addText=()=>{
-  const t=new fabric.IText(document.getElementById("book-title").value||"TITLE",{
-    left:canvas.width/canvas.getZoom()/2-100,
-    top:canvas.height/canvas.getZoom()*.08,
-    fontFamily:document.getElementById("ff").value,
-    fill:"#ffffff",fontSize:50,fontWeight:"bold",
-    shadow:new fabric.Shadow({color:"rgba(0,0,0,.92)",blur:12,offsetX:2,offsetY:2})
-  });
-  canvas.add(t);canvas.setActiveObject(t);canvas.renderAll();
-  document.getElementById("text-pp").classList.add("on");
-  pushH();switchTab("edit",document.getElementById("nb-edit"));
-  showCtx("Text added! Double-tap to edit content. Use the Typography controls below to style it.","",true,false);
-};
-
-window.addGlow=()=>{const o=canvas.getActiveObject();if(!o)return;o.set("shadow",new fabric.Shadow({color:"rgba(201,169,110,.9)",blur:18,offsetX:0,offsetY:0}));canvas.renderAll();};
-window.addStroke=()=>{const o=canvas.getActiveObject();if(!o)return;o.set({stroke:"rgba(0,0,0,.7)",strokeWidth:3});canvas.renderAll();};
-window.utp=(p,v)=>{const o=canvas.getActiveObject();if(o&&(o.type==="i-text"||o.type==="text")){o.set(p,v);canvas.renderAll();}};
-window.deleteSelected=()=>{canvas.getActiveObjects().forEach(o=>canvas.remove(o));canvas.discardActiveObject();pushH();};
-window.dupSelected=()=>{const o=canvas.getActiveObject();if(!o)return;o.clone(cl=>{cl.set({left:cl.left+18,top:cl.top+18});canvas.add(cl);canvas.setActiveObject(cl);canvas.renderAll();pushH();});};
-window.bringFront=()=>{const o=canvas.getActiveObject();if(o){canvas.bringToFront(o);canvas.renderAll();}};
-window.sendBack=()=>{const o=canvas.getActiveObject();if(o){canvas.sendToBack(o);canvas.renderAll();}};
-window.clearCanvas=()=>{if(!confirm("Clear canvas?"))return;canvas.clear();canvas.backgroundColor=null;canvas.backgroundImage=null;canvas.renderAll();curB64=null;document.getElementById("es").style.display="flex";document.getElementById("b3d-open-btn").style.display="none";pushH();};
-
-/* ─── TOOL ─── */
-window.setTool=(t)=>{
-  currentTool=t;
-  canvas.isDrawingMode=false;
-  ["st","bt","et","bt2","et2"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove("on");});
-  document.getElementById("brush-pp").classList.remove("on");
-  if(t==="sel"){document.getElementById("st").classList.add("on");}
-  else if(t==="brush"){
-    canvas.isDrawingMode=true;updateBrush();
-    document.getElementById("bt")?.classList.add("on");document.getElementById("bt2")?.classList.add("on");
-    document.getElementById("brush-pp").classList.add("on");
-  }else if(t==="erase"){
-    canvas.isDrawingMode=true;
-    const er=new fabric.PencilBrush(canvas);
-    er.color="rgba(0,0,0,1)";er.width=28/canvas.getZoom();
-    canvas.freeDrawingBrush=er;
-    document.getElementById("et")?.classList.add("on");document.getElementById("et2")?.classList.add("on");
-    document.getElementById("brush-pp").classList.add("on");
-    // In erase mode, the path:created handler sets destination-out
-    showCtx("Erase mode active. Draw over any text or painted area to remove it. It won't touch the AI-generated background.","",false,false);
-  }
-};
-
-window.updateBrush=()=>{
-  if(!canvas.isDrawingMode)return;
-  const sz=parseInt(document.getElementById("bsz").value);
-  const op=parseInt(document.getElementById("bop").value)/100;
-  document.getElementById("bsv").textContent=sz+"px";
-  document.getElementById("bov").textContent=Math.round(op*100)+"%";
-  const c=document.getElementById("bcol").value;
-  const rx=parseInt(c.slice(1,3),16),gx=parseInt(c.slice(3,5),16),bx=parseInt(c.slice(5,7),16);
-  if(currentTool==="brush"){
-    canvas.freeDrawingBrush=new fabric.PencilBrush(canvas);
-    canvas.freeDrawingBrush.color=`rgba(${rx},${gx},${bx},${op})`;
-    canvas.freeDrawingBrush.width=sz/canvas.getZoom();
-  }else if(currentTool==="erase"){
-    canvas.freeDrawingBrush=new fabric.PencilBrush(canvas);
-    canvas.freeDrawingBrush.color="rgba(0,0,0,1)";
-    canvas.freeDrawingBrush.width=sz/canvas.getZoom();
-  }
-};
-
-/* ─── HISTORY ─── */
-function pushH(){
-  const s=canvas.toJSON();hist=hist.slice(0,hIdx+1);hist.push(s);
-  if(hist.length>25)hist.shift();hIdx=hist.length-1;
-  if(hIdx>0)document.getElementById("hist-card").style.display="block";
-}
-window.undoC=()=>{if(hIdx<=0)return;hIdx--;canvas.loadFromJSON(hist[hIdx],()=>canvas.renderAll());};
-window.redoC=()=>{if(hIdx>=hist.length-1)return;hIdx++;canvas.loadFromJSON(hist[hIdx],()=>canvas.renderAll());};
-
-/* ─── COVER TYPES ─── */
-window.setCT=(t,el)=>{
-  genType=t;
-  document.querySelectorAll(".ct-btn").forEach(b=>b.classList.remove("on"));el.classList.add("on");
-  const m={back:"1536x1024",spine:"512x1024",char:"1024x1024",scene:"1024x1024",wrap:"1536x1024"};
-  document.getElementById("res").value=m[t]||"768x1024";resizeC();
-};
-
-document.querySelectorAll(".chip").forEach(c=>{
-  c.onclick=()=>{
-    document.querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");style=c.dataset.s;
-    document.getElementById("comic-card").style.display=style==="comic book art"?"block":"none";
-  };
-});
-
-/* ─── COMIC PANELS ─── */
-window.addComicPanels=(cols,rows)=>{
-  if(!canvas)return;
-  const W=canvas.width/canvas.getZoom(),H=canvas.height/canvas.getZoom();
-  const gap=8,borderW=4;
-  if(cols==="splash"){
-    const r=new fabric.Rect({left:0,top:0,width:W,height:H,fill:"transparent",stroke:"#000",strokeWidth:borderW});
-    canvas.add(r);canvas.renderAll();pushH();toast("Splash page panel added","s");return;
-  }
-  const pw=(W-(cols+1)*gap)/cols,ph=(H-(rows+1)*gap)/rows;
-  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-    const rect=new fabric.Rect({left:gap+(pw+gap)*c,top:gap+(ph+gap)*r,width:pw,height:ph,fill:"transparent",stroke:"#000",strokeWidth:borderW,selectable:true});
-    canvas.add(rect);
-  }
-  canvas.renderAll();pushH();toast(`${cols}×${rows} comic grid added!`,"s");
-};
-
-window.addSpeechBubble=()=>{
-  if(!canvas)return;
-  const W=canvas.width/canvas.getZoom();
-  const ellipse=new fabric.Ellipse({left:W/2-60,top:40,rx:70,ry:35,fill:"white",stroke:"#000",strokeWidth:2});
-  const txt=new fabric.IText("DIALOGUE!",{left:W/2-55,top:52,fontSize:14,fill:"#000",fontFamily:"DM Sans",fontWeight:"bold"});
-  const group=new fabric.Group([ellipse,txt],{left:W/2-70,top:30,selectable:true});
-  canvas.add(group);canvas.setActiveObject(group);canvas.renderAll();pushH();
-};
-
-/* ─── GENERATION ─── */
-window.handleGen=()=>{
-  if(document.getElementById("ms").value==="v6")openM("toi-modal");
-  else generateImage(false);
-};
-window.selToi=c=>{toiChoice=c;document.getElementById("toi-yes").classList.toggle("on",c==="yes");document.getElementById("toi-no").classList.toggle("on",c==="no");};
-window.confirmToi=()=>{closeM("toi-modal");generateImage(toiChoice==="no");};
-
-window.generateImage=async(noTxt=false)=>{
-  if(!apiKey){openM("api-modal");return;}
-  const prompt=buildPrompt(noTxt);if(!prompt){toast("Enter a prompt first","e");return;}
-  const cost=quadMode?60:15;if(bal<cost){toast(`Need ${cost} credits`,"e");openM("fund-modal");return;}
-  const[w,h]=getDims();const m=document.getElementById("ms").value;
-  if(quadMode)await genQuad(prompt,m,w,h);else await genSingle(prompt,m,w,h);
-};
-
-function buildPrompt(noTxt=false){
-  let base=document.getElementById("pi").value.trim();
-  const t=document.getElementById("book-title").value.trim();
-  const a=document.getElementById("author-name").value.trim();
-  if(charLock)base=`${charLock.desc}, ${base}`;
-  const hmap={front:"professional front book cover, high quality, masterpiece",back:"back book cover design, synopsis placement",spine:"book spine, vertical layout, narrow",char:"character design illustration, centered, detailed",scene:"dramatic scene illustration, cinematic",wrap:"full book cover wrap, panoramic, unified front and back"};
-  const isComic=style==="comic book art";
-  const cstyle=document.getElementById("comic-style")?.value||"";
-  const comicMod=isComic?`, ${cstyle} style, bold black ink outlines, halftone dot pattern, vibrant flat colors, panel borders, dynamic comic book composition, speech bubbles optional, action lines, dramatic angles`:"";
-  const noTxtMod=noTxt?", no text, no typography, no letters, no title text, no words on image, clean artwork only":"";
-  const tMod=t&&!noTxt?`, book titled "${t}"`:"";
-  const aMod=a&&!noTxt?`, by ${a}`:"";
-  return `${base}, ${style} genre, ${hmap[genType]||""}${comicMod}${tMod}${aMod}${noTxtMod}`.replace(/,\s*,/g,",").trim();
-}
-
-async function genSingle(prompt,model,w,h){
-  showLoader("Generating your cover...",model);
-  try{
-    const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({prompt,model,width:w,height:h,creative:false,use_minimax:false})});
-    const d=await r.json();if(!r.ok)throw new Error(d.detail||"Generation failed");
-    hideLoader();loadImg(d.image_b64);bal-=15;updateBal();
-    toast("Cover generated!","s");sendNotif("Cover Ready!","Your Philadelphia cover is ready.");
-    setTimeout(()=>saveProgress(true),800);
-    // Context guide
-    setTimeout(()=>showCtx(
-      document.getElementById("book-title").value
-        ?"Your cover looks amazing! Now check it in 3D — tap the 3D button in the canvas toolbar!"
-        :"Great cover! Add your book title now — tap the Text button above the canvas.",
-      document.getElementById("book-title").value?"openBook3D()":"authA(addText)",true,true,
-      document.getElementById("book-title").value?"View in 3D":"Add Title Now"
-    ),1400);
-  }catch(e){hideLoader();if(e.message.includes("Insufficient"))openM("fund-modal");toast("Failed: "+e.message,"e");}
-}
-
-async function genQuad(prompt,model,w,h){
-  showLoader("Generating 4 variations...",model);
-  const qg=document.getElementById("qg");qg.innerHTML="";qg.style.display="grid";document.getElementById("es").style.display="none";
-  const ps=[1,2,3,4].map(i=>fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({prompt:prompt+` variation ${i}`,model,width:Math.round(w/2),height:Math.round(h/2),creative:i%2===0})}).then(r=>r.json()).catch(e=>({error:e.message})));
-  const res=await Promise.allSettled(ps);hideLoader();
-  res.forEach(r=>{
-    const div=document.createElement("div");div.className="qi";
-    if(r.status==="fulfilled"&&r.value.image_b64){
-      const src=`data:image/png;base64,${r.value.image_b64}`;
-      div.innerHTML=`<img src="${src}"><button class="qp" onclick="selQuad('${r.value.image_b64}')">Use This</button>`;
-    }else{div.innerHTML=`<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:.68rem">Failed</div>`;}
-    qg.appendChild(div);
-  });
-  bal-=60;updateBal();toast("4 variations ready!","g");
-}
-
-window.selQuad=(b64)=>{document.getElementById("qg").style.display="none";loadImg(b64);toast("Cover selected!","s");};
-
-function loadImg(b64){
-  curB64=b64;const src=b64.startsWith("data:")?b64:`data:image/png;base64,${b64}`;
-  const[lw,lh]=getDims();
-  fabric.Image.fromURL(src,img=>{
-    const sc=Math.min((canvas.width/canvas.getZoom())/img.width,(canvas.height/canvas.getZoom())/img.height);
-    canvas.setBackgroundImage(img,canvas.renderAll.bind(canvas),{scaleX:sc,scaleY:sc,originX:"center",originY:"center",left:canvas.width/canvas.getZoom()/2,top:canvas.height/canvas.getZoom()/2});
-    document.getElementById("es").style.display="none";
-    document.getElementById("b3d-open-btn").style.display="flex";
-    document.getElementById("rb").innerHTML=`<span class="rb"><i class="fas fa-expand-arrows-alt"></i> ${lw}×${lh}</span>`;
-    pushH();
+  // Custom Eyedropper Logic
+  canvas.on('mouse:down', function(opt) {
+    if (isEyedropperActive && opt.e) {
+      const pointer = canvas.getPointer(opt.e);
+      const ctx = canvas.getContext('2d');
+      // Multiply by retina scaling if needed
+      const retina = canvas.getRetinaScaling();
+      const pixel = ctx.getImageData(pointer.x * retina, pointer.y * retina, 1, 1).data;
+      const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+      
+      document.getElementById('brush-color').value = hex;
+      document.getElementById('color-preview').style.background = hex;
+      toast(`Color Picked! Now brushing with ${hex}`);
+      
+      // Auto-switch to brush mode
+      setCanvasMode('brush', document.querySelectorAll('.tool-btn')[2]);
+      isEyedropperActive = false;
+      canvas.defaultCursor = 'default';
+    }
   });
 }
 
-function showLoader(t,m){document.getElementById("gl").style.display="flex";document.getElementById("lt").textContent=t;document.getElementById("ls2").textContent="Model: "+(m||"Philadelphia");document.getElementById("genbtn").disabled=true;}
-function hideLoader(){document.getElementById("gl").style.display="none";document.getElementById("genbtn").disabled=false;}
-
-window.upscale=async()=>{
-  if(!curB64){toast("Generate an image first","e");return;}
-  if(!apiKey||bal<15){toast("Insufficient credits","e");return;}
-  const[w,h]=getDims();const nw=Math.min(w*1.5,1536),nh=Math.min(h*1.5,1536);
-  showLoader("Upscaling...",document.getElementById("ms").value);
-  try{const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({prompt:buildPrompt(),model:document.getElementById("ms").value,width:Math.round(nw),height:Math.round(nh)})});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail);
-  hideLoader();loadImg(d.image_b64);bal-=15;updateBal();toast("Upscaled!","s");
-  }catch(e){hideLoader();toast("Upscale failed","e");}
-};
-
-window.genSeries=async()=>{
-  const sn=document.getElementById("series-name").value.trim();const num=document.getElementById("sn").value;
-  if(!sn){toast("Enter series name","e");return;}
-  document.getElementById("pi").value=(document.getElementById("pi").value.trim()||style)+`, consistent series cover for "${sn}" book ${num}, series visual continuity, professional publishing`;
-  await generateImage(false);
-};
-
-window.genBackCover=async()=>{
-  const bp=document.getElementById("bc-prompt").value.trim();
-  if(!apiKey||bal<15){toast("Insufficient credits","e");return;}
-  closeM("gen-back-modal");
-  const t=document.getElementById("book-title").value;
-  const prompt=`${bp||"back cover, dark gradient, subtle texture, space for text"}, professional back cover matching "${t}", synopsis area, author bio area`;
-  showLoader("Generating back cover...",document.getElementById("ms").value);
-  const[w,h]=getDims();
-  try{const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({prompt,model:document.getElementById("ms").value,width:w,height:h})});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail);
-  hideLoader();loadImg(d.image_b64);bal-=15;updateBal();toast("Back cover generated!","s");
-  }catch(e){hideLoader();toast("Failed","e");}
-};
-
-/* ─── BLANK TEMPLATE ─── */
-const tplThemes=[
-  {name:"Dark Gold",bg:"#0a0d14",title:"#f0c878",text:"#e0d0b0",accent:"#c9a96e",spine:"#060810"},
-  {name:"Midnight Blue",bg:"#071020",title:"#a8d8f0",text:"#c0d8e8",accent:"#3b82f6",spine:"#040c18"},
-  {name:"Crimson",bg:"#100608",title:"#f08070",text:"#e0c8c0",accent:"#ef4444",spine:"#080304"},
-  {name:"Forest",bg:"#071210",title:"#90d890",text:"#c0d8c0",accent:"#10b981",spine:"#040c08"},
-  {name:"Royal Purple",bg:"#0c0814",title:"#d0a8f8",text:"#d0c0e8",accent:"#8b5cf6",spine:"#07050e"},
-  {name:"Ivory",bg:"#f8f4ec",title:"#1a1208",text:"#3a2e20",accent:"#8b6a30",spine:"#e8e0d0"},
-];
-let selectedTplTheme=0;
-
-window.openTemplateSelector=()=>{
-  const row=document.getElementById("tpl-colors-row");
-  row.innerHTML=tplThemes.map((t,i)=>`<div class="tpc${i===selectedTplTheme?" on":""}" style="background:${t.accent}" onclick="selTplTheme(${i},this)" title="${t.name}"></div>`).join("");
-  document.getElementById("tpl-preview-overlay").classList.add("on");
-};
-window.selTplTheme=(i,el)=>{selectedTplTheme=i;document.querySelectorAll(".tpc").forEach(c=>c.classList.remove("on"));el.classList.add("on");};
-
-window.applyBlankTemplate=()=>{
-  document.getElementById("tpl-preview-overlay").classList.remove("on");
-  const th=tplThemes[selectedTplTheme];tplColor={...th};
-  canvas.clear();canvas.backgroundColor=th.bg;
-  const[lw,lh]=getDims();const sc=canvas.getZoom();
-  const cw=canvas.width/sc,ch=canvas.height/sc;
-  // Decorative gradient rect at top
-  const topBar=new fabric.Rect({left:0,top:0,width:cw,height:ch*.08,fill:th.accent,opacity:.18,selectable:false,evented:false});
-  const bottomBar=new fabric.Rect({left:0,top:ch*.92,width:cw,height:ch*.08,fill:th.accent,opacity:.14,selectable:false,evented:false});
-  const divLine=new fabric.Line([cw*.1,ch*.85,cw*.9,ch*.85],{stroke:th.accent,strokeWidth:1,opacity:.5,selectable:false,evented:false});
-  const titleText=new fabric.IText(document.getElementById("book-title").value||"YOUR TITLE HERE",{left:cw/2,top:ch*.15,originX:"center",fontFamily:"Cinzel",fontSize:Math.max(18,cw*.06),fill:th.title,fontWeight:"bold",textAlign:"center",shadow:new fabric.Shadow({color:"rgba(0,0,0,.8)",blur:12,offsetX:0,offsetY:2})});
-  const subtitleText=new fabric.IText("Subtitle or Series Name",{left:cw/2,top:ch*.28,originX:"center",fontFamily:"Cinzel",fontSize:Math.max(9,cw*.025),fill:th.accent,fontStyle:"italic",textAlign:"center",opacity:.85});
-  const decorLine=new fabric.Line([cw*.25,ch*.33,cw*.75,ch*.33],{stroke:th.accent,strokeWidth:1,opacity:.6,selectable:false,evented:false});
-  const authorText=new fabric.IText(document.getElementById("author-name").value||"Author Name",{left:cw/2,top:ch*.87,originX:"center",fontFamily:"Playfair Display",fontSize:Math.max(9,cw*.028),fill:th.text,textAlign:"center"});
-  canvas.add(topBar,bottomBar,divLine,titleText,subtitleText,decorLine,authorText);
-  canvas.setActiveObject(titleText);canvas.renderAll();pushH();
-  document.getElementById("es").style.display="none";
-  toast("Template applied! Click any text to edit it.","s");
-  showCtx("Blank template ready! Click the title or author text to edit. Head to the Edit tab to change fonts and colors.","switchTab('edit',document.getElementById('nb-edit'))",true,true,"Open Edit Tools");
-};
-
-/* ─── QUAD TOGGLE ─── */
-window.toggleQuad=()=>{
-  quadMode=!quadMode;
-  document.getElementById("qtog").classList.toggle("on",quadMode);
-  document.getElementById("qrow").classList.toggle("on",quadMode);
-  document.getElementById("gbl").textContent=quadMode?"Generate 4 Variations":"Generate Cover";
-  document.getElementById("gco").textContent=quadMode?"(60 credits)":"(15 credits)";
-  document.getElementById("gh").textContent=quadMode?"60 credits for 4 unique variations":"15 credits per generation";
-  document.getElementById("qch").textContent=quadMode?"4 variations · 60 credits":"4 variations · 60 credits";
-};
-
-window.applyDim=(p)=>{
-  const m={kindle:"1600x2560",standard:"768x1024",wide:"1800x2700",square:"1024x1024",spine:"512x1024"};
-  document.getElementById("res").value=m[p]||"768x1024";resizeC();toast("Dimensions updated","i");
-};
-
-/* ─── EXPORT ─── */
-window.exportPNG=()=>{
-  if(!curB64){toast("Generate a cover first","e");return;}
-  const z=canvas.getZoom();canvas.setZoom(1);
-  const url=canvas.toDataURL({format:"png",quality:1,multiplier:2});
-  canvas.setZoom(z);
-  const a=document.createElement("a");a.href=url;a.download=`philadelphia_${Date.now()}.png`;a.click();
-  toast("High-res PNG downloading...","s");
-};
-
-window.downloadCover=()=>{
-  const img=document.getElementById("b3d-face");
-  const src=img.style.backgroundImage.replace(/url\(["']?/,"").replace(/["']?\)$/,"");
-  if(!src)return;
-  const a=document.createElement("a");a.href=src;a.download=`philly_mockup_${Date.now()}.png`;a.click();
-  toast("Downloaded!","s");
-};
-
-/* ─── 3D BOOK (THE FIX: background-image on face divs, no img tags) ─── */
-window.openBook3D=()=>{
-  if(!curB64){toast("Generate a cover first","e");return;}
-  const z=canvas.getZoom();canvas.setZoom(1);
-  const src=canvas.toDataURL({format:"png",quality:1,multiplier:1.5});
-  canvas.setZoom(z);
-  const title=document.getElementById("book-title").value||"Cover Preview";
-  const author=document.getElementById("author-name").value||"";
-  const synopsis=document.getElementById("about-book").value||"Add your synopsis in the Generate tab to see it here.";
-  const aboutAuth=document.getElementById("about-author").value||"Author bio will appear here.";
-  document.getElementById("b3d-title").textContent=title+(author?` · ${author}`:"");
-  document.getElementById("b3d-spine-txt").textContent=title.toUpperCase().slice(0,18);
-  // Float view — THE FIX: set as CSS background-image on the face DIV
-  document.getElementById("b3d-face").style.backgroundImage=`url(${src})`;
-  // Stand view
-  document.getElementById("bs-face").style.backgroundImage=`url(${src})`;
-  document.getElementById("bs-face").style.backgroundSize="100% 100%";
-  // Wrap view
-  document.getElementById("w-front").style.backgroundImage=`url(${src})`;
-  document.getElementById("w-front").style.backgroundSize="100% 100%";
-  document.getElementById("w-back-img").style.backgroundImage=`url(${src})`;
-  document.getElementById("w-spine-t").textContent=title.toUpperCase().slice(0,14);
-  document.getElementById("w-btitle").textContent=title;
-  document.getElementById("w-btext").textContent=synopsis;
-  // Front-only view
-  document.getElementById("front-only").innerHTML=`<img src="${src}" style="width:100%;height:auto;display:block;border-radius:6px;">`;
-  // Back view
-  document.getElementById("bov-title").textContent=title;
-  document.getElementById("bov-text").textContent=synopsis;
-  document.getElementById("bov-author").textContent=aboutAuth;
-  // Default to float
-  setB3DView("float",document.querySelector(".b3d-tab"));
-  document.getElementById("b3d-ov").style.display="flex";
-  showCtx("Stunning! You can view front, full wrap, spine, and back. Tap 'Gen Back Cover' to create the back cover with AI.","authA(()=>openM('gen-back-modal'))",true,true,"Generate Back Cover");
-};
-
-window.setB3DView=(v,el)=>{
-  document.querySelectorAll(".b3d-tab").forEach(t=>t.classList.remove("on"));if(el)el.classList.add("on");
-  document.querySelectorAll(".b3d-panel").forEach(p=>p.classList.remove("on"));
-  const map={float:"pv-float",stand:"pv-stand",wrap:"pv-wrap",front:"pv-front",back:"pv-back"};
-  if(map[v])document.getElementById(map[v]).classList.add("on");else document.getElementById("pv-float").classList.add("on");
-};
-
-window.closeBook3D=()=>{document.getElementById("b3d-ov").style.display="none";};
-window.openWrapView=()=>{openBook3D();setTimeout(()=>setB3DView("wrap",document.querySelectorAll(".b3d-tab")[2]),300);};
-window.spinBook=(spin)=>{
-  const b=document.getElementById("book3d");
-  b.style.animation=spin?"bookSpin 8s linear infinite":"bf 5s ease-in-out infinite";
-};
-
-/* ─── ANIMATED PREVIEW ─── */
-window.animPreview=()=>{
-  if(!curB64){toast("Generate first","e");return;}
-  const src=curB64.startsWith("data:")?curB64:`data:image/png;base64,${curB64}`;
-  const w=window.open("","_blank");if(!w)return;
-  w.document.write(`<!DOCTYPE html><html><head><title>Philadelphia Preview</title><style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{background:radial-gradient(ellipse at center,#0a0e1a,#000);display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden;}
-    .sc{perspective:900px;}
-    .bk{width:220px;height:330px;position:relative;animation:bf 5s ease-in-out infinite;}
-    .fr{width:100%;height:100%;background:url('${src}') center/100% 100% no-repeat;border-radius:2px 8px 8px 2px;box-shadow:5px 15px 40px rgba(0,0,0,.8),inset -3px 0 8px rgba(0,0,0,.5);transform:rotateY(-28deg);}
-    .pg{position:absolute;top:2px;right:-18px;width:18px;height:calc(100%-4px);background:repeating-linear-gradient(to right,#f8f8f8,#d0d0d0 1px,#f0f0f0 3px);border-radius:0 3px 3px 0;transform:perspective(180px) rotateY(50deg);transform-origin:left center;}
-    .sh{position:absolute;bottom:-22px;left:10%;width:80%;height:12px;background:radial-gradient(ellipse,rgba(0,0,0,.5),transparent);border-radius:50%;animation:sa 5s ease-in-out infinite;}
-    @keyframes bf{0%,100%{transform:rotateY(-28deg) translateY(0)}50%{transform:rotateY(-22deg) translateY(-12px)}}
-    @keyframes sa{0%,100%{transform:scaleX(1);opacity:.5}50%{transform:scaleX(.82);opacity:.22}}
-  </style></head><body><div class="sc"><div class="bk"><div class="fr"></div><div class="pg"></div></div><div class="sh"></div></div></body></html>`);
-  w.document.close();
-};
-
-/* ─── BOBBY AI ─── */
-window.sendBobby=async()=>{
-  const inp=document.getElementById("bi");const msg=inp.value.trim();if(!msg)return;
-  if(!apiKey){openM("api-modal");return;}if(bal<2){toast("Need 2 credits","e");return;}
-  appendMsg(msg,"usr");inp.value="";
-  const tid=appendMsg("Bobby is thinking...","think");
-  try{
-    const r=await fetch(`${API}/api/developer/bobby/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({
-      prompt:msg,
-      systemPrompt:"You are Bobby, a professional book cover design advisor for Philadelphia Studio by Elvion AI. Give concise, expert advice on cover design, typography, color, composition, and visual storytelling. STRICT: keep every response under 100 words. Be direct and actionable. No preamble or lengthy explanations."
-    })});
-    const d=await r.json();document.getElementById(tid)?.remove();
-    if(!r.ok)throw new Error(d.detail||"Bobby error");
-    const reply=d.content||d.reply||"Done.";
-    const words=reply.split(/\s+/).slice(0,100).join(" ");
-    appendMsg(words,"bot");bal-=2;updateBal();
-  }catch(e){document.getElementById(tid)?.remove();appendMsg("Bobby unavailable right now.","bot");}
-};
-window.bobbyQ=(m)=>{document.getElementById("bi").value=m;sendBobby();};
-window.bobbify=async()=>{
-  if(!apiKey){openM("api-modal");return;}if(bal<2){toast("Need 2 credits","e");return;}
-  const p=document.getElementById("pi").value.trim();const t=document.getElementById("book-title").value.trim();
-  if(!p&&!t){toast("Enter a prompt or title first","e");return;}
-  toast("Bobby enhancing...","i");
-  try{
-    const r=await fetch(`${API}/api/developer/bobby/chat`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},body:JSON.stringify({
-      prompt:`Rewrite this as a vivid AI image prompt. Strict limit: 70 words maximum, one paragraph. Return ONLY the prompt text, nothing else. Book: "${t||'untitled'}". Prompt: "${p||style+' book cover'}"`,
-      systemPrompt:"You write concise AI image generation prompts. Max 70 words. No preamble. Return only the prompt."
-    })});
-    const d=await r.json();if(!r.ok)throw new Error(d.detail);
-    const enhanced=(d.content||d.reply||"").replace(/^["']|["']$/g,"").trim();
-    const words=enhanced.split(/\s+/).slice(0,80).join(" ");
-    if(words){document.getElementById("pi").value=words;toast("Prompt enhanced!","s");}
-    bal-=2;updateBal();
-  }catch(e){toast("Enhancement failed","e");}
-};
-
-function appendMsg(text,role){
-  const id="bm-"+Date.now();const msgs=document.getElementById("bmsgs");
-  const div=document.createElement("div");div.className=`bm ${role}`;div.id=id;
-  div.innerHTML=text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>");
-  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;return id;
+function resizeCanvasToFit() {
+  const container = document.getElementById('canvas-container');
+  const pad = 40;
+  const availW = container.clientWidth - pad;
+  const availH = container.clientHeight - pad;
+  
+  // Calculate scale
+  const scale = Math.min(availW / currentDim.w, availH / currentDim.h);
+  
+  canvas.setWidth(currentDim.w * scale);
+  canvas.setHeight(currentDim.h * scale);
+  canvas.setZoom(scale);
+  canvas.renderAll();
 }
 
-/* ─── CHAR LOCK ─── */
-window.saveChar=()=>{
-  const n=document.getElementById("cn").value.trim(),d=document.getElementById("cd").value.trim();
-  if(!n||!d){toast("Fill in name and description","e");return;}
-  charLock={name:n,desc:d};
-  document.getElementById("char-ban").classList.add("on");document.getElementById("char-nm").textContent=n;
-  closeM("char-modal");toast(`"${n}" locked!`,"s");
-};
-window.clearCharLock=()=>{charLock=null;document.getElementById("char-ban").classList.remove("on");toast("Lock cleared","i");};
+window.setDimension = (type) => {
+  // Reset active buttons
+  document.querySelectorAll('#tour-step-1 .grid-3 button').forEach(b => { b.style.color=''; b.style.borderColor=''; });
+  event.target.style.color = 'var(--gold)'; event.target.style.borderColor = 'var(--gold)';
 
-/* ─── LIBRARY / SAVES ─── */
-const getLib=()=>{try{return JSON.parse(localStorage.getItem("phl_v3")||"[]");}catch{return[];}};
-const setLib=l=>localStorage.setItem("phl_v3",JSON.stringify(l));
+  if (type === 'front') currentDim = {w: 768, h: 1024, type: 'front'};
+  if (type === 'back') currentDim = {w: 768, h: 1024, type: 'back'};
+  if (type === 'spine') currentDim = {w: 300, h: 1024, type: 'spine'}; // Wider spine for canvas
+  
+  resizeCanvasToFit();
+  canvas.clear(); canvas.backgroundColor = '#111520'; canvas.renderAll();
+}
 
-window.saveProgress=(silent=false)=>{
-  if(!canvas||!curB64){if(!silent)toast("Nothing to save","e");return;}
-  const z=canvas.getZoom();canvas.setZoom(1);
-  const thumb=canvas.toDataURL({format:"jpeg",quality:.52,multiplier:.5});
-  canvas.setZoom(z);
-  const entry={id:Date.now(),thumb,state:JSON.stringify(canvas.toJSON()),title:document.getElementById("book-title").value||"Untitled",type:genType,date:new Date().toLocaleDateString(),prompt:document.getElementById("pi").value.slice(0,55)};
-  const lib=getLib();lib.unshift(entry);if(lib.length>30)lib.pop();setLib(lib);loadLib();
-  if(!silent)toast("Saved!","s");
-};
+window.setGenre = (genre, el) => {
+  document.querySelectorAll('#genre-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentGenre = genre;
+}
 
-function loadLib(){
-  const lib=getLib();
-  // Strip
-  const strip=document.getElementById("ls-strip");
-  const msg=strip.querySelector("span");
-  strip.querySelectorAll(".lsi").forEach(e=>e.remove());
-  if(lib.length===0){if(msg)msg.style.display="block";}
-  else{
-    if(msg)msg.style.display="none";
-    lib.slice(0,12).forEach(item=>{
-      const div=document.createElement("div");div.className="lsi";
-      div.innerHTML=`<img src="${item.thumb}" alt="${item.title}">`;
-      div.onclick=()=>loadLibItem(item);strip.insertBefore(div,strip.firstChild);
+// ============================================================================
+// AI GENERATION (THE BACKEND BRIDGE)
+// ============================================================================
+window.askBobby = async () => {
+  const prompt = document.getElementById('prompt-input').value;
+  if (!prompt) return toast("Type a basic idea first.");
+  document.getElementById('prompt-input').value = "Bobby is enhancing...";
+  try {
+    // Get active API key first
+    const rKeys = await fetch(`${API}/api/user/keys-and-balance`, { headers: {"X-Firebase-Token": currentToken} });
+    const keysData = await rKeys.json();
+    const apiKey = keysData.keys.find(k => k.is_active)?.api_key;
+    if (!apiKey) return toast("No active API Key found.");
+
+    const res = await fetch(`${API}/api/developer/bobby/chat`, {
+      method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: `Enhance this into a highly detailed visual AI image prompt for a ${currentGenre} book cover. Max 60 words. Prompt: ${prompt}` })
     });
-  }
-  // Grid
-  const grid=document.getElementById("lib-grid");
-  if(lib.length===0){grid.innerHTML=`<div style="grid-column:1/-1;color:var(--t3);font-size:.76rem;text-align:center;padding:22px 0">Generate and save to build your library.</div>`;return;}
-  grid.innerHTML=lib.map(item=>`
-    <div class="lc" onclick="loadLibItem(${JSON.stringify(item).replace(/"/g,'&quot;')})">
-      <img src="${item.thumb}" alt="${item.title}">
-      <button class="lc-del" onclick="delLib(${item.id},event)"><i class="fas fa-times"></i></button>
-      <div class="lc-n">${item.title}</div>
-    </div>
-  `).join("");
+    const data = await res.json();
+    document.getElementById('prompt-input').value = data.content.replace(/"/g, '');
+  } catch(e) { toast("Failed to connect to Bobby."); document.getElementById('prompt-input').value = prompt; }
 }
 
-window.loadLibItem=(item)=>{
-  if(!confirm(`Load "${item.title}"?`))return;
-  canvas.loadFromJSON(JSON.parse(item.state),()=>{
-    canvas.renderAll();document.getElementById("es").style.display="none";
-    document.getElementById("b3d-open-btn").style.display="flex";
-    document.getElementById("book-title").value=item.title;curB64="loaded";
-    switchTab("gen",document.getElementById("nb-gen"));toast("Project loaded!","s");
+window.generateAIImage = async () => {
+  const prompt = document.getElementById('prompt-input').value;
+  if (!prompt) return toast("Please enter a prompt.");
+  
+  document.getElementById('loader-overlay').style.display = 'flex';
+  
+  try {
+    const rKeys = await fetch(`${API}/api/user/keys-and-balance`, { headers: {"X-Firebase-Token": currentToken} });
+    const keysData = await rKeys.json();
+    const apiKey = keysData.keys.find(k => k.is_active)?.api_key;
+    if (!apiKey) throw new Error("No active API Key. Generate one in Developer Console.");
+
+    const finalPrompt = `${prompt}, ${currentGenre} book cover, masterpiece, no text, clean artwork`;
+    
+    const res = await fetch(`${API}/api/developer/generate-image`, {
+      method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: finalPrompt, model: "v6", width: currentDim.w, height: currentDim.h })
+    });
+    const data = await res.json();
+    
+    if (!res.ok) throw new Error(data.detail);
+
+    // Load Image to Canvas as an Object (so it can be brushed over, unlike background)
+    fabric.Image.fromURL(`data:image/png;base64,${data.image_b64}`, (img) => {
+      canvas.clear(); canvas.backgroundColor = '#111520';
+      img.set({ selectable: false, evented: false });
+      // Scale to fit our current canvas dimensions exactly
+      img.scaleToWidth(currentDim.w);
+      img.scaleToHeight(currentDim.h);
+      canvas.add(img);
+      canvas.sendToBack(img);
+      canvas.renderAll();
+      fetchBalance(); // Update credits
+      toast("Image Generated successfully!");
+    });
+  } catch(e) { toast(e.message); }
+  
+  document.getElementById('loader-overlay').style.display = 'none';
+}
+
+// ============================================================================
+// CANVAS TOOLS (TEXT, BRUSH, EYEDROPPER)
+// ============================================================================
+window.setCanvasMode = (mode, el) => {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  isEyedropperActive = false;
+  canvas.defaultCursor = 'default';
+
+  if (mode === 'select') {
+    canvas.isDrawingMode = false;
+    showEmptyProps();
+  } else if (mode === 'brush') {
+    canvas.isDrawingMode = true;
+    updateBrushProps();
+    document.getElementById('prop-text').style.display = 'none';
+    document.getElementById('prop-empty').style.display = 'none';
+    document.getElementById('prop-brush').style.display = 'block';
+  }
+}
+
+window.activateHealTool = (el) => {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  canvas.isDrawingMode = false;
+  isEyedropperActive = true;
+  canvas.defaultCursor = 'crosshair';
+  
+  document.getElementById('prop-text').style.display = 'none';
+  document.getElementById('prop-empty').style.display = 'none';
+  document.getElementById('prop-brush').style.display = 'block';
+  toast("Click any color on the canvas to pick it.");
+}
+
+window.updateBrushProps = () => {
+  if(!canvas.isDrawingMode) return;
+  const brush = new fabric.PencilBrush(canvas);
+  brush.color = document.getElementById('brush-color').value;
+  brush.width = parseInt(document.getElementById('brush-size').value) / canvas.getZoom();
+  canvas.freeDrawingBrush = brush;
+}
+
+window.addCanvasText = () => {
+  const text = new fabric.IText('BOOK TITLE', {
+    left: currentDim.w / 2, top: currentDim.h * 0.1, originX: 'center',
+    fontFamily: 'Cinzel', fontSize: 70, fill: '#ffffff', fontWeight: 'bold'
   });
-};
-window.delLib=(id,e)=>{e.stopPropagation();setLib(getLib().filter(i=>i.id!==id));loadLib();};
+  canvas.add(text); canvas.setActiveObject(text); canvas.renderAll();
+  setCanvasMode('select', document.querySelectorAll('.tool-btn')[0]);
+}
 
-/* ─── TEMPLATES ─── */
-const tpls=[
-  {e:"⚔️",n:"Dark Fantasy",d:"Epic swords, castles",p:"Dark fantasy warrior on castle battlements, golden magic from sword, storm clouds, moonlight shafts, photorealistic masterpiece",s:"dark fantasy"},
-  {e:"💕",n:"Romance",d:"Passion & emotion",p:"Two silhouettes embracing at golden sunset, warm bokeh flowers, cinematic lighting, emotional atmosphere",s:"romance"},
-  {e:"🔪",n:"Thriller",d:"Tension & shadow",p:"Dark silhouette in rain-soaked city alley, neon reflections in puddles, fog, high contrast noir lighting",s:"thriller"},
-  {e:"🚀",n:"Sci-Fi",d:"Futuristic worlds",p:"Lone astronaut on alien planet, twin moons rising, bioluminescent flora, vast starfield, cinematic scale",s:"sci-fi"},
-  {e:"👻",n:"Horror",d:"Fear, supernatural",p:"Ancient haunted mansion on cliff at night, lightning storm, supernatural glow in windows, blood moon",s:"horror"},
-  {e:"🔮",n:"Mystery",d:"Intrigue & secrets",p:"Cryptic ancient map with glowing runes, candlelight, mysterious symbols, gold and shadow aesthetic",s:"mystery"},
-  {e:"🌟",n:"Epic Fantasy",d:"Dragons, kingdoms",p:"Colossal golden dragon soaring over magical kingdom at dusk, god rays, epic scale, detailed scales",s:"epic fantasy"},
-  {e:"🎨",n:"Comic Book",d:"Panels, bold lines",p:"Heroic figure in dynamic action pose, bold black ink outlines, vibrant flat colors, halftone pattern, american comic style",s:"comic book art"},
-  {e:"📚",n:"Literary",d:"Elegant, symbolic",p:"Open book with ethereal words becoming birds, soft morning light, watercolor aesthetic, poetic",s:"literary fiction"},
-  {e:"🌍",n:"Non-Fiction",d:"Professional, bold",p:"Bold abstract geometric shapes in deep blue and gold, professional composition, authoritative feel",s:"non-fiction"},
+window.updateSelectedText = (prop, val) => {
+  const obj = canvas.getActiveObject();
+  if (obj && obj.type === 'i-text') { obj.set(prop, val); canvas.renderAll(); }
+}
+window.addTextShadow = () => {
+  const obj = canvas.getActiveObject();
+  if (obj && obj.type === 'i-text') { obj.set('shadow', new fabric.Shadow({color: 'rgba(201,169,110,0.8)', blur: 20})); canvas.renderAll(); }
+}
+window.deleteSelected = () => { canvas.getActiveObjects().forEach(o => canvas.remove(o)); canvas.discardActiveObject(); }
+
+function showTextProps() {
+  const obj = canvas.getActiveObject();
+  if (obj && obj.type === 'i-text') {
+    document.getElementById('prop-text').style.display = 'block';
+    document.getElementById('prop-empty').style.display = 'none';
+    document.getElementById('prop-brush').style.display = 'none';
+    document.getElementById('font-family').value = obj.fontFamily;
+    document.getElementById('text-color').value = obj.fill;
+    document.getElementById('text-size').value = obj.fontSize;
+  }
+}
+function showEmptyProps() {
+  if(canvas.isDrawingMode) return;
+  document.getElementById('prop-text').style.display = 'none';
+  document.getElementById('prop-brush').style.display = 'none';
+  document.getElementById('prop-empty').style.display = 'block';
+}
+
+function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
+
+window.exportCanvas = () => {
+  const z = canvas.getZoom(); canvas.setZoom(1);
+  const dataURL = canvas.toDataURL({ format: 'png', multiplier: 2 });
+  canvas.setZoom(z);
+  const a = document.createElement('a'); a.href = dataURL; a.download = `Philadelphia_Cover.png`; a.click();
+}
+
+// ============================================================================
+// BLANK WRAP TEMPLATE (PROFESSIONAL LAYOUT)
+// ============================================================================
+window.loadBlankWrapTemplate = () => {
+  // Switch dimension to full wrap (1600x1000)
+  currentDim = { w: 1600, h: 1000, type: 'wrap' };
+  resizeCanvasToFit();
+  canvas.clear();
+  
+  const bg = new fabric.Rect({ left: 0, top: 0, width: 1600, height: 1000, fill: '#0a0f18', selectable: false });
+  const spine = new fabric.Rect({ left: 760, top: 0, width: 80, height: 1000, fill: '#05080c', selectable: false });
+  
+  // Front Elements (Right Side)
+  const title = new fabric.IText('THE EPIC TALE', { left: 1220, top: 200, originX: 'center', fontFamily: 'Cinzel', fontSize: 80, fill: '#c9a96e', fontWeight: 'bold' });
+  const author = new fabric.IText('AUTHOR NAME', { left: 1220, top: 850, originX: 'center', fontFamily: 'Inter', fontSize: 35, fill: '#fff', letterSpacing: 4 });
+  
+  // Spine Elements
+  const spineText = new fabric.IText('THE EPIC TALE', { left: 800, top: 500, originX: 'center', originY: 'center', fontFamily: 'Cinzel', fontSize: 30, fill: '#c9a96e', angle: 90 });
+  
+  // Back Elements (Left Side)
+  const backHead = new fabric.IText('ABOUT THE BOOK', { left: 380, top: 150, originX: 'center', fontFamily: 'Cinzel', fontSize: 40, fill: '#c9a96e' });
+  const line = new fabric.Line([180, 210, 580, 210], { stroke: '#c9a96e', strokeWidth: 2 });
+  const blurb = new fabric.IText('In a world fractured by ancient magic, one hero must rise...\n\n(Double click to edit this synopsis. Add your \ncompelling story details here to hook the reader.)', { left: 380, top: 250, originX: 'center', fontFamily: 'Inter', fontSize: 24, fill: '#ccc', textAlign: 'center', lineHeight: 1.5 });
+  
+  const barcode = new fabric.Rect({ left: 550, top: 800, width: 150, height: 90, fill: '#fff' });
+  const bcText = new fabric.IText('BARCODE', { left: 625, top: 845, originX: 'center', originY: 'center', fontFamily: 'Inter', fontSize: 20, fill: '#000' });
+
+  canvas.add(bg, spine, title, author, spineText, backHead, line, blurb, barcode, bcText);
+  canvas.renderAll();
+  toast("Full Wrap Template Loaded!");
+}
+
+// ============================================================================
+// 3D BOOK ENGINE
+// ============================================================================
+window.open3DViewer = () => {
+  const z = canvas.getZoom(); canvas.setZoom(1);
+  const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+  canvas.setZoom(z);
+
+  const viewer = document.getElementById('book-3d-viewer');
+  viewer.style.display = 'flex';
+
+  // Apply the canvas image to the faces
+  if (currentDim.type === 'front') {
+    document.getElementById('3d-front').style.backgroundImage = `url(${dataURL})`;
+    document.getElementById('3d-spine-text').textContent = "BOOK TITLE";
+  } else if (currentDim.type === 'wrap') {
+    // If it's a full wrap, we ideally need to slice it. 
+    // For simplicity in this frontend demo, we apply the whole thing and use background-position
+    document.getElementById('3d-front').style.backgroundImage = `url(${dataURL})`;
+    document.getElementById('3d-front').style.backgroundPosition = "right center"; // Right side is front
+    document.getElementById('3d-back').style.backgroundImage = `url(${dataURL})`;
+    document.getElementById('3d-back').style.backgroundPosition = "left center"; // Left side is back
+  }
+}
+
+window.toggle3DSpin = () => { document.getElementById('the-3d-book').classList.toggle('spin'); }
+
+// ============================================================================
+// THE INTERACTIVE TOUR (CUSTOM BUILT)
+// ============================================================================
+const tourSteps =[
+  { el: null, title: "Welcome to Philadelphia Studio", text: "The most powerful AI cover creator. Let's take a quick 5-step tour." },
+  { el: "tour-step-1", title: "1. The Magic Generator", text: "Pick what you want to make (Front, Back, Spine), choose a genre, write your idea, and hit Generate." },
+  { el: "tour-step-2", title: "2. The Toolbar", text: "After generating, use these tools. Add Text, Paint, or use the Eyedropper (Perfect Eraser) to pick the background color and brush over unwanted AI text." },
+  { el: "tour-step-3", title: "3. Properties Panel", text: "Select text on the canvas to change its Font, Color, and Size here." },
+  { el: "tour-step-4", title: "4. View & Export", text: "Click here to see your cover in stunning 3D, or save it as a High-Res PNG." },
+  { el: "tour-step-5", title: "5. Professional Wraps", text: "Need a full print cover? Click 'Load Blank Full Wrap' to get a perfect template with Spine and Back Cover laid out." }
 ];
 
-function renderTpls(){
-  document.getElementById("tpl-grid").innerHTML=tpls.map((t,i)=>`
-    <div class="tc2" onclick="applyTpl(${i})"><div class="ti">${t.e}</div><div class="tn">${t.n}</div><div class="td2">${t.d}</div></div>
-  `).join("");
-}
-window.applyTpl=(i)=>{
-  const t=tpls[i];document.getElementById("pi").value=t.p;
-  document.querySelectorAll(".chip").forEach(c=>{c.classList.remove("on");if(c.dataset.s===t.s)c.classList.add("on");});
-  style=t.s;document.getElementById("comic-card").style.display=style==="comic book art"?"block":"none";
-  switchTab("gen",document.getElementById("nb-gen"));toast(`"${t.n}" template applied!`,"s");
-};
+const tourManager = {
+  index: 0,
+  start: function() {
+    this.index = 0;
+    document.getElementById('tour-overlay').style.display = 'block';
+    document.getElementById('tour-tooltip').style.display = 'block';
+    this.render();
+  },
+  next: function() {
+    this.index++;
+    if (this.index >= tourSteps.length) this.close();
+    else this.render();
+  },
+  render: function() {
+    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    
+    const step = tourSteps[this.index];
+    document.getElementById('tour-title').textContent = step.title;
+    document.getElementById('tour-text').textContent = step.text;
+    document.getElementById('tour-progress').textContent = `${this.index + 1}/${tourSteps.length}`;
 
-/* ─── WIZARD ─── */
-window.openWizard=()=>{
-  wizStep=0;wizData={};
-  document.querySelectorAll(".ws").forEach(s=>s.classList.remove("on"));document.getElementById("ws0").classList.add("on");
-  document.querySelectorAll(".wo").forEach(o=>o.classList.remove("sel"));
-  updateWizP();document.getElementById("wiz").style.display="flex";
-};
-window.closeWiz=()=>{document.getElementById("wiz").style.display="none";};
-window.wizNext=()=>{
-  const step=document.getElementById(`ws${wizStep}`);const sel=step.querySelector(".wo.sel");
-  if(!sel){toast("Select an option","e");return;}
-  const keys=["genre","mood","setting","element"];wizData[keys[wizStep]]=sel.dataset.v;
-  if(wizStep<3){step.classList.remove("on");wizStep++;document.getElementById(`ws${wizStep}`).classList.add("on");updateWizP();document.getElementById("wizNext").textContent=wizStep===3?"Build Prompt →":"Next →";}
-  else{document.getElementById("pi").value=`${wizData.element} in a ${wizData.setting}, ${wizData.mood} atmosphere, ${wizData.genre} style, professional book cover, dramatic lighting, cinematic quality`;closeWiz();toast("Prompt built!","s");}
-};
-window.wizPrev=()=>{if(wizStep===0){closeWiz();return;}document.getElementById(`ws${wizStep}`).classList.remove("on");wizStep--;document.getElementById(`ws${wizStep}`).classList.add("on");document.getElementById("wizNext").textContent=wizStep===3?"Build Prompt →":"Next →";updateWizP();};
-function updateWizP(){for(let i=0;i<=3;i++)document.getElementById(`wd${i}`).classList.toggle("on",i<=wizStep);}
-document.querySelectorAll(".wo").forEach(o=>{o.onclick=()=>{o.closest(".ws").querySelectorAll(".wo").forEach(x=>x.classList.remove("sel"));o.classList.add("sel");};});
+    const tooltip = document.getElementById('tour-tooltip');
 
-/* ─── GIFT ─── */
-window.giftCredits=async()=>{
-  const em=document.getElementById("ge").value.trim();const amt=parseInt(document.getElementById("ga").value);
-  if(!em||!amt||amt<10){toast("Enter valid email and amount","e");return;}
-  if(bal<amt){toast("Insufficient credits","e");return;}
-  try{const r=await fetch(`${API}/api/user/transfer-credits`,{method:"POST",headers:{"Content-Type":"application/json","X-Firebase-Token":tok},body:JSON.stringify({receiver_email:em,amount:amt})});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail||"Transfer failed");
-  bal-=amt;updateBal();toast(`${amt} credits sent to ${em}!`,"s");document.getElementById("ge").value="";document.getElementById("ga").value="";
-  }catch(e){toast("Gift failed: "+e.message,"e");}
-};
+    if (step.el) {
+      const target = document.getElementById(step.el);
+      target.classList.add('tour-highlight');
+      const rect = target.getBoundingClientRect();
+      
+      // Position tooltip next to element safely
+      let top = rect.top;
+      let left = rect.right + 20;
+      if (left + 300 > window.innerWidth) { left = rect.left - 320; } // Show on left if no space
+      if (top < 20) top = 20;
 
-window.adminGift=async()=>{
-  const em=document.getElementById("ag-email").value.trim();const amt=parseInt(document.getElementById("ag-amt").value);
-  if(!em||!amt){toast("Fill all fields","e");return;}
-  try{const r=await fetch(`${API}/api/admin/gift-credits`,{method:"POST",headers:{"Content-Type":"application/json","X-Firebase-Token":tok},body:JSON.stringify({target_email:em,amount:amt})});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail);toast(`${amt} credits gifted to ${em}!`,"s");
-  }catch(e){toast("Admin gift failed: "+e.message,"e");}
-};
-
-/* ─── PAYMENT ─── */
-window.initPayment=async()=>{
-  const amt=parseInt(document.getElementById("fund-amt").value);if(amt<100){toast("Minimum ₦100","e");return;}
-  try{const r=await fetch(`${API}/api/payments/initiate`,{method:"POST",headers:{"Content-Type":"application/json","X-Firebase-Token":tok},body:JSON.stringify({amount:amt,redirect_url:window.location.href.split("?")[0]})});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail);window.location.href=d.checkout_url;
-  }catch(e){toast("Payment error: "+e.message,"e");}
-};
-
-function checkPayReturn(){
-  const p=new URLSearchParams(window.location.search);const ref=p.get("reference")||p.get("trxref");
-  if(!ref||!tok)return;
-  window.history.replaceState({},document.title,window.location.pathname);
-  document.getElementById("vn").style.display="block";
-  const v=async(tries)=>{
-    if(tries<=0){document.getElementById("vn").style.display="none";return;}
-    try{const r=await fetch(`${API}/api/payments/verify?transaction_ref=${ref}`,{headers:{"X-Firebase-Token":tok}});
-    const d=await r.json();
-    if(d.status==="success"){document.getElementById("vn").style.display="none";bal=d.new_balance;updateBal();toast(`+${d.credits_added} credits!`,"s");sendNotif("Funded!",`+${d.credits_added} credits added.`);}
-    else if(d.status==="pending")setTimeout(()=>v(tries-1),4000);
-    else document.getElementById("vn").style.display="none";
-    }catch{setTimeout(()=>v(tries-1),4000);}
-  };v(15);
-}
-
-/* ─── API KEY ─── */
-window.generateKey=async()=>{
-  if(bal<100){toast("Need 100 credits","e");openM("fund-modal");return;}
-  try{const r=await fetch(`${API}/api/user/create-api-key`,{method:"POST",headers:{"X-Firebase-Token":tok}});
-  const d=await r.json();if(!r.ok)throw new Error(d.detail);
-  apiKey=d.api_key;document.getElementById("key-val").innerHTML=d.api_key+`<button class="kcopy" onclick="copyKey()"><i class="fas fa-copy"></i></button>`;
-  document.getElementById("key-disp").style.display="block";document.getElementById("gen-key-btn").textContent="Studio Activated!";
-  bal-=100;updateBal();toast("Studio activated!","s");setTimeout(()=>closeM("api-modal"),2500);
-  }catch(e){toast("Failed: "+e.message,"e");}
-};
-window.copyKey=()=>{navigator.clipboard.writeText(document.getElementById("key-val").textContent.trim()).catch(()=>{});toast("Key copied!","s");};
-
-/* ─── NOTIFICATIONS ─── */
-function checkNotif(){if("Notification"in window&&Notification.permission==="default")document.getElementById("notif-bar").classList.add("on");}
-window.reqNotif=async()=>{const p=await Notification.requestPermission();document.getElementById("notif-bar").classList.remove("on");if(p==="granted")toast("Notifications enabled!","s");};
-function sendNotif(t,b){if("Notification"in window&&Notification.permission==="granted")new Notification(t,{body:b,icon:"https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg"});}
-
-/* ─── TOUR (smart spotlight) ─── */
-const tourSteps=[
-  {h:"Welcome to Philadelphia Studio 🎨",b:"The most powerful AI book cover creator. I'll walk you through every feature step by step. Follow each arrow!",el:null,tab:null},
-  {h:"Step 1: Choose Your Cover Type",b:"Tap a cover type — Front, Back, Spine, Character, Scene, or Full Wrap. Each has an optimized resolution. The front is a great starting point!",el:"ctype-card",tab:"gen"},
-  {h:"Step 2: Pick Your Genre",b:"Select a genre style chip. This shapes the AI's artistic direction — Dark Fantasy, Romance, Comic, and more. Try 'Dark Fantasy' first!",el:"genre-card",tab:"gen"},
-  {h:"Step 3: Write Your Prompt",b:"Enter your book title, author name, and visual prompt. Describe what you see on your cover. Tap 'Enhance' for Bobby to improve your prompt!",el:"prompt-card",tab:"gen"},
-  {h:"Step 4: Hit Generate!",b:"Tap the gold 'Generate Cover' button. Philadelphia V6 will ask if you want text in the AI image. In ~15 seconds, your cover appears!",el:"genbtn",tab:"gen"},
-  {h:"Step 5: Add Text & Edit",b:"After generating, go to the Edit tab. Use 'Add Text' to place your title. Double-tap the canvas to add text quickly. Use the Erase tool to remove anything you don't want.",el:null,tab:"edit"},
-  {h:"Step 6: View in Full 3D",b:"Tap the gold '3D' button above the canvas (it appears after generation). See your full book — floating 3D, full wrap spread, front, back, and standing view!",el:"b3d-open-btn",tab:"gen"},
-  {h:"Step 7: Generate Back Cover",b:"In the 3D view, tap 'Gen Back Cover'. Or fill in 'About the Book' and 'About the Author' in the Generate tab, then use the Full Wrap view to see it all!",el:null,tab:"gen"},
-  {h:"Step 8: Save & Export",b:"Tap 'Save Progress' to keep your work, or 'Export High-Res PNG' for a print-ready file. Your saved covers appear in the Library tab and the strip above the canvas!",el:null,tab:"edit"},
-];
-let tourIdx=0;
-
-window.openTour=()=>{
-  tourIdx=0;document.getElementById("tour-wrap").classList.add("on");
-  renderTourStep();
-};
-window.nextTour=()=>{
-  tourIdx++;if(tourIdx>=tourSteps.length){closeTour();return;}
-  renderTourStep();
-};
-window.closeTour=()=>{
-  document.getElementById("tour-wrap").classList.remove("on");
-  localStorage.setItem("phl_td","1");
-};
-
-function renderTourStep(){
-  const s=tourSteps[tourIdx];
-  document.getElementById("tour-num").innerHTML=`<i class="fas fa-compass"></i> Step ${tourIdx+1} of ${tourSteps.length}`;
-  document.getElementById("tour-h").textContent=s.h;
-  document.getElementById("tour-b").textContent=s.b;
-  document.getElementById("tour-wrap").querySelector(".t-next").textContent=tourIdx===tourSteps.length-1?"Get Started! 🚀":"Next →";
-  const dots=document.getElementById("tour-dots");
-  dots.innerHTML=tourSteps.map((_,i)=>`<div class="td${i<=tourIdx?" on":""}"></div>`).join("");
-  if(s.tab)switchTab(s.tab,document.getElementById("nb-"+s.tab));
-  const tip=document.getElementById("tour-tip");
-  const arrow=document.getElementById("tour-arrow");
-  if(s.el){
-    const el=document.getElementById(s.el);
-    if(el){
-      el.classList.add("tour-glow");
-      const rect=el.getBoundingClientRect();
-      const tipTop=rect.bottom+10;
-      const tipLeft=Math.max(14,Math.min(window.innerWidth-314,rect.left));
-      tip.style.top=`${tipTop}px`;tip.style.bottom="auto";tip.style.left=`${tipLeft}px`;
-      arrow.style.display="block";arrow.style.top=`${rect.bottom-2}px`;arrow.style.left=`${rect.left+rect.width/2-12}px`;
-      setTimeout(()=>el.classList.remove("tour-glow"),2500);
-    }else{tip.style.bottom="80px";tip.style.top="auto";tip.style.left="14px";arrow.style.display="none";}
-  }else{tip.style.bottom="80px";tip.style.top="auto";tip.style.left="14px";arrow.style.display="none";}
-  document.getElementById("app").scrollTo({top:0,behavior:"smooth"});
-}
-
-/* ─── CONTEXT GUIDE ─── */
-window.showCtx=(msg,actionFn="",autoHide=true,showBtn=false,btnLabel="Do it")=>{
-  const g=document.getElementById("ctx");document.getElementById("ctx-msg").textContent=msg;
-  const btns=document.getElementById("ctx-btns");btns.innerHTML="";
-  if(showBtn&&actionFn){
-    const b=document.createElement("button");b.className="ctx-btn";b.textContent=btnLabel;
-    b.onclick=()=>{try{eval(actionFn);}catch(e){}hideCtx();};btns.appendChild(b);
+      tooltip.style.top = `${top}px`;
+      tooltip.style.left = `${left}px`;
+    } else {
+      // Center
+      tooltip.style.top = `50%`;
+      tooltip.style.left = `50%`;
+      tooltip.style.transform = `translate(-50%, -50%)`;
+    }
+  },
+  close: function() {
+    document.getElementById('tour-overlay').style.display = 'none';
+    document.getElementById('tour-tooltip').style.display = 'none';
+    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    document.getElementById('tour-tooltip').style.transform = `none`;
   }
-  g.classList.add("on");if(autoHide)setTimeout(hideCtx,9000);
-};
-window.hideCtx=()=>document.getElementById("ctx").classList.remove("on");
-
-/* ─── UI HELPERS ─── */
-window.openM=(id)=>document.getElementById(id)?.classList.add("open");
-window.closeM=(id)=>document.getElementById(id)?.classList.remove("open");
-document.querySelectorAll(".mbg").forEach(bg=>bg.addEventListener("click",e=>{if(e.target===bg)bg.classList.remove("open");}));
-
-window.switchTab=(tab,el)=>{
-  document.querySelectorAll(".tab").forEach(p=>p.classList.remove("active"));
-  document.querySelectorAll(".nb").forEach(b=>b.classList.remove("on"));
-  document.getElementById("tab-"+tab).classList.add("active");el.classList.add("on");
-  document.getElementById("app").scrollTo({top:0,behavior:"smooth"});
-  if(tab==="gen")setTimeout(resizeC,50);
-};
-window.selVB=(el)=>{document.querySelectorAll(".vb").forEach(b=>b.classList.remove("on"));el.classList.add("on");};
-
-function toast(msg,type){
-  const w=document.getElementById("toasts");const d=document.createElement("div");
-  d.className=`toast ${type}`;
-  const ic={s:"fa-check-circle",e:"fa-circle-xmark",i:"fa-circle-info",g:"fa-star"};
-  d.innerHTML=`<i class="fas ${ic[type]||'fa-check-circle'}"></i> ${msg}`;
-  w.appendChild(d);setTimeout(()=>d.remove(),3200);
 }
 
-/* ─── PARTICLES ─── */
-function buildParticles(){
-  const c=document.getElementById("pt");
-  for(let i=0;i<28;i++){
-    const p=document.createElement("div");p.className="p";
-    p.style.left=Math.random()*100+"%";p.style.top=Math.random()*100+"%";
-    p.style.setProperty("--d",(5+Math.random()*12)+"s");p.style.setProperty("--dl",(-Math.random()*12)+"s");
-    p.style.opacity=Math.random()*.5+.07;c.appendChild(p);
-  }
+window.startTour = () => tourManager.start();
+
+// ============================================================================
+// UTILS
+// ============================================================================
+function toast(msg) {
+  const container = document.getElementById('toast-container');
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
+  container.appendChild(d);
+  setTimeout(() => d.remove(), 3500);
+}
+
+window.initPayment = async () => {
+  const amt = document.getElementById('fund-amount').value;
+  try {
+    const res = await fetch(`${API}/api/payments/initiate`, {
+      method: "POST", headers: { "X-Firebase-Token": currentToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: parseInt(amt), redirect_url: window.location.href.split('?')[0] })
+    });
+    const data = await res.json();
+    if(res.ok) window.location.href = data.checkout_url; else toast(data.detail);
+  } catch(e) { toast("Payment failed to initialize."); }
 }
 </script>
 </body>
