@@ -1,815 +1,484 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Philadelphia Studio Pro | Elvion AI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Philadelphia Studio - Clean Workspace</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<!-- Fonts & Icons -->
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f1115;
+            --surface: #1e2128;
+            --surface-hover: #2a2e37;
+            --border: #2a2e37;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent: #d4af37; /* Gold */
+            --accent-hover: #f1c40f;
+            --top-nav-height: 60px;
+        }
 
-<!-- Fabric.js for Canvas -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-<style>
-/* ==========================================================================
-   DESIGN TOKENS & RESET
-   ========================================================================== */
-:root {
-  --bg-main: #050505;
-  --bg-panel: #0d0f14;
-  --bg-card: #151822;
-  --gold: #c9a96e;
-  --gold-glow: rgba(201, 169, 110, 0.3);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-gold: rgba(201, 169, 110, 0.2);
-  --text-main: #f0f0f0;
-  --text-muted: #8a94a8;
-  --accent-blue: #3b82f6;
-  --accent-red: #ef4444;
-  --accent-green: #10b981;
-  --font-body: 'Inter', sans-serif;
-  --font-heading: 'Cinzel', serif;
-  --header-height: 60px;
-}
+        /* Top Navigation */
+        .top-nav {
+            height: var(--top-nav-height);
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            flex-shrink: 0;
+        }
 
-* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
-body { background: var(--bg-main); color: var(--text-main); font-family: var(--font-body); overflow: hidden; height: 100vh; }
+        .brand { font-size: 1.2rem; font-weight: bold; letter-spacing: 1px; color: var(--accent); }
 
-/* Scrollbars */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+        .nav-actions button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: 0.2s;
+        }
+        .nav-actions button:hover { background: var(--accent-hover); }
+        .nav-actions .btn-secondary { background: var(--surface-hover); color: var(--text-main); }
+        .nav-actions .btn-secondary:hover { background: var(--border); }
 
-/* ==========================================================================
-   LAYOUT (ONE-PAGE ARCHITECTURE)
-   ========================================================================== */
-#header {
-  height: var(--header-height); background: var(--bg-panel); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; position: relative;
-}
+        /* Main Workspace Area */
+        .workspace {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100vh - var(--top-nav-height));
+        }
 
-#workspace {
-  display: flex; height: calc(100vh - var(--header-height)); width: 100%; overflow: hidden;
-}
+        /* Left Sidebar - Add Tools */
+        .left-sidebar {
+            width: 80px;
+            background-color: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 16px;
+            flex-shrink: 0;
+        }
 
-.sidebar {
-  width: 340px; background: var(--bg-panel); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow-y: auto; padding: 20px; flex-shrink: 0;
-}
-.sidebar.right { border-right: none; border-left: 1px solid var(--border); }
+        .tool-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            width: 100%;
+            padding: 16px 0;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            transition: 0.2s;
+        }
+        .tool-btn i { font-size: 1.5rem; }
+        .tool-btn:hover, .tool-btn.active { color: var(--accent); background: var(--surface-hover); }
 
-#center-stage {
-  flex: 1; display: flex; flex-direction: column; position: relative;
-  background: radial-gradient(circle at center, #111520 0%, #050505 100%);
-  overflow: hidden;
-}
+        /* Center Canvas Area */
+        .canvas-area {
+            flex-grow: 1;
+            background-color: #0a0b0e; /* Darker to make canvas pop */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            padding: 40px;
+            position: relative;
+        }
 
-@media (max-width: 1024px) {
-  #workspace { flex-direction: column; overflow-y: auto; }
-  .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); overflow-y: visible; }
-  #center-stage { min-height: 70vh; }
-}
+        .canvas-wrapper {
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            background: white;
+        }
 
-/* ==========================================================================
-   COMPONENTS
-   ========================================================================== */
-.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-heading); color: var(--gold); font-size: 1.1rem; letter-spacing: 2px; font-weight: 900; }
-.brand img { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--gold); }
+        /* Right Sidebar - Dynamic Properties */
+        .right-sidebar {
+            width: 300px;
+            background-color: var(--surface);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
 
-.wallet-badge { display: flex; align-items: center; gap: 8px; background: rgba(201,169,110,0.1); border: 1px solid var(--border-gold); padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: 0.2s; }
-.wallet-badge:hover { background: rgba(201,169,110,0.2); }
-.wallet-badge i { color: var(--gold); }
-.wallet-badge span { font-weight: 700; color: #fff; font-size: 0.9rem; }
+        .panel-section { display: none; }
+        .panel-section.active { display: block; }
 
-.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-.card-title { font-size: 0.75rem; color: var(--gold); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .panel-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
 
-input, select, textarea {
-  width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: #fff;
-  padding: 10px 12px; border-radius: 8px; font-family: var(--font-body); font-size: 0.85rem; margin-bottom: 10px; transition: 0.2s;
-}
-input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-glow); }
-textarea { resize: vertical; min-height: 80px; }
+        .prop-group { margin-bottom: 16px; }
+        .prop-group label { display: block; font-size: 0.8rem; margin-bottom: 8px; color: var(--text-muted); }
+        .prop-group input[type="color"], 
+        .prop-group select, 
+        .prop-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 4px;
+        }
 
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
-  background: rgba(255,255,255,0.05); color: #fff; font-weight: 600; font-size: 0.85rem;
-  cursor: pointer; transition: 0.2s; font-family: var(--font-body);
-}
-.btn:hover { background: rgba(255,255,255,0.1); }
-.btn-gold { background: linear-gradient(135deg, #c9a96e, #f0c878); color: #000; border: none; font-weight: 800; }
-.btn-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--gold-glow); }
-.btn-small { padding: 8px 12px; font-size: 0.75rem; width: auto; }
+        /* 3D Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-header {
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: flex-end;
+            position: absolute;
+            top: 0;
+        }
+        .close-btn {
+            background: none; border: none; color: white; font-size: 2rem; cursor: pointer;
+        }
+        #scene-container { width: 80vw; height: 80vh; }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-
-.chip { padding: 6px 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: inline-block; margin: 0 4px 6px 0; }
-.chip.active { background: rgba(201,169,110,0.15); border-color: var(--gold); color: var(--gold); }
-
-/* ==========================================================================
-   CANVAS & TOOLBAR
-   ========================================================================== */
-.canvas-header { display: flex; justify-content: space-between; padding: 12px 20px; background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); align-items: center; }
-.toolbar { display: flex; gap: 8px; }
-.tool-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-muted); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-.tool-btn:hover, .tool-btn.active { background: rgba(201,169,110,0.2); color: var(--gold); border-color: var(--gold); }
-
-#canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; position: relative; overflow: auto; }
-canvas { box-shadow: 0 10px 50px rgba(0,0,0,0.8); background: #fff; }
-
-#loader-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50; }
-.spinner { width: 50px; height: 50px; border: 3px solid var(--border-gold); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ==========================================================================
-   TRUE 3D BOOK ENGINE
-   ========================================================================== */
-#book-3d-viewer { position: absolute; inset: 0; background: radial-gradient(circle at center, #111 0%, #000 100%); z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center; }
-.close-3d { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
-
-.scene { perspective: 1200px; width: 100%; height: 60vh; display: flex; align-items: center; justify-content: center; }
-.book { width: 260px; height: 390px; position: relative; transform-style: preserve-3d; transform: rotateY(-30deg) rotateX(5deg); animation: floatBook 6s ease-in-out infinite; }
-@keyframes floatBook { 0%, 100% { transform: rotateY(-30deg) rotateX(5deg) translateY(0); } 50% { transform: rotateY(-20deg) rotateX(2deg) translateY(-15px); } }
-.book.spin { animation: spinBook 10s linear infinite; }
-@keyframes spinBook { from { transform: rotateY(0deg) rotateX(5deg); } to { transform: rotateY(360deg) rotateX(5deg); } }
-
-.face { position: absolute; width: 100%; height: 100%; border-radius: 3px; background-size: 100% 100%; background-position: center; }
-.face-front { transform: translateZ(18px); box-shadow: inset 4px 0 10px rgba(0,0,0,0.3); }
-.face-back { transform: rotateY(180deg) translateZ(18px); background: #111; }
-/* Spine width is 36px */
-.face-spine { width: 36px; transform: rotateY(-90deg) translateZ(18px); left: -18px; background: linear-gradient(to right, #111, #333, #111); display: flex; align-items: center; justify-content: center; }
-.spine-text { writing-mode: vertical-rl; color: var(--gold); font-family: var(--font-heading); font-size: 14px; letter-spacing: 2px; }
-/* Pages */
-.face-pages-right { width: 36px; transform: rotateY(90deg) translateZ(242px); left: auto; right: -18px; background: repeating-linear-gradient(to bottom, #f4f4f4, #dcdcdc 1px, #f4f4f4 3px); }
-.face-pages-top { height: 36px; width: 100%; transform: rotateX(90deg) translateZ(18px); top: -18px; background: #eee; }
-.face-pages-bottom { height: 36px; width: 100%; transform: rotateX(-90deg) translateZ(372px); bottom: -18px; background: #ccc; }
-
-.shadow { position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); width: 120%; height: 20px; background: radial-gradient(ellipse, rgba(0,0,0,0.8), transparent 70%); border-radius: 50%; filter: blur(5px); }
-
-/* ==========================================================================
-   INTERACTIVE TOUR GUIDE
-   ========================================================================== */
-#tour-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9000; display: none; }
-.tour-highlight { position: relative; z-index: 9001 !important; box-shadow: 0 0 0 4px var(--gold), 0 0 20px rgba(201,169,110,0.6) !important; border-radius: inherit; background: var(--bg-card); pointer-events: none; }
-.tour-tooltip { position: absolute; background: var(--bg-panel); border: 2px solid var(--gold); padding: 20px; border-radius: 12px; width: 300px; z-index: 9002; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transition: all 0.3s ease; }
-.tour-tooltip h3 { font-family: var(--font-heading); color: var(--gold); margin-bottom: 8px; font-size: 1.1rem; }
-.tour-tooltip p { font-size: 0.85rem; color: #ddd; line-height: 1.5; margin-bottom: 15px; }
-
-/* ==========================================================================
-   MODALS & TOASTS
-   ========================================================================== */
-.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; z-index: 8000; }
-.modal-bg.active { display: flex; animation: fadeIn 0.2s; }
-.modal-content { background: var(--bg-panel); border: 1px solid var(--border-gold); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; }
-.modal-content h2 { color: var(--gold); font-family: var(--font-heading); margin-bottom: 10px; }
-
-#toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.toast { background: var(--gold); color: #000; padding: 10px 20px; border-radius: 30px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 5px 15px rgba(0,0,0,0.5); animation: popUp 0.3s ease, fadeOut 0.3s ease 3s forwards; }
-@keyframes popUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
-
-/* Color Picker UI */
-.color-picker-wrap { display: flex; gap: 10px; align-items: center; }
-.color-preview { width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--border); }
-</style>
+    </style>
 </head>
 <body>
 
-<!-- AUTH GATE -->
-<div class="modal-bg" id="auth-gate">
-  <div class="modal-content">
-    <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" style="width:60px; border-radius:10px; border: 1px solid var(--gold); margin-bottom:15px;">
-    <h2>Philadelphia Studio</h2>
-    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Sign in to access the ultimate AI book cover creator.</p>
-    <button class="btn" style="background:#fff; color:#000; margin-bottom:10px;" onclick="login()"><i class="fab fa-google" style="color:#4285F4"></i> Continue with Google</button>
-  </div>
-</div>
-
-<!-- HEADER -->
-<header id="header">
-  <div class="brand">
-    <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="Logo">
-    PHILADELPHIA PRO
-  </div>
-  <div style="display:flex; gap:15px; align-items:center;">
-    <button class="btn btn-small" onclick="startTour()"><i class="fas fa-compass"></i> Tour</button>
-    <div class="wallet-badge" onclick="document.getElementById('fund-modal').classList.add('active')">
-      <i class="fas fa-coins"></i>
-      <span id="credit-display">--</span>
-    </div>
-    <button class="btn btn-small" onclick="signOutUser()" style="background:transparent; border:none;"><i class="fas fa-sign-out-alt"></i></button>
-  </div>
-</header>
-
-<!-- ONE-PAGE WORKSPACE -->
-<div id="workspace">
-
-  <!-- LEFT PANEL: GENERATION -->
-  <aside class="sidebar" id="left-panel">
-    <div class="card" id="tour-step-1">
-      <div class="card-title"><i class="fas fa-magic"></i> Generate Cover</div>
-      
-      <label>1. What part are you making?</label>
-      <div class="grid-3" style="margin-bottom: 15px;">
-        <button class="btn btn-small" onclick="setDimension('front')" style="border-color:var(--gold); color:var(--gold)">Front</button>
-        <button class="btn btn-small" onclick="setDimension('back')">Back</button>
-        <button class="btn btn-small" onclick="setDimension('spine')">Spine</button>
-      </div>
-
-      <label>2. Pick a Genre</label>
-      <div id="genre-chips">
-        <span class="chip active" onclick="setGenre('Dark Fantasy', this)">Dark Fantasy</span>
-        <span class="chip" onclick="setGenre('Romance', this)">Romance</span>
-        <span class="chip" onclick="setGenre('Thriller', this)">Thriller</span>
-        <span class="chip" onclick="setGenre('Sci-Fi', this)">Sci-Fi</span>
-        <span class="chip" onclick="setGenre('Non-Fiction', this)">Non-Fiction</span>
-      </div>
-
-      <label style="margin-top:10px;">3. Visual Prompt</label>
-      <textarea id="prompt-input" placeholder="Describe the scene... e.g., A glowing sword rising from a dark ocean, storm clouds..."></textarea>
-      <button class="btn" style="margin-bottom:15px; color:var(--accent-blue); border-color:var(--accent-blue);" onclick="askBobby()"><i class="fas fa-robot"></i> Bobby: Enhance Prompt</button>
-
-      <button class="btn btn-gold" id="generate-btn" onclick="generateAIImage()"><i class="fas fa-bolt"></i> Generate Image (20 CR)</button>
+    <div class="top-nav">
+        <div class="brand"><i class="fas fa-book-open"></i> Philadelphia Studio</div>
+        <div class="nav-actions">
+            <button class="btn-secondary" onclick="undo()"><i class="fas fa-undo"></i></button>
+            <button class="btn-secondary" onclick="open3DPreview()"><i class="fas fa-cube"></i> View 3D</button>
+            <button onclick="exportPNG()"><i class="fas fa-download"></i> Export PNG</button>
+        </div>
     </div>
 
-    <div class="card" id="tour-step-5">
-      <div class="card-title"><i class="fas fa-layer-group"></i> Professional Templates</div>
-      <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Need a full wrap? Load a pre-designed layout.</p>
-      <button class="btn" onclick="loadBlankWrapTemplate()"><i class="fas fa-panorama"></i> Load Blank Full Wrap Template</button>
-    </div>
-  </aside>
-
-  <!-- CENTER: CANVAS -->
-  <main id="center-stage">
-    <div class="canvas-header">
-      <div class="toolbar" id="tour-step-2">
-        <button class="tool-btn active" title="Select" onclick="setCanvasMode('select', this)"><i class="fas fa-mouse-pointer"></i></button>
-        <button class="tool-btn" title="Add Text" onclick="addCanvasText()"><i class="fas fa-font"></i></button>
-        <div style="width:1px; background:var(--border); margin: 0 5px;"></div>
-        <button class="tool-btn" title="Paint Brush" onclick="setCanvasMode('brush', this)"><i class="fas fa-paint-brush"></i></button>
-        <!-- The Perfect Eraser / Heal Tool -->
-        <button class="tool-btn" title="Remove AI Text (Eyedropper)" onclick="activateHealTool(this)"><i class="fas fa-eye-dropper"></i></button>
-      </div>
-      <div class="toolbar" id="tour-step-4">
-        <button class="btn btn-gold btn-small" onclick="open3DViewer()"><i class="fas fa-cube"></i> View 3D Mockup</button>
-        <button class="btn btn-small" onclick="exportCanvas()"><i class="fas fa-download"></i> Save PNG</button>
-      </div>
-    </div>
-
-    <div id="canvas-container">
-      <canvas id="main-canvas"></canvas>
-      
-      <div id="loader-overlay">
-        <div class="spinner"></div>
-        <h3 style="color:var(--gold); margin-top:20px; font-family:var(--font-heading);">Generating Magic...</h3>
-        <p style="color:var(--text-muted); font-size:0.8rem; margin-top:5px;">Please wait while Philadelphia creates.</p>
-      </div>
-    </div>
-  </main>
-
-  <!-- RIGHT PANEL: EDITING -->
-  <aside class="sidebar right" id="right-panel">
-    <div class="card" id="tour-step-3">
-      <div class="card-title"><i class="fas fa-sliders-h"></i> Properties</div>
-      
-      <!-- Text Editing -->
-      <div id="prop-text" style="display:none;">
-        <label>Font Family</label>
-        <select id="font-family" onchange="updateSelectedText('fontFamily', this.value)">
-          <option value="Cinzel">Cinzel (Fantasy)</option>
-          <option value="Playfair Display">Playfair (Classic)</option>
-          <option value="Orbitron">Orbitron (Sci-Fi)</option>
-          <option value="Bebas Neue">Bebas Neue (Action)</option>
-          <option value="Great Vibes">Great Vibes (Romance)</option>
-          <option value="Inter">Inter (Clean)</option>
-        </select>
+    <div class="workspace">
         
-        <div class="grid-2">
-          <div>
-            <label>Color</label>
-            <input type="color" id="text-color" value="#ffffff" onchange="updateSelectedText('fill', this.value)">
-          </div>
-          <div>
-            <label>Size</label>
-            <input type="number" id="text-size" value="50" onchange="updateSelectedText('fontSize', parseInt(this.value))">
-          </div>
+        <div class="left-sidebar">
+            <button class="tool-btn active" onclick="setMode('select')">
+                <i class="fas fa-mouse-pointer"></i> Select
+            </button>
+            <button class="tool-btn" onclick="addText()">
+                <i class="fas fa-font"></i> Text
+            </button>
+            <button class="tool-btn" onclick="setMode('erase')">
+                <i class="fas fa-eraser"></i> Erase
+            </button>
+            <button class="tool-btn" onclick="loadBlankTemplate()">
+                <i class="fas fa-border-all"></i> Wrap
+            </button>
         </div>
 
-        <button class="btn" style="margin-top:10px;" onclick="addTextShadow()"><i class="fas fa-star"></i> Add Gold Glow</button>
-        <button class="btn" style="margin-top:10px; color:var(--accent-red); border-color:rgba(239,68,68,0.3);" onclick="deleteSelected()"><i class="fas fa-trash"></i> Delete Selected</button>
-      </div>
-
-      <!-- Brush / Heal Editing -->
-      <div id="prop-brush" style="display:none;">
-        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;"><strong>How to remove AI Text:</strong><br>1. Use the eyedropper tool to click the background color next to the text.<br>2. Brush over the text to hide it.</p>
-        
-        <label>Brush Size</label>
-        <input type="range" id="brush-size" min="5" max="100" value="30" onchange="updateBrushProps()">
-        
-        <label>Current Color</label>
-        <div class="color-picker-wrap">
-          <input type="color" id="brush-color" value="#050505" onchange="updateBrushProps()">
-          <div class="color-preview" id="color-preview" style="background:#050505;"></div>
+        <div class="canvas-area">
+            <div class="canvas-wrapper">
+                <canvas id="mainCanvas"></canvas>
+            </div>
         </div>
-      </div>
 
-      <div id="prop-empty">
-        <p style="font-size:0.8rem; color:var(--text-muted); text-align:center; margin-top:20px;">Select text on the canvas or pick a tool to see properties here.</p>
-      </div>
+        <div class="right-sidebar">
+            
+            <div id="panel-canvas" class="panel-section active">
+                <div class="panel-title">Canvas Setup</div>
+                <div class="prop-group">
+                    <label>Background Color</label>
+                    <input type="color" id="canvas-bg" value="#111827" onchange="updateCanvasBg(this.value)">
+                </div>
+                <div class="prop-group" style="font-size: 0.8rem; color: var(--text-muted);">
+                    Click "Wrap" on the left to load spine guides, or add elements to begin designing. Select an item to edit its properties here.
+                </div>
+            </div>
+
+            <div id="panel-text" class="panel-section">
+                <div class="panel-title">Edit Text</div>
+                <div class="prop-group">
+                    <label>Content</label>
+                    <input type="text" id="text-content" oninput="updateSelectedText('text', this.value)">
+                </div>
+                <div class="prop-group">
+                    <label>Font Family</label>
+                    <select id="text-font" onchange="updateSelectedText('fontFamily', this.value)">
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Impact">Impact</option>
+                    </select>
+                </div>
+                <div class="prop-group">
+                    <label>Text Color</label>
+                    <input type="color" id="text-color" onchange="updateSelectedText('fill', this.value)">
+                </div>
+                <button onclick="deleteSelected()" style="width: 100%; padding: 10px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;">
+                    <i class="fas fa-trash"></i> Delete Element
+                </button>
+            </div>
+
+        </div>
     </div>
 
-    <!-- History / Layers -->
-    <div class="card">
-      <div class="card-title"><i class="fas fa-layer-group"></i> Canvas Actions</div>
-      <div class="grid-2">
-        <button class="btn" onclick="canvas.undo()"><i class="fas fa-undo"></i> Undo</button>
-        <button class="btn" onclick="canvas.clear(); canvas.backgroundColor='#111'; canvas.renderAll();"><i class="fas fa-trash-alt"></i> Clear</button>
-      </div>
-      <button class="btn" style="margin-top:10px;" onclick="saveToLibrary()"><i class="fas fa-save"></i> Save to Library</button>
+    <div class="modal-overlay" id="modal-3d">
+        <div class="modal-header">
+            <button class="close-btn" onclick="close3DPreview()"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="scene-container"></div>
     </div>
-  </aside>
 
-</div>
+    <script>
+        /* --- 1. INITIALIZE FABRIC.JS CANVAS --- */
+        // Sized for a full wrap (Back + Spine + Front)
+        const canvasWidth = 1200; 
+        const canvasHeight = 800;
+        
+        const canvas = new fabric.Canvas('mainCanvas', {
+            width: canvasWidth,
+            height: canvasHeight,
+            backgroundColor: '#111827',
+            preserveObjectStacking: true
+        });
 
-<!-- 3D BOOK VIEWER OVERLAY -->
-<div id="book-3d-viewer">
-  <button class="close-3d" onclick="document.getElementById('book-3d-viewer').style.display='none'"><i class="fas fa-times"></i></button>
-  
-  <div style="display:flex; gap:10px; margin-bottom:40px; z-index:100;">
-    <button class="btn" style="width:auto; background:var(--gold); color:#000;" onclick="toggle3DSpin()"><i class="fas fa-sync"></i> Spin / Stop</button>
-  </div>
+        let canvasHistory = [];
+        function saveState() {
+            canvasHistory.push(JSON.stringify(canvas));
+            if(canvasHistory.length > 15) canvasHistory.shift();
+        }
 
-  <div class="scene">
-    <div class="book" id="the-3d-book">
-      <!-- Front Cover -->
-      <div class="face face-front" id="3d-front"></div>
-      <!-- Spine -->
-      <div class="face face-spine"><div class="spine-text" id="3d-spine-text">BOOK TITLE</div></div>
-      <!-- Back Cover -->
-      <div class="face face-back" id="3d-back"></div>
-      <!-- Pages -->
-      <div class="face face-pages-right"></div>
-      <div class="face face-pages-top"></div>
-      <div class="face face-pages-bottom"></div>
-    </div>
-    <div class="shadow"></div>
-  </div>
-</div>
+        function undo() {
+            if(canvasHistory.length > 0) {
+                canvas.loadFromJSON(canvasHistory.pop(), canvas.renderAll.bind(canvas));
+            }
+        }
 
-<!-- INTERACTIVE TOUR -->
-<div id="tour-overlay"></div>
-<div class="tour-tooltip" id="tour-tooltip" style="display:none;">
-  <h3 id="tour-title">Title</h3>
-  <p id="tour-text">Description goes here.</p>
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <span style="font-size:0.7rem; color:var(--gold);" id="tour-progress">1/5</span>
-    <button class="btn btn-gold btn-small" onclick="tourManager.next()">Next</button>
-  </div>
-</div>
+        // Save initial state
+        saveState();
+        canvas.on('object:modified', saveState);
+        canvas.on('object:added', saveState);
 
-<!-- FUND WALLET MODAL -->
-<div class="modal-bg" id="fund-modal">
-  <div class="modal-content">
-    <h2 style="color:var(--gold); font-family:var(--font-heading);">Fund Wallet</h2>
-    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Secure payments powered by Korapay.</p>
-    <label style="text-align:left; display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Amount (NGN)</label>
-    <input type="number" id="fund-amount" value="1000">
-    <div style="display:flex; gap:10px; margin-top:15px;">
-      <button class="btn btn-gold" onclick="initPayment()">Pay Now</button>
-      <button class="btn" onclick="document.getElementById('fund-modal').classList.remove('active')">Cancel</button>
-    </div>
-  </div>
-</div>
+        /* --- 2. PROGRESSIVE DISCLOSURE (RIGHT SIDEBAR LOGIC) --- */
+        canvas.on('selection:created', handleSelection);
+        canvas.on('selection:updated', handleSelection);
+        canvas.on('selection:cleared', function() {
+            showPanel('panel-canvas');
+        });
 
-<div id="toast-container"></div>
+        function handleSelection(e) {
+            const selectedObject = e.selected[0];
+            if (selectedObject.type === 'i-text') {
+                showPanel('panel-text');
+                document.getElementById('text-content').value = selectedObject.text;
+                document.getElementById('text-color').value = selectedObject.fill;
+                document.getElementById('text-font').value = selectedObject.fontFamily;
+            } else {
+                showPanel('panel-canvas'); // Fallback for images/shapes
+            }
+        }
 
-<!-- FIREBASE & LOGIC -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel-section').forEach(p => p.classList.remove('active'));
+            document.getElementById(panelId).classList.add('active');
+        }
 
-// Configuration
-const API = "https://web-production-9a18.up.railway.app";
-const fbApp = initializeApp({
-  apiKey: "AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
-  authDomain: "elvionai.firebaseapp.com",
-  projectId: "elvionai",
-  storageBucket: "elvionai.appspot.com",
-  messagingSenderId: "161078300830",
-  appId: "1:161078300830:web:f460df8591704eb0e96b8f"
-});
-const auth = getAuth(fbApp);
+        /* --- 3. CANVAS TOOLS --- */
+        function updateCanvasBg(color) {
+            canvas.backgroundColor = color;
+            canvas.renderAll();
+            saveState();
+        }
 
-// State
-window.canvas = null;
-let currentToken = null;
-let currentGenre = "Dark Fantasy";
-let currentDim = { w: 768, h: 1024, type: "front" };
-let isEyedropperActive = false;
+        function addText() {
+            const text = new fabric.IText('New Title', {
+                left: canvasWidth / 2, top: canvasHeight / 2,
+                fontFamily: 'Times New Roman', fill: '#ffffff',
+                fontSize: 60, originX: 'center', originY: 'center'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+        }
 
-// ============================================================================
-// INITIALIZATION
-// ============================================================================
-window.onload = () => {
-  initFabric();
-  
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      document.getElementById('auth-gate').classList.remove('active');
-      currentToken = await user.getIdToken(true);
-      fetchBalance();
-    } else {
-      document.getElementById('auth-gate').classList.add('active');
-    }
-  });
-};
+        function updateSelectedText(property, value) {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj.type === 'i-text') {
+                activeObj.set(property, value);
+                canvas.renderAll();
+                saveState();
+            }
+        }
 
-window.login = () => signInWithPopup(auth, new GoogleAuthProvider());
-window.signOutUser = () => signOut(auth);
+        function deleteSelected() {
+            const activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length) {
+                canvas.discardActiveObject();
+                activeObjects.forEach(function(object) { canvas.remove(object); });
+                saveState();
+            }
+        }
 
-async function fetchBalance() {
-  try {
-    const res = await fetch(`${API}/api/user/keys-and-balance`, { headers: { "X-Firebase-Token": currentToken } });
-    const data = await res.json();
-    if(res.ok) document.getElementById('credit-display').textContent = data.balance.toLocaleString();
-  } catch(e) { console.error(e); }
-}
+        function loadBlankTemplate() {
+            canvas.clear();
+            canvas.backgroundColor = '#1e2128';
+            
+            // Spine Math (Center 100px)
+            const spineLeft = (canvasWidth / 2) - 50;
+            const spineRight = (canvasWidth / 2) + 50;
 
-// ============================================================================
-// FABRIC.JS CANVAS SETUP
-// ============================================================================
-function initFabric() {
-  canvas = new fabric.Canvas('main-canvas', { backgroundColor: '#111520', preserveObjectStacking: true });
-  resizeCanvasToFit();
-  window.addEventListener('resize', resizeCanvasToFit);
+            const guideLeft = new fabric.Line([spineLeft, 0, spineLeft, canvasHeight], { 
+                stroke: '#d4af37', strokeDashArray: [5, 5], selectable: false 
+            });
+            const guideRight = new fabric.Line([spineRight, 0, spineRight, canvasHeight], { 
+                stroke: '#d4af37', strokeDashArray: [5, 5], selectable: false 
+            });
 
-  // Undo/Redo logic
-  canvas.historyInit = function() { this.history =[]; this.historyProcessing = false; this.on('object:modified', this.saveHistory); this.on('object:added', this.saveHistory); }
-  canvas.saveHistory = function() { if(!this.historyProcessing) { this.history.push(JSON.stringify(this)); if(this.history.length > 20) this.history.shift(); } }
-  canvas.undo = function() { if(this.history.length > 1) { this.historyProcessing = true; this.history.pop(); this.loadFromJSON(this.history[this.history.length-1], () => { this.renderAll(); this.historyProcessing = false; }); } }
-  canvas.historyInit();
+            const frontText = new fabric.IText('FRONT TITLE', {
+                left: spineRight + ((canvasWidth - spineRight)/2), top: 100, fill: '#fff', originX: 'center'
+            });
 
-  // Event Listeners for UI
-  canvas.on('selection:created', showTextProps);
-  canvas.on('selection:updated', showTextProps);
-  canvas.on('selection:cleared', showEmptyProps);
+            const backText = new fabric.IText('Back Cover Synopsis...', {
+                left: spineLeft / 2, top: 100, fill: '#fff', fontSize: 20, originX: 'center'
+            });
 
-  // Custom Eyedropper Logic
-  canvas.on('mouse:down', function(opt) {
-    if (isEyedropperActive && opt.e) {
-      const pointer = canvas.getPointer(opt.e);
-      const ctx = canvas.getContext('2d');
-      // Multiply by retina scaling if needed
-      const retina = canvas.getRetinaScaling();
-      const pixel = ctx.getImageData(pointer.x * retina, pointer.y * retina, 1, 1).data;
-      const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-      
-      document.getElementById('brush-color').value = hex;
-      document.getElementById('color-preview').style.background = hex;
-      toast(`Color Picked! Now brushing with ${hex}`);
-      
-      // Auto-switch to brush mode
-      setCanvasMode('brush', document.querySelectorAll('.tool-btn')[2]);
-      isEyedropperActive = false;
-      canvas.defaultCursor = 'default';
-    }
-  });
-}
+            canvas.add(guideLeft, guideRight, frontText, backText);
+            saveState();
+        }
 
-function resizeCanvasToFit() {
-  const container = document.getElementById('canvas-container');
-  const pad = 40;
-  const availW = container.clientWidth - pad;
-  const availH = container.clientHeight - pad;
-  
-  // Calculate scale
-  const scale = Math.min(availW / currentDim.w, availH / currentDim.h);
-  
-  canvas.setWidth(currentDim.w * scale);
-  canvas.setHeight(currentDim.h * scale);
-  canvas.setZoom(scale);
-  canvas.renderAll();
-}
+        function setMode(mode) {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
 
-window.setDimension = (type) => {
-  // Reset active buttons
-  document.querySelectorAll('#tour-step-1 .grid-3 button').forEach(b => { b.style.color=''; b.style.borderColor=''; });
-  event.target.style.color = 'var(--gold)'; event.target.style.borderColor = 'var(--gold)';
+            if (mode === 'select') {
+                canvas.isDrawingMode = false;
+            } else if (mode === 'erase') {
+                canvas.isDrawingMode = true;
+                // Perfect Eraser Logic
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+                canvas.freeDrawingBrush.width = 30;
+                canvas.freeDrawingBrush.color = 'rgba(0,0,0,1)';
+                canvas.contextTop.globalCompositeOperation = 'destination-out';
+            }
+        }
 
-  if (type === 'front') currentDim = {w: 768, h: 1024, type: 'front'};
-  if (type === 'back') currentDim = {w: 768, h: 1024, type: 'back'};
-  if (type === 'spine') currentDim = {w: 300, h: 1024, type: 'spine'}; // Wider spine for canvas
-  
-  resizeCanvasToFit();
-  canvas.clear(); canvas.backgroundColor = '#111520'; canvas.renderAll();
-}
+        canvas.on('path:created', function(e) {
+            if (canvas.isDrawingMode) {
+                e.path.globalCompositeOperation = 'destination-out';
+                canvas.renderAll();
+                saveState();
+            }
+        });
 
-window.setGenre = (genre, el) => {
-  document.querySelectorAll('#genre-chips .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  currentGenre = genre;
-}
+        function exportPNG() {
+            const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+            const link = document.createElement('a');
+            link.download = 'philadelphia-cover.png';
+            link.href = dataURL;
+            link.click();
+        }
 
-// ============================================================================
-// AI GENERATION (THE BACKEND BRIDGE)
-// ============================================================================
-window.askBobby = async () => {
-  const prompt = document.getElementById('prompt-input').value;
-  if (!prompt) return toast("Type a basic idea first.");
-  document.getElementById('prompt-input').value = "Bobby is enhancing...";
-  try {
-    // Get active API key first
-    const rKeys = await fetch(`${API}/api/user/keys-and-balance`, { headers: {"X-Firebase-Token": currentToken} });
-    const keysData = await rKeys.json();
-    const apiKey = keysData.keys.find(k => k.is_active)?.api_key;
-    if (!apiKey) return toast("No active API Key found.");
+        /* --- 4. THREE.JS 3D RENDERER (NO CLIPPING FIX) --- */
+        let scene, camera, renderer, bookMesh;
 
-    const res = await fetch(`${API}/api/developer/bobby/chat`, {
-      method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: `Enhance this into a highly detailed visual AI image prompt for a ${currentGenre} book cover. Max 60 words. Prompt: ${prompt}` })
-    });
-    const data = await res.json();
-    document.getElementById('prompt-input').value = data.content.replace(/"/g, '');
-  } catch(e) { toast("Failed to connect to Bobby."); document.getElementById('prompt-input').value = prompt; }
-}
+        function init3D() {
+            const container = document.getElementById('scene-container');
+            scene = new THREE.Scene();
+            
+            // Fixed Camera: Pulled back on Z-axis, appropriate FOV
+            camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 6; 
+            camera.position.y = 0;
 
-window.generateAIImage = async () => {
-  const prompt = document.getElementById('prompt-input').value;
-  if (!prompt) return toast("Please enter a prompt.");
-  
-  document.getElementById('loader-overlay').style.display = 'flex';
-  
-  try {
-    const rKeys = await fetch(`${API}/api/user/keys-and-balance`, { headers: {"X-Firebase-Token": currentToken} });
-    const keysData = await rKeys.json();
-    const apiKey = keysData.keys.find(k => k.is_active)?.api_key;
-    if (!apiKey) throw new Error("No active API Key. Generate one in Developer Console.");
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.innerHTML = ''; // Clear previous
+            container.appendChild(renderer.domElement);
 
-    const finalPrompt = `${prompt}, ${currentGenre} book cover, masterpiece, no text, clean artwork`;
-    
-    const res = await fetch(`${API}/api/developer/generate-image`, {
-      method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: finalPrompt, model: "v6", width: currentDim.w, height: currentDim.h })
-    });
-    const data = await res.json();
-    
-    if (!res.ok) throw new Error(data.detail);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
 
-    // Load Image to Canvas as an Object (so it can be brushed over, unlike background)
-    fabric.Image.fromURL(`data:image/png;base64,${data.image_b64}`, (img) => {
-      canvas.clear(); canvas.backgroundColor = '#111520';
-      img.set({ selectable: false, evented: false });
-      // Scale to fit our current canvas dimensions exactly
-      img.scaleToWidth(currentDim.w);
-      img.scaleToHeight(currentDim.h);
-      canvas.add(img);
-      canvas.sendToBack(img);
-      canvas.renderAll();
-      fetchBalance(); // Update credits
-      toast("Image Generated successfully!");
-    });
-  } catch(e) { toast(e.message); }
-  
-  document.getElementById('loader-overlay').style.display = 'none';
-}
+            // Proportions matching standard book (Width, Height, Depth/Spine)
+            const geometry = new THREE.BoxGeometry(2, 3, 0.3);
+            
+            // Generate Texture from Fabric Canvas
+            const textureLoader = new THREE.TextureLoader();
+            const canvasData = canvas.toDataURL({ format: 'png' });
+            
+            textureLoader.load(canvasData, function(texture) {
+                const materialCover = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.4 });
+                const materialPages = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.9 });
+                
+                // Materials Array mapping to BoxGeometry faces
+                const materials = [
+                    materialCover, // Right (Spine in full wrap maps here usually, needs UV tweaking for perfection)
+                    materialPages, // Left (Pages)
+                    materialPages, // Top
+                    materialPages, // Bottom
+                    materialCover, // Front
+                    materialCover  // Back
+                ];
 
-// ============================================================================
-// CANVAS TOOLS (TEXT, BRUSH, EYEDROPPER)
-// ============================================================================
-window.setCanvasMode = (mode, el) => {
-  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  isEyedropperActive = false;
-  canvas.defaultCursor = 'default';
+                bookMesh = new THREE.Mesh(geometry, materials);
+                bookMesh.rotation.y = -0.5; // Initial tilt
+                scene.add(bookMesh);
+                
+                animate3D();
+            });
+        }
 
-  if (mode === 'select') {
-    canvas.isDrawingMode = false;
-    showEmptyProps();
-  } else if (mode === 'brush') {
-    canvas.isDrawingMode = true;
-    updateBrushProps();
-    document.getElementById('prop-text').style.display = 'none';
-    document.getElementById('prop-empty').style.display = 'none';
-    document.getElementById('prop-brush').style.display = 'block';
-  }
-}
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (bookMesh) {
+                bookMesh.rotation.y += 0.005; // Auto-spin
+            }
+            renderer.render(scene, camera);
+        }
 
-window.activateHealTool = (el) => {
-  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  canvas.isDrawingMode = false;
-  isEyedropperActive = true;
-  canvas.defaultCursor = 'crosshair';
-  
-  document.getElementById('prop-text').style.display = 'none';
-  document.getElementById('prop-empty').style.display = 'none';
-  document.getElementById('prop-brush').style.display = 'block';
-  toast("Click any color on the canvas to pick it.");
-}
+        function open3DPreview() {
+            document.getElementById('modal-3d').classList.add('active');
+            // Small timeout allows DOM to render before measuring container clientWidth
+            setTimeout(init3D, 50); 
+        }
 
-window.updateBrushProps = () => {
-  if(!canvas.isDrawingMode) return;
-  const brush = new fabric.PencilBrush(canvas);
-  brush.color = document.getElementById('brush-color').value;
-  brush.width = parseInt(document.getElementById('brush-size').value) / canvas.getZoom();
-  canvas.freeDrawingBrush = brush;
-}
+        function close3DPreview() {
+            document.getElementById('modal-3d').classList.remove('active');
+            if (renderer) renderer.dispose();
+        }
 
-window.addCanvasText = () => {
-  const text = new fabric.IText('BOOK TITLE', {
-    left: currentDim.w / 2, top: currentDim.h * 0.1, originX: 'center',
-    fontFamily: 'Cinzel', fontSize: 70, fill: '#ffffff', fontWeight: 'bold'
-  });
-  canvas.add(text); canvas.setActiveObject(text); canvas.renderAll();
-  setCanvasMode('select', document.querySelectorAll('.tool-btn')[0]);
-}
-
-window.updateSelectedText = (prop, val) => {
-  const obj = canvas.getActiveObject();
-  if (obj && obj.type === 'i-text') { obj.set(prop, val); canvas.renderAll(); }
-}
-window.addTextShadow = () => {
-  const obj = canvas.getActiveObject();
-  if (obj && obj.type === 'i-text') { obj.set('shadow', new fabric.Shadow({color: 'rgba(201,169,110,0.8)', blur: 20})); canvas.renderAll(); }
-}
-window.deleteSelected = () => { canvas.getActiveObjects().forEach(o => canvas.remove(o)); canvas.discardActiveObject(); }
-
-function showTextProps() {
-  const obj = canvas.getActiveObject();
-  if (obj && obj.type === 'i-text') {
-    document.getElementById('prop-text').style.display = 'block';
-    document.getElementById('prop-empty').style.display = 'none';
-    document.getElementById('prop-brush').style.display = 'none';
-    document.getElementById('font-family').value = obj.fontFamily;
-    document.getElementById('text-color').value = obj.fill;
-    document.getElementById('text-size').value = obj.fontSize;
-  }
-}
-function showEmptyProps() {
-  if(canvas.isDrawingMode) return;
-  document.getElementById('prop-text').style.display = 'none';
-  document.getElementById('prop-brush').style.display = 'none';
-  document.getElementById('prop-empty').style.display = 'block';
-}
-
-function rgbToHex(r, g, b) { return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); }
-
-window.exportCanvas = () => {
-  const z = canvas.getZoom(); canvas.setZoom(1);
-  const dataURL = canvas.toDataURL({ format: 'png', multiplier: 2 });
-  canvas.setZoom(z);
-  const a = document.createElement('a'); a.href = dataURL; a.download = `Philadelphia_Cover.png`; a.click();
-}
-
-// ============================================================================
-// BLANK WRAP TEMPLATE (PROFESSIONAL LAYOUT)
-// ============================================================================
-window.loadBlankWrapTemplate = () => {
-  // Switch dimension to full wrap (1600x1000)
-  currentDim = { w: 1600, h: 1000, type: 'wrap' };
-  resizeCanvasToFit();
-  canvas.clear();
-  
-  const bg = new fabric.Rect({ left: 0, top: 0, width: 1600, height: 1000, fill: '#0a0f18', selectable: false });
-  const spine = new fabric.Rect({ left: 760, top: 0, width: 80, height: 1000, fill: '#05080c', selectable: false });
-  
-  // Front Elements (Right Side)
-  const title = new fabric.IText('THE EPIC TALE', { left: 1220, top: 200, originX: 'center', fontFamily: 'Cinzel', fontSize: 80, fill: '#c9a96e', fontWeight: 'bold' });
-  const author = new fabric.IText('AUTHOR NAME', { left: 1220, top: 850, originX: 'center', fontFamily: 'Inter', fontSize: 35, fill: '#fff', letterSpacing: 4 });
-  
-  // Spine Elements
-  const spineText = new fabric.IText('THE EPIC TALE', { left: 800, top: 500, originX: 'center', originY: 'center', fontFamily: 'Cinzel', fontSize: 30, fill: '#c9a96e', angle: 90 });
-  
-  // Back Elements (Left Side)
-  const backHead = new fabric.IText('ABOUT THE BOOK', { left: 380, top: 150, originX: 'center', fontFamily: 'Cinzel', fontSize: 40, fill: '#c9a96e' });
-  const line = new fabric.Line([180, 210, 580, 210], { stroke: '#c9a96e', strokeWidth: 2 });
-  const blurb = new fabric.IText('In a world fractured by ancient magic, one hero must rise...\n\n(Double click to edit this synopsis. Add your \ncompelling story details here to hook the reader.)', { left: 380, top: 250, originX: 'center', fontFamily: 'Inter', fontSize: 24, fill: '#ccc', textAlign: 'center', lineHeight: 1.5 });
-  
-  const barcode = new fabric.Rect({ left: 550, top: 800, width: 150, height: 90, fill: '#fff' });
-  const bcText = new fabric.IText('BARCODE', { left: 625, top: 845, originX: 'center', originY: 'center', fontFamily: 'Inter', fontSize: 20, fill: '#000' });
-
-  canvas.add(bg, spine, title, author, spineText, backHead, line, blurb, barcode, bcText);
-  canvas.renderAll();
-  toast("Full Wrap Template Loaded!");
-}
-
-// ============================================================================
-// 3D BOOK ENGINE
-// ============================================================================
-window.open3DViewer = () => {
-  const z = canvas.getZoom(); canvas.setZoom(1);
-  const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
-  canvas.setZoom(z);
-
-  const viewer = document.getElementById('book-3d-viewer');
-  viewer.style.display = 'flex';
-
-  // Apply the canvas image to the faces
-  if (currentDim.type === 'front') {
-    document.getElementById('3d-front').style.backgroundImage = `url(${dataURL})`;
-    document.getElementById('3d-spine-text').textContent = "BOOK TITLE";
-  } else if (currentDim.type === 'wrap') {
-    // If it's a full wrap, we ideally need to slice it. 
-    // For simplicity in this frontend demo, we apply the whole thing and use background-position
-    document.getElementById('3d-front').style.backgroundImage = `url(${dataURL})`;
-    document.getElementById('3d-front').style.backgroundPosition = "right center"; // Right side is front
-    document.getElementById('3d-back').style.backgroundImage = `url(${dataURL})`;
-    document.getElementById('3d-back').style.backgroundPosition = "left center"; // Left side is back
-  }
-}
-
-window.toggle3DSpin = () => { document.getElementById('the-3d-book').classList.toggle('spin'); }
-
-// ============================================================================
-// THE INTERACTIVE TOUR (CUSTOM BUILT)
-// ============================================================================
-const tourSteps =[
-  { el: null, title: "Welcome to Philadelphia Studio", text: "The most powerful AI cover creator. Let's take a quick 5-step tour." },
-  { el: "tour-step-1", title: "1. The Magic Generator", text: "Pick what you want to make (Front, Back, Spine), choose a genre, write your idea, and hit Generate." },
-  { el: "tour-step-2", title: "2. The Toolbar", text: "After generating, use these tools. Add Text, Paint, or use the Eyedropper (Perfect Eraser) to pick the background color and brush over unwanted AI text." },
-  { el: "tour-step-3", title: "3. Properties Panel", text: "Select text on the canvas to change its Font, Color, and Size here." },
-  { el: "tour-step-4", title: "4. View & Export", text: "Click here to see your cover in stunning 3D, or save it as a High-Res PNG." },
-  { el: "tour-step-5", title: "5. Professional Wraps", text: "Need a full print cover? Click 'Load Blank Full Wrap' to get a perfect template with Spine and Back Cover laid out." }
-];
-
-const tourManager = {
-  index: 0,
-  start: function() {
-    this.index = 0;
-    document.getElementById('tour-overlay').style.display = 'block';
-    document.getElementById('tour-tooltip').style.display = 'block';
-    this.render();
-  },
-  next: function() {
-    this.index++;
-    if (this.index >= tourSteps.length) this.close();
-    else this.render();
-  },
-  render: function() {
-    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
-    
-    const step = tourSteps[this.index];
-    document.getElementById('tour-title').textContent = step.title;
-    document.getElementById('tour-text').textContent = step.text;
-    document.getElementById('tour-progress').textContent = `${this.index + 1}/${tourSteps.length}`;
-
-    const tooltip = document.getElementById('tour-tooltip');
-
-    if (step.el) {
-      const target = document.getElementById(step.el);
-      target.classList.add('tour-highlight');
-      const rect = target.getBoundingClientRect();
-      
-      // Position tooltip next to element safely
-      let top = rect.top;
-      let left = rect.right + 20;
-      if (left + 300 > window.innerWidth) { left = rect.left - 320; } // Show on left if no space
-      if (top < 20) top = 20;
-
-      tooltip.style.top = `${top}px`;
-      tooltip.style.left = `${left}px`;
-    } else {
-      // Center
-      tooltip.style.top = `50%`;
-      tooltip.style.left = `50%`;
-      tooltip.style.transform = `translate(-50%, -50%)`;
-    }
-  },
-  close: function() {
-    document.getElementById('tour-overlay').style.display = 'none';
-    document.getElementById('tour-tooltip').style.display = 'none';
-    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
-    document.getElementById('tour-tooltip').style.transform = `none`;
-  }
-}
-
-window.startTour = () => tourManager.start();
-
-// ============================================================================
-// UTILS
-// ============================================================================
-function toast(msg) {
-  const container = document.getElementById('toast-container');
-  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg;
-  container.appendChild(d);
-  setTimeout(() => d.remove(), 3500);
-}
-
-window.initPayment = async () => {
-  const amt = document.getElementById('fund-amount').value;
-  try {
-    const res = await fetch(`${API}/api/payments/initiate`, {
-      method: "POST", headers: { "X-Firebase-Token": currentToken, "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: parseInt(amt), redirect_url: window.location.href.split('?')[0] })
-    });
-    const data = await res.json();
-    if(res.ok) window.location.href = data.checkout_url; else toast(data.detail);
-  } catch(e) { toast("Payment failed to initialize."); }
-}
-</script>
+    </script>
 </body>
 </html>
