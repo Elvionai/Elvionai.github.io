@@ -286,6 +286,13 @@ html,body{height:100%;width:100%;background:var(--bg);color:var(--t1);font-famil
 /* Drag hint */
 .drag-hint{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:.56rem;color:rgba(255,255,255,.3);white-space:nowrap;pointer-events:none;z-index:3;letter-spacing:.5px;}
 
+/* Bobby Chat Styles */
+.bmsg { max-width:85%; padding:10px 14px; border-radius:16px; word-break:break-word; }
+.bmsg.ai { background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); color:#e2e8f0; align-self:flex-start; border-bottom-left-radius:4px; }
+.bmsg.user { background:rgba(201,169,110,0.15); border:1px solid rgba(201,169,110,0.3); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+#bobby-float-btn { position:fixed; bottom:75px; right:15px; width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,var(--pur),var(--gold)); color:#fff; font-size:1.4rem; border:none; box-shadow:0 4px 20px rgba(0,0,0,0.6); z-index:400; display:none; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+#bobby-float-btn:hover { transform:scale(1.08); }
+  
 /* STUDIO PANEL */
 .studio-panel{flex:1;background:var(--card);border-top:1px solid var(--bdr);border-radius:var(--r20) var(--r20) 0 0;display:flex;flex-direction:column;overflow:hidden;margin-top:-8px;}
 .sptabs{display:flex;padding:0 4px;background:rgba(0,0,0,.28);border-bottom:1px solid var(--bdr);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
@@ -955,6 +962,28 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
   </div>
 </div>
 
+  <!-- Floating Bobby Button (Appears in Studio) -->
+<button id="bobby-float-btn" onclick="openBobby()"><i class="fas fa-robot"></i></button>
+
+<!-- MODALS -->
+<div class="mbg" id="bobby-m"><div class="modal" style="height:80vh; display:flex; flex-direction:column; padding:18px 16px 16px;">
+  <div class="m-hnd"></div><button class="mx" onclick="closeM('bobby-m')"><i class="fas fa-times"></i></button>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid var(--bdr);">
+    <div class="gav" style="width:36px;height:36px;font-size:1rem;"><i class="fas fa-robot"></i></div>
+    <div>
+      <div style="font-family:var(--ft);color:var(--gold);font-size:.9rem;font-weight:bold;">Bobby AI</div>
+      <div style="font-size:.6rem;color:var(--t2);">Your Studio Assistant</div>
+    </div>
+  </div>
+  <div id="bobby-chat-history" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:5px; margin-bottom:10px; font-size:.75rem; line-height:1.5;">
+    <div class="bmsg ai">Hi! I'm Bobby. I know every feature in Philadelphia Studio Pro. Got any questions or need suggestions on what to do next?</div>
+  </div>
+  <div style="display:flex; gap:6px; margin-top:auto;">
+    <input type="text" id="bobby-chat-inp" placeholder="Ask Bobby anything..." style="flex:1; background:var(--card2); color:var(--t1); border:1px solid var(--bdr); padding:10px 14px; border-radius:20px; font-size:.8rem;" onkeypress="if(event.key==='Enter')sendBobby()">
+    <button onclick="sendBobby()" style="width:40px;height:40px;border-radius:50%;background:var(--pur);border:none;color:#fff;cursor:pointer;"><i class="fas fa-paper-plane"></i></button>
+  </div>
+</div></div>
+
 <!-- MODALS -->
 <div class="mbg" id="fund-m"><div class="modal">
   <div class="m-hnd"></div><button class="mx" onclick="closeM('fund-m')"><i class="fas fa-times"></i></button>
@@ -1172,12 +1201,50 @@ window.goScr=(s)=>{
   if(s==="pro"){document.getElementById("pro-gc").textContent=localStorage.getItem("phl_gc")||"0";document.getElementById("pro-sc").textContent=getLibLS().length;}
 };
 window.goStudio=(mode)=>{
+  document.getElementById("bobby-float-btn").style.display = "flex"; // Show Bobby
   if(mode==="comic"){
     genStyle="comic book art";
     document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.s==="comic book art"));
     document.getElementById("comic-card").style.display="block";
+  } else if (mode==="char") {
+    // Setup dedicated Character Mode
+    document.getElementById("i-res").value = "1024x1024"; // Square is best for characters
+    document.getElementById("i-prompt").placeholder = "Describe your character (e.g. Dark elf rogue, silver hair, green glowing eyes, leather armor...)";
+    spTab("ai", document.querySelectorAll(".sptt")[1]);
+    toast("Character Mode: Generate & Lock!", "i");
+    setTimeout(()=>openM('char-m'), 800); // Auto-open lock modal
   }
   goScr("studio");
+};
+
+// Bobby Chat Logic
+window.openBobby = () => openM('bobby-m');
+window.sendBobby = async () => {
+  const inp = document.getElementById("bobby-chat-inp");
+  const text = inp.value.trim();
+  if(!text) return;
+  if(!apiK) { toast("Activate Studio first", "e"); return; }
+  
+  const hist = document.getElementById("bobby-chat-history");
+  const uDiv = document.createElement("div"); uDiv.className = "bmsg user"; uDiv.textContent = text;
+  hist.appendChild(uDiv); inp.value = ""; hist.scrollTop = hist.scrollHeight;
+  
+  const lDiv = document.createElement("div"); lDiv.className = "bmsg ai"; lDiv.innerHTML = `<i class="fas fa-ellipsis-h fa-fade"></i>`;
+  hist.appendChild(lDiv); hist.scrollTop = hist.scrollHeight;
+  
+  const sysPrompt = `You are Bobby, the helpful AI assistant built directly into Philadelphia Studio Pro. 
+  You know everything about the app:
+  - Design Tab: Book title, author, fonts, colors.
+  - AI Art Tab: Generate art, model selection (V6, Photoreal, etc.), Character Lock (locks a character's face for consistency).
+  - Back Cover Tab: Synopsis, author bio, upload Author Photo (via postimg.cc), generate back art.
+  - Tools Tab: Clean (Eraser), 3D Promo Graphics (Twin Standing, Hero 3D, Flat Lay, Desk Mockup, Social Square, Author Spotlight), standard HD downloads.
+  If the user asks what to do next, suggest rendering a 3D Promo Graphic in the Tools tab, or locking a character in the AI Art tab! Keep answers concise, friendly, and highly relevant.`;
+
+  try {
+    const r = await fetch(`${API}/api/developer/bobby/chat`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiK}` }, body: JSON.stringify({ prompt: text, systemPrompt: sysPrompt }) });
+    const d = await r.json(); if(!r.ok) throw new Error(d.detail);
+    lDiv.textContent = d.content || d.reply; hist.scrollTop = hist.scrollHeight;
+  } catch(e) { lDiv.textContent = "Oops, I'm having trouble connecting right now."; }
 };
 window.aiSubmit=()=>{const v=document.getElementById("ai-inp").value.trim();if(!v)return;document.getElementById("i-prompt").value=v;goStudio("book");spTab("ai",document.querySelectorAll(".sptt")[1]);};
 window.aiQ=(s)=>{document.getElementById("ai-inp").value=s;aiSubmit();};
@@ -1529,12 +1596,13 @@ window.finishWithAI = async () => {
     const d = await r.json();if(!r.ok) throw new Error(d.detail);
     hideGL(); applyImgToBook(d.image_b64); bal -= 15; updBal();
     
-    document.getElementById("i-title").value = '';
-    document.getElementById("i-sub").value = '';
-    document.getElementById("i-author").value = '';
-    liveUp(); 
+    // FIX: Do NOT erase the inputs. We need them for the Spine and Back Cover!
+    // Instead, use the removeText function to hide the overlay texts.
+    removeText('bkt-title');
+    removeText('bkt-sub');
+    removeText('bkt-author');
     
-    toast("Text rendered by AI!", "s");
+    toast("Text rendered Natively by AI!", "s");
     showGuide("The AI painted your text directly into the art! Your HTML text is cleared. Download the HD cover now.");
   } catch(e) { hideGL(); toast("Failed: " + e.message, "e"); }
 };
