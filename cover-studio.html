@@ -647,7 +647,7 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
         <div class="csw-row" id="csw-row"></div>
         <div class="sh" style="margin-top:11px"><i class="fas fa-droplet"></i> Text Colors</div>
         <div class="col-row">
-          <div class="col-inp-w"><input type="color" id="ttl-col" value="#f0c878" onchange="liveUp()"><span class="col-lbl">Title</span></div>
+          <div class="col-inp-w"><input type="color" id="ttl-col" value="#f0c878" oninput="document.getElementById('auth-col').value=this.value; liveUp()"><span class="col-lbl">Title</span></div>
           <div class="col-inp-w"><input type="color" id="auth-col" value="#ffffff" onchange="liveUp()"><span class="col-lbl">Author</span></div>
         </div>
         <div style="margin-top:7px">
@@ -721,6 +721,9 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
           <span id="gbl">Generate AI Cover</span>
           <span id="gcst" style="font-size:.62rem;opacity:.55;font-family:var(--fb)">(15 credits)</span>
         </button>
+        <button class="eb prim" style="margin-top:8px; justify-content:center;" onclick="authA(finishWithAI)">
+          <i class="fas fa-wand-magic-sparkles"></i> Render Text inside Art (AI)
+        </button>
         <div class="ghint" id="ghint">AI art fills the full cover — your text stays on top</div>
         <div style="margin-top:12px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.18);border-radius:var(--r8);padding:10px 11px;">
           <div class="sh" style="color:#c4b5fd;margin-bottom:6px"><i class="fas fa-lock"></i> Character Lock</div>
@@ -774,8 +777,15 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
           <button class="tb" onclick="authA(()=>saveProgress())"><i class="fas fa-floppy-disk"></i>Save</button>
         </div>
         <div class="sh" style="margin-top:12px"><i class="fas fa-download"></i> Download</div>
-        <!-- FIX 1&2: Canvas-based download preserves text perfectly -->
+        
+        <!-- Promo Graphic Custom Background -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; background:rgba(255,255,255,.03); padding:8px 12px; border-radius:var(--r8); border:1px solid var(--bdr);">
+          <input type="color" id="promo-bg-col" value="#1cd34b" style="width:34px;height:34px;padding:2px;border:none;">
+          <span style="font-size:.62rem; color:var(--t2);">Promo Background Color</span>
+        </div>
+
         <button class="eb prim" onclick="authA(downloadFull)"><i class="fas fa-image"></i> Download Cover (HD with text)</button>
+        <button class="eb" style="background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.3);color:var(--grn);font-weight:bold;justify-content:center;" onclick="authA(downloadPromoGraphic)"><i class="fas fa-bullhorn"></i> Download 3D Promo Graphic</button>
         <button class="eb gold" onclick="authA(downloadAnimatedCover)"><i class="fas fa-film"></i> Download Animated Cover</button>
         <button class="eb" onclick="authA(downloadWrap)"><i class="fas fa-panorama"></i> Download Full Wrap Spread</button>
         <button class="eb" onclick="authA(downloadStand)"><i class="fas fa-book"></i> Download Standing View</button>
@@ -1367,11 +1377,71 @@ async function doQuad(prompt,model,w,h){
   bal-=60;updBal();toast("4 variations ready! Pick your favourite.","g");
 }
 
+window.finishWithAI = async () => {
+  if(!apiK){openM("api-m");return;}
+  if(bal<15){toast("Need 15 credits","e");openM("fund-m");return;}
+  
+  const title = document.getElementById("i-title").value.trim();
+  const author = document.getElementById("i-author").value.trim();
+  if(!title && !author){toast("Add a title or author first","e");return;}
+
+  const titleTopFrac = getElemTopFrac(document.getElementById("bkt-title"), 0.10);
+  const authTopFrac = getElemTopFrac(document.getElementById("bkt-author"), 0.88);
+  const tLoc = titleTopFrac < 0.33 ? "at the top" : titleTopFrac < 0.66 ? "in the middle" : "at the bottom";
+  const aLoc = authTopFrac < 0.33 ? "at the top" : authTopFrac < 0.66 ? "in the middle" : "at the bottom";
+
+  let base = document.getElementById("i-prompt").value.trim() || genStyle;
+  const prompt = `typography, text "${title}" placed ${tLoc}, text "${author}" placed ${aLoc}. ${base}, professional book cover art, high quality, FILL ENTIRE FRAME, full bleed.`;
+  
+  const[w,h] = document.getElementById("i-res").value.split("x").map(Number);
+  showGL("AI is rendering your text...");
+  try {
+    const r = await fetch(`${API}/api/developer/generate-image`, {method:"POST",headers:{"Content-Type":"application/json", "Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt, model:"v6", width:w, height:h, creative:false})});
+    const d = await r.json();if(!r.ok) throw new Error(d.detail);
+    hideGL(); applyImgToBook(d.image_b64); bal -= 15; updBal();
+    document.getElementById("bkt-title").style.opacity = "0";
+    document.getElementById("bkt-author").style.opacity = "0";
+    document.getElementById("bkt-sub").style.opacity = "0";
+    toast("Text rendered by AI!", "s");
+    showGuide("The AI painted your text directly into the art! Your HTML text is now hidden.");
+  } catch(e) { hideGL(); toast("Failed: " + e.message, "e"); }
+};
+
+window.finishWithAI = async () => {
+  if(!apiK){openM("api-m");return;}
+  if(bal<15){toast("Need 15 credits","e");openM("fund-m");return;}
+  
+  const title = document.getElementById("i-title").value.trim();
+  const author = document.getElementById("i-author").value.trim();
+  if(!title && !author){toast("Add a title or author first","e");return;}
+
+  const titleTopFrac = getElemTopFrac(document.getElementById("bkt-title"), 0.10);
+  const authTopFrac = getElemTopFrac(document.getElementById("bkt-author"), 0.88);
+  const tLoc = titleTopFrac < 0.33 ? "at the top" : titleTopFrac < 0.66 ? "in the middle" : "at the bottom";
+  const aLoc = authTopFrac < 0.33 ? "at the top" : authTopFrac < 0.66 ? "in the middle" : "at the bottom";
+
+  let base = document.getElementById("i-prompt").value.trim() || genStyle;
+  const prompt = `typography, text "${title}" placed ${tLoc}, text "${author}" placed ${aLoc}. ${base}, professional book cover art, high quality, FILL ENTIRE FRAME, full bleed.`;
+  
+  const[w,h] = document.getElementById("i-res").value.split("x").map(Number);
+  showGL("AI is rendering your text...");
+  try {
+    const r = await fetch(`${API}/api/developer/generate-image`, {method:"POST",headers:{"Content-Type":"application/json", "Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt, model:"v6", width:w, height:h, creative:false})});
+    const d = await r.json();if(!r.ok) throw new Error(d.detail);
+    hideGL(); applyImgToBook(d.image_b64); bal -= 15; updBal();
+    document.getElementById("bkt-title").style.opacity = "0";
+    document.getElementById("bkt-author").style.opacity = "0";
+    document.getElementById("bkt-sub").style.opacity = "0";
+    toast("Text rendered by AI!", "s");
+    showGuide("The AI painted your text directly into the art! Your HTML text is now hidden.");
+  } catch(e) { hideGL(); toast("Failed: " + e.message, "e"); }
+};
+
 window.genBackCover=async()=>{
   if(!apiK||bal<15){toast("Insufficient credits","e");return;}
   const bp=document.getElementById("i-bc-pr").value.trim();
   const t=document.getElementById("i-title").value;
-  const prompt=`${bp||"dark atmospheric back cover, matching aesthetic"}, FILL THE ENTIRE FRAME, full bleed, ${genStyle} back cover for book "${t}", professional publishing quality, rich texture, subtle depth`;
+  const prompt=`${bp||"dark atmospheric back cover, matching aesthetic"}, FILL THE ENTIRE FRAME, full bleed, ${genStyle} back cover for book "${t}", professional publishing quality, rich texture, subtle depth, NO TEXT, NO TYPOGRAPHY, blank canvas`;
   showGL("Generating back cover...");
   const[w,h]=document.getElementById("i-res").value.split("x").map(Number);
   try{
