@@ -1407,36 +1407,6 @@ window.finishWithAI = async () => {
   } catch(e) { hideGL(); toast("Failed: " + e.message, "e"); }
 };
 
-window.finishWithAI = async () => {
-  if(!apiK){openM("api-m");return;}
-  if(bal<15){toast("Need 15 credits","e");openM("fund-m");return;}
-  
-  const title = document.getElementById("i-title").value.trim();
-  const author = document.getElementById("i-author").value.trim();
-  if(!title && !author){toast("Add a title or author first","e");return;}
-
-  const titleTopFrac = getElemTopFrac(document.getElementById("bkt-title"), 0.10);
-  const authTopFrac = getElemTopFrac(document.getElementById("bkt-author"), 0.88);
-  const tLoc = titleTopFrac < 0.33 ? "at the top" : titleTopFrac < 0.66 ? "in the middle" : "at the bottom";
-  const aLoc = authTopFrac < 0.33 ? "at the top" : authTopFrac < 0.66 ? "in the middle" : "at the bottom";
-
-  let base = document.getElementById("i-prompt").value.trim() || genStyle;
-  const prompt = `typography, text "${title}" placed ${tLoc}, text "${author}" placed ${aLoc}. ${base}, professional book cover art, high quality, FILL ENTIRE FRAME, full bleed.`;
-  
-  const[w,h] = document.getElementById("i-res").value.split("x").map(Number);
-  showGL("AI is rendering your text...");
-  try {
-    const r = await fetch(`${API}/api/developer/generate-image`, {method:"POST",headers:{"Content-Type":"application/json", "Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt, model:"v6", width:w, height:h, creative:false})});
-    const d = await r.json();if(!r.ok) throw new Error(d.detail);
-    hideGL(); applyImgToBook(d.image_b64); bal -= 15; updBal();
-    document.getElementById("bkt-title").style.opacity = "0";
-    document.getElementById("bkt-author").style.opacity = "0";
-    document.getElementById("bkt-sub").style.opacity = "0";
-    toast("Text rendered by AI!", "s");
-    showGuide("The AI painted your text directly into the art! Your HTML text is now hidden.");
-  } catch(e) { hideGL(); toast("Failed: " + e.message, "e"); }
-};
-
 window.genBackCover=async()=>{
   if(!apiK||bal<15){toast("Insufficient credits","e");return;}
   const bp=document.getElementById("i-bc-pr").value.trim();
@@ -1489,21 +1459,50 @@ window.upscale=async()=>{
   }catch(e){hideGL();toast("Upscale failed","e");}
 };
 
-/* ── ERASE ── */
+/* ── ERASE (CLEAN) TOOL ── */
 let erasing=false;
 window.startErase=()=>{
   if(!curImg){toast("Generate a cover first","e");return;}
-  const ov=document.getElementById("erase-ov");const cv=document.getElementById("erase-cv");const pz=document.getElementById("pzone");
-  cv.width=pz.clientWidth;cv.height=pz.clientHeight;
-  const eraseCtx=cv.getContext("2d");
-  ov.classList.add("on");erasing=true;
-  let painting=false;
-  const pos=(e)=>{const r=cv.getBoundingClientRect();const cl=e.touches?e.touches[0]:e;return{x:cl.clientX-r.left,y:cl.clientY-r.top};};
-  const paint=(e)=>{if(!painting)return;e.preventDefault();const p=pos(e);eraseCtx.globalCompositeOperation="destination-out";eraseCtx.beginPath();eraseCtx.arc(p.x,p.y,22,0,Math.PI*2);eraseCtx.fill();};
-  cv.ontouchstart=e=>{painting=true;paint(e);};cv.ontouchmove=e=>{paint(e);};cv.ontouchend=()=>painting=false;
-  cv.onmousedown=e=>{painting=true;paint(e);};cv.onmousemove=e=>{paint(e);};cv.onmouseup=()=>painting=false;
+  setView('front', document.querySelectorAll('.vp')[3]); 
+  toast("Clean Mode: Paint over areas to remove them.", "i");
+  setTimeout(() => {
+    const frontEl = document.getElementById("vw-front");
+    const rect = frontEl.getBoundingClientRect();
+    const ov = document.getElementById("erase-ov");
+    const cv = document.getElementById("erase-cv");
+    ov.classList.add("on");
+    cv.width = rect.width; cv.height = rect.height;
+    cv.style.position = 'absolute'; cv.style.left = rect.left + 'px'; cv.style.top = rect.top + 'px';
+    const eraseCtx = cv.getContext("2d");
+    erasing = true; let painting = false;
+    const pos = (e) => { const r = cv.getBoundingClientRect(); const cl = e.touches ? e.touches[0] : e; return {x: cl.clientX - r.left, y: cl.clientY - r.top}; };
+    const paint = (e) => {
+      if(!painting) return; e.preventDefault(); const p = pos(e);
+      eraseCtx.fillStyle = "rgba(239, 68, 68, 0.6)"; 
+      eraseCtx.beginPath(); eraseCtx.arc(p.x, p.y, 16, 0, Math.PI*2); eraseCtx.fill();
+    };
+    cv.ontouchstart = e => {painting=true; paint(e);}; cv.ontouchmove = e => {paint(e);}; cv.ontouchend = () => painting=false;
+    cv.onmousedown = e => {painting=true; paint(e);}; cv.onmousemove = e => {paint(e);}; cv.onmouseup = () => painting=false;
+  }, 300);
 };
-window.doneErase=()=>{document.getElementById("erase-ov").classList.remove("on");erasing=false;};
+
+window.doneErase=()=>{
+  document.getElementById("erase-ov").classList.remove("on");
+  erasing = false;
+  const cv = document.getElementById("erase-cv");
+  const img = new Image(); img.crossOrigin = "anonymous";
+  img.onload = () => {
+     const tempCv = document.createElement("canvas");
+     tempCv.width = img.width; tempCv.height = img.height;
+     const tCtx = tempCv.getContext("2d");
+     tCtx.drawImage(img, 0, 0, tempCv.width, tempCv.height);
+     tCtx.globalCompositeOperation = "destination-out";
+     tCtx.drawImage(cv, 0, 0, tempCv.width, tempCv.height);
+     applyImgToBook(tempCv.toDataURL("image/png"));
+     toast("Cover cleaned!", "s"); autoSave();
+  };
+  img.src = curImg.startsWith("data:") ? curImg : `data:image/png;base64,${curImg}`;
+};
 
 /* ── SPIN / FLOAT ── */
 window.toggleSpin=()=>{spinning=!spinning;const b=document.getElementById("bk-float");if(b)b.classList.toggle("spinning",spinning);document.getElementById("tb-spin").classList.toggle("on",spinning);};
@@ -1614,38 +1613,157 @@ window.downloadFull=async()=>{
   }catch(e){toast("Download failed: "+e.message,"e");console.error(e);}
 };
 
-/* ── DOWNLOAD STANDING ── */
-window.downloadStand=async()=>{
+/* ── DOWNLOAD 3D MOCKUP (Standing) ── */
+window.downloadStand = async () => {
   if(!curImg){toast("Generate a cover first","e");return;}
-  toast("Rendering standing view...","i");
-  try{
+  toast("Rendering 4K 3D Mockup...","i");
+  try {
     await document.fonts.ready;
-    const W=560,H=840;
-    const cv=document.createElement("canvas");cv.width=W;cv.height=H;
-    const ctx=cv.getContext("2d");
+    const W = 1600, H = 1600; 
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
 
-    const img=new Image();img.crossOrigin="anonymous";
-    const src=curImg.startsWith("data:")?curImg:`data:image/png;base64,${curImg}`;
+    const bgGrad = ctx.createLinearGradient(0,0,0,H);
+    bgGrad.addColorStop(0, "#080a12"); bgGrad.addColorStop(1, "#020306");
+    ctx.fillStyle = bgGrad; ctx.fillRect(0,0,W,H);
+
+    const img = new Image(); img.crossOrigin="anonymous";
+    const src = curImg.startsWith("data:") ? curImg : `data:image/png;base64,${curImg}`;
     await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=src;});
-    ctx.drawImage(img,0,0,W,H);
 
-    const sy=H/210;
-    const tc=document.getElementById("ttl-col").value||"#f0c878";
-    const ac=document.getElementById("auth-col").value||"#ffffff";
-    const tsz=Math.max(Math.round(12*sy),20);
-    const asz=Math.max(Math.round(7.5*sy),14);
+    const bW = 600, bH = 900, sW = 85, startX = 480, startY = 300;
 
-    canvasText(ctx,document.getElementById("i-title").value||"YOUR TITLE",W/2,tsz*1.2,tsz,curFont,tc,"900",W*0.86);
-    canvasText(ctx,document.getElementById("i-author").value||"Author Name",W/2,H-asz*0.8,asz,curFont,ac,"400",W*0.8);
+    // Spine
+    ctx.save(); ctx.setTransform(1, 0.16, 0, 1, startX, startY);
+    ctx.fillStyle = "#0a0a0a"; ctx.fillRect(-sW, 0, sW, bH);
+    ctx.translate(-sW/2, bH/2); ctx.rotate(-Math.PI/2);
+    ctx.fillStyle = document.getElementById("ttl-col").value || "#f0c878";
+    ctx.font = `900 ${sW*0.3}px '${curFont}', serif`; ctx.textAlign = "center";
+    ctx.fillText(document.getElementById("i-title").value.toUpperCase(), 0, sW*0.1);
+    ctx.restore();
 
-    ctx.save();ctx.globalAlpha=0.15;ctx.font=`400 ${Math.round(6*sy)}px 'Cinzel',serif`;ctx.fillStyle="#c9a96e";ctx.textAlign="right";ctx.fillText("Philadelphia AI",W-8,H-6);ctx.restore();
+    // Front Cover & Drop Shadow
+    ctx.save(); ctx.setTransform(1, -0.09, 0, 1, startX, startY);
+    ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 60; ctx.shadowOffsetX = 40; ctx.shadowOffsetY = 30;
+    ctx.drawImage(img, 0, 0, bW, bH);
+    ctx.shadowColor = "transparent"; 
 
-    const link=document.createElement("a");link.href=cv.toDataURL("image/png");
-    link.download=`philly_stand_${Date.now()}.png`;link.click();
-    toast("Standing view downloaded!","s");
-  }catch(e){toast("Download failed: "+e.message,"e");}
+    // Render HTML Text on 3D face if visible
+    if(document.getElementById("bkt-title").style.opacity !== "0") {
+        const sy = bH/226; 
+        const tsz = parseInt(document.getElementById("ttl-sz").value||13) * sy;
+        const asz = 8 * sy; const ssz = 6 * sy;
+        const tc = document.getElementById("ttl-col").value || "#f0c878";
+        const ac = document.getElementById("auth-col").value || "#ffffff";
+        
+        const titleTop = getElemTopFrac(document.getElementById("bkt-title"), 0.1) * bH;
+        canvasText(ctx, document.getElementById("i-title").value, bW/2, titleTop+tsz, tsz, curFont, tc, "900", bW*0.86);
+        
+        const sub = document.getElementById("i-sub").value;
+        if(sub){
+            const subTop = getElemTopFrac(document.getElementById("bkt-sub"), 0.36) * bH;
+            canvasText(ctx, sub.toUpperCase(), bW/2, subTop+ssz, ssz, curFont, tc, "500", bW*0.86);
+        }
+        const authTop = getElemTopFrac(document.getElementById("bkt-author"), 0.88) * bH;
+        canvasText(ctx, document.getElementById("i-author").value, bW/2, authTop+asz, asz, curFont, ac, "400", bW*0.86);
+    }
+    ctx.restore();
+
+    ctx.save(); ctx.globalAlpha = 0.3; ctx.font = `400 18px 'Cinzel',serif`; ctx.fillStyle = "#c9a96e"; ctx.textAlign = "center";
+    ctx.fillText("Philadelphia AI Studio Pro", W/2, H - 40); ctx.restore();
+
+    const link = document.createElement("a"); link.href = cv.toDataURL("image/png", 1.0);
+    link.download = `philly_3D_Mockup_${Date.now()}.png`; link.click();
+    toast("3D Mockup downloaded!","s");
+  } catch(e) { toast("Download failed: " + e.message, "e"); }
 };
 
+/* ── DOWNLOAD 3D PROMO GRAPHIC (Custom Background) ── */
+window.downloadPromoGraphic = async () => {
+  if(!curImg){toast("Generate a cover first","e");return;}
+  toast("Rendering 3D Promo Graphic...","i");
+  
+  try {
+    await document.fonts.ready;
+    const W = 1200, H = 1200; 
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+
+    // Get color from the new color picker!
+    ctx.fillStyle = document.getElementById("promo-bg-col").value || "#1cd34b";
+    ctx.fillRect(0, 0, W, H);
+
+    const frontImg = new Image(); frontImg.crossOrigin = "anonymous";
+    const fSrc = curImg.startsWith("data:") ? curImg : `data:image/png;base64,${curImg}`;
+    await new Promise((res,rej)=>{frontImg.onload=res; frontImg.onerror=rej; frontImg.src=fSrc;});
+
+    let backImg = frontImg; 
+    if (curBkImg) {
+      backImg = new Image(); backImg.crossOrigin = "anonymous";
+      const bSrc = curBkImg.startsWith("data:") ? curBkImg : `data:image/png;base64,${curBkImg}`;
+      await new Promise((res)=>{backImg.onload=res; backImg.src=bSrc;});
+    }
+
+    const bW = 340, bH = 510, spineW = 40, pagesW = 15;
+    const title = document.getElementById("i-title").value || "YOUR TITLE";
+    const tc = document.getElementById("ttl-col").value || "#f0c878";
+    
+    const drawBook = (isFront, xOffset, yOffset, skewY) => {
+      ctx.save(); ctx.translate(xOffset, yOffset);
+      
+      // Shadow
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.filter = "blur(15px)";
+      ctx.beginPath(); ctx.moveTo(10, bH - 10); ctx.lineTo(bW + 30, bH + (bW * skewY));
+      ctx.lineTo(bW - 20, bH + (bW * skewY) + 20); ctx.lineTo(-20, bH); ctx.fill(); ctx.filter = "none"; 
+
+      if(isFront) {
+        ctx.save(); ctx.transform(1, skewY, 0, 1, -spineW, 0);
+        ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0, 0, spineW, bH);
+        ctx.translate(spineW/2, bH/2); ctx.rotate(-Math.PI/2);
+        ctx.fillStyle = tc; ctx.font = `900 ${spineW*0.4}px '${curFont}', serif`; ctx.textAlign = "center";
+        ctx.fillText(title.toUpperCase(), 0, spineW*0.15); ctx.restore();
+      } else {
+        ctx.save(); ctx.transform(1, skewY, 0, 1, bW, 0);
+        ctx.fillStyle = "#eeeeee"; ctx.fillRect(0, 0, pagesW, bH);
+        ctx.fillStyle = "#cccccc"; for(let i=0; i<bH; i+=4) ctx.fillRect(0, i, pagesW, 1);
+        ctx.restore();
+      }
+
+      // Cover Face
+      ctx.save(); ctx.transform(1, skewY, 0, 1, 0, 0);
+      if(isFront) {
+        ctx.drawImage(frontImg, 0, 0, bW, bH);
+        if(document.getElementById("bkt-title").style.opacity !== "0") {
+          const sy = bH/226; const tsz = parseInt(document.getElementById("ttl-sz").value||13) * sy;
+          const titleTop = getElemTopFrac(document.getElementById("bkt-title"), 0.1) * bH;
+          canvasText(ctx, title, bW/2, titleTop+tsz, tsz, curFont, tc, "900", bW*0.86);
+        }
+      } else {
+        ctx.drawImage(backImg, 0, 0, bW, bH);
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, bW, bH);
+      }
+
+      // Glossy Lighting
+      const gloss = ctx.createLinearGradient(0, 0, bW, bH);
+      gloss.addColorStop(0, "rgba(255,255,255,0.25)"); gloss.addColorStop(0.3, "rgba(255,255,255,0)");
+      gloss.addColorStop(1, "rgba(0,0,0,0.4)"); ctx.fillStyle = gloss; ctx.fillRect(0, 0, bW, bH);
+      ctx.restore(); ctx.restore();
+    };
+
+    drawBook(false, W/2 - 380, H/2 - 280, 0.1);
+    drawBook(true, W/2 - 10, H/2 - 220, -0.08);
+
+    ctx.fillStyle = "#ffffff"; ctx.font = "900 40px 'DM Sans', sans-serif"; ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 10;
+    ctx.fillText("OUT NOW", W/2, H - 120);
+    ctx.font = "400 24px 'DM Sans', sans-serif"; ctx.fillText("Grab your copy today", W/2, H - 70);
+
+    const link = document.createElement("a"); link.href = cv.toDataURL("image/png", 1.0);
+    link.download = `philly_promo_graphic_${Date.now()}.png`; link.click();
+    toast("Promo Graphic downloaded!","s");
+  } catch(e) { toast("Promo Graphic failed: " + e.message, "e"); }
+};
+  
 /* ── DOWNLOAD WRAP ── */
 window.downloadWrap=async()=>{
   if(!curImg){toast("Generate a cover first","e");return;}
