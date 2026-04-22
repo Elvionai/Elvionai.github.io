@@ -1626,11 +1626,16 @@ async function typewriterReveal(el,text,signal){
   el.innerHTML=renderMd(text); // Final clean render without cursor
 }
 
-   // ── BOBBY FRONTEND WEB SEARCH (REAL SEARCH ENGINE) ──
+// ── BOBBY FRONTEND WEB SEARCH (REAL SEARCH ENGINE) ──
 async function fetchFrontendContext(query) {
     try {
-        // Trigger search if user asks a question or asks for current info
-        if (/^(how|what|who|when|where|why|can you|is there|best|latest|current|top)/i.test(query.trim())) {
+        const q = query.trim().toLowerCase();
+        
+        // 1. Block casual greetings, short phrases, and identity questions
+        const isCasual = /^(how are you|how's it|what's up|hey|hi|hello|good morning|good evening|thanks|thank you|lol|haha|okay|ok|yes|no|sure|who are you|what are you|what is your name)\b/i.test(q);
+        
+        // 2. Trigger search ONLY if it's not casual, starts with a question word, and is longer than 2 words
+        if (!isCasual && /^(how|what|who|when|where|why|can you explain|is there|best|latest|current|top|news)/i.test(q) && q.split(' ').length > 2) {
             updateOrbStatus('Searching the web…');
             
             // Use a reliable proxy to scrape real search results, bypassing CORS
@@ -1805,17 +1810,23 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     }
 
      if(currentModel==='bobby'){
-      // FIX 1: MEMORY INTEGRATION
-      // Grab the last 6 messages from the loaded chat history
-      const recentMem = currentMessages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Bobby'}: ${m.text || ''}`).join("\n");
+      // 1. INJECT LIVE DATE: Bobby will naturally know the date without searching
+      const currentDate = new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'full', timeStyle: 'short' });
       
-      // Combine history with the new question
-      let payloadPrompt = recentMem ? `[Chat History]\n${recentMem}\n\n[New Question]\nUser: ${text}` : text;
+      // 2. SAVE GPU MEMORY: Reduce history from 6 to 4 messages so Thena doesn't crash on long texts
+      const recentMem = currentMessages.slice(-4).map(m => `${m.role === 'user' ? 'User' : 'Bobby'}: ${m.text || ''}`).join("\n");
+      
+      let payloadPrompt = `[System Note: Current Date & Time is ${currentDate}]\n\n`;
+      payloadPrompt += recentMem ? `[Chat History]\n${recentMem}\n\n[New Question]\nUser: ${text}` : text;
 
-      // FIX 2: REAL WEB SEARCH CONTEXT
-      const webCtx = await fetchFrontendContext(text);
+      // 3. REAL WEB SEARCH CONTEXT: Only search if text is less than 1000 characters (Prevents "GPU Full" on large pastes)
+      let webCtx = null;
+      if (text.length < 1000) {
+          webCtx = await fetchFrontendContext(text);
+      }
+      
       if(webCtx) {
-          payloadPrompt += `\n\n[LIVE WEB SEARCH RESULTS]\n${webCtx}\n\nINSTRUCTIONS: Answer the user's new question using the live web search results above. You MUST cite your sources by providing the exact URLs from the search results as clickable Markdown links (e.g., [Site Name](URL)). Be confident, decisive, and format your answer beautifully.`;
+          payloadPrompt += `\n\n[LIVE WEB SEARCH RESULTS]\n${webCtx}\n\nINSTRUCTIONS: Answer the user's new question using the live web search results above. Be natural and conversational. DO NOT sound like a search engine. If the search results are irrelevant to the user's question, ignore them and answer normally.`;
       }
       
       const payload={prompt:payloadPrompt};
