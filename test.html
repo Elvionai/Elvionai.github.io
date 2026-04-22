@@ -1804,28 +1804,33 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       sysPrompt=sysPrompt?`${sysPrompt}\n\n${memNote}`:memNote;
     }
 
-    if(currentModel==='bobby'){
-      // FIX #4: Bobby web search via Wikipedia when intent detected
-      let bobbyPrompt=augmentedMessage;
-      if(shouldBobbySearch(text)){
-        updateOrbStatus('Searching the web…');
-        const result=await wikiSearch(text);
-        if(result){
-          bobbyPrompt=`${augmentedMessage}\n\n[LIVE WEB SEARCH — Wikipedia]\nTitle: "${result.title}"\n${result.extract}\nSource: ${result.url}\n\nPlease answer the user's question using this web context where relevant. Cite the source at the end.`;
-        }
-        updateOrbStatus('Processing…');
-      }
+     if(currentModel==='bobby'){
+      // FIX 1: MEMORY INTEGRATION
+      // Grab the last 6 messages from the loaded chat history
+      const recentMem = currentMessages.slice(-6).map(m => `${m.role === 'user' ? 'User' : 'Bobby'}: ${m.text || ''}`).join("\n");
+      
+      // Combine history with the new question
+      let payloadPrompt = recentMem ? `[Chat History]\n${recentMem}\n\n[New Question]\nUser: ${text}` : text;
 
-      const payload={prompt:bobbyPrompt};
+      // FIX 2: REAL WEB SEARCH CONTEXT
+      const webCtx = await fetchFrontendContext(text);
+      if(webCtx) {
+          payloadPrompt += `\n\n[LIVE WEB SEARCH RESULTS]\n${webCtx}\n\nINSTRUCTIONS: Answer the user's new question using the live web search results above. You MUST cite your sources by providing the exact URLs from the search results as clickable Markdown links (e.g., [Site Name](URL)). Be confident, decisive, and format your answer beautifully.`;
+      }
+      
+      const payload={prompt:payloadPrompt};
       if(sysPrompt) payload.systemPrompt=sysPrompt;
+      
       const res=await fetch(EP.bobby,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal});
       if(!res.ok) throw new Error('Bobby engine error');
       const data=await res.json();
-      // Strip any HTML tags Bobby might return before markdown rendering
+      
+      // Strip any raw HTML tags the LLM might return before rendering markdown
       fullText=(data.content||'No response.').replace(/<\/?(b|i|strong|em|br|p|div|span)\s*\/?>/gi,'').trim();
 
-      // FIX #3: Typewriter effect for Bobby
-      await typewriterReveal(contentEl,fullText,currentCtrl.signal);
+      // Better typewriter effect (word-by-word from the previous fix)
+      await typewriterReveal(contentEl, fullText, currentCtrl.signal);
+     }
 
     } else {
       // Philadelphia — streaming
