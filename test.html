@@ -2255,7 +2255,13 @@ const toolDefs={
         const res=await fetch(`${API}/api/tools/create-website`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,user_id:currentUser?.uid}),signal:currentCtrl?.signal});
         const d=await res.json();
         if(!res.ok)throw new Error(d.error);
-        return`✅ Website live! [Open site](${d.url})`;
+        
+        // PERMANENT STORAGE FIX: Save directly to Firebase so it never forgets!
+        try {
+            await addDoc(collection(db, 'users', currentUser.uid, 'websites'), { url: d.url, createdAt: serverTimestamp() });
+        } catch(err) { console.warn("Failed to save to Firebase", err); }
+
+        return `✅ Website live! <a href="${d.url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">Open site here</a>`;
       }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
       finally{removeOrbLoader()}
     }
@@ -2271,7 +2277,12 @@ const toolDefs={
         const res=await fetch(`${API}/api/tools/edit-website`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instruction,user_id:currentUser?.uid}),signal:currentCtrl?.signal});
         const d=await res.json();
         if(!res.ok)throw new Error(d.error);
-        return`✅ Website updated! [View update](${d.url})`;
+        
+        try {
+            await addDoc(collection(db, 'users', currentUser.uid, 'websites'), { url: d.url, createdAt: serverTimestamp() });
+        } catch(err) {}
+
+        return `✅ Website updated! <a href="${d.url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">View updated site here</a>`;
       }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
       finally{removeOrbLoader()}
     }
@@ -2281,13 +2292,28 @@ const toolDefs={
     isAction:true,
     run:async()=>{
       await saveMsg('user','Show my websites.');
-      showOrbLoader('Fetching your websites...');
+      showOrbLoader('Fetching your websites from secure storage...');
       try{
-        const res=await fetch(`${API}/api/tools/my-sites/${currentUser.uid}`);
-        const d=await res.json();
-        if(!res.ok)throw new Error('Registry error.');
-        const list=(d.sites||[]).map(s=>`- [${s.site_url}](${s.site_url})`).join('\n');
-        return list||'No websites found yet. Build one with Create Website!';
+        // FETCH FROM FIREBASE INSTEAD OF TEMPORARY BACKEND MEMORY
+        const sitesQuery = query(collection(db, 'users', currentUser.uid, 'websites'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(sitesQuery);
+        
+        if(snap.empty) {
+            return 'No websites found yet. Build one with <strong>Create Website</strong>!';
+        }
+
+        let list = '<ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">';
+        const seen = new Set(); // Prevent duplicates
+        snap.forEach(doc => {
+            const url = doc.data().url;
+            if(!seen.has(url)) {
+                seen.add(url);
+                list += `<li><a href="${url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;">${url}</a></li>`;
+            }
+        });
+        list += '</ul>';
+        
+        return `Here are your permanently saved websites:<br>${list}`;
       }catch(e){return`❌ ${e.message}`}
       finally{removeOrbLoader()}
     }
