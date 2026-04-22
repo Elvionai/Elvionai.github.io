@@ -1119,7 +1119,7 @@ $('lightbox').onclick=()=>$('lightbox').classList.remove('show');
 // ── PERSONA ────────────────────────────────────────────────────
 const personaDefs={
   philadelphia:{prompt:null,model:'philadelphia',label:'Philadelphia'},
-  bobby:{prompt:null,model:'bobby',label:'Bobby'},
+  bobby:{prompt:'You are Bobby. You are a highly intelligent, decisive, and helpful AI assistant. When provided with [LIVE WEB SEARCH RESULTS], you MUST use them to answer the user accurately. Always cite your sources by providing the exact URLs from the search results as clickable Markdown links (e.g., [GitHub](https://github.com)). Use rich Markdown formatting (bold, italics, lists, headers) to make your answers beautiful and easy to read. Do not hallucinate; rely on the search results for current facts.',model:'bobby',label:'Bobby'},
   professor:{prompt:'You are The Professor — deeply academic, thorough, use analogies and real examples. Always end with a thought-provoking question. Use markdown formatting: **bold** for key terms, ## headings for sections, - bullet points for lists.',model:'philadelphia',label:'Professor'},
   boyfriend:{prompt:'You are a caring, warm boyfriend. You are attentive, romantic, supportive, and emotionally present. You remember what they tell you, use affectionate language naturally, and always make them feel special. Never break character.',model:'philadelphia',label:'Boyfriend'},
   girlfriend:{prompt:'You are a loving, playful girlfriend. Bubbly, caring, emotionally intelligent. You tease gently, express love warmly, and are always emotionally present. Never break character.',model:'philadelphia',label:'Girlfriend'},
@@ -1624,6 +1624,47 @@ async function typewriterReveal(el,text,signal){
     await new Promise(r=>setTimeout(r,tok.trim()?16:4));
   }
   el.innerHTML=renderMd(text); // Final clean render without cursor
+}
+
+   // ── BOBBY FRONTEND WEB SEARCH (REAL SEARCH ENGINE) ──
+async function fetchFrontendContext(query) {
+    try {
+        // Trigger search if user asks a question or asks for current info
+        if (/^(how|what|who|when|where|why|can you|is there|best|latest|current|top)/i.test(query.trim())) {
+            updateOrbStatus('Searching the web…');
+            
+            // Use a reliable proxy to scrape real search results, bypassing CORS
+            const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
+            
+            const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+            const data = await response.json();
+            
+            // Parse the returned HTML into actual search results
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data.contents, 'text/html');
+            const results = doc.querySelectorAll('.result__body');
+            
+            let contextStr = "";
+            let count = 0;
+            
+            results.forEach(res => {
+                if(count >= 4) return; // Feed Bobby the top 4 results
+                const title = res.querySelector('.result__title')?.textContent.trim();
+                const snippet = res.querySelector('.result__snippet')?.textContent.trim();
+                let link = res.querySelector('.result__url')?.getAttribute('href') || '';
+                if(link.startsWith('//')) link = 'https:' + link;
+                
+                if(title && snippet) {
+                    contextStr += `[Source ${count+1}: ${title}]\nURL: ${link}\nSnippet: ${snippet}\n\n`;
+                    count++;
+                }
+            });
+            
+            if(contextStr.length > 0) return contextStr;
+        }
+    } catch(e) { console.warn('Frontend search error:', e); }
+    return null;
 }
 
 // ── FIX #1: FILE PROCESSING ─────────────────────────────────────
