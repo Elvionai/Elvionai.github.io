@@ -902,7 +902,7 @@ pre::before{
   </div>
   <div class="call-settings">
     <label>Voice:</label>
-    <select id="call-voice-model"><option value="gemini">Philadelphia (Styles)</option><option value="minimax">Premium Characters</option></select>
+    <select id="call-voice-model"><option value="gemini">Philadelphia (Styles)</option><option value="minimax">Premium (Characters)</option></select>
     <label>Style:</label>
     <select id="call-voice-style"></select>
   </div>
@@ -2057,14 +2057,62 @@ const toolDefs={
   },
   comic:{
     title:'Create Comic',
-    form:`<label class="form-label">Story Script</label><textarea class="form-textarea" id="tf-story" required placeholder="[DIALOGUE] Are you seeing this?\n[NARRATION] They stared into the void..."></textarea><label class="form-label">Panels (1-6)</label><input class="form-input" type="number" id="tf-panels" value="3" min="1" max="6"><button type="submit" class="submit-btn"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
+    form:`
+      <div style="font-size:0.75rem;color:var(--text-2);margin-bottom:12px;line-height:1.4;">
+        Use tags <strong>[DIALOGUE]</strong>, <strong>[INSTRUCTION]</strong> & <strong>[NARRATION]</strong> to guide the story panels.
+      </div>
+      <label class="form-label">Generation Model</label>
+      <select class="form-select" id="tf-provider">
+        <option value="thena">Version 1 (Stylized, Recommended)</option>
+        <option value="minimax">Version 2 (Creative, MiniMax)</option>
+      </select>
+      <label class="form-label">Story Script</label>
+      <textarea class="form-textarea" id="tf-story" required placeholder="[DIALOGUE] Are you seeing this?\n[NARRATION] They stared into the void..."></textarea>
+      <label class="form-label">Comic Art Style</label>
+      <select class="form-select" id="tf-style"></select>
+      <label class="form-label">Panels (1-6)</label>
+      <input class="form-input" type="number" id="tf-panels" value="3" min="1" max="6">
+      <button type="submit" class="submit-btn"><i class="fa-solid fa-book-open"></i> Create Comic</button>`,
+    init: tf => {
+        const prov = tf.querySelector('#tf-provider');
+        const style = tf.querySelector('#tf-style');
+        const thenaStyles =[
+            { value: 'v6', text: 'V1: General/Illustration' },
+            { value: 'photoreal', text: 'V1: Photoreal' },
+            { value: 'movie', text: 'V1: Cinematic' },
+            { value: 'anime', text: 'V1: Anime Fast' },
+            { value: 'anime_core', text: 'V1: Anime Core' },
+            { value: 'max', text: 'V1: max' }
+        ];
+        const minimaxStyles =[
+            { value: 'anime', text: 'Anime' },
+            { value: 'american', text: 'American Comic' },
+            { value: 'manga', text: 'Manga' }
+        ];
+        const update = () => {
+            const opts = prov.value === 'thena' ? thenaStyles : minimaxStyles;
+            style.innerHTML = opts.map(s => `<option value="${s.value}">${s.text}</option>`).join('');
+        };
+        prov.onchange = update;
+        update();
+    },
     run:async form=>{
       const story=form.querySelector('#tf-story').value;
       const panels=parseInt(form.querySelector('#tf-panels').value);
+      const provider=form.querySelector('#tf-provider').value;
+      const selectedStyle=form.querySelector('#tf-style').value;
+      
       await saveMsg('user',`Create comic: "${story.slice(0,40)}..."`);
       showOrbLoader('Creating your comic panels...');
       try{
-        const res=await fetch(`${API}/api/tools/generate-comic`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({story,panels,user:currentUser?.displayName||'User',model_provider:'thena',style:'illustration'}),signal:currentCtrl?.signal});
+        let payload = { story, panels, user: currentUser?.displayName || 'User', model_provider: provider };
+        if (provider === 'thena') {
+            payload.thena_model_key = selectedStyle; 
+            payload.style = 'illustration'; // internal fallback
+        } else {
+            payload.style = selectedStyle; 
+        }
+        const res=await fetch(`${API}/api/tools/generate-comic`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl?.signal});
         const d=await res.json();
         if(!res.ok)throw new Error(d.error);
         removeOrbLoader();
@@ -2076,7 +2124,30 @@ const toolDefs={
   },
   'voice-gen':{
     title:'Voice Generation',
-    form:`<label class="form-label">Engine</label><select class="form-select" id="tf-provider"><option value="gemini">Philadelphia (Styles)</option><option value="minimax">Premium Characters</option></select><label class="form-label">Text to Speak</label><textarea class="form-textarea" id="tf-prompt" required></textarea><label class="form-label">Style / Character</label><select class="form-select" id="tf-style"><option value="podcast">Podcast</option><option value="cinematic">Cinematic</option><option value="upbeat">Upbeat</option><option value="soft">Soft</option><option value="dramatic">Dramatic</option></select><button type="submit" class="submit-btn"><i class="fa-solid fa-microphone-lines"></i> Generate Voice</button>`,
+    form:`
+      <label class="form-label">Voice Provider</label>
+      <select class="form-select" id="tf-provider">
+        <option value="gemini">Philadelphia (Styles)</option>
+        <option value="minimax">Seraphina (Characters)</option>
+      </select>
+      <label class="form-label">Text to Speak</label>
+      <textarea class="form-textarea" id="tf-prompt" required placeholder="The eagle soars high..."></textarea>
+      <label class="form-label">Voice Style</label>
+      <select class="form-select" id="tf-style"></select>
+      <button type="submit" class="submit-btn"><i class="fa-solid fa-microphone-lines"></i> Generate Voice</button>`,
+    init: tf => {
+        const prov = tf.querySelector('#tf-provider');
+        const style = tf.querySelector('#tf-style');
+        const voices = {
+            gemini: ["podcast", "cinematic", "upbeat", "soft", "dramatic"],
+            minimax:["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
+        };
+        const update = () => {
+            style.innerHTML = voices[prov.value].map(v => `<option value="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('');
+        };
+        prov.onchange = update;
+        update();
+    },
     run:async form=>{
       const prov=form.querySelector('#tf-provider').value;
       const text=form.querySelector('#tf-prompt').value;
@@ -2301,10 +2372,11 @@ document.querySelectorAll('[data-tool]').forEach(btn=>{
       const r=await def.run();
       if(r)await showToolResult(r);
       $('send-btn').style.display='flex';$('stop-btn').style.display='none';$('call-btn').style.display='flex';
-    } else {
+     } else {
       $('tool-form-title').textContent=def.title;
       const tf=$('tool-form');
       tf.innerHTML=def.form;
+      if(def.init) def.init(tf); // This enables dynamic dropdowns!
       tf.onsubmit=async e=>{
         e.preventDefault();
         const sb=tf.querySelector('[type=submit]');
