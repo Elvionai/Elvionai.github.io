@@ -952,10 +952,34 @@ const EP = {
   bobby: `${API}/api/llama/chat`
 };
 
-// FIX #2: Tool result prefix — only tool-generated HTML gets this prefix
-// This prevents AI code responses from being accidentally rendered as HTML
-const TOOL_PREFIX = '\u0000TOOL\u0000';
+// 👇👇👇 PASTE THIS NEW INTERCEPTOR RIGHT HERE 👇👇👇
 
+// ── FIREBASE AUTH FETCH INTERCEPTOR ──
+// Automatically attaches the secure Firebase token to all backend API requests
+const originalFetch = window.fetch;
+window.fetch = async function(resource, config) {
+  // Only intercept requests going to your backend API
+  if (typeof resource === 'string' && resource.startsWith(API)) {
+    if (auth && auth.currentUser) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        config = config || {};
+        config.headers = config.headers || {};
+        // Attach the token to the headers
+        config.headers['X-Firebase-Token'] = token;
+      } catch (err) {
+        console.warn("Could not retrieve Firebase token", err);
+      }
+    }
+  }
+  return originalFetch(resource, config);
+};
+
+// 👆👆👆 END OF INTERCEPTOR 👆👆👆
+
+// FIX #2: Tool result prefix — only tool-generated HTML gets this prefix
+const TOOL_PREFIX = '\u0000TOOL\u0000';
+   
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 // FIX #6 & improved markdown: Better inlineMd with full markdown support (works for Bobby too)
