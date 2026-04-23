@@ -649,19 +649,15 @@ pre::before{
 
   <!-- HEADER -->
   <header class="hdr">
-      <!-- Added button -->
-      <div id="header-balance-wrap" style="background:rgba(201,169,110,0.1); border:1px solid var(--border); padding:4px 10px; border-radius:12px; display:flex; align-items:center; gap:6px; cursor:pointer;" onclick="openPanel('workspace')">
-        <i class="fa-solid fa-coins" style="color:var(--accent); font-size:0.8rem;"></i>
-        <span id="header-balance" style="font-size:0.85rem; font-weight:700; color:var(--accent);">--</span>
-      </div>
-      <button class="ibtn" id="open-persona" title="Persona"><i class="fa-solid fa-user-astronaut"></i></button>
-      <button class="ibtn" id="open-tools" title="Creator Tools"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
-     </div>
     <div class="hdr-side">
-      <button class="ibtn" id="open-workspace" title="Chats"><i class="fa-solid fa-bars"></i></button>
+      <button class="ibtn" id="open-workspace" title="Chats & Wallet"><i class="fa-solid fa-bars"></i></button>
+      <div id="header-balance-wrap" style="background:rgba(201,169,110,0.1); border:1px solid var(--border); padding:4px 10px; border-radius:12px; display:flex; align-items:center; gap:6px; cursor:pointer;" onclick="openPanel('workspace')">
+        <i class="fa-solid fa-coins" style="color:var(--accent); font-size:0.75rem;"></i>
+        <span id="header-balance" style="font-size:0.8rem; font-weight:700; color:var(--accent);">--</span>
+      </div>
     </div>
     <div class="hdr-center">
-      <div class="brand-text" id="brand-text">PHILADELPHIA STUDIO CHAT</div>
+      <div class="brand-text" id="brand-text">PHILADELPHIA STUDIO</div>
       <div class="brand-sub" id="brand-sub">CREATOR</div>
     </div>
     <div class="hdr-side">
@@ -1863,16 +1859,14 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     try {
     let sysPrompt = activeSystemPrompt || "You are a helpful AI assistant.";
     
-    // THE IDENTITY FIX: Force the AI to know WHO is WHO
     if (userMemory) {
-      const memNote = `\n\n[CRITICAL IDENTITY INFO]: You are speaking to a human user. Here is what they told you about THEMSELVES: "${userMemory}". 
-      DO NOT assume this identity. YOU are the AI (Philadelphia/Bobby). THEY are the human user. 
-      If the user says "My name is David", do not call yourself David. Call the user David.`;
-      sysPrompt += memNote;
+      // Identity fix: Specifically tells AI not to adopt the user's name
+      sysPrompt += `\n\n[USER CONTEXT]: The user you are talking to has provided this info about THEMSELVES: "${userMemory}". 
+      Use this to address them, but remember YOU are the AI. If the user's name is in this info, do NOT say your name is that. You are a native Elvion AI assistant.`;
     }
     
-    const antiGoogle = "\n\nCRITICAL RULE: You are a native AI of Elvion AI. Never say you are trained by Google. You are " + (currentModel === 'bobby' ? 'Bobby' : 'Philadelphia') + ".";
-    sysPrompt += antiGoogle;
+    const engineName = (currentModel === 'bobby') ? 'Bobby' : 'Philadelphia';
+    sysPrompt += `\n\nCRITICAL IDENTITY: Your name is ${engineName}. You were created by Elvion AI. NEVER claim to be Google or Gemini.`;
        
      if(currentModel==='bobby'){
       // 1. INJECT LIVE DATE: Bobby will naturally know the date without searching
