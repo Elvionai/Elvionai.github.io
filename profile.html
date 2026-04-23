@@ -1498,8 +1498,10 @@ async function runImageWithPrompt(prompt){
   showOrbLoader('Creating your image...');
   try{
     const res=await fetch(`${API}/generate-image`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,model:'v6',use_minimax:false,creative:false})});
-    const d=await res.json();
-    if(!res.ok)throw new Error(d.error||'Failed');
+    // Safely parse the JSON
+    const d=await res.json().catch(()=>({}));
+    // Look for detail FIRST!
+    if(!res.ok)throw new Error(d.detail || d.error || 'Image generation failed');
     removeOrbLoader();
     showImageModal(d.image_b64,'IMAGE OUTPUT',true);
     await showToolResult(`Image created! Tap the floating window to download.`);
@@ -2046,8 +2048,10 @@ const toolDefs={
       showOrbLoader('Creating your image...');
       try{
         const res=await fetch(`${API}/generate-image`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,model:style,use_minimax,creative:false}),signal:currentCtrl?.signal});
-        const d=await res.json();
-        if(!res.ok)throw new Error(d.error||'Failed');
+        // Safely parse the JSON
+        const d=await res.json().catch(()=>({}));
+        // Look for detail FIRST!
+        if(!res.ok)throw new Error(d.detail || d.error || 'Failed to generate image');
         removeOrbLoader();
         showImageModal(d.image_b64,'IMAGE OUTPUT',true);
         return'Image created! View it in the popup window above.';
