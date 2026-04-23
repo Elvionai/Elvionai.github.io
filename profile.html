@@ -1805,9 +1805,13 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   try{
     let sysPrompt=activeSystemPrompt;
     if(userMemory){
-      const memNote=`[PERSISTENT MEMORY — always consider this]: ${userMemory}`;
+      const memNote=`[USER PROFILE]: The human you are speaking to has provided this information about themselves: "${userMemory}". Always address them accordingly. DO NOT confuse their identity with your own. You are the AI, they are the user.`;
       sysPrompt=sysPrompt?`${sysPrompt}\n\n${memNote}`:memNote;
     }
+    
+    // Aggressively override Google's default identity
+    const antiGoogle = "\n\nCRITICAL RULE: You are a native AI of Elvion AI. You must NEVER say you are an AI trained by Google or Gemini. If asked who you are, state your current persona (Philadelphia or Bobby).";
+    sysPrompt = sysPrompt ? sysPrompt + antiGoogle : antiGoogle;
 
      if(currentModel==='bobby'){
       // 1. INJECT LIVE DATE: Bobby will naturally know the date without searching
@@ -2478,9 +2482,18 @@ async function handleCallResponse(){
   if(isRecog)try{sr.stop()}catch(e){}
   const lastMsg=callHistory.at(-1)?.content||'';
   try{
-    let sysP=activeSystemPrompt;
-    if(userMemory)sysP=sysP?`${sysP}\n[MEMORY]: ${userMemory}`:`[MEMORY]: ${userMemory}`;
-    const payload={message:lastMsg,history:callHistory.slice(0,-1).map(m=>({role:m.role,content:m.content})),call_context:true};
+      let sysP=activeSystemPrompt;
+      
+      if(userMemory){
+        const memNote=`[USER PROFILE]: The human you are speaking to has provided this information about themselves: "${userMemory}". Always address them accordingly. DO NOT confuse their identity with your own. You are the AI, they are the user.`;
+        sysP = sysP ? `${sysP}\n\n${memNote}` : memNote;
+      }
+
+      // Aggressively override Google's default identity
+      const antiGoogle = "\n\nCRITICAL RULE: You are a native AI of Elvion AI. You must NEVER say you are an AI trained by Google or Gemini. If asked who you are, state your current persona (Philadelphia or Bobby).";
+      sysP = sysP ? sysP + antiGoogle : antiGoogle;
+
+      const payload={message:lastMsg,history:callHistory.slice(0,-1).map(m=>({role:m.role,content:m.content})),call_context:true};
     if(sysP)payload.system_prompt=sysP;
     const res=await fetch(EP.philadelphia,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res.ok)throw new Error('Server error');
