@@ -1861,8 +1861,10 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       if(sysPrompt) payload.systemPrompt=sysPrompt;
       
       const res=await fetch(EP.bobby,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal});
-      if(!res.ok) throw new Error('Bobby engine error');
-      const data=await res.json();
+if(!res.ok) {
+    const errData = await res.json().catch(()=>({}));
+    throw new Error(errData.detail || 'Bobby engine error');
+}
       
       // Strip any raw HTML tags the LLM might return before rendering markdown
       fullText=(data.content||'No response.').replace(/<\/?(b|i|strong|em|br|p|div|span)\s*\/?>/gi,'').trim();
@@ -1874,8 +1876,10 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       const payload={message:augmentedMessage,history};
       if(sysPrompt) payload.system_prompt=sysPrompt;
       const res=await fetch(EP.philadelphia,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal});
-      if(!res.ok) throw new Error('Philadelphia engine error');
-
+if(!res.ok) {
+    const errData = await res.json().catch(()=>({}));
+    throw new Error(errData.detail || 'Philadelphia engine error');
+}
       const reader=res.body.getReader();
       const dec=new TextDecoder();
       let buf='',firstChunk=true;
