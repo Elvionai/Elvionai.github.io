@@ -1867,13 +1867,15 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
           throw new Error(errData.detail || 'Bobby engine error');
       }
       
-      const data = await res.json(); // <-- THIS WAS ACCIDENTALLY DELETED!
+      const data = await res.json(); 
       
-      // Strip any raw HTML tags the LLM might return before rendering markdown
-      fullText=(data.content||'No response.').replace(/<\/?(b|i|strong|em|br|p|div|span)\s*\/?>/gi,'').trim();
+      // SAFELY PARSE TEXT: Automatically detects if Thena returned text directly or wrapped in JSON
+      const aiText = data.content || data.response || data.reply || (typeof data === 'string' ? data : 'No response.');
+      fullText = aiText.replace(/<\/?(b|i|strong|em|br|p|div|span)\s*\/?>/gi,'').trim();
       
-      // Better typewriter effect (word-by-word from the previous fix)
+      // Better typewriter effect
       await typewriterReveal(contentEl, fullText, currentCtrl.signal);
+        
     } else {
       // Philadelphia — streaming
       const payload={message:augmentedMessage,history};
