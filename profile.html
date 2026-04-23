@@ -733,12 +733,11 @@ pre::before{
 <div id="lightbox"><img id="lb-img" src="" alt=""></div>
 
 <!-- ====== PANELS ====== -->
-
 <!-- WORKSPACE PANEL -->
 <div class="overlay" id="ws-overlay"></div>
 <aside class="panel" id="workspace-panel">
   <div class="panel-hdr">
-    <h2>CHATS</h2>
+    <h2>CHATS & WALLET</h2>
     <button class="ibtn" onclick="closePanel('workspace')"><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="panel-body">
@@ -756,7 +755,7 @@ pre::before{
       <div class="status-msg" id="profile-status"></div>
     </form>
 
-    <!-- 👇👇👇 PASTE THE NEW WALLET UI HERE 👇👇👇 -->
+    <!-- WALLET UI -->
     <div class="panel-section-title" style="margin-top:22px">Wallet & Credits</div>
     <div style="background:rgba(201,169,110,0.05); border:1px solid rgba(201,169,110,0.2); border-radius:12px; padding:15px; text-align:center; margin-bottom:15px;">
       <div style="font-size:0.75rem; color:var(--text-2); text-transform:uppercase; letter-spacing:1px;">Available Balance</div>
@@ -765,11 +764,23 @@ pre::before{
         <button class="submit-btn" id="claim-daily-btn" style="margin-top:0; padding:9px; font-size:0.75rem;"><i class="fa-solid fa-gift"></i> Claim Daily</button>
         <button class="submit-btn" id="fund-wallet-btn" style="margin-top:0; padding:9px; font-size:0.75rem; background:var(--accent-green); color:#000;"><i class="fa-solid fa-wallet"></i> Fund Wallet</button>
       </div>
-      <div class="status-msg" id="wallet-status" style="font-size:0.75rem; margin-top:8px; min-height:18px;"></div>
+      <div class="status-msg" id="wallet-status" style="font-size:0.72rem; margin-top:8px;"></div>
     </div>
-    <!-- 👆👆👆 END WALLET UI 👆👆👆 -->
 
-    <div class="panel-section-title" style="margin-top:22px">Conversations</div>
+    <!-- REFERRAL SYSTEM -->
+    <div class="panel-section-title">Referrals</div>
+    <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.2); border-radius:12px; padding:12px; margin-bottom:15px;">
+      <div style="font-size:0.7rem; color:var(--text-2); margin-bottom:8px;">Your Referral Code (UID):</div>
+      <code id="user-ref-code" style="display:block; background:rgba(0,0,0,0.3); padding:5px; border-radius:5px; font-size:0.65rem; color:var(--pur); word-break:break-all; margin-bottom:10px;">Loading...</code>
+      
+      <div style="display:flex; gap:5px;">
+        <input type="text" id="referral-input" class="form-input" style="font-size:0.75rem;" placeholder="Paste friend's code">
+        <button id="redeem-btn" class="submit-btn" style="margin-top:0; width:80px; font-size:0.7rem;">Redeem</button>
+      </div>
+      <div id="ref-status" style="font-size:0.65rem; margin-top:5px; text-align:center;"></div>
+    </div>
+
+    <div class="panel-section-title">Conversations</div>
     <button class="panel-link" id="new-chat-btn">
       <i class="fa-solid fa-plus"></i> New Conversation
     </button>
@@ -2634,27 +2645,21 @@ $('call-modal').onclick=e=>{
 setTimeout(()=>{if(ti)ti.focus()},300);
 </script>
 <script>
-   // ── WALLET & CREDITS LOGIC ──────────────────────────────────────
+// ── UNIFIED WALLET, DAILY & REFERRAL LOGIC ──────────────────────
 async function updateWalletUI() {
   try {
     const res = await fetch(`${API}/api/user/keys-and-balance`);
     if (res.ok) {
       const d = await res.json();
-      // Update both the sidebar and the header
       if ($('wallet-balance')) $('wallet-balance').textContent = d.balance;
       if ($('header-balance')) $('header-balance').textContent = d.balance;
+      if ($('user-ref-code') && auth.currentUser) $('user-ref-code').textContent = auth.currentUser.uid;
     }
-  } catch (e) {}
+  } catch (e) { console.error("Wallet load error", e); }
 }
-// Fetch the balance a couple of seconds after the page loads
-setTimeout(updateWalletUI, 2000);
 
-// Update balance automatically whenever they open the workspace panel
-const oldOpenWs = $('open-workspace').onclick;
-$('open-workspace').onclick = (e) => {
-  if (oldOpenWs) oldOpenWs(e);
-  updateWalletUI(); 
-};
+// Global actions
+window.quickSend = (t) => { $('txt-input').value = t; sendMsg(); };
 
 // Claim Daily Logic
 const claimBtn = $('claim-daily-btn');
@@ -2662,35 +2667,54 @@ if (claimBtn) {
   claimBtn.onclick = async (e) => {
     e.preventDefault();
     const st = $('wallet-status');
-    st.style.color = 'var(--text-1)';
     st.textContent = 'Claiming...';
     try {
       const res = await fetch(`${API}/api/user/claim-daily`, { method: 'POST' });
       const d = await res.json().catch(() => ({}));
-      if (res.ok) {
-        st.style.color = 'var(--accent-green)';
-        st.textContent = '✓ ' + d.message;
-        updateWalletUI(); // Refresh the big number instantly
-      } else {
-        st.style.color = 'var(--danger)';
-        st.textContent = '⚠ ' + (d.detail || d.message || 'Failed');
-      }
-    } catch (err) {
-      st.style.color = 'var(--danger)';
-      st.textContent = 'Error claiming credits.';
-    }
-    setTimeout(() => st.textContent = '', 4000);
+      st.textContent = d.message || (res.ok ? 'Success!' : 'Failed');
+      st.style.color = res.ok ? 'var(--accent-green)' : 'var(--danger)';
+      if (res.ok) updateWalletUI();
+    } catch (err) { st.textContent = 'Connection error'; }
   };
 }
 
-// Pay-As-You-Go logic
-const fundBtn = $('fund-wallet-btn');
-if (fundBtn) {
-  fundBtn.onclick = (e) => {
+// Redeem Referral Logic
+const redeemBtn = $('redeem-btn');
+if (redeemBtn) {
+  redeemBtn.onclick = async (e) => {
     e.preventDefault();
-    window.open('https://elvionai.com.ng/developer-dashboard.html', '_blank');
+    const code = $('referral-input').value.trim();
+    const st = $('ref-status');
+    if(!code) return;
+    st.textContent = 'Verifying...';
+    try {
+      const res = await fetch(`${API}/api/user/redeem-referral`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referrer_code: code })
+      });
+      const d = await res.json();
+      st.textContent = d.message;
+      st.style.color = res.ok ? 'var(--accent-green)' : 'var(--danger)';
+      if(res.ok) updateWalletUI();
+    } catch (err) { st.textContent = 'Error redeeming code'; }
   };
 }
+
+// Dashboard Redirect
+$('fund-wallet-btn').onclick = (e) => {
+  e.preventDefault();
+  window.open('https://elvionai.com.ng/developer-dashboard.html', '_blank');
+};
+
+// Auto-update UI
+const oldOpenWs = $('open-workspace').onclick;
+$('open-workspace').onclick = (e) => {
+  if (oldOpenWs) oldOpenWs(e);
+  updateWalletUI(); 
+};
+
+setTimeout(updateWalletUI, 2500);
 </script>
 </body>
 </html>
