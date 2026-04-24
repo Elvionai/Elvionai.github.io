@@ -1243,6 +1243,9 @@ onAuthStateChanged(auth,user=>{
   $('edit-photo').value=user.photoURL||'';
   $('brand-sub').textContent=`WORKSPACE: ${name.toUpperCase()}`;
   loadChats(user.uid);
+  
+  // Check for successful payment return
+  setTimeout(window.checkPayReturn, 1500);
 });
 
 $('profile-form').onsubmit=async e=>{
@@ -2673,57 +2676,71 @@ $('claim-daily-btn').onclick = async () => {
     setTimeout(() => st.textContent = '', 4000);
 };
 
-// 2. Fund Wallet (Opens Modal instead of leaving)
-$('fund-wallet-btn').onclick = () => openM('fund-m');
-
-// 3. Initiate Payment (Stays on Page)
-window.initPay = async () => {
-    const amt = parseInt($('fund-amt').value);
-    if(amt < 100) { toast("Minimum ₦100", "e"); return; }
+// 2. Fund Wallet Button (Redirects to Korapay)
+$('fund-wallet-btn').onclick = async () => {
+    let amt = parseInt(prompt("Enter amount to fund (Minimum ₦100):", "1000"));
+    if(!amt || amt < 100) { toast("Minimum funding amount is ₦100.", "e"); return; }
     
-    const pvn = $('pvn');
-    pvn.style.display = "block";
+    const btn = $('fund-wallet-btn');
+    const origText = btn.innerHTML;
+    btn.textContent = 'Redirecting...';
     
     try {
+        const token = await auth.currentUser.getIdToken();
         const res = await fetch(`${API}/api/payments/initiate`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-Firebase-Token": await auth.currentUser.getIdToken() },
-            body: JSON.stringify({ amount: amt, redirect_url: window.location.href })
+            headers: { "Content-Type": "application/json", "X-Firebase-Token": token },
+            body: JSON.stringify({ amount: amt, redirect_url: window.location.href.split("?")[0] })
         });
         const d = await res.json();
+        
         if(res.ok) {
-            // Open payment in new tab, but user stays on your page
-            window.open(d.checkout_url, '_blank');
-            pvn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing... (Check your bank app)`;
-            // Start verification polling
-            verifyPayment(d.transaction_ref);
+            window.location.href = d.checkout_url;
         } else {
             toast(d.detail || "Payment failed", "e");
-            pvn.style.display = "none";
+            btn.innerHTML = origText;
         }
-    } catch(e) { toast("Connection error", "e"); pvn.style.display = "none"; }
+    } catch(e) { 
+        toast("Connection error", "e"); 
+        btn.innerHTML = origText;
+    }
 };
 
-// 4. Verification Polling (Stays on Page)
-async function verifyPayment(ref) {
-    const pvn = $('pvn');
-    for(let i=0; i<15; i++) {
-        await new Promise(r => setTimeout(r, 5000));
-        const res = await fetch(`${API}/api/payments/verify?transaction_ref=${ref}`, {
-            headers: { "X-Firebase-Token": await auth.currentUser.getIdToken() }
-        });
-        const d = await res.json();
-        if(d.status === "success") {
-            toast("Payment successful! Credits added.", "s");
-            updateWalletUI();
-            closeM('fund-m');
-            pvn.style.display = "none";
-            return;
+// 3. Verification Polling (runs when they return from Korapay)
+window.checkPayReturn = async () => {
+    const p = new URLSearchParams(window.location.search);
+    const ref = p.get("reference") || p.get("trxref");
+    if(!ref || !auth.currentUser) return;
+    
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    const st = $('wallet-status');
+    if(st) { st.textContent = 'Verifying payment...'; st.style.color = "var(--accent)"; }
+    
+    const verify = async (tries) => {
+        if(tries <= 0) { if(st) st.textContent = 'Verification timeout.'; return; }
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const r = await fetch(`${API}/api/payments/verify?transaction_ref=${ref}`, {
+                headers: { "X-Firebase-Token": token }
+            });
+            const d = await r.json();
+            if(d.status === "success" || d.status === "already_credited") {
+                if(st) { st.textContent = `Payment confirmed! +${d.credits_added} credits`; st.style.color = "var(--accent-green)"; }
+                updateWalletUI();
+                setTimeout(() => { if(st) st.textContent = ''; }, 5000);
+            } else if(d.status === "pending") {
+                setTimeout(() => verify(tries - 1), 4000);
+            } else {
+                if(st) { st.textContent = 'Payment failed.'; st.style.color = "var(--danger)"; }
+            }
+        } catch {
+            setTimeout(() => verify(tries - 1), 4000);
         }
-    }
-    pvn.innerHTML = "Timed out. Please contact support.";
-}
-
+    };
+    verify(15);
+};
+            
 // 5. Referral
 $('redeem-btn').onclick = async () => {
     const code = $('referral-input').value.trim();
