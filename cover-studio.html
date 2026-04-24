@@ -946,7 +946,16 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
           </button>
         </div>
       </div>
-    </div>
+
+      <!-- REFERRAL SYSTEM -->
+      <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.2); border-radius:12px; padding:12px; margin-top:15px; text-align:left;">
+        <div style="font-size:0.65rem; color:var(--t2); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Your Referral ID</div>
+        <code id="user-ref-code" style="display:block; background:rgba(0,0,0,0.3); padding:8px; border-radius:5px; font-size:0.75rem; color:var(--pur); word-break:break-all; margin-bottom:10px; border:1px dashed rgba(139,92,246,0.3);">Loading...</code>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="referral-input" style="flex:1; background:rgba(0,0,0,0.4); border:1px solid var(--bdr); color:var(--t1); padding:8px; border-radius:var(--r8); font-family:var(--fb); font-size:0.75rem; outline:none;" placeholder="Paste friend's code">
+          <button onclick="authA(redeemRef)" style="padding:8px 12px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); border-radius:var(--r8); color:#c4b5fd; cursor:pointer; font-weight:bold; font-size:0.7rem;">Redeem</button>
+        </div>
+      </div>
     
     <div class="stat-row">
       <div class="scard"><div class="sv" id="pro-gc">0</div><div class="sl">Generated</div></div>
@@ -1034,15 +1043,6 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
 </div></div>
 
 <div class="mbg" id="api-m"><div class="modal">
-  <div class="m-hnd"></div>
-  <div class="m-ico"><i class="fas fa-key"></i></div>
-  <div class="m-ttl">Studio Activation</div>
-  <div class="m-sub">Access Philadelphia AI engines. One-time cost: 100 Credits.</div>
-  <div id="kd" style="display:none"><div class="kbox" id="kv">—<button class="kcopy" onclick="copyKey()"><i class="fas fa-copy"></i></button></div></div>
-  <div class="mbtns">
-    <button class="mbtn p" id="akbtn" onclick="genKey()"><i class="fas fa-key"></i> Activate Studio (100 Credits)</button>
-    <button class="mbtn s" onclick="openM('fund-m');closeM('api-m')"><i class="fas fa-plus"></i> Fund Wallet First</button>
-  </div>
 </div></div>
 
 <div class="mbg" id="char-m"><div class="modal">
@@ -1215,9 +1215,12 @@ async function loadUser(){
   try{
     const r=await fetch(`${API}/api/user/keys-and-balance`,{headers:{"X-Firebase-Token":tok}});
     const d=await r.json();
-    if(r.ok){bal=d.balance||0;updBal();const k=(d.keys||[]).find(x=>x.is_active);if(k)apiK=k.api_key;else openM("api-m");}
+    if(r.ok){
+      bal=d.balance||0; updBal();
+      if(window.cu) document.getElementById("user-ref-code").textContent = window.cu.uid;
+    }
   }catch(e){toast("Network error","e");}
-}
+  }
 function updBal(){
   const v=bal.toLocaleString();
   ["bal-v","pro-bal"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=v;});
@@ -1330,7 +1333,7 @@ window.openBobby = () => openM('bobby-m');
   const recent = bobbyHistory.slice(-8).map(m => `${m.role === 'ai' ? 'Bobby' : 'User'}: ${m.text}`).join("\n");
 
   try {
-    const r = await fetch(`${API}/api/developer/bobby/chat`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiK}` }, body: JSON.stringify({ prompt: recent, systemPrompt: sysPrompt }) });
+    const r = await fetch(`${API}/api/studio/bobby/chat`, { method: "POST", headers: { "Content-Type": "application/json", "X-Firebase-Token": tok }, body: JSON.stringify({ prompt: recent, systemPrompt: sysPrompt }) });
     const d = await r.json(); 
     if(!r.ok) throw new Error(d.detail);
     
@@ -1753,7 +1756,17 @@ window.finishWithAI = async () => {
   const[w,h] = document.getElementById("i-res").value.split("x").map(Number);
   showGL("AI is rendering your text...");
   try {
-    const r = await fetch(`${API}/api/developer/generate-image`, {method:"POST",headers:{"Content-Type":"application/json", "Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt, model:"v6", width:w, height:h, creative:false})});
+    const r = await fetch(`${API}/api/studio/generate-image`, {
+  method:"POST",
+  headers:{"Content-Type":"application/json", "X-Firebase-Token": tok},
+  body:JSON.stringify({
+    prompt, 
+    model, 
+    width:w, 
+    height:h, 
+    creative:false
+  })
+});
     const d = await r.json();if(!r.ok) throw new Error(d.detail);
     hideGL(); applyImgToBook(d.image_b64); bal -= 15; updBal();
     
@@ -2437,7 +2450,7 @@ window.sendBobby = async () => {
   const recent = bobbyHistory.slice(-8).map(m => `${m.role === 'ai' ? 'Bobby' : 'User'}: ${m.text}`).join("\n");
 
   try {
-    const r = await fetch(`${API}/api/developer/bobby/chat`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiK}` }, body: JSON.stringify({ prompt: recent, systemPrompt: sysPrompt }) });
+    const r = await fetch(`${API}/api/studio/bobby/chat`, { method: "POST", headers: { "Content-Type": "application/json", "X-Firebase-Token": tok }, body: JSON.stringify({ prompt: recent, systemPrompt: sysPrompt }) });
     const d = await r.json(); 
     if(!r.ok) throw new Error(d.detail);
     
@@ -2776,8 +2789,6 @@ function buildParticles(){
     c.appendChild(p);
   }
 }
-</script>
-<script>
   /* ── CLAIM DAILY CREDITS ── */
 window.claimDaily = async () => {
   toast("Checking daily reward...", "i");
@@ -2797,6 +2808,42 @@ window.claimDaily = async () => {
   } catch (e) {
     toast("Error reaching server.", "e");
   }
+};
+  /* ── REFERRAL SYSTEM ── */
+window.redeemRef = async () => {
+  const code = document.getElementById("referral-input").value.trim();
+  if(!code) { toast("Enter a referral code", "e"); return; }
+  try {
+    const r = await fetch(`${API}/api/user/redeem-referral`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', "X-Firebase-Token": tok },
+      body: JSON.stringify({ referrer_code: code })
+    });
+    const d = await r.json();
+    if(r.ok) { toast("Referral successful!", "s"); loadUser(); document.getElementById("referral-input").value = ""; }
+    else { toast(d.message || "Failed to redeem", "e"); }
+  } catch (e) { toast("Connection error", "e"); }
+};
+
+/* ── BOBBY ENHANCE PROMPT ── */
+window.bobbify = async () => {
+  const p = document.getElementById("i-prompt").value.trim();
+  if(!p) { toast("Enter a concept first!", "e"); return; }
+  const btn = document.querySelector('button[onclick="authA(bobbify)"]');
+  const orig = btn.innerHTML;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enhancing...`;
+  try {
+    const sys = "You are an expert prompt engineer. Take the user's concept and rewrite it into a detailed visual prompt for a book cover. Return ONLY the enhanced text.";
+    const r = await fetch(`${API}/api/studio/bobby/chat`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-Firebase-Token": tok},
+      body: JSON.stringify({ prompt: p, systemPrompt: sys })
+    });
+    const d = await r.json();
+    document.getElementById("i-prompt").value = d.content || d.reply;
+    toast("Prompt Enhanced (2 Credits)", "s");
+  } catch(e) { toast("Enhance failed", "e"); }
+  btn.innerHTML = orig;
 };
 </script>
 </body>
