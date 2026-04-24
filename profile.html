@@ -2573,24 +2573,6 @@ async function handleCallResponse(){
   }
 }
     
-    const antiGoogle = "\n\nCRITICAL RULE: You are a native AI of Elvion AI. Never say you are trained by Google. You are " + (currentModel === 'bobby' ? 'Bobby' : 'Philadelphia') + ".";
-    sysPrompt += antiGoogle;
-      
-      const payload={message:lastMsg,history:callHistory.slice(0,-1).map(m=>({role:m.role,content:m.content})),call_context:true};
-    if(sysP)payload.system_prompt=sysP;
-    const res=await fetch(EP.philadelphia,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!res.ok)throw new Error('Server error');
-    let full='';
-    const reader=res.body.getReader();const dec=new TextDecoder();let buf='';
-    while(true){const{value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});let nl;
-      while((nl=buf.indexOf('\n\n'))!==-1){const c=buf.slice(0,nl);buf=buf.slice(nl+2);if(c.startsWith('data:')){const j=c.slice(5).trim();if(j==='[DONE]')break;try{const d=JSON.parse(j);if(d.type==='content')full+=d.content}catch(e){}}}}
-    const resp=full.trim()||"I couldn't process that.";
-    callHistory.push({role:'assistant',content:resp});
-    addCallMsg('bot',resp);
-    speakBot(resp);
-  }catch(e){addCallMsg('bot',`❌ ${e.message}`);$('call-status-msg').textContent='Error. Tap to retry.';$('tap-to-talk').style.display='block'}
-}
-
 async function speakBot(text){
   if(!isCallActive)return;
   botSpeaking=true;$('bot-avatar-wrap').classList.add('speaking');
@@ -2650,8 +2632,7 @@ $('call-modal').onclick=e=>{
 
 // Focus
 setTimeout(()=>{if(ti)ti.focus()},300);
-</script>
-<script>
+
 // ── UNIFIED SINGLE-PAGE WALLET LOGIC ──────────────────────
 async function updateWalletUI() {
     if (!auth || !auth.currentUser) {
@@ -2756,6 +2737,22 @@ $('redeem-btn').onclick = async () => {
 };
 
 setTimeout(updateWalletUI, 2000);
+   // Missing Helper Functions
+window.toast = (msg, type) => {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${type==='e'?'#e05a5a':'#5fb87a'};color:#fff;padding:10px 20px;border-radius:20px;z-index:9999;font-size:0.85rem;box-shadow:0 4px 12px rgba(0,0,0,0.5);`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+};
+
+window.openM = (id) => {
+    const el = $(id);
+    if(el) el.style.display = 'flex';
+    else prompt("Funding amount (₦):", "1000"); // Fallback if modal HTML is missing
+};
+window.closeM = (id) => { const el = $(id); if(el) el.style.display = 'none'; };
+   
 </script>
 </body>
 </html>
