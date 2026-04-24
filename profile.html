@@ -1461,13 +1461,21 @@ window.regenMsg=async function(msgId){
   await sendMsg(userMsg.text,true);
 };
 
-function hookModelBtns(){
-  document.querySelectorAll('.mdl-btn').forEach(b=>{
-    b.onclick=e=>{
+function hookModelBtns() {
+  document.querySelectorAll('.mdl-btn').forEach(b => {
+    b.onclick = e => {
       e.stopPropagation();
-      currentModel=b.dataset.m;
-      localStorage.setItem('ph_model',currentModel);
-      document.querySelectorAll('.mdl-popup').forEach(p=>p.style.display='none');
+      currentModel = b.dataset.m;
+      localStorage.setItem('ph_model', currentModel);
+      
+      // Visual feedback
+      document.querySelectorAll('.mdl-btn').forEach(btn => btn.classList.remove('active-mdl'));
+      b.classList.add('active-mdl');
+      
+      // Hide popup
+      document.querySelectorAll('.mdl-popup').forEach(p => p.style.display = 'none');
+      
+      toast(`Engine switched to ${currentModel.toUpperCase()}`, "i");
     };
   });
 }
@@ -1857,105 +1865,67 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   const t0=performance.now();
 
     try {
-    let sysPrompt = activeSystemPrompt || "You are a helpful AI assistant.";
-    
-    if (userMemory) {
-      // Identity fix: Specifically tells AI not to adopt the user's name
-      sysPrompt += `\n\n[USER CONTEXT]: The user you are talking to has provided this info about THEMSELVES: "${userMemory}". 
-      Use this to address them, but remember YOU are the AI. If the user's name is in this info, do NOT say your name is that. You are a native Elvion AI assistant.`;
+    let basePrompt = activeSystemPrompt || (personaDefs[activePersona] ? personaDefs[activePersona].prompt : "You are a helpful AI assistant.");
+    if (activePersona === 'custom') {
+        basePrompt = buildCustomPrompt();
     }
     
-    const engineName = (currentModel === 'bobby') ? 'Bobby' : 'Philadelphia';
-    sysPrompt += `\n\nCRITICAL IDENTITY: Your name is ${engineName}. You were created by Elvion AI. NEVER claim to be Google or Gemini.`;
-       
-     if(currentModel==='bobby'){
-      // 1. INJECT LIVE DATE: Bobby will naturally know the date without searching
+    let finalSysPrompt = `Your name is ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}. You are a native AI of Elvion AI. `;
+    if (userMemory) {
+        finalSysPrompt += `\n\n[USER CONTEXT]: The user has provided this info about themselves: "${userMemory}". Address them using this, but DO NOT assume this identity yourself. YOU are the AI.`;
+    }
+    finalSysPrompt += `\n\n[INSTRUCTIONS]: ${basePrompt}`;
+
+    if (currentModel === 'bobby') {
       const currentDate = new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'full', timeStyle: 'short' });
-      
-      // 2. SAVE GPU MEMORY: Reduce history from 6 to 4 messages so Thena doesn't crash on long texts
       const recentMem = currentMessages.slice(-4).map(m => `${m.role === 'user' ? 'User' : 'Bobby'}: ${m.text || ''}`).join("\n");
       
       let payloadPrompt = `[System Note: Current Date & Time is ${currentDate}]\n\n`;
       payloadPrompt += recentMem ? `[Chat History]\n${recentMem}\n\n[New Question]\nUser: ${text}` : text;
 
-      // 3. REAL WEB SEARCH CONTEXT: Only search if text is less than 1000 characters (Prevents "GPU Full" on large pastes)
       let webCtx = null;
-      if (text.length < 1000) {
-          webCtx = await fetchFrontendContext(text);
+      if (text.length < 1000) webCtx = await fetchFrontendContext(text);
+      if (webCtx) {
+          payloadPrompt += `\n\n[LIVE WEB SEARCH RESULTS]\n${webCtx}\n\nINSTRUCTIONS: Answer the user using the live web search results above. Do not sound like a search engine.`;
       }
       
-      if(webCtx) {
-          payloadPrompt += `\n\n[LIVE WEB SEARCH RESULTS]\n${webCtx}\n\nINSTRUCTIONS: Answer the user's new question using the live web search results above. Be natural and conversational. DO NOT sound like a search engine. If the search results are irrelevant to the user's question, ignore them and answer normally.`;
-      }
+      const payload = { prompt: payloadPrompt, systemPrompt: finalSysPrompt };
+      const res = await fetch(EP.bobby, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: currentCtrl.signal });
       
-      const payload={prompt:payloadPrompt};
-      if(sysPrompt) payload.systemPrompt=sysPrompt;
-      
-      const res=await fetch(EP.bobby,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal});
-      
-      if(!res.ok) {
-          const errData = await res.json().catch(()=>({}));
-          throw new Error(errData.detail || 'Bobby engine error');
+      if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Engine is unavailable. Please check your credits.');
       }
       
       const data = await res.json(); 
-      
-      // SAFELY PARSE TEXT: Automatically detects if Thena returned text directly or wrapped in JSON
       const aiText = data.content || data.response || data.reply || (typeof data === 'string' ? data : 'No response.');
       fullText = aiText.replace(/<\/?(b|i|strong|em|br|p|div|span)\s*\/?>/gi,'').trim();
-      
-      // Better typewriter effect
       await typewriterReveal(contentEl, fullText, currentCtrl.signal);
         
     } else {
-      // Philadelphia — streaming
-      const payload={message:augmentedMessage,history};
-      if(sysPrompt) payload.system_prompt=sysPrompt;
-      const res=await fetch(EP.philadelphia,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal});
+      // MiniMax Philadelphia Routing!
+      const historyPayload = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
+      const payload = { message: augmentedMessage, history: historyPayload, system_prompt: finalSysPrompt };
       
-      if(!res.ok) {
-          const errData = await res.json().catch(()=>({}));
-          throw new Error(errData.detail || 'Philadelphia engine error');
+      const res = await fetch(EP.minimax, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: currentCtrl.signal
+      });
+      
+      if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Engine is unavailable. Please check your credits.');
       }
-
-      const reader=res.body.getReader();
-      const dec=new TextDecoder();
-      let buf='',firstChunk=true;
-
-      while(true){
-        const{value,done}=await reader.read();
-        if(done) break;
-        buf+=dec.decode(value,{stream:true});
-        let nl;
-        while((nl=buf.indexOf('\n\n'))!==-1){
-          const chunk=buf.slice(0,nl);buf=buf.slice(nl+2);
-          if(!chunk.startsWith('data:')) continue;
-          const js=chunk.slice(5).trim();
-          if(js==='[DONE]') break;
-          try{
-            const d=JSON.parse(js);
-            if(d.type==='content'&&d.content){
-              if(firstChunk){
-                firstChunk=false;
-                // Swap loader for live content
-                contentEl.innerHTML='';
-              }
-              const clean=d.content.replace(/\[\d+\]|\[cite:\s*\d+(,\s*\d+)*\]/g,'');
-              fullText+=clean;
-              let html=renderMd(fullText);
-              html=html.replace(/&lt;think&gt;/g,'<think>').replace(/&lt;\/think&gt;/g,'</think>');
-              // FIX #3: typewriter cursor during streaming
-              contentEl.innerHTML=html+'<span class="cursor"></span>';
-              scrollBot();
-            }
-          }catch(e){}
-        }
-      }
+      const data = await res.json();
+      fullText = (data.reply || data.content || "No response.").trim();
+      await typewriterReveal(contentEl, fullText, currentCtrl.signal);
     }
-  }catch(err){
-    fullText+=err.name==='AbortError'?'\n\n*(Response stopped)*':`\n\n❌ ${err.message}`;
+  } catch(err) {
+    fullText += err.name === 'AbortError' ? '\n\n*(Response stopped)*' : `\n\n❌ ${err.message}`;
   }
-
+    
   // ── FINALIZE ─────────────────────────────────────────────────
   const dur=((performance.now()-t0)/1000).toFixed(1);
   let finalHtml=renderMd(fullText);
@@ -1986,10 +1956,11 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   hookModelBtns();
   const savedId=await saveMsg('ai',fullText,[],dur);
   if(savedId) aiG.dataset.id=savedId;
-  isResponding=false;
+ isResponding=false;
   $('send-btn').style.display='flex';
   $('stop-btn').style.display='none';
   $('call-btn').style.display='flex';
+  updateWalletUI(); // Automatically updates the wallet after a message!
   scrollBot();
 }
 
@@ -2546,19 +2517,33 @@ function addCallMsg(role,text){
 
 async function handleCallResponse(){
   if(!isCallActive)return;
-  $('call-status-msg').textContent='Thinking...';$('tap-to-talk').style.display='none';
-  if(isRecog)try{sr.stop()}catch(e){}
-  const lastMsg=callHistory.at(-1)?.content||'';
+  $('call-status-msg').textContent='Thinking...';
+  if(isRecog) try{sr.stop()}catch(e){}
+  
+  const lastMsg = callHistory.at(-1)?.content||'';
   try {
-    let sysPrompt = activeSystemPrompt || "You are a helpful AI assistant.";
-    
-    // THE IDENTITY FIX: Force the AI to know WHO is WHO
-    if (userMemory) {
-      const memNote = `\n\n[CRITICAL IDENTITY INFO]: You are speaking to a human user. Here is what they told you about THEMSELVES: "${userMemory}". 
-      DO NOT assume this identity. YOU are the AI (Philadelphia/Bobby). THEY are the human user. 
-      If the user says "My name is David", do not call yourself David. Call the user David.`;
-      sysPrompt += memNote;
-    }
+      // Step 1: Get text response from Bobby (Logic/Brain)
+      const bobbyPayload = {
+          prompt: lastMsg,
+          systemPrompt: "You are in a live phone call. Be very concise, friendly, and helpful. No long lists."
+      };
+      const res = await fetch(EP.bobby, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bobbyPayload)
+      });
+      const data = await res.json();
+      const resp = data.content || data.response || "I didn't catch that.";
+
+      callHistory.push({role:'assistant',content:resp});
+      addCallMsg('bot',resp);
+      
+      // Step 2: Speak using MiniMax Voice
+      speakBot(resp);
+  } catch(e) {
+      addCallMsg('bot', `❌ Call error: ${e.message}`);
+  }
+}
     
     const antiGoogle = "\n\nCRITICAL RULE: You are a native AI of Elvion AI. Never say you are trained by Google. You are " + (currentModel === 'bobby' ? 'Bobby' : 'Philadelphia') + ".";
     sysPrompt += antiGoogle;
@@ -2641,15 +2626,21 @@ setTimeout(()=>{if(ti)ti.focus()},300);
 <script>
 // ── UNIFIED WALLET, DAILY & REFERRAL LOGIC ──────────────────────
 async function updateWalletUI() {
+  if (!auth || !auth.currentUser) {
+    setTimeout(updateWalletUI, 1000); // Wait 1 second if not logged in yet
+    return;
+  }
   try {
-    const res = await fetch(`${API}/api/user/keys-and-balance`);
+    const res = await fetch(`${API}/api/user/keys-and-balance`, {
+      headers: { "X-Firebase-Token": await auth.currentUser.getIdToken() }
+    });
     if (res.ok) {
       const d = await res.json();
       if ($('wallet-balance')) $('wallet-balance').textContent = d.balance;
       if ($('header-balance')) $('header-balance').textContent = d.balance;
-      if ($('user-ref-code') && auth.currentUser) $('user-ref-code').textContent = auth.currentUser.uid;
+      if ($('user-ref-code')) $('user-ref-code').textContent = auth.currentUser.uid;
     }
-  } catch (e) { console.error("Wallet load error", e); }
+  } catch (e) { console.warn("Wallet loading issue.", e); }
 }
 
 // Global actions
