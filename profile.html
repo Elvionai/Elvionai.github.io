@@ -2522,26 +2522,54 @@ async function handleCallResponse(){
   
   const lastMsg = callHistory.at(-1)?.content||'';
   try {
-      // Step 1: Get text response from Bobby (Logic/Brain)
-      const bobbyPayload = {
-          prompt: lastMsg,
-          systemPrompt: "You are in a live phone call. Be very concise, friendly, and helpful. No long lists."
-      };
-      const res = await fetch(EP.bobby, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bobbyPayload)
-      });
-      const data = await res.json();
-      const resp = data.content || data.response || "I didn't catch that.";
+      // Setup System Prompt
+      let sysPrompt = activeSystemPrompt || "You are a helpful AI assistant.";
+      if (userMemory) {
+        sysPrompt += `\n\n[USER CONTEXT]: "${userMemory}". Address them using this, but YOU are the AI.`;
+      }
+      sysPrompt += `\n\nCRITICAL IDENTITY: Your name is ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}. You are a native AI of Elvion AI.`;
 
-      callHistory.push({role:'assistant',content:resp});
-      addCallMsg('bot',resp);
+      const payload = {
+        message: lastMsg,
+        history: callHistory.slice(0,-1).map(m => ({role: m.role, content: m.content})),
+        system_prompt: sysPrompt
+      };
+
+      const res = await fetch(EP.philadelphia, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Firebase-Token': await auth.currentUser.getIdToken() },
+        body: JSON.stringify(payload)
+      });
       
-      // Step 2: Speak using MiniMax Voice
+      if(!res.ok) throw new Error('Server error');
+      
+      let full = '';
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      
+      while(true){
+        const {value, done} = await reader.read();
+        if(done) break;
+        buf += dec.decode(value, {stream:true});
+        let nl;
+        while((nl = buf.indexOf('\n\n')) !== -1){
+          const c = buf.slice(0, nl); buf = buf.slice(nl+2);
+          if(c.startsWith('data:')){
+            const j = c.slice(5).trim();
+            if(j === '[DONE]') break;
+            try { const d = JSON.parse(j); if(d.type === 'content') full += d.content; } catch(e){}
+          }
+        }
+      }
+      const resp = full.trim() || "I couldn't process that.";
+      callHistory.push({role:'assistant', content: resp});
+      addCallMsg('bot', resp);
       speakBot(resp);
   } catch(e) {
-      addCallMsg('bot', `❌ Call error: ${e.message}`);
+      addCallMsg('bot', `❌ ${e.message}`);
+      $('call-status-msg').textContent='Error. Tap to retry.';
+      $('tap-to-talk').style.display='block';
   }
 }
     
@@ -2624,82 +2652,110 @@ $('call-modal').onclick=e=>{
 setTimeout(()=>{if(ti)ti.focus()},300);
 </script>
 <script>
-// ── UNIFIED WALLET, DAILY & REFERRAL LOGIC ──────────────────────
+// ── UNIFIED SINGLE-PAGE WALLET LOGIC ──────────────────────
 async function updateWalletUI() {
-  if (!auth || !auth.currentUser) {
-    setTimeout(updateWalletUI, 1000); // Wait 1 second if not logged in yet
-    return;
-  }
-  try {
-    const res = await fetch(`${API}/api/user/keys-and-balance`, {
-      headers: { "X-Firebase-Token": await auth.currentUser.getIdToken() }
-    });
-    if (res.ok) {
-      const d = await res.json();
-      if ($('wallet-balance')) $('wallet-balance').textContent = d.balance;
-      if ($('header-balance')) $('header-balance').textContent = d.balance;
-      if ($('user-ref-code')) $('user-ref-code').textContent = auth.currentUser.uid;
+    if (!auth || !auth.currentUser) {
+        setTimeout(updateWalletUI, 1000);
+        return;
     }
-  } catch (e) { console.warn("Wallet loading issue.", e); }
+    try {
+        const res = await fetch(`${API}/api/user/keys-and-balance`, {
+            headers: { "X-Firebase-Token": await auth.currentUser.getIdToken() }
+        });
+        if (res.ok) {
+            const d = await res.json();
+            if ($('wallet-balance')) $('wallet-balance').textContent = d.balance;
+            if ($('header-balance')) $('header-balance').textContent = d.balance;
+            if ($('user-ref-code')) $('user-ref-code').textContent = auth.currentUser.uid;
+        }
+    } catch (e) { console.warn("Wallet update failed", e); }
 }
 
-// Global actions
-window.quickSend = (t) => { $('txt-input').value = t; sendMsg(); };
-
-// Claim Daily Logic
-const claimBtn = $('claim-daily-btn');
-if (claimBtn) {
-  claimBtn.onclick = async (e) => {
-    e.preventDefault();
+// 1. Claim Daily
+$('claim-daily-btn').onclick = async () => {
     const st = $('wallet-status');
     st.textContent = 'Claiming...';
     try {
-      const res = await fetch(`${API}/api/user/claim-daily`, { method: 'POST' });
-      const d = await res.json().catch(() => ({}));
-      st.textContent = d.message || (res.ok ? 'Success!' : 'Failed');
-      st.style.color = res.ok ? 'var(--accent-green)' : 'var(--danger)';
-      if (res.ok) updateWalletUI();
-    } catch (err) { st.textContent = 'Connection error'; }
-  };
+        const res = await fetch(`${API}/api/user/claim-daily`, { 
+            method: 'POST',
+            headers: { "X-Firebase-Token": await auth.currentUser.getIdToken() }
+        });
+        const d = await res.json();
+        st.textContent = d.message;
+        st.style.color = res.ok ? 'var(--accent-green)' : 'var(--danger)';
+        if(res.ok) updateWalletUI();
+    } catch(err) { st.textContent = 'Connection error'; }
+    setTimeout(() => st.textContent = '', 4000);
+};
+
+// 2. Fund Wallet (Opens Modal instead of leaving)
+$('fund-wallet-btn').onclick = () => openM('fund-m');
+
+// 3. Initiate Payment (Stays on Page)
+window.initPay = async () => {
+    const amt = parseInt($('fund-amt').value);
+    if(amt < 100) { toast("Minimum ₦100", "e"); return; }
+    
+    const pvn = $('pvn');
+    pvn.style.display = "block";
+    
+    try {
+        const res = await fetch(`${API}/api/payments/initiate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Firebase-Token": await auth.currentUser.getIdToken() },
+            body: JSON.stringify({ amount: amt, redirect_url: window.location.href })
+        });
+        const d = await res.json();
+        if(res.ok) {
+            // Open payment in new tab, but user stays on your page
+            window.open(d.checkout_url, '_blank');
+            pvn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing... (Check your bank app)`;
+            // Start verification polling
+            verifyPayment(d.transaction_ref);
+        } else {
+            toast(d.detail || "Payment failed", "e");
+            pvn.style.display = "none";
+        }
+    } catch(e) { toast("Connection error", "e"); pvn.style.display = "none"; }
+};
+
+// 4. Verification Polling (Stays on Page)
+async function verifyPayment(ref) {
+    const pvn = $('pvn');
+    for(let i=0; i<15; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        const res = await fetch(`${API}/api/payments/verify?transaction_ref=${ref}`, {
+            headers: { "X-Firebase-Token": await auth.currentUser.getIdToken() }
+        });
+        const d = await res.json();
+        if(d.status === "success") {
+            toast("Payment successful! Credits added.", "s");
+            updateWalletUI();
+            closeM('fund-m');
+            pvn.style.display = "none";
+            return;
+        }
+    }
+    pvn.innerHTML = "Timed out. Please contact support.";
 }
 
-// Redeem Referral Logic
-const redeemBtn = $('redeem-btn');
-if (redeemBtn) {
-  redeemBtn.onclick = async (e) => {
-    e.preventDefault();
+// 5. Referral
+$('redeem-btn').onclick = async () => {
     const code = $('referral-input').value.trim();
     const st = $('ref-status');
     if(!code) return;
     st.textContent = 'Verifying...';
-    try {
-      const res = await fetch(`${API}/api/user/redeem-referral`, {
+    const res = await fetch(`${API}/api/user/redeem-referral`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', "X-Firebase-Token": await auth.currentUser.getIdToken() },
         body: JSON.stringify({ referrer_code: code })
-      });
-      const d = await res.json();
-      st.textContent = d.message;
-      st.style.color = res.ok ? 'var(--accent-green)' : 'var(--danger)';
-      if(res.ok) updateWalletUI();
-    } catch (err) { st.textContent = 'Error redeeming code'; }
-  };
-}
-
-// Dashboard Redirect
-$('fund-wallet-btn').onclick = (e) => {
-  e.preventDefault();
-  window.open('https://elvionai.com.ng/developer-dashboard.html', '_blank');
+    });
+    const d = await res.json();
+    st.textContent = d.message;
+    if(res.ok) updateWalletUI();
 };
 
-// Auto-update UI
-const oldOpenWs = $('open-workspace').onclick;
-$('open-workspace').onclick = (e) => {
-  if (oldOpenWs) oldOpenWs(e);
-  updateWalletUI(); 
-};
-
-setTimeout(updateWalletUI, 2500);
+setTimeout(updateWalletUI, 2000);
 </script>
 </body>
 </html>
