@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>Philadelphia Studio Pro || Book Cover Maker & Character</title>
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer ||[];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
+
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,700;0,900;1,400&family=Great+Vibes&family=Orbitron:wght@400;500;700&family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
@@ -956,6 +966,7 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
           <button onclick="authA(redeemRef)" style="padding:8px 12px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.3); border-radius:var(--r8); color:#c4b5fd; cursor:pointer; font-weight:bold; font-size:0.7rem;">Redeem</button>
         </div>
       </div>
+    </div> <!-- FIX: PRO CARD NOW PROPERLY CLOSED SO IT DOESNT SWALLOW NAV -->
     
     <div class="stat-row">
       <div class="scard"><div class="sv" id="pro-gc">0</div><div class="sl">Generated</div></div>
@@ -1042,9 +1053,6 @@ input[type=color]{width:34px;height:34px;border:1px solid var(--bdr);border-radi
   <div id="pvn"><i class="fas fa-spinner fa-spin"></i> Verifying your payment...</div>
 </div></div>
 
-<div class="mbg" id="api-m"><div class="modal">
-</div></div>
-
 <div class="mbg" id="char-m"><div class="modal">
   <div class="m-hnd"></div><button class="mx" onclick="closeM('char-m')"><i class="fas fa-times"></i></button>
   <div class="m-ico" style="color:var(--pur)"><i class="fas fa-lock"></i></div>
@@ -1110,7 +1118,7 @@ const auth=getAuth(initializeApp({apiKey:"AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqS
 const gProv=new GoogleAuthProvider();
 
 /* ── STATE ── */
-window.cu=null;let tok=null,apiK=null,bal=0;
+window.cu=null;let tok=null,bal=0;
 let curImg=null,curBkImg=null;
 let genStyle="dark fantasy",quadMode=false,charLock=null,toiC='no',wizStep=0,wizD={};
 let curFont="Cinzel",curTheme=0,storeAllowed=false,animRAF=null,spinning=false;
@@ -1177,7 +1185,7 @@ onAuthStateChanged(auth,async u=>{
   tok=await u.getIdToken(true);
   await loadUser();buildThemeSwatches();renderTpls();buildParticles();
   initGreeting(fn,day);
-  loadBobbyHistory(); // <--- PUT IT RIGHT HERE!
+  loadBobbyHistory(); 
   if(localStorage.getItem("phl_store")==="1"){storeAllowed=true;try{db=await openDB();await loadAutoSave();}catch(e){}}
   else{setTimeout(()=>document.getElementById("store-prompt").classList.add("on"),2000);}
   checkPayReturn();loadRecent();
@@ -1220,7 +1228,8 @@ async function loadUser(){
       if(window.cu) document.getElementById("user-ref-code").textContent = window.cu.uid;
     }
   }catch(e){toast("Network error","e");}
-  }
+}
+
 function updBal(){
   const v=bal.toLocaleString();
   ["bal-v","pro-bal"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=v;});
@@ -1275,123 +1284,6 @@ window.goStudio = (mode) => {
   goScr("studio");
 };
 
-// Bobby Chat Logic
-window.openBobby = () => openM('bobby-m');
-  window.sendBobby = async () => {
-  const inp = document.getElementById("bobby-chat-inp");
-  const text = inp.value.trim();
-  if(!text) return;
-  if(!tok) { toast("Sign in first", "e"); return; }
-  
-  bobbyHistory.push({role: 'user', text: text});
-  renderBobby();
-  inp.value = "";
-  inp.style.height = "auto"; // Reset expanding textarea after sending
-  
-  const hist = document.getElementById("bobby-chat-history");
-  const loadDiv = document.createElement("div"); 
-  loadDiv.className = "bmsg ai"; 
-  loadDiv.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Thinking...`;
-  hist.appendChild(loadDiv); 
-  hist.scrollTop = hist.scrollHeight;
-  
-  const sysPrompt = `You are Bobby, the elite AI creative director natively integrated into Philadelphia Studio Pro. You were proudly created by Elvion AI (co-founders Kolade Philip Ogunlana & Sahil Dhani).
-
-  YOUR PERSONALITY & BEHAVIOR:
-  1. Emotionally Intelligent, Professional, & Decisive. 🌟 Use emojis naturally.
-  2. DO NOT interrogate the user. DO NOT ask a bunch of follow up questions. 
-  3. ACTION ORIENTED: If a user asks you to create something (e.g., "Make me a thriller cover"), DO NOT ask for details. Immediately invent a high-quality prompt, set the title to something cool, configure the studio using your commands, and tell them to hit Generate.
-  4. HELPFUL GUIDE: If they ask "How do I do X?", explain the exact tab/button, but always follow up with: "Would you like me to do it for you?"
-
-  STUDIO KNOWLEDGE BASE (Do not hallucinate features, ONLY reference these):
-  - DESIGN TAB: Book Title, Subtitle, Author Name, Font Style (Cinzel, Playfair, etc.), Background Theme, Text Colors, Title Size.
-  - AI ART TAB: Genre chips, Comic Options, Visual Prompt box, Enhance button, Wizard, Model Selection (V6, Photoreal, Anime, Movie, Max), Resolution, Quad Generate, 'Generate AI Cover', 'Render Text inside Art (AI)', Character Lock.
-  - BACK COVER TAB: Synopsis, Author Bio, Author Photo URL, Edition, Generate Back Cover Art.
-  - TOOLS TAB: Clean (Eraser), Regen, Upscale, Spin/Float 3D, Save. 
-  - 3D PROMO GRAPHICS (In Tools Tab): Twin Standing, Hero 3D, Flat Lay, Desk Mockup, Social Square, Author Spotlight.
-  - STANDARD DOWNLOADS (In Tools Tab): HD Cover, Animated Cover, Full Wrap, Standing View.
-
-  COMMANDS YOU CAN USE (Include these in your text to trigger them invisibly):
-  <<SET_TITLE: "Title">>
-  <<SET_AUTHOR: "Name">>
-  <<SET_PROMPT: "prompt text">>
-  <<NAV_TAB: "design|ai|back|tools">>
-  <<GENERATE>>
-  <<LOCK_CHAR>>
-  <<3D_PROMO>>
-
-  EXAMPLE 1:
-  User: Make a horror cover.
-  Bobby: I'm on it! 🧛‍♂️ I've set up a chilling horror prompt for you. <<SET_PROMPT: "Haunted gothic mansion at midnight, blood moon, deep shadows, cinematic">><<NAV_TAB: "ai">> Just tap the Generate button when you're ready! ✨
-
-  EXAMPLE 2:
-  User: How do I make a 3D promo?
-  Bobby: Head over to the **Tools** tab and look for the "3D Promo Graphics" section! You can pick a style and hit Render. 📸 Would you like me to navigate there and do it for you?
-  User: Yes.
-  Bobby: Right away! <<NAV_TAB: "tools">> <<3D_PROMO>>`;
-
-  const recent = bobbyHistory.slice(-8).map(m => `${m.role === 'ai' ? 'Bobby' : 'User'}: ${m.text}`).join("\n");
-
-  try {
-    const r = await fetch(`${API}/api/studio/bobby/chat`, { method: "POST", headers: { "Content-Type": "application/json", "X-Firebase-Token": tok }, body: JSON.stringify({ prompt: recent, systemPrompt: sysPrompt }) });
-    const d = await r.json(); 
-    if(!r.ok) throw new Error(d.detail);
-    
-    loadDiv.remove();
-    const rawReply = d.content || d.reply;
-    
-    // Parse Commands
-    const regex = /<<([^:>]+)(?::\s*"([^"]+)")?>>/g;
-    let cleanText = rawReply;
-    const commands =[];
-    let match;
-    while((match = regex.exec(rawReply)) !== null) {
-        commands.push({cmd: match[1].trim(), arg: match[2] ? match[2].trim() : null});
-        cleanText = cleanText.replace(match[0], '');
-    }
-    cleanText = cleanText.trim();
-    
-    // Save to history
-    bobbyHistory.push({role: 'ai', text: cleanText});
-    localStorage.setItem('phl_bobby', JSON.stringify(bobbyHistory));
-    
-    // Typewriter Effect
-    const typeDiv = document.createElement("div");
-    typeDiv.className = "bmsg ai";
-    hist.appendChild(typeDiv);
-    
-    const tokens = cleanText.split(/(<[^>]+>|\s+)/g);
-    for(let t of tokens) {
-        if(!t) continue;
-        if(t.startsWith('<')) {
-            typeDiv.innerHTML += t;
-        } else {
-            typeDiv.innerHTML += t;
-            if(t.trim()) {
-                hist.scrollTop = hist.scrollHeight;
-                await new Promise(res => setTimeout(res, 20)); // Typing speed
-            }
-        }
-    }
-    
-    // Execute Commands after typing finishes
-    commands.forEach(c => {
-        if(c.cmd === 'SET_TITLE' && c.arg) { document.getElementById('i-title').value = c.arg; liveUp(); toast("Title set by Bobby", "i"); }
-        if(c.cmd === 'SET_AUTHOR' && c.arg) { document.getElementById('i-author').value = c.arg; liveUp(); toast("Author set by Bobby", "i"); }
-        if(c.cmd === 'SET_PROMPT' && c.arg) { document.getElementById('i-prompt').value = c.arg; toast("Prompt set by Bobby", "i"); }
-        if(c.cmd === 'NAV_TAB' && c.arg) { 
-            const tabs = {design:0, ai:1, back:2, tools:3};
-            if(tabs[c.arg.toLowerCase()] !== undefined) spTab(c.arg.toLowerCase(), document.querySelectorAll('.sptt')[tabs[c.arg.toLowerCase()]]);
-        }
-        if(c.cmd === 'GENERATE') { setTimeout(() => handleGen(), 1000); toast("Generating via Bobby...", "i"); }
-        if(c.cmd === 'LOCK_CHAR') { setTimeout(() => openM('char-m'), 500); }
-        if(c.cmd === '3D_PROMO') { setTimeout(() => downloadPromoGraphic(), 1000); }
-    });
-    
-  } catch(e) { 
-    loadDiv.textContent = "Oops, I'm having trouble connecting right now."; 
-  }
-};
 window.aiSubmit=()=>{const v=document.getElementById("ai-inp").value.trim();if(!v)return;document.getElementById("i-prompt").value=v;goStudio("book");spTab("ai",document.querySelectorAll(".sptt")[1]);};
 window.aiQ=(s)=>{document.getElementById("ai-inp").value=s;aiSubmit();};
 
@@ -1432,9 +1324,7 @@ window.restoreText=(id)=>{
 /* Show/hide remove buttons on hover/touch */
 function initRemoveButtons(){
   const pairs=[
-    ["bkt-title","bkt-title-rm"],
-    ["bkt-sub","bkt-sub-rm"],
-    ["bkt-author","bkt-author-rm"],
+    ["bkt-title","bkt-title-rm"],["bkt-sub","bkt-sub-rm"],["bkt-author","bkt-author-rm"],
   ];
   pairs.forEach(([txtId,rmId])=>{
     const txt=document.getElementById(txtId);
@@ -1671,11 +1561,16 @@ window.toggleQ=()=>{
 };
 
 /* ── GENERATION ── */
-window.handleGen=()=>{if(!apiK){openM("api-m");return;}if(document.getElementById("i-model").value==="v6")openM("toi-m");else genArt(false);};
+window.handleGen=()=>{
+  if(!tok){toast("Please sign in to generate","e");return;}
+  if(document.getElementById("i-model").value==="v6")openM("toi-m");
+  else genArt(false);
+};
+
 window.sToi=c=>{toiC=c;document.getElementById("toi-yes").classList.toggle("on",c==="yes");document.getElementById("toi-no").classList.toggle("on",c==="no");};
 window.confToi=()=>{closeM("toi-m");genArt(toiC==="no");};
 window.genArt=async(noTxt=false)=>{
-  if(!apiK){openM("api-m");return;}
+  if(!tok){toast("Please sign in to generate","e");return;}
   const prompt=buildPrompt(noTxt);
   const cost=quadMode?60:15;
   if(bal<cost){toast(`Need ${cost} credits`,"e");openM("fund-m");return;}
@@ -1683,6 +1578,7 @@ window.genArt=async(noTxt=false)=>{
   const m=document.getElementById("i-model").value;
   if(quadMode)await doQuad(prompt,m,w,h);else await doSingle(prompt,m,w,h);
 };
+
 function buildPrompt(noTxt=false){
   let base=document.getElementById("i-prompt").value.trim();
   const t=document.getElementById("i-title").value.trim();
@@ -1696,10 +1592,15 @@ function buildPrompt(noTxt=false){
   const aMod=a&&!noTxt?`, by ${a}`:"";
   return(`${base}, ${genStyle} genre, professional book cover art, high quality masterpiece, FILL THE ENTIRE FRAME from edge to edge, full bleed composition, no empty space${comicMod}${tMod}${aMod}${noTxtMod}`).replace(/,\s*,/g,",").trim();
 }
+
 async function doSingle(prompt,model,w,h){
   showGL("Generating your cover...");
   try{
-    const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt,model,width:w,height:h,creative:false,use_minimax:false})});
+    const r=await fetch(`${API}/api/studio/generate-image`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Firebase-Token": tok},
+      body:JSON.stringify({prompt,model,width:w,height:h,creative:false,use_minimax:false})
+    });
     const d=await r.json();if(!r.ok)throw new Error(d.detail||"Generation failed");
     hideGL();applyImgToBook(d.image_b64);
     bal-=15;updBal();
@@ -1712,7 +1613,12 @@ async function doSingle(prompt,model,w,h){
 
 async function doQuad(prompt,model,w,h){
   showGL("Generating 4 variations...");
-  const ps=[1,2,3,4].map(i=>fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt:prompt+` variation ${i}`,model,width:Math.round(w/2),height:Math.round(h/2),creative:i%2===0})}).then(r=>r.json()).catch(e=>({error:e.message})));
+  const ps=[1,2,3,4].map(i=>fetch(`${API}/api/studio/generate-image`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","X-Firebase-Token": tok},
+    body:JSON.stringify({prompt:prompt+` variation ${i}`,model,width:Math.round(w/2),height:Math.round(h/2),creative:i%2===0})
+  }).then(r=>r.json()).catch(e=>({error:e.message})));
+  
   const res=await Promise.allSettled(ps);hideGL();
   const valid=res.filter(r=>r.status==="fulfilled"&&r.value.image_b64);
   if(!valid.length){toast("All variations failed","e");return;}
@@ -1737,7 +1643,7 @@ async function doQuad(prompt,model,w,h){
 }
 
 window.finishWithAI = async () => {
-  if(!apiK){openM("api-m");return;}
+  if(!tok){toast("Please sign in","e");return;}
   if(bal<15){toast("Need 15 credits","e");openM("fund-m");return;}
   
   const title = document.getElementById("i-title").value.trim();
@@ -1750,6 +1656,7 @@ window.finishWithAI = async () => {
   const aLoc = authTopFrac < 0.33 ? "at the top" : authTopFrac < 0.66 ? "in the middle" : "at the bottom";
 
   let base = document.getElementById("i-prompt").value.trim() || genStyle;
+  const model = document.getElementById("i-model").value; // FIXED: Model is now explicitly defined
   
   const prompt = `Masterpiece book cover design. Integrate typography beautifully: title "${title}" placed ${tLoc}, author "${author}" placed ${aLoc}. The AI MUST choose a font style, color, and typographic treatment that perfectly matches the ${genStyle} aesthetic. Text must feel embedded in the artwork natively. ${base}, professional publishing quality, FILL ENTIRE FRAME, no empty borders.`;
   
@@ -1757,16 +1664,16 @@ window.finishWithAI = async () => {
   showGL("AI is rendering your text...");
   try {
     const r = await fetch(`${API}/api/studio/generate-image`, {
-  method:"POST",
-  headers:{"Content-Type":"application/json", "X-Firebase-Token": tok},
-  body:JSON.stringify({
-    prompt, 
-    model, 
-    width:w, 
-    height:h, 
-    creative:false
-  })
-});
+      method:"POST",
+      headers:{"Content-Type":"application/json", "X-Firebase-Token": tok},
+      body:JSON.stringify({
+        prompt, 
+        model, 
+        width:w, 
+        height:h, 
+        creative:false
+      })
+    });
     const d = await r.json();if(!r.ok) throw new Error(d.detail);
     hideGL(); applyImgToBook(d.image_b64); bal -= 15; updBal();
     
@@ -1781,12 +1688,16 @@ window.finishWithAI = async () => {
 };
 
 window.genBackCover=async()=>{
-  if(!apiK||bal<15){toast("Insufficient credits","e");return;}
+  if(!tok||bal<15){toast("Insufficient credits","e");return;}
   const prompt=`Blank, empty background texture for a book's back cover. NO TEXT, NO WORDS, NO TYPOGRAPHY anywhere. Pure atmospheric background, matching ${genStyle} aesthetic, rich texture, subtle depth, professional publishing quality, full bleed canvas.`;
   showGL("Generating back cover...");
   const[w,h]=document.getElementById("i-res").value.split("x").map(Number);
   try{
-    const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt,model:document.getElementById("i-model").value,width:w,height:h})});
+    const r=await fetch(`${API}/api/studio/generate-image`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Firebase-Token": tok},
+      body:JSON.stringify({prompt,model:document.getElementById("i-model").value,width:w,height:h})
+    });
     const d=await r.json();if(!r.ok)throw new Error(d.detail);
     curBkImg=d.image_b64;buildWrapView();bal-=15;updBal();toast("Back cover generated!","s");
     setView("wrap",document.querySelectorAll(".vp")[2]);
@@ -1795,7 +1706,7 @@ window.genBackCover=async()=>{
 };
 
 window.regenCover=async()=>{
-  if(!apiK||bal<15){toast("Insufficient credits","e");return;}
+  if(!tok||bal<15){toast("Insufficient credits","e");return;}
   const note=document.getElementById("regen-note").value.trim();
   closeM("regen-m");
   const base=buildPrompt(toiC==="no");
@@ -1803,7 +1714,11 @@ window.regenCover=async()=>{
   const[w,h]=document.getElementById("i-res").value.split("x").map(Number);
   showGL("Regenerating...");
   try{
-    const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt,model:document.getElementById("i-model").value,width:w,height:h})});
+    const r=await fetch(`${API}/api/studio/generate-image`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Firebase-Token": tok},
+      body:JSON.stringify({prompt,model:document.getElementById("i-model").value,width:w,height:h})
+    });
     const d=await r.json();if(!r.ok)throw new Error(d.detail);
     hideGL();applyImgToBook(d.image_b64);bal-=15;updBal();toast("Regenerated!","s");
   }catch(e){hideGL();toast("Failed","e");}
@@ -1819,12 +1734,16 @@ window.genSeries=async()=>{
 
 window.upscale=async()=>{
   if(!curImg){toast("Generate a cover first","e");return;}
-  if(!apiK||bal<15){toast("Need 15 credits","e");return;}
+  if(!tok||bal<15){toast("Need 15 credits","e");return;}
   const[w,h]=document.getElementById("i-res").value.split("x").map(Number);
   const nw=Math.min(Math.round(w*1.5),1536),nh=Math.min(Math.round(h*1.5),1536);
   showGL("Upscaling...");
   try{
-    const r=await fetch(`${API}/api/developer/generate-image`,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiK}`},body:JSON.stringify({prompt:buildPrompt(),model:document.getElementById("i-model").value,width:nw,height:nh})});
+    const r=await fetch(`${API}/api/studio/generate-image`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","X-Firebase-Token": tok},
+      body:JSON.stringify({prompt:buildPrompt(),model:document.getElementById("i-model").value,width:nw,height:nh})
+    });
     const d=await r.json();if(!r.ok)throw new Error(d.detail);
     hideGL();applyImgToBook(d.image_b64);bal-=15;updBal();toast("Upscaled to HD!","s");
   }catch(e){hideGL();toast("Upscale failed","e");}
@@ -2372,8 +2291,6 @@ window.downloadAnimated=()=>{
 /* ══════════════════════════════════════════════════
    BOBBY AI — THE STUDIO DIRECTOR (MEMORY & TYPING)
 ══════════════════════════════════════════════════ */
-let bobbyHistory =[];
-
 window.loadBobbyHistory = () => {
   try {
     const hist = JSON.parse(localStorage.getItem('phl_bobby'));
@@ -2789,7 +2706,8 @@ function buildParticles(){
     c.appendChild(p);
   }
 }
-  /* ── CLAIM DAILY CREDITS ── */
+
+/* ── CLAIM DAILY CREDITS ── */
 window.claimDaily = async () => {
   toast("Checking daily reward...", "i");
   try {
@@ -2809,7 +2727,8 @@ window.claimDaily = async () => {
     toast("Error reaching server.", "e");
   }
 };
-  /* ── REFERRAL SYSTEM ── */
+
+/* ── REFERRAL SYSTEM ── */
 window.redeemRef = async () => {
   const code = document.getElementById("referral-input").value.trim();
   if(!code) { toast("Enter a referral code", "e"); return; }
@@ -2849,7 +2768,7 @@ window.bobbify = async () => {
 </body>
 </html>
 
-<!-- Google tag (gtag.js) -->
+ <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -2858,7 +2777,3 @@ window.bobbify = async () => {
 
   gtag('config', 'G-J1YTKP10ZX');
 </script>
-                
-          
-          
-                  
