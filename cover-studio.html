@@ -2287,10 +2287,11 @@ window.downloadAnimated=()=>{
   toast("Frame saved! Record your screen for full animation.","i");
 };
 
-
 /* ══════════════════════════════════════════════════
    BOBBY AI — THE STUDIO DIRECTOR (MEMORY & TYPING)
 ══════════════════════════════════════════════════ */
+let bobbyHistory =[]; // <-- THIS LINE WAS MISSING AND BREAKING THE CHAT!
+
 window.loadBobbyHistory = () => {
   try {
     const hist = JSON.parse(localStorage.getItem('phl_bobby'));
@@ -2427,6 +2428,29 @@ window.sendBobby = async () => {
   }
 };
 
+
+/* ── BOBBY ENHANCE PROMPT ── */
+window.bobbify = async () => {
+  const p = document.getElementById("i-prompt").value.trim();
+  if(!p) { toast("Enter a concept first!", "e"); return; }
+  const btn = document.querySelector('button[onclick="authA(bobbify)"]');
+  const orig = btn.innerHTML;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enhancing...`;
+  try {
+    const sys = "You are an expert prompt engineer. Take the user's concept and rewrite it into a detailed visual prompt for a book cover. STRICT LIMIT: Keep the output to EXACTLY ONE short, dense paragraph (max 40-50 words). Return ONLY the enhanced prompt text, with no conversational filler or quotes.";
+    
+    const r = await fetch(`${API}/api/studio/bobby/chat`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-Firebase-Token": tok},
+      body: JSON.stringify({ prompt: p, systemPrompt: sys })
+    });
+    const d = await r.json();
+    document.getElementById("i-prompt").value = d.content || d.reply;
+    toast("Prompt Enhanced (2 Credits)", "s");
+  } catch(e) { toast("Enhance failed", "e"); }
+  btn.innerHTML = orig;
+};
+    
 /* ── CHAR LOCK ── */
 window.saveChar=()=>{
   const n=document.getElementById("cn").value.trim();const d=document.getElementById("cd").value.trim();
@@ -2742,29 +2766,6 @@ window.redeemRef = async () => {
     if(r.ok) { toast("Referral successful!", "s"); loadUser(); document.getElementById("referral-input").value = ""; }
     else { toast(d.message || "Failed to redeem", "e"); }
   } catch (e) { toast("Connection error", "e"); }
-};
-
-/* ── BOBBY ENHANCE PROMPT ── */
-window.bobbify = async () => {
-  const p = document.getElementById("i-prompt").value.trim();
-  if(!p) { toast("Enter a concept first!", "e"); return; }
-  const btn = document.querySelector('button[onclick="authA(bobbify)"]');
-  const orig = btn.innerHTML;
-  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Enhancing...`;
-  try {
-    // ADDED STRICT LIMITS TO THE SYSTEM PROMPT HERE
-    const sys = "You are an expert prompt engineer. Take the user's concept and rewrite it into a detailed visual prompt for a book cover. STRICT LIMIT: Keep the output to EXACTLY ONE short, dense paragraph (max 40-50 words). Return ONLY the enhanced prompt text, with no conversational filler or quotes.";
-    
-    const r = await fetch(`${API}/api/studio/bobby/chat`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json", "X-Firebase-Token": tok},
-      body: JSON.stringify({ prompt: p, systemPrompt: sys })
-    });
-    const d = await r.json();
-    document.getElementById("i-prompt").value = d.content || d.reply;
-    toast("Prompt Enhanced (2 Credits)", "s");
-  } catch(e) { toast("Enhance failed", "e"); }
-  btn.innerHTML = orig;
 };
 </script>
 </body>
