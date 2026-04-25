@@ -1593,19 +1593,33 @@ async function runImageWithPrompt(prompt){
   }catch(e){removeOrbLoader();await showToolResult(`❌ ${e.message}`)}
 }
 
-async function runMusicWithPrompt(prompt){
-  await saveMsg('user',`Create music: "${prompt}"`);
-  showOrbLoader('Composing your track...');
+async function runImageWithPrompt(prompt){
+  await saveMsg('user',`Create image: "${prompt}"`);
+  showOrbLoader('Creating your image...');
   try{
-    const res=await fetch(`${API}/api/tools/generate-music`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,lyrics:'',model:'music-1.5'})});
-    if(!res.ok){const d=await res.json().catch(()=>({}));throw new Error(d.detail||d.error||'Music generation failed')}
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
+    // FIX: Updated endpoint path to /api/studio/generate-image and added default width/height
+    const res=await fetch(`${API}/api/studio/generate-image`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        prompt, 
+        model:'v6', 
+        width: 1024, 
+        height: 1024, 
+        use_minimax:false, 
+        creative:false
+      })
+    });
+    // Safely parse the JSON
+    const d=await res.json().catch(()=>({}));
+    // Look for detail FIRST!
+    if(!res.ok)throw new Error(d.detail || d.error || 'Image generation failed');
     removeOrbLoader();
-    await showToolResult(`<audio controls src="${url}" style="width:100%;margin-top:8px;border-radius:8px"></audio>`);
+    showImageModal(d.image_b64,'IMAGE OUTPUT',true);
+    await showToolResult(`Image created! Tap the floating window to download.`);
   }catch(e){removeOrbLoader();await showToolResult(`❌ ${e.message}`)}
 }
-
+   
 // ── FIX #3: ORBITAL LOADER ─────────────────────────────────────
 let orbLoaderDiv=null;
 // (kept legacy alias for any existing call sites inside tool handlers)
@@ -2077,7 +2091,7 @@ function renderFilePrev(){
 
 // ── TOOL SYSTEM ─────────────────────────────────────────────────
 const toolDefs={
-  image:{
+   image:{
     title:'Create Image',
     form:`
       <label class="form-label">Engine</label>
@@ -2100,7 +2114,20 @@ const toolDefs={
       await saveMsg('user',`Create image: "${prompt}"`);
       showOrbLoader('Creating your image...');
       try{
-        const res=await fetch(`${API}/generate-image`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,model:style,use_minimax,creative:false}),signal:currentCtrl?.signal});
+        // FIX: Updated endpoint path and added default width/height
+        const res=await fetch(`${API}/api/studio/generate-image`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            prompt, 
+            model:style, 
+            width: 1024, 
+            height: 1024, 
+            use_minimax, 
+            creative:false
+          }),
+          signal:currentCtrl?.signal
+        });
         // Safely parse the JSON
         const d=await res.json().catch(()=>({}));
         // Look for detail FIRST!
