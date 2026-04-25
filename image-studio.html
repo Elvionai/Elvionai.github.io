@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-<!-- Google tag (gtag.js) Moved inside the head tag for valid HTML -->
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
 <script>
   window.dataLayer = window.dataLayer ||[];
@@ -1367,13 +1367,13 @@ onAuthStateChanged(auth,async u=>{
   $('hdr').classList.add('on');
   $('bnav').classList.add('on');
   
-  // FIXED: Optional chaining used here securely to prevent crashing if u.email is null
+  // Safe extraction of email and name
   const fn=u.displayName?.split(' ')[0]||u.email?.split('@')[0]||'User';
   $('pro-nm').textContent=u.displayName||fn;
   $('pro-em').textContent=u.email||'—';
   
   if(u.photoURL){$('hav').innerHTML=`<img src="${u.photoURL}" alt="">`;$('pro-av').innerHTML=`<img src="${u.photoURL}" alt="">`}
-  // FIXED: Safe lowercasing here
+  // Safe lowercasing here
   if(u.email && u.email.toLowerCase()===ADMIN)$('admin-zone').style.display='block';
   
   // Add Try/Catch for IndexedDB so incognito mode doesn't freeze the App
@@ -1927,7 +1927,6 @@ function extractPalette(b64){
   const img = new Image();
   
   img.onload = () => {
-    // Shrink the image to 50x50 to quickly sample the dominant colors
     cv.width = 50; 
     cv.height = 50; 
     ctx.drawImage(img, 0, 0, 50, 50);
@@ -1935,9 +1934,7 @@ function extractPalette(b64){
     const data = ctx.getImageData(0, 0, 50, 50).data;
     const colors = {};
     
-    // Skip every 20th pixel to process faster
     for(let i = 0; i < data.length; i += 20) {
-      // Group similar colors by rounding to the nearest 32
       const r = Math.round(data[i]/32)*32, 
             g = Math.round(data[i+1]/32)*32, 
             b = Math.round(data[i+2]/32)*32;
@@ -1946,13 +1943,11 @@ function extractPalette(b64){
       colors[k] = (colors[k] || 0) + 1;
     }
     
-    // Sort by most frequent colors and take the top 8
     const sorted = Object.entries(colors).sort((a,b) => b[1] - a[1]).slice(0,8);
     const row = $('pal-row');
     
-    if(!row) return; // Safety check
+    if(!row) return; 
     
-    // Generate the clickable UI color swatches
     row.innerHTML = sorted.map(([rgb]) => {
       const [r, g, b] = rgb.split(',').map(Number);
       const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -1960,20 +1955,7 @@ function extractPalette(b64){
     }).join('');
   };
   
-  // Set the source to the generated base64 image
   img.src = `data:image/png;base64,${b64}`;
-   }
-
-const r=Math.round(data[i]/32)*32,g=Math.round(data[i+1]/32)*32,b=Math.round(data[i+2]/32)*32;const k=`${r},${g},${b}`;colors[k]=(colors[k]||0)+1}
-    const sorted=Object.entries(colors).sort((a,b)=>b[1]-a[1]).slice(0,8);
-    const row=$('pal-row');
-    row.innerHTML=sorted.map(([rgb])=>{
-      const[r,g,b]=rgb.split(',').map(Number);
-      const hex='#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
-      return`<div class="pal-sw" style="background:${hex}" title="${hex}" onclick="navigator.clipboard.writeText('${hex}').then(()=>toast('${hex} copied','s'))"></div>`;
-    }).join('');
-  };
-  img.src=`data:image/png;base64,${b64}`;
 }
 
 /* ── GALLERY ── */
@@ -2233,5 +2215,3 @@ renderPH();
 </script>
 </body>
 </html>
-
-
