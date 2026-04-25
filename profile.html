@@ -953,7 +953,6 @@ pre::before{
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -983,62 +982,57 @@ const EP = {
 };
 
 
-// ── FIREBASE AUTH FETCH INTERCEPTOR ──
-// Automatically attaches the secure Firebase token to all backend API requests
+// ── FIREBASE AUTH FETCH INTERCEPTOR (FIXED: Illegal Invocation) ──
 const originalFetch = window.fetch;
 window.fetch = async function(resource, config) {
-  // Only intercept requests going to your backend API
-  if (typeof resource === 'string' && resource.startsWith(API)) {
+  let url = resource;
+  if (resource instanceof Request) url = resource.url;
+  else if (resource instanceof URL) url = resource.href;
+
+  if (typeof url === 'string' && url.startsWith(API)) {
     if (auth && auth.currentUser) {
       try {
         const token = await auth.currentUser.getIdToken();
         config = config || {};
         config.headers = config.headers || {};
-        // Attach the token to the headers
-        config.headers['X-Firebase-Token'] = token;
+        
+        if (config.headers instanceof Headers) {
+            config.headers.set('X-Firebase-Token', token);
+        } else {
+            config.headers['X-Firebase-Token'] = token;
+        }
       } catch (err) {
         console.warn("Could not retrieve Firebase token", err);
       }
     }
   }
-  return originalFetch(resource, config);
+  // FIX: Must use .call(window) to prevent 'Illegal Invocation' crash!
+  return originalFetch.call(window, resource, config);
 };
 
-// End of interceptor 
 
 // FIX #2: Tool result prefix — only tool-generated HTML gets this prefix
 const TOOL_PREFIX = '\u0000TOOL\u0000';
    
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-// FIX #6 & improved markdown: Better inlineMd with full markdown support (works for Bobby too)
+// Better inlineMd with full markdown support (works for Bobby too)
 function inlineMd(raw=''){
   let s = esc(raw);
-  // Inline code (before bold/italic so backticks take priority)
   s = s.replace(/`([^`\n]+?)`/g,'<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-family:var(--font-code);font-size:0.88em">$1</code>');
-  // Bold
   s = s.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>');
   s = s.replace(/__([^_\n]+?)__/g,'<strong>$1</strong>');
-  // Italic
   s = s.replace(/\*([^*\n]+?)\*/g,'<em>$1</em>');
   s = s.replace(/_([^_\n]+?)_/g,'<em>$1</em>');
-  // Strikethrough
   s = s.replace(/~~([^~\n]+?)~~/g,'<del>$1</del>');
-  // Links
   s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline">$1</a>');
-  // Bare URLs
   s = s.replace(/(^|[\s])(https?:\/\/[^\s<]+)/g,'$1<a href="$2" target="_blank" rel="noopener" style="color:var(--accent)">$2</a>');
-  // Headings
   s = s.replace(/^### (.+)$/gm,'<h3 style="margin:0.6em 0 0.3em;font-family:var(--font-brand);color:var(--accent-2)">$1</h3>');
   s = s.replace(/^## (.+)$/gm,'<h2 style="margin:0.7em 0 0.3em;font-family:var(--font-brand);color:var(--accent-2)">$1</h2>');
   s = s.replace(/^# (.+)$/gm,'<h1 style="margin:0.8em 0 0.3em;font-family:var(--font-brand);color:var(--accent)">$1</h1>');
-  // Numbered list
   s = s.replace(/^\d+\.\s+(.+)$/gm,'<li style="margin-left:1.5em;margin-bottom:0.35em;list-style-type:decimal">$1</li>');
-  // Bullet list
   s = s.replace(/^[-*+]\s+(.+)$/gm,'<li style="margin-left:1.2em;margin-bottom:0.35em;list-style-type:disc">$1</li>');
-  // Blockquote
   s = s.replace(/^&gt; (.+)$/gm,'<blockquote style="border-left:3px solid var(--accent);padding-left:12px;color:var(--text-2);margin:4px 0">$1</blockquote>');
-  // Horizontal rule
   s = s.replace(/^---$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">');
   return s.replace(/\n/g,'<br>');
 }
@@ -1063,7 +1057,7 @@ function renderMd(text=''){
   return html;
 }
 
-// FIX #2: Only content we explicitly tagged as tool output gets raw-rendered
+// Only content we explicitly tagged as tool output gets raw-rendered
 function isToolResult(text) {
   return typeof text === 'string' && text.startsWith(TOOL_PREFIX);
 }
@@ -1391,10 +1385,8 @@ function followUpChips(aiText){
   } else if(t.includes('website')||t.includes('html')||t.includes('css')){
     chips=['Show me the code','How do I deploy this?','Add more features','Mobile-friendly version'];
   } else {
-    const options=[
-      ['Tell me more','Give me examples','Summarise this','What are the risks?'],
-      ['Explain simply','Any alternatives?','What about Nigeria?','Go deeper'],
-      ['Another perspective','Related topics?','How to apply this?','Real-world example'],
+    const options=[['Tell me more','Give me examples','Summarise this','What are the risks?'],
+      ['Explain simply','Any alternatives?','What about Nigeria?','Go deeper'],['Another perspective','Related topics?','How to apply this?','Real-world example'],
     ];
     chips=options[Math.floor(Math.random()*options.length)];
   }
@@ -1428,11 +1420,11 @@ function renderChat(msgs){
           <button class="ctrl-btn" onclick="copyMsg(this)"><i class="fa-solid fa-copy"></i></button>
         </div>`;
     } else {
-      // FIX #2: Only use raw HTML if it was explicitly saved as a tool result
+      // Only use raw HTML if it was explicitly saved as a tool result
       const toolResult = isToolResult(msg.text || '');
       const content = toolResult
-        ? (msg.text || '').slice(TOOL_PREFIX.length)   // strip prefix, render raw
-        : renderMd(msg.text || '');                     // always safe markdown for AI text
+        ? (msg.text || '').slice(TOOL_PREFIX.length)   
+        : renderMd(msg.text || '');                     
       const dur=msg.duration?`<span class="meta-lbl">${msg.duration}s</span>`:'<span class="meta-lbl">AI</span>';
       g.innerHTML=`<div class="bubble"><div class="ai-content">${content}</div></div>
         <div class="msg-controls">
@@ -1517,13 +1509,9 @@ function hookModelBtns() {
       currentModel = b.dataset.m;
       localStorage.setItem('ph_model', currentModel);
       
-      // Visual feedback
       document.querySelectorAll('.mdl-btn').forEach(btn => btn.classList.remove('active-mdl'));
       b.classList.add('active-mdl');
-      
-      // Hide popup
       document.querySelectorAll('.mdl-popup').forEach(p => p.style.display = 'none');
-      
       toast(`Engine switched to ${currentModel.toUpperCase()}`, "i");
     };
   });
@@ -1578,26 +1566,11 @@ function openToolWithPrompt(tool,prompt){
   }
 }
 
+// ── FIXED: SINGLE runImageWithPrompt definition
 async function runImageWithPrompt(prompt){
   await saveMsg('user',`Create image: "${prompt}"`);
   showOrbLoader('Creating your image...');
   try{
-    const res=await fetch(`${API}/generate-image`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,model:'v6',use_minimax:false,creative:false})});
-    // Safely parse the JSON
-    const d=await res.json().catch(()=>({}));
-    // Look for detail FIRST!
-    if(!res.ok)throw new Error(d.detail || d.error || 'Image generation failed');
-    removeOrbLoader();
-    showImageModal(d.image_b64,'IMAGE OUTPUT',true);
-    await showToolResult(`Image created! Tap the floating window to download.`);
-  }catch(e){removeOrbLoader();await showToolResult(`❌ ${e.message}`)}
-}
-
-async function runImageWithPrompt(prompt){
-  await saveMsg('user',`Create image: "${prompt}"`);
-  showOrbLoader('Creating your image...');
-  try{
-    // FIX: Updated endpoint path to /api/studio/generate-image and added default width/height
     const res=await fetch(`${API}/api/studio/generate-image`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1610,19 +1583,16 @@ async function runImageWithPrompt(prompt){
         creative:false
       })
     });
-    // Safely parse the JSON
     const d=await res.json().catch(()=>({}));
-    // Look for detail FIRST!
     if(!res.ok)throw new Error(d.detail || d.error || 'Image generation failed');
     removeOrbLoader();
     showImageModal(d.image_b64,'IMAGE OUTPUT',true);
     await showToolResult(`Image created! Tap the floating window to download.`);
   }catch(e){removeOrbLoader();await showToolResult(`❌ ${e.message}`)}
 }
-   
-// ── FIX #3: ORBITAL LOADER ─────────────────────────────────────
+
+// ── ORBITAL LOADER ─────────────────────────────────────
 let orbLoaderDiv=null;
-// (kept legacy alias for any existing call sites inside tool handlers)
 const eLoaderDiv_get=()=>orbLoaderDiv;
 
 function showOrbLoader(text='Processing'){
@@ -1654,7 +1624,6 @@ function showOrbLoader(text='Processing'){
   $('call-btn').style.display='none';
 }
 
-// Alias for backward compat inside this script
 const showELoader=showOrbLoader;
 
 function removeOrbLoader(){
@@ -1667,15 +1636,13 @@ function updateOrbStatus(text){
   if(el)el.textContent=text;
 }
 
-// ── TOOL RESULT — FIX #2 ──────────────────────────────────────
-// All tool-generated HTML gets TOOL_PREFIX so renderChat knows to render it raw
+// ── TOOL RESULT ──────────────────────────────────────
 async function showToolResult(html,save=true,dur=null){
   removeOrbLoader();
   if(!html)return;
   const vp=$('chat-vp');
   const d=document.createElement('div');
   d.className='msg-group ai';
-  // When rendering live we always know it's a tool result; render as raw HTML directly
   d.innerHTML=`<div class="bubble"><div class="ai-content">${html}</div></div>
     <div class="msg-controls">
       ${dur?`<span class="meta-lbl">${dur}s</span>`:'<span class="meta-lbl">AI</span>'}
@@ -1685,18 +1652,16 @@ async function showToolResult(html,save=true,dur=null){
   vp.appendChild(d);
   enhanceCode(d);
   scrollBot();
-  // FIX #2: Prefix tells renderChat to skip markdown and render raw on reload
-  if(save) await saveMsg('ai', TOOL_PREFIX + html, [], dur);
-   isResponding=false;
+  if(save) await saveMsg('ai', TOOL_PREFIX + html,[], dur);
+  isResponding=false;
   $('send-btn').style.display='flex';
   $('stop-btn').style.display='none';
   $('call-btn').style.display='flex';
   
-  // Update wallet instantly after any tool generation!
   if (typeof updateWalletUI === 'function') updateWalletUI(); 
 }
 
-// ── FIX #4: BOBBY WEB SEARCH (Wikipedia API — CORS-friendly) ───
+// ── BOBBY WEB SEARCH ───
 const SEARCH_INTENT_RE=/\b(what is|what are|who is|who was|how do|how does|how did|how to|why is|why does|when did|when was|where is|where was|explain|tell me about|latest|recent|news|current|history of|define|meaning of|population|capital|president|prime minister|founder|ceo|invented|discovered|difference between|compare|examples of|overview of)\b/i;
 const CASUAL_RE=/^(how are you|how.s it|what.s up|hey\b|hi\b|hello\b|good morning|good evening|thanks|thank you|lol|haha|okay|ok\b|yes\b|no\b|sure\b|i love|i hate|do you|are you|can you help|please help)/i;
 
@@ -1710,7 +1675,6 @@ function shouldBobbySearch(query){
 async function wikiSearch(query){
   try{
     const cleanQ=query.replace(/[?!.]/g,' ').replace(/\s+/g,' ').trim().slice(0,120);
-    // Wikipedia search API — CORS-enabled with origin=*
     const sRes=await fetch(
       `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQ)}&format=json&origin=*&srlimit=3`,
       {signal:AbortSignal.timeout(5000)}
@@ -1739,68 +1703,54 @@ async function wikiSearch(query){
   }
 }
 
-// ── FIX #3: TYPEWRITER for Bobby (word-by-word reveal) ─────────
+// ── TYPEWRITER ─────────
 async function typewriterReveal(el,text,signal){
-  const tokens=text.split(/(\s+)/); // preserve whitespace
+  const tokens=text.split(/(\s+)/);
   let acc='';
   for(const tok of tokens){
     if(signal?.aborted) break;
     acc+=tok;
     el.innerHTML=renderMd(acc)+'<span class="cursor"></span>';
     scrollBot();
-    // Tiny delay: shorter for spaces, slightly longer for words
     await new Promise(r=>setTimeout(r,tok.trim()?16:4));
   }
-  el.innerHTML=renderMd(text); // Final clean render without cursor
+  el.innerHTML=renderMd(text);
 }
 
-// ── BOBBY FRONTEND WEB SEARCH (REAL SEARCH ENGINE) ──
+// ── BOBBY FRONTEND WEB SEARCH ──
 async function fetchFrontendContext(query) {
     try {
         const q = query.trim().toLowerCase();
-        
-        // 1. Block casual greetings, short phrases, and identity questions
         const isCasual = /^(how are you|how's it|what's up|hey|hi|hello|good morning|good evening|thanks|thank you|lol|haha|okay|ok|yes|no|sure|who are you|what are you|what is your name)\b/i.test(q);
-        
-        // 2. Trigger search ONLY if it's not casual, starts with a question word, and is longer than 2 words
         if (!isCasual && /^(how|what|who|when|where|why|can you explain|is there|best|latest|current|top|news)/i.test(q) && q.split(' ').length > 2) {
             updateOrbStatus('Searching the web…');
-            
-            // Use a reliable proxy to scrape real search results, bypassing CORS
             const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
-            
             const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
             const data = await response.json();
-            
-            // Parse the returned HTML into actual search results
             const parser = new DOMParser();
             const doc = parser.parseFromString(data.contents, 'text/html');
             const results = doc.querySelectorAll('.result__body');
-            
             let contextStr = "";
             let count = 0;
-            
             results.forEach(res => {
-                if(count >= 4) return; // Feed Bobby the top 4 results
+                if(count >= 4) return;
                 const title = res.querySelector('.result__title')?.textContent.trim();
                 const snippet = res.querySelector('.result__snippet')?.textContent.trim();
                 let link = res.querySelector('.result__url')?.getAttribute('href') || '';
                 if(link.startsWith('//')) link = 'https:' + link;
-                
                 if(title && snippet) {
                     contextStr += `[Source ${count+1}: ${title}]\nURL: ${link}\nSnippet: ${snippet}\n\n`;
                     count++;
                 }
             });
-            
             if(contextStr.length > 0) return contextStr;
         }
     } catch(e) { console.warn('Frontend search error:', e); }
     return null;
 }
 
-// ── FIX #1: FILE PROCESSING ─────────────────────────────────────
+// ── FILE PROCESSING ─────────────────────────────────────
 async function processFiles(files,userPrompt,signal){
   if(!files||!files.length) return '';
   let ctx='';
@@ -1835,7 +1785,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   const text=(overrideText??ti?.value.trim())||'';
   if((!text&&!uploadedFiles.length)||isResponding) return;
 
-  // FN call detection only for text-only messages
   if(!skipDetection && text && !uploadedFiles.length){
     const fn=detectFnCall(text);
     if(fn){
@@ -1857,7 +1806,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
 
   const history=currentMessages.map(m=>({role:m.role,content:m.text||''}));
 
-  // ── INSTANTLY SHOW USER MESSAGE ──────────────────────────────
   const vp=$('chat-vp');
   if(!skipSaveUser){
     const userDiv=document.createElement('div');
@@ -1871,26 +1819,21 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     scrollBot();
     await saveMsg('user',text,fileMeta);
 
-    // FIX #1: Clear + reset input BEFORE processing files (fixes re-upload)
     const filesToProcess=[...uploadedFiles];
     uploadedFiles=[];
     renderFilePrev();
     if(ti){ti.value='';ti.style.height='44px'}
-    // CRITICAL: reset the file input value so same file can be re-selected
     const fi=$('file-input');
     if(fi) fi.value='';
 
-    // ── SHOW ORBITAL LOADER ──────────────────────────────────
     showOrbLoader(filesToProcess.length?'Reading your file…':'Thinking…');
 
-    // FIX #1: Process any uploaded files via backend understand endpoints
     let fileContext='';
     if(filesToProcess.length){
       fileContext=await processFiles(filesToProcess,text,currentCtrl.signal);
       updateOrbStatus('Thinking…');
     }
 
-    // Build augmented message with file context
     var augmentedMessage=fileContext
       ?`${text}\n\n[UPLOADED FILE CONTEXT — use this to answer the user's question]\n${fileContext}`
       :text;
@@ -1899,11 +1842,9 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     showOrbLoader('Thinking…');
   }
 
-  // ── AI RESPONSE BUBBLE ───────────────────────────────────────
   const aiG=document.createElement('div');
   aiG.className='msg-group ai';
 
-  // Replace the loader in-place
   if(orbLoaderDiv){
     orbLoaderDiv.remove();
     orbLoaderDiv=null;
@@ -1947,7 +1888,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       const recentMem = currentMessages.slice(-4).map(m => `${m.role === 'user' ? 'User' : 'Bobby'}: ${m.text || ''}`).join("\n");
       
       let payloadPrompt = `[System Note: Current Date & Time is ${currentDate}]\n\n`;
-      // FIX: Use 'augmentedMessage' instead of 'text' so Bobby receives the hidden image analysis!
       payloadPrompt += recentMem ? `[Chat History]\n${recentMem}\n\n[New Question]\nUser: ${augmentedMessage}` : augmentedMessage;
        
       let webCtx = null;
@@ -1970,7 +1910,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       await typewriterReveal(contentEl, fullText, currentCtrl.signal);
         
     } else {
-      // MiniMax Philadelphia Routing!
       const historyPayload = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
       const payload = { message: augmentedMessage, history: historyPayload, system_prompt: finalSysPrompt };
       
@@ -1993,7 +1932,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     fullText += err.name === 'AbortError' ? '\n\n*(Response stopped)*' : `\n\n❌ ${err.message}`;
   }
     
-  // ── FINALIZE ─────────────────────────────────────────────────
   const dur=((performance.now()-t0)/1000).toFixed(1);
   let finalHtml=renderMd(fullText);
   finalHtml=finalHtml.replace(/&lt;think&gt;/g,'<think>').replace(/&lt;\/think&gt;/g,'</think>');
@@ -2023,11 +1961,11 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   hookModelBtns();
   const savedId=await saveMsg('ai',fullText,[],dur);
   if(savedId) aiG.dataset.id=savedId;
- isResponding=false;
+  isResponding=false;
   $('send-btn').style.display='flex';
   $('stop-btn').style.display='none';
   $('call-btn').style.display='flex';
-  updateWalletUI(); // Automatically updates the wallet after a message!
+  updateWalletUI(); 
   scrollBot();
 }
 
@@ -2036,11 +1974,9 @@ $('send-btn').onclick=()=>sendMsg();
 
 const ti=$('txt-input');
 if(ti){
-  // FIX #5: Enter ONLY creates a new line. Send only via button click.
   ti.onkeydown=e=>{
     if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){
       // Do NOT prevent default — let textarea insert newline naturally
-      // Only Ctrl/Cmd+Enter sends (power-user shortcut)
     }
     if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
       e.preventDefault();
@@ -2068,11 +2004,9 @@ document.addEventListener('click',e=>{
 
 // ── FILE UPLOAD ─────────────────────────────────────────────────
 $('file-input').onchange=function(){
-  // FIX #1: Merge new files instead of replacing (allows re-upload flow)
   const newFiles=Array.from(this.files||[]);
   uploadedFiles=[...uploadedFiles,...newFiles];
   renderFilePrev();
-  // DON'T reset value here — reset only after send, so the browser shows selection
 };
 
 function renderFilePrev(){
@@ -2114,7 +2048,6 @@ const toolDefs={
       await saveMsg('user',`Create image: "${prompt}"`);
       showOrbLoader('Creating your image...');
       try{
-        // FIX: Updated endpoint path and added default width/height
         const res=await fetch(`${API}/api/studio/generate-image`,{
           method:'POST',
           headers:{'Content-Type':'application/json'},
@@ -2128,9 +2061,7 @@ const toolDefs={
           }),
           signal:currentCtrl?.signal
         });
-        // Safely parse the JSON
         const d=await res.json().catch(()=>({}));
-        // Look for detail FIRST!
         if(!res.ok)throw new Error(d.detail || d.error || 'Failed to generate image');
         removeOrbLoader();
         showImageModal(d.image_b64,'IMAGE OUTPUT',true);
@@ -2262,7 +2193,7 @@ const toolDefs={
         const prov = tf.querySelector('#tf-provider');
         const style = tf.querySelector('#tf-style');
         const voices = {
-            gemini: ["podcast", "cinematic", "upbeat", "soft", "dramatic"],
+            gemini:["podcast", "cinematic", "upbeat", "soft", "dramatic"],
             minimax:["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
         };
         const update = () => {
@@ -2379,10 +2310,9 @@ const toolDefs={
         const d=await res.json();
         if(!res.ok)throw new Error(d.error);
         
-        // PERMANENT STORAGE FIX: Save directly to Firebase so it never forgets!
         try {
             await addDoc(collection(db, 'users', currentUser.uid, 'websites'), { url: d.url, createdAt: serverTimestamp() });
-        } catch(err) { console.warn("Failed to save to Firebase", err); }
+        } catch(err) {}
 
         return `✅ Website live! <a href="${d.url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">Open site here</a>`;
       }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
@@ -2417,7 +2347,6 @@ const toolDefs={
       await saveMsg('user','Show my websites.');
       showOrbLoader('Fetching your websites from secure storage...');
       try{
-        // FETCH FROM FIREBASE INSTEAD OF TEMPORARY BACKEND MEMORY
         const sitesQuery = query(collection(db, 'users', currentUser.uid, 'websites'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(sitesQuery);
         
@@ -2426,7 +2355,7 @@ const toolDefs={
         }
 
         let list = '<ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">';
-        const seen = new Set(); // Prevent duplicates
+        const seen = new Set();
         snap.forEach(doc => {
             const url = doc.data().url;
             if(!seen.has(url)) {
@@ -2465,7 +2394,8 @@ async function handleVideoGen(payload,isImageToVideo){
   if(!currentCtrl)currentCtrl=new AbortController();
   showOrbLoader('Submitting video job...');
   try{
-    const ep=isImageToVideo?'/api/tools/generate-video-from-image':'/api/tools/generate-video-from-text';
+    // FIX: Using the new Studio endpoints to ensure matching cost and no watermarks!
+    const ep=isImageToVideo?'/api/studio/generate-video-from-image':'/api/studio/generate-video-from-text';
     let opts;
     if(isImageToVideo) opts={method:'POST',body:payload,signal:currentCtrl.signal};
     else opts={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal};
@@ -2525,7 +2455,7 @@ document.querySelectorAll('[data-tool]').forEach(btn=>{
       $('tool-form-title').textContent=def.title;
       const tf=$('tool-form');
       tf.innerHTML=def.form;
-      if(def.init) def.init(tf); // This enables dynamic dropdowns!
+      if(def.init) def.init(tf); 
       tf.onsubmit=async e=>{
         e.preventDefault();
         const sb=tf.querySelector('[type=submit]');
@@ -2602,7 +2532,6 @@ async function handleCallResponse(){
   
   const lastMsg = callHistory.at(-1)?.content||'';
   try {
-      // Setup System Prompt
       let sysPrompt = activeSystemPrompt || "You are a helpful AI assistant.";
       if (userMemory) {
         sysPrompt += `\n\n[USER CONTEXT]: "${userMemory}". Address them using this, but YOU are the AI.`;
@@ -2831,7 +2760,7 @@ $('redeem-btn').onclick = async () => {
 };
 
 setTimeout(updateWalletUI, 2000);
-   // Missing Helper Functions
+
 window.toast = (msg, type) => {
     const t = document.createElement('div');
     t.textContent = msg;
@@ -2846,7 +2775,6 @@ window.openM = (id) => {
     else prompt("Funding amount (₦):", "1000"); // Fallback if modal HTML is missing
 };
 window.closeM = (id) => { const el = $(id); if(el) el.style.display = 'none'; };
-   
 </script>
 </body>
 </html>
