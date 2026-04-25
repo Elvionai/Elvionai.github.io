@@ -1165,7 +1165,7 @@ input[type=range]{width:100%;accent-color:var(--g1);height:3px;cursor:pointer}
     <button class="pro-link" onclick="goScr('gallery')"><i class="fas fa-images"></i> My Gallery</button>
     <button class="pro-link" onclick="exportAllGallery()"><i class="fas fa-file-archive"></i> Export All Images</button>
     <button class="pro-link" onclick="clearAllData()" style="color:var(--red)"><i class="fas fa-trash-alt"></i> Clear All Data</button>
-    <button class="pro-link" onclick="auth.signOut();window.location.reload()" style="margin-top:6px;color:var(--red)"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+    <button class="pro-link" onclick="logoutUser()" style="margin-top:6px;color:var(--red)"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
     <div class="admin-zone" id="admin-zone">
       <div class="sh"><i class="fas fa-crown"></i><span style="color:var(--g1)">Admin</span></div>
       <div class="fc"><label class="fcl">Email</label><input type="email" id="adm-em" placeholder="user@example.com"></div>
@@ -1261,7 +1261,7 @@ input[type=range]{width:100%;accent-color:var(--g1);height:3px;cursor:pointer}
     </div>
     <div class="adl-card" onclick="downloadAnimGIF()">
       <i class="fas fa-gif" style="font-weight:900"></i>
-      <div class="an">Animated GIF</div>
+      <div class="an">Animated Image</div>
       <div class="ad">Web-ready, shareable</div>
     </div>
     <div class="adl-card" onclick="downloadAnimSprite()">
@@ -1309,7 +1309,7 @@ input[type=range]{width:100%;accent-color:var(--g1);height:3px;cursor:pointer}
 ══════════════════════════════ -->
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import{getAuth,signInWithPopup,GoogleAuthProvider,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import{getAuth,signInWithPopup,GoogleAuthProvider,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 const API="https://web-production-9a18.up.railway.app";
 const ADMIN="koladhino@gmail.com";
@@ -1324,6 +1324,12 @@ const auth=getAuth(initializeApp({
 const gProv=new GoogleAuthProvider();
 window.auth=auth;
 
+/* ── LOGOUT FIX ── */
+window.logoutUser = async () => {
+    await signOut(auth);
+    window.location.reload();
+};
+
 /* ── HELPERS ── */
 window.$=id=>document.getElementById(id);
 function b64toBlob(b64,type="image/png"){const bs=atob(b64),ab=new ArrayBuffer(bs.length),ua=new Uint8Array(ab);for(let i=0;i<bs.length;i++)ua[i]=bs.charCodeAt(i);return new Blob([ab],{type})}
@@ -1334,7 +1340,7 @@ const COSTS={thena:10,minimax:15,quad:40};
 
 /* ── STATE ── */
 window.cu=null;let tok=null,bal=0;
-let curImg=null,curImgB64=null,prevImgB64=null,apiK=null;
+let curImg=null,curImgB64=null,prevImgB64=null;
 let curModel='thena',curAR='768x1024',quadMode=false,wmOn=true;
 let curAnim='kenburns',animRAF=null,animFr=0;
 let txMode=null,txFile=null,expFmt='png',isFav=false;
@@ -1382,7 +1388,14 @@ onAuthStateChanged(auth,async u=>{
 });
 
 async function loadUser(){
-  try{const r=await fetch(`${API}/api/user/keys-and-balance`,{headers:{'X-Firebase-Token':tok}});const d=await r.json();if(r.ok){bal=d.balance||0;updBal();const k=(d.keys||[]).find(x=>x.is_active);if(k)apiK=k.api_key;else openM('fund-m')}}catch(e){}
+  try{
+      const r=await fetch(`${API}/api/user/keys-and-balance`,{headers:{'X-Firebase-Token':tok}});
+      const d=await r.json();
+      if(r.ok){
+          bal=d.balance||0;
+          updBal();
+      }
+  }catch(e){}
 }
 function updBal(){
   const v=bal.toLocaleString();
@@ -1414,7 +1427,7 @@ window.qp=p=>{$('prompt-ta').value=p;cpTab('gen',document.querySelectorAll('.cpt
 window.handleGenerate=async()=>{
   const prompt=$('prompt-ta').value.trim();
   if(!prompt){toast("Enter a prompt first","e");return}
-  if(!apiK){openM('fund-m');return}
+  if(!tok){openM('fund-m');return}
   const cost=quadMode?COSTS.quad:COSTS[curModel];
   if(bal<cost){toast(`Need ${cost} credits`,"e");openM('fund-m');return}
   if(quadMode)await doQuad(prompt);else await doSingle(prompt);
@@ -1432,14 +1445,23 @@ async function doSingle(prompt){
   const st=setInterval(()=>{$('gen-step').textContent=genMsgs[si%genMsgs.length];si++},1800);
   try{
     const finalPrompt=neg?`${prompt}. Avoid: ${neg}`:prompt;
-    let resp;
-    if(curModel==='minimax'){
-      resp=await fetch(`${API}/api/developer/generate-image`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiK}`},body:JSON.stringify({prompt:finalPrompt,use_minimax:true,width:w,height:h})});
-    }else{
-      resp=await fetch(`${API}/api/developer/generate-image`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiK}`},body:JSON.stringify({prompt:finalPrompt,model,width:w,height:h,creative:false,use_minimax:false})});
-    }
+    const resp=await fetch(`${API}/api/studio/generate-image`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
+        body:JSON.stringify({
+            prompt:finalPrompt,
+            model:curModel==='thena'?model:'image-01',
+            width:w,
+            height:h,
+            creative:false,
+            use_minimax:curModel==='minimax'
+        })
+    });
+    
     const d=await resp.json();
-    clearInterval(st);if(!resp.ok)throw new Error(d.detail||'Generation failed');
+    clearInterval(st);
+    if(!resp.ok)throw new Error(d.detail||d.error||'Generation failed');
+    
     hideGL();prevImgB64=curImgB64;curImgB64=d.image_b64;curImg=`data:image/png;base64,${d.image_b64}`;
     showImage(curImg);
     bal-=COSTS[curModel];updBal();genCount++;updateStats();
@@ -1454,7 +1476,19 @@ async function doQuad(prompt){
   showGL('Generating 4 variations…');
   const qg=$('quad-grid');qg.innerHTML='';$('img-display').classList.remove('on');qg.classList.add('on');
   let si=0;const st=setInterval(()=>{$('gen-step').textContent=genMsgs[si%genMsgs.length];si++},1500);
-  const calls=[1,2,3,4].map(i=>fetch(`${API}/api/developer/generate-image`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiK}`},body:JSON.stringify({prompt:`${prompt}, variation ${i}`,model,width:Math.round(w*.7),height:Math.round(h*.7),creative:i%2===0,use_minimax:false})}).then(r=>r.json()).catch(()=>({error:true})));
+  const calls=[1,2,3,4].map(i=>fetch(`${API}/api/studio/generate-image`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
+        body:JSON.stringify({
+            prompt:`${prompt}, variation ${i}`,
+            model:curModel==='thena'?model:'image-01',
+            width:Math.round(w*.7),
+            height:Math.round(h*.7),
+            creative:i%2===0,
+            use_minimax:curModel==='minimax'
+        })
+    }).then(r=>r.json()).catch(()=>({error:true})));
+    
   const results=await Promise.allSettled(calls);
   clearInterval(st);hideGL();
   const valid=results.filter(r=>r.status==='fulfilled'&&r.value.image_b64);
@@ -1505,7 +1539,7 @@ window.runTx=async()=>{
   const mode=txMode;
   const cost=mode==='edit'||mode==='upscale'||mode==='bgreplace'?15:mode==='bg'?2:0;
   if(cost>0&&bal<cost){toast(`Need ${cost} credits`,"e");openM('fund-m');return}
-  if(!apiK&&cost>0){openM('fund-m');return}
+  if(!tok&&cost>0){openM('fund-m');return}
   if(mode==='analyze'){
     if(!txFile&&!curImgB64){toast("Upload an image or generate one","e");return}
     showGL("Analyzing…");
@@ -1542,7 +1576,17 @@ window.runTx=async()=>{
     }else if(mode==='upscale'){
       const prompt=($('prompt-ta').value||'highly detailed, 4k, professional').trim();
       const[w,h]=curAR.split('x').map(Number);
-      const r2=await fetch(`${API}/api/developer/generate-image`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiK}`},body:JSON.stringify({prompt:`${prompt}, 4k ultra detail, crisp`,model:'v6',width:Math.round(Math.min(w*1.5,1536)),height:Math.round(Math.min(h*1.5,1536))})});
+      const r2=await fetch(`${API}/api/studio/generate-image`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
+          body:JSON.stringify({
+              prompt:`${prompt}, 4k ultra detail, crisp`,
+              model:'v6',
+              width:Math.round(Math.min(w*1.5,1536)),
+              height:Math.round(Math.min(h*1.5,1536)),
+              use_minimax:false
+          })
+      });
       const d2=await r2.json();if(!r2.ok)throw new Error(d2.detail||'Upscale failed');
       b64res=d2.image_b64;
     }
@@ -1599,8 +1643,7 @@ const PRESETS={
 window.applyPreset=name=>{
   const p=PRESETS[name];if(!p)return;
   ['bright','contrast','sat','hue','blur','sepia','invert'].forEach(k=>{const el=$('f-'+k);if(el)el.value=p[k]});
-  $('f-vign').value=p.vign;applyFilters();applyVignette();
-  ['bright','contrast','sat','hue','blur','sepia','invert','vign'].forEach(k=>{
+  $('f-vign').value=p.vign;applyFilters();applyVignette();['bright','contrast','sat','hue','blur','sepia','invert','vign'].forEach(k=>{
     const vl=$('v-'+k);if(!vl)return;const u=k==='hue'?'°':k==='blur'?'px':'%';vl.textContent=(p[k]||0)+u;
   });
   toast(`${name} applied!`,"i");
@@ -1730,7 +1773,7 @@ function runAnim(cv,img){
   frame();
 }
 window.captureFrame=()=>{
-  const cv=$('anim-cv');if(!cv)return;
+  const cv=$('anim-cv') || $('anim-overlay-cv');if(!cv)return;
   const url=cv.toDataURL('image/png');const a=document.createElement('a');
   a.href=url;a.download=`phl_frame_${Date.now()}.png`;a.click();
   toast("Frame captured!","s");
@@ -1763,15 +1806,33 @@ window.downloadAnimMP4=async()=>{
     wrap.style.display='block';status.textContent='Recording 3s…';prog.style.width='0%';
     recorder.start();
     let elapsed=0;const interval=setInterval(()=>{elapsed+=100;prog.style.width=(elapsed/3000*100)+'%';if(elapsed>=3000){clearInterval(interval);recorder.stop()}},100);
-  }catch(e){toast("WebM recording not supported in this browser","e")}
+  }catch(e){
+      try {
+        const stream=cv.captureStream(30);
+        const recorder=new MediaRecorder(stream,{mimeType:'video/webm'});
+        animChunks=[];
+        recorder.ondataavailable=e=>{if(e.data.size>0)animChunks.push(e.data)};
+        recorder.onstop=()=>{
+          const blob=new Blob(animChunks,{type:'video/webm'});
+          const url=URL.createObjectURL(blob);const a=document.createElement('a');
+          a.href=url;a.download=`phl_anim_${curAnim}_${Date.now()}.webm`;a.click();
+          URL.revokeObjectURL(url);status.textContent='Video saved!';
+          setTimeout(()=>{status.textContent='';wrap.style.display='none';closeM('animdl-m')},1500);
+        };
+        wrap.style.display='block';status.textContent='Recording 3s…';prog.style.width='0%';
+        recorder.start();
+        let elapsed=0;const interval=setInterval(()=>{elapsed+=100;prog.style.width=(elapsed/3000*100)+'%';if(elapsed>=3000){clearInterval(interval);recorder.stop()}},100);
+      } catch (err) {
+        toast("WebM recording not supported in this browser","e");
+      }
+  }
 };
 
 window.downloadAnimGIF=async()=>{
   const cv=$('anim-cv');
   if(!cv.width){toast("Play animation first","e");return}
   const status=$('animdl-status');const wrap=$('animdl-prog-wrap');const prog=$('animdl-prog');
-  wrap.style.display='block';status.textContent='Capturing GIF frames…';
-  // Capture 20 frames and build a sprite sheet, then offer it
+  wrap.style.display='block';status.textContent='Capturing frames…';
   const frames=[];const total=20;
   for(let i=0;i<total;i++){
     await new Promise(r=>setTimeout(r,100));
@@ -1797,18 +1858,6 @@ window.downloadAnimGIF=async()=>{
 };
 
 window.downloadAnimSprite=window.downloadAnimGIF;
-
-/* ANIM OVERLAY FUNCTIONS */
-window.startAnimOverlay=()=>{
-  if(!curImgB64){toast("Generate an image first","e");return}
-  const overlay=$('anim-overlay');overlay.style.display='flex';
-  const cv=$('anim-overlay-cv');
-  const img=new Image();img.crossOrigin='anonymous';
-  img.onload=()=>{const mW=Math.min(window.innerWidth*.84,420);cv.width=mW;cv.height=mW*(img.height/img.width);runAnimOn(cv,img)};
-  img.src=curImg;
-};
-window.stopAnimOverlay=()=>{if(animRAF){cancelAnimationFrame(animRAF);animRAF=null}$('anim-overlay').style.display='none'};
-function runAnimOn(cv,img){runAnim(cv,img)}
 
 /* ── STYLES GRID ── */
 const STYLES=[
@@ -1857,11 +1906,11 @@ function buildTrending(){
 /* ── PROMPT ENHANCE ── */
 window.enhancePrompt=async()=>{
   const prompt=$('prompt-ta').value.trim();if(!prompt){toast("Enter a prompt first","e");return}
-  if(!apiK){openM('fund-m');return}
+  if(!tok){openM('fund-m');return}
   showGL('Enhancing with Bobby AI…');
   try{
     const sysP="You are a master AI image prompt engineer. Expand the user's prompt into a highly detailed, vivid 2-3 sentence prompt for AI image generation. Include specific details about lighting, mood, style, camera angle, color palette, and quality tags. Return ONLY the enhanced prompt, nothing else.";
-    const r=await fetch(`${API}/api/developer/bobby/chat`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiK}`},body:JSON.stringify({prompt,systemPrompt:sysP})});
+    const r=await fetch(`${API}/api/studio/bobby/chat`,{method:'POST',headers:{'Content-Type':'application/json','X-Firebase-Token':tok},body:JSON.stringify({prompt,systemPrompt:sysP})});
     const d=await r.json();hideGL();if(!r.ok)throw new Error(d.detail||'Enhance failed');
     const enhanced=d.content||d.reply||'';
     $('enhanced-result').textContent=enhanced;
