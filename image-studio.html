@@ -6,12 +6,21 @@
 <title>Philadelphia Image Studio — Elvion AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<!-- Google tag (gtag.js) Moved inside the head tag for valid HTML -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer ||[];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
+
 <style>
 /* ══════════════════════════════════════════════════════════════
    PHILADELPHIA IMAGE STUDIO — DARK GOLD SOVEREIGN
 ══════════════════════════════════════════════════════════════ */
 :root {
-  /* Core palette */
   --void:#02020a;
   --bg:#050510;
   --bg2:#07070f;
@@ -19,8 +28,6 @@
   --card:#0d0d1c;
   --card2:#111128;
   --card3:#15152f;
-
-  /* Gold system */
   --g1:#c9a96e;
   --g2:#e8c97e;
   --g3:#f5e0a0;
@@ -28,37 +35,23 @@
   --g5:rgba(201,169,110,.08);
   --g6:rgba(201,169,110,.04);
   --gbdr:rgba(201,169,110,.22);
-
-  /* Accents */
   --blue:#4a7cdc;
   --cyan:#00d4b8;
   --red:#e05a7a;
   --green:#00d490;
   --pur:#8b5cf6;
-
-  /* Text */
   --t1:#f0ead8;
   --t2:#7a7260;
   --t3:#3a3428;
-
-  /* Border */
   --bdr:rgba(201,169,110,.1);
   --bdr2:rgba(201,169,110,.2);
-
-  /* Typography */
   --ft:'Cinzel',serif;
   --fb:'DM Sans',sans-serif;
   --fc:'JetBrains Mono',monospace;
   --fi:'Cormorant Garamond',serif;
-
-  /* Layout */
   --nh:56px;
   --bnh:62px;
-
-  /* Radii */
   --r6:6px;--r10:10px;--r14:14px;--r18:18px;--r24:24px;
-
-  /* Shadows */
   --shadow:0 12px 48px rgba(0,0,0,.85);
   --glow:0 0 28px rgba(201,169,110,.22);
   --glow2:0 0 56px rgba(201,169,110,.12);
@@ -1364,7 +1357,7 @@ async function dbDel(store,key){if(!db)return;return new Promise((r,rej)=>{const
 async function dbGet(store,key){if(!db)return null;return new Promise(r=>{const tx=db.transaction(store,'readonly');const req=tx.objectStore(store).get(key);req.onsuccess=()=>r(req.result||null);req.onerror=()=>r(null)})}
 
 /* ── AUTH ── */
-window.login=async()=>{try{await signInWithPopup(auth,gProv)}catch(e){toast("Sign-in failed","e")}};
+window.login=async()=>{try{await signInWithPopup(auth,gProv)}catch(e){toast("Sign-in failed. Please verify you are using a web server (e.g. localhost) and not file:// protocol.","e")}};
 window.authA=fn=>{if(!cu){toast("Sign in first","i");$('scr-auth').classList.add('on');return}fn()};
 
 onAuthStateChanged(auth,async u=>{
@@ -1373,13 +1366,20 @@ onAuthStateChanged(auth,async u=>{
   $('scr-auth').classList.remove('on');
   $('hdr').classList.add('on');
   $('bnav').classList.add('on');
-  const fn=u.displayName?.split(' ')[0]||u.email.split('@')[0];
+  
+  // FIXED: Optional chaining used here securely to prevent crashing if u.email is null
+  const fn=u.displayName?.split(' ')[0]||u.email?.split('@')[0]||'User';
   $('pro-nm').textContent=u.displayName||fn;
-  $('pro-em').textContent=u.email;
+  $('pro-em').textContent=u.email||'—';
+  
   if(u.photoURL){$('hav').innerHTML=`<img src="${u.photoURL}" alt="">`;$('pro-av').innerHTML=`<img src="${u.photoURL}" alt="">`}
-  if(u.email.toLowerCase()===ADMIN)$('admin-zone').style.display='block';
-  try{db=await openDB()}catch(e){}
-  tok=await u.getIdToken(true);
+  // FIXED: Safe lowercasing here
+  if(u.email && u.email.toLowerCase()===ADMIN)$('admin-zone').style.display='block';
+  
+  // Add Try/Catch for IndexedDB so incognito mode doesn't freeze the App
+  try{ db=await openDB() } catch(e){ console.warn("DB init failed", e); }
+  try{ tok=await u.getIdToken(true); } catch(e){ console.warn("Token fetch failed", e); toast("Failed to authenticate secure session", "e"); }
+  
   await loadUser();
   buildStyleGrid();buildTrending();buildColTabs();
   await loadGalleryDB();renderGallery();renderPH();
@@ -1398,8 +1398,7 @@ async function loadUser(){
   }catch(e){}
 }
 function updBal(){
-  const v=bal.toLocaleString();
-  ['bal-v','pro-bal'].forEach(id=>{const el=$(id);if(el)el.textContent=v});
+  const v=bal.toLocaleString();['bal-v','pro-bal'].forEach(id=>{const el=$(id);if(el)el.textContent=v});
   const bt=$('bal-tag');if(bt){bt.classList.add('blink');setTimeout(()=>bt.classList.remove('blink'),600)}
 }
 
@@ -1427,7 +1426,7 @@ window.qp=p=>{$('prompt-ta').value=p;cpTab('gen',document.querySelectorAll('.cpt
 window.handleGenerate=async()=>{
   const prompt=$('prompt-ta').value.trim();
   if(!prompt){toast("Enter a prompt first","e");return}
-  if(!tok){openM('fund-m');return}
+  if(!tok){toast("Invalid secure session. Please reload.","e");return}
   const cost=quadMode?COSTS.quad:COSTS[curModel];
   if(bal<cost){toast(`Need ${cost} credits`,"e");openM('fund-m');return}
   if(quadMode)await doQuad(prompt);else await doSingle(prompt);
@@ -1539,7 +1538,7 @@ window.runTx=async()=>{
   const mode=txMode;
   const cost=mode==='edit'||mode==='upscale'||mode==='bgreplace'?15:mode==='bg'?2:0;
   if(cost>0&&bal<cost){toast(`Need ${cost} credits`,"e");openM('fund-m');return}
-  if(!tok&&cost>0){openM('fund-m');return}
+  if(!tok&&cost>0){toast("Invalid secure session. Please reload.", "e");return}
   if(mode==='analyze'){
     if(!txFile&&!curImgB64){toast("Upload an image or generate one","e");return}
     showGL("Analyzing…");
@@ -1641,8 +1640,7 @@ const PRESETS={
   golden:{bright:102,contrast:110,sat:120,hue:30,blur:0,sepia:22,invert:0,vign:18},
 };
 window.applyPreset=name=>{
-  const p=PRESETS[name];if(!p)return;
-  ['bright','contrast','sat','hue','blur','sepia','invert'].forEach(k=>{const el=$('f-'+k);if(el)el.value=p[k]});
+  const p=PRESETS[name];if(!p)return;['bright','contrast','sat','hue','blur','sepia','invert'].forEach(k=>{const el=$('f-'+k);if(el)el.value=p[k]});
   $('f-vign').value=p.vign;applyFilters();applyVignette();['bright','contrast','sat','hue','blur','sepia','invert','vign'].forEach(k=>{
     const vl=$('v-'+k);if(!vl)return;const u=k==='hue'?'°':k==='blur'?'px':'%';vl.textContent=(p[k]||0)+u;
   });
@@ -1906,7 +1904,7 @@ function buildTrending(){
 /* ── PROMPT ENHANCE ── */
 window.enhancePrompt=async()=>{
   const prompt=$('prompt-ta').value.trim();if(!prompt){toast("Enter a prompt first","e");return}
-  if(!tok){openM('fund-m');return}
+  if(!tok){toast("Session invalid. Reload app.", "e");return}
   showGL('Enhancing with Bobby AI…');
   try{
     const sysP="You are a master AI image prompt engineer. Expand the user's prompt into a highly detailed, vivid 2-3 sentence prompt for AI image generation. Include specific details about lighting, mood, style, camera angle, color palette, and quality tags. Return ONLY the enhanced prompt, nothing else.";
@@ -1924,12 +1922,49 @@ window.useEnhanced=()=>{
 
 /* ── PALETTE ── */
 function extractPalette(b64){
-  const cv=document.createElement('canvas'),ctx=cv.getContext('2d');
-  const img=new Image();img.onload=()=>{
-    cv.width=50;cv.height=50;ctx.drawImage(img,0,0,50,50);
-    const data=ctx.getImageData(0,0,50,50).data;
-    const colors={};
-    for(let i=0;i<data.length;i+=20){const r=Math.round(data[i]/32)*32,g=Math.round(data[i+1]/32)*32,b=Math.round(data[i+2]/32)*32;const k=`${r},${g},${b}`;colors[k]=(colors[k]||0)+1}
+  const cv = document.createElement('canvas');
+  const ctx = cv.getContext('2d');
+  const img = new Image();
+  
+  img.onload = () => {
+    // Shrink the image to 50x50 to quickly sample the dominant colors
+    cv.width = 50; 
+    cv.height = 50; 
+    ctx.drawImage(img, 0, 0, 50, 50);
+    
+    const data = ctx.getImageData(0, 0, 50, 50).data;
+    const colors = {};
+    
+    // Skip every 20th pixel to process faster
+    for(let i = 0; i < data.length; i += 20) {
+      // Group similar colors by rounding to the nearest 32
+      const r = Math.round(data[i]/32)*32, 
+            g = Math.round(data[i+1]/32)*32, 
+            b = Math.round(data[i+2]/32)*32;
+      
+      const k = `${r},${g},${b}`;
+      colors[k] = (colors[k] || 0) + 1;
+    }
+    
+    // Sort by most frequent colors and take the top 8
+    const sorted = Object.entries(colors).sort((a,b) => b[1] - a[1]).slice(0,8);
+    const row = $('pal-row');
+    
+    if(!row) return; // Safety check
+    
+    // Generate the clickable UI color swatches
+    row.innerHTML = sorted.map(([rgb]) => {
+      const [r, g, b] = rgb.split(',').map(Number);
+      const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+      return `<div class="pal-sw" style="background:${hex}" title="${hex}" onclick="navigator.clipboard.writeText('${hex}').then(()=>toast('${hex} copied','s'))"></div>`;
+    }).join('');
+  };
+  
+  // Set the source to the generated base64 image
+  img.src = `data:image/png;base64,${b64}`;
+   }
+
+const r=Math.round(data[i]/32)*32,g=Math.round(data[i+1]/32)*32,b=Math.round(data[i+2]/32)*32;const k=`${r},${g},${b}`;colors[k]=(colors[k]||0)+1}
     const sorted=Object.entries(colors).sort((a,b)=>b[1]-a[1]).slice(0,8);
     const row=$('pal-row');
     row.innerHTML=sorted.map(([rgb])=>{
@@ -2199,12 +2234,4 @@ renderPH();
 </body>
 </html>
 
- <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
 
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
