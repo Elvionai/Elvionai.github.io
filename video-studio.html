@@ -888,16 +888,27 @@ const COSTS={t2v:{pro:250,swift:120},i2v:{pro:250,swift:150},frames:{pro:280,swi
 window.login=async()=>{
   const btn=$('login-btn'),txt=$('login-txt');
   if(btn)btn.style.opacity='.6';if(txt)txt.textContent='Signing in…';
-  try{await signInWithPopup(auth,gp);}catch(e){
-    if(['auth/popup-blocked','auth/popup-cancelled-by-user','auth/cancelled-popup-request'].includes(e.code)){
+  try{
+    await signInWithPopup(auth,gp);
+  }catch(e){
+    // Only redirect if popup was blocked by browser, not if user dismissed it
+    if(e.code==='auth/popup-blocked'){
+      if(txt)txt.textContent='Redirecting…';
       try{await signInWithRedirect(auth,gp);}catch{}
+      return; // page will navigate away
     }
-    if(btn)btn.style.opacity='1';if(txt)txt.textContent='Continue with Google';
+    if(btn)btn.style.opacity='1';
+    if(txt)txt.textContent='Continue with Google';
+    if(e.code&&!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code)){
+      toast('Sign-in error. Please try again.','e');
+    }
   }
 };
 window.logOut=async()=>{await signOut(auth);location.reload()};
 window.authA=fn=>{if(!cu){toast('Sign in first','i');return;}fn()};
-getRedirectResult(auth).catch(()=>{});
+getRedirectResult(auth).catch(e=>{
+  if(e&&e.code&&!e.code.includes('cancelled'))console.warn('Redirect auth:',e.code);
+});
 
 onAuthStateChanged(auth,async u=>{
   if(!u){$('scr-auth').classList.add('on');$('hdr').classList.remove('on');$('bnav').classList.remove('on');return;}
@@ -910,7 +921,9 @@ onAuthStateChanged(auth,async u=>{
   if(u.photoURL){$('hav-btn').innerHTML=`<img src="${u.photoURL}" alt="">`;$('pro-av').innerHTML=`<img src="${u.photoURL}" alt="">`;}
   if(u.email===ADMIN_EMAIL)$('admin-zone').style.display='block';
   try{tok=await u.getIdToken(true);}catch{}
-  await loadUser();loadGallery();renderGallery();renderPH();renderTpl();checkPayReturn();
+  try{await loadUser();}catch(e){console.warn('loadUser:',e);}
+  try{loadGallery();renderGallery();renderGal();renderPH();renderTpl();}catch(e){console.warn('render:',e);}
+  try{checkPayReturn();}catch{}
   goScr('studio');
 });
 
@@ -1018,13 +1031,14 @@ window.qp=p=>{
   cpTab('create',document.querySelectorAll('.cpt')[0]);
 };
 
-/* ── STYLE HELPERS (FIXED: Visually append to textarea) ── */
+/* ── STYLE HELPERS (Append keywords to end of textarea) ── */
 function appendToPrompt(text) {
     if (!text) return;
     const ta = $('gen-prompt');
     let val = ta.value.trim();
-    if (!val.includes(text.trim().replace(',', ''))) {
-        ta.value = (text + " " + val).trim();
+    const clean = text.trim().replace(/,$/,'');
+    if (!val.toLowerCase().includes(clean.toLowerCase())) {
+        ta.value = val ? (val.replace(/,?\s*$/,'') + ', ' + text.trim()) : text.trim();
         updCC(ta);
     }
 }
@@ -1171,7 +1185,7 @@ function onVideoReady(url,prompt,mode){
   addToHistory(prompt,mode);
   const entry={id:Date.now(),url,prompt:prompt.slice(0,120),mode,date:new Date().toLocaleDateString(),quality:curQuality};
   gallery.unshift(entry);if(gallery.length>60)gallery.pop();
-  saveGallery();
+  saveGallery();renderGallery();renderGal();
 }
 
 /* ── VIDEO CONTROLS ── */
@@ -1521,7 +1535,8 @@ function startAurora(){
   let t=0;
   (function draw(){
     requestAnimationFrame(draw);ctx.clearRect(0,0,cv.width,cv.height);t+=.0025;
-    const orbs={cx:.22+Math.sin(t*.6)*.14,cy:.18+Math.cos(t*.5)*.1,r:.55,c:`rgba(201,169,110,${.055+Math.sin(t)*.02})`},
+    const orbs=[
+      {cx:.22+Math.sin(t*.6)*.14,cy:.18+Math.cos(t*.5)*.1,r:.55,c:`rgba(201,169,110,${.055+Math.sin(t)*.02})`},
       {cx:.82+Math.cos(t*.5)*.1,cy:.82+Math.sin(t*.4)*.08,r:.4,c:`rgba(155,108,246,${.038+Math.cos(t*.7)*.014})`},
       {cx:.52+Math.sin(t*.8)*.08,cy:.48+Math.cos(t*.6)*.06,r:.3,c:`rgba(245,224,160,${.022+Math.sin(t*1.1)*.01})`},
       {cx:.1+Math.cos(t*.4)*.07,cy:.6+Math.sin(t*.35)*.09,r:.28,c:`rgba(74,124,220,${.022+Math.sin(t*.9)*.01})`},
