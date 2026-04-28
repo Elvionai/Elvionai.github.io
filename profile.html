@@ -378,7 +378,7 @@ pre::before{
 
 /* ── INPUT DOCK ───────────────────────────────────────────────────── */
 #input-dock{
-  padding:14px 18px 18px;
+  padding:14px 18px 6px;
   background:rgba(0,0,0,0.4);
   border-top:1px solid var(--border);
   display:flex;align-items:flex-end;gap:10px;
@@ -416,6 +416,7 @@ pre::before{
   color:var(--text-2);font-size:1.1rem;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;transition:var(--transition);
+  margin-bottom: 6px;
 }
 .call-btn-dock:hover{background:rgba(255,255,255,0.08);color:var(--text-1);border-color:var(--border-focus)}
 .send-btn{
@@ -428,6 +429,17 @@ pre::before{
 .send-btn:hover{background:var(--accent);transform:scale(1.06)}
 .send-btn.stop-mode{background:var(--danger);color:#fff}
 #stop-btn{display:none}
+
+/* DISCLAIMER */
+.disclaimer-text {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  padding: 4px 18px 12px;
+  background: rgba(0,0,0,0.4);
+  font-family: var(--font-body);
+  flex-shrink: 0;
+}
 
 /* FILE PREVIEW BAR */
 #file-preview-bar{
@@ -634,7 +646,7 @@ pre::before{
   .brand-text{font-size:1rem;letter-spacing:2px}
   #chat-vp{padding:12px}
   .msg-group{max-width:95%}
-  #input-dock{padding:10px 12px 14px}
+  #input-dock{padding:10px 12px 6px}
   .panel{width:88vw}
 }
 </style>
@@ -695,6 +707,11 @@ pre::before{
         <button class="send-btn stop-mode" id="stop-btn"><i class="fa-solid fa-square"></i></button>
       </div>
     </div>
+  </div>
+  
+  <!-- DISCLAIMER -->
+  <div class="disclaimer-text">
+    <span id="disclaimer-name">Philadelphia</span> AI is liable to mistakes. Kindly double check.
   </div>
 </div>
 
@@ -981,7 +998,6 @@ const EP = {
   minimax: `${API}/api/minimax/chat`
 };
 
-
 // ── FIREBASE AUTH FETCH INTERCEPTOR (FIXED: Illegal Invocation) ──
 const originalFetch = window.fetch;
 window.fetch = async function(resource, config) {
@@ -1006,10 +1022,8 @@ window.fetch = async function(resource, config) {
       }
     }
   }
-  // FIX: Must use .call(window) to prevent 'Illegal Invocation' crash!
   return originalFetch.call(window, resource, config);
 };
-
 
 // FIX #2: Tool result prefix — only tool-generated HTML gets this prefix
 const TOOL_PREFIX = '\u0000TOOL\u0000';
@@ -1044,7 +1058,7 @@ function renderMd(text=''){
   (text||'').replace(codeRx,(match,lang,code,offset)=>{
     html += inlineMd(text.slice(last,offset));
     const l=(lang||'code').toLowerCase().trim();
-    const sc = esc(code.replace(/\n$/,''));  // trim trailing newline
+    const sc = esc(code.replace(/\n$/,''));
     html+=`<pre data-lang="${l}">
       <div class="code-btns">
         <button class="code-btn preview-btn" title="Preview output"><i class="fa-solid fa-eye"></i> Preview</button>
@@ -1253,6 +1267,15 @@ $('inject-persona-btn').onclick=()=>{
   }
   const mem=$('memory-input').value.trim();
   if(mem){userMemory=mem;localStorage.setItem('ph_memory',mem)}
+  
+  // Update Disclaimer Name
+  const dName = $('disclaimer-name');
+  if(dName) {
+      if(currentModel === 'bobby') dName.textContent = 'Bobby';
+      else if(activePersona === 'custom') dName.textContent = $('custom-name').value.trim() || 'Custom AI';
+      else dName.textContent = def.label || 'Philadelphia';
+  }
+  
   $('persona-status').textContent=`✓ ${def.label} active`;
   setTimeout(()=>{closePanel('persona');$('persona-status').textContent=''},1400);
 };
@@ -1283,7 +1306,6 @@ onAuthStateChanged(auth,user=>{
   $('brand-sub').textContent=`WORKSPACE: ${name.toUpperCase()}`;
   loadChats(user.uid);
   
-  // Check for successful payment return
   setTimeout(window.checkPayReturn, 1500);
 });
 
@@ -1385,8 +1407,7 @@ function followUpChips(aiText){
   } else if(t.includes('website')||t.includes('html')||t.includes('css')){
     chips=['Show me the code','How do I deploy this?','Add more features','Mobile-friendly version'];
   } else {
-    const options=[['Tell me more','Give me examples','Summarise this','What are the risks?'],
-      ['Explain simply','Any alternatives?','What about Nigeria?','Go deeper'],['Another perspective','Related topics?','How to apply this?','Real-world example'],
+    const options=[['Tell me more','Give me examples','Summarise this','What are the risks?'],['Explain simply','Any alternatives?','What about Nigeria?','Go deeper'],['Another perspective','Related topics?','How to apply this?','Real-world example'],
     ];
     chips=options[Math.floor(Math.random()*options.length)];
   }
@@ -1420,7 +1441,6 @@ function renderChat(msgs){
           <button class="ctrl-btn" onclick="copyMsg(this)"><i class="fa-solid fa-copy"></i></button>
         </div>`;
     } else {
-      // Only use raw HTML if it was explicitly saved as a tool result
       const toolResult = isToolResult(msg.text || '');
       const content = toolResult
         ? (msg.text || '').slice(TOOL_PREFIX.length)   
@@ -1509,6 +1529,13 @@ function hookModelBtns() {
       currentModel = b.dataset.m;
       localStorage.setItem('ph_model', currentModel);
       
+      const dName = $('disclaimer-name');
+      if(dName) {
+        if(currentModel === 'bobby') dName.textContent = 'Bobby';
+        else if(activePersona === 'custom') dName.textContent = $('custom-name').value.trim() || 'Custom AI';
+        else dName.textContent = personaDefs[activePersona]?.label || 'Philadelphia';
+      }
+      
       document.querySelectorAll('.mdl-btn').forEach(btn => btn.classList.remove('active-mdl'));
       b.classList.add('active-mdl');
       document.querySelectorAll('.mdl-popup').forEach(p => p.style.display = 'none');
@@ -1566,7 +1593,6 @@ function openToolWithPrompt(tool,prompt){
   }
 }
 
-// ── FIXED: SINGLE runImageWithPrompt definition
 async function runImageWithPrompt(prompt){
   await saveMsg('user',`Create image: "${prompt}"`);
   showOrbLoader('Creating your image...');
@@ -2244,7 +2270,7 @@ const toolDefs={
       const prompt=form.querySelector('#tf-prompt').value;
       const duration=parseInt(form.querySelector('#tf-dur').value)||6;
       await saveMsg('user',`Video: "${prompt}"`);
-      await handleVideoGen({prompt,duration,resolution:'1080P',model:'MiniMax-Hailuo-02'},false);
+      await handleVideoGen({prompt,duration,model:'video-01'},false); // NO resolution here
       return null;
     }
   },
@@ -2394,8 +2420,8 @@ async function handleVideoGen(payload,isImageToVideo){
   if(!currentCtrl)currentCtrl=new AbortController();
   showOrbLoader('Submitting video job...');
   try{
-    // FIX: Using the new Studio endpoints to ensure matching cost and no watermarks!
-    const ep=isImageToVideo?'/api/studio/generate-video-from-image':'/api/studio/generate-video-from-text';
+    // FIX: Using the Lite endpoints to match the new cheap pricing strategy
+    const ep=isImageToVideo?'/api/studio/generate-video-from-image-lite':'/api/studio/generate-video-from-text-lite';
     let opts;
     if(isImageToVideo) opts={method:'POST',body:payload,signal:currentCtrl.signal};
     else opts={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl.signal};
@@ -2407,7 +2433,7 @@ async function handleVideoGen(payload,isImageToVideo){
 
     const poll=setInterval(async()=>{
       try{
-        const sr=await fetch(`${API}/api/tools/video-status?task_id=${d.task_id}`);
+        const sr=await fetch(`${API}/api/video/status?task_id=${d.task_id}`);
         const sd=await sr.json();
         if(sr.ok&&sd.url){
           clearInterval(poll);
@@ -2782,8 +2808,9 @@ window.closeM = (id) => { const el = $(id); if(el) el.style.display = 'none'; };
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-J1YTKP10ZX');
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
 </script>
