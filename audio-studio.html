@@ -427,7 +427,7 @@ textarea.inp{resize:none;line-height:1.65}
     <div class="auth-studio">Audio Studio</div>
     <div class="auth-tagline"><span id="tw-text"></span><span class="tc">|</span></div>
     <button class="g-btn" onclick="signIn()">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H9.09v3.22h4.27c-.19 1.04-.79 1.93-1.7 2.52v2.09h2.75c1.6-1.48 2.53-3.65 2.53-6.24 0-.44-.04-.87-.11-1.29-.01-.11-.32-.3-.32-.3z"/><path fill="#34A853" d="M9.09 17c2.3 0 4.24-.76 5.66-2.06l-2.75-2.13c-.78.52-1.77.83-2.91.83-2.24 0-4.13-1.51-4.81-3.54H1.44v2.21C2.86 15.19 5.79 17 9.09 17z"/><path fill="#FBBC05" d="M4.28 10.1c-.17-.52-.27-1.07-.27-1.64 0-.57.1-1.12.27-1.64V4.61H1.44A8.92 8.92 0 000 8.46a8.92 8.92 0 001.44 3.85l2.84-2.21z"/><path fill="#EA4335" d="M9.09 3.28c1.26 0 2.39.43 3.28 1.28l2.45-2.45C13.32.75 11.38 0 9.09 0 5.79 0 2.86 1.81 1.44 4.61l2.84 2.21C4.96 4.79 6.85 3.28 9.09 3.28z"/></svg>
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H9.09v3.22h4.27c-.19 1.04-.79 1.93-1.7 2.52v2.09h2.75c1.6-1.48 2.53-3.65 2.53-6.24 0-.44-.04-.87-.11-1.29-.01-.11-.32-.3-.32-.3z"/><path fill="#34A853" d="M9.09 17c2.3 0 4.24-.76 5.66-2.06l-2.75-2.13c-.78.52-1.77.83-2.91.83-2.91.83-2.24 0-4.13-1.51-4.81-3.54H1.44v2.21C2.86 15.19 5.79 17 9.09 17z"/><path fill="#FBBC05" d="M4.28 10.1c-.17-.52-.27-1.07-.27-1.64 0-.57.1-1.12.27-1.64V4.61H1.44A8.92 8.92 0 000 8.46a8.92 8.92 0 001.44 3.85l2.84-2.21z"/><path fill="#EA4335" d="M9.09 3.28c1.26 0 2.39.43 3.28 1.28l2.45-2.45C13.32.75 11.38 0 9.09 0 5.79 0 2.86 1.81 1.44 4.61l2.84 2.21C4.96 4.79 6.85 3.28 9.09 3.28z"/></svg>
       Continue with Google
     </button>
   </div>
@@ -977,6 +977,7 @@ textarea.inp{resize:none;line-height:1.65}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js';
 
+// DOUBLE CHECK THIS OBJECT exactly matches your working files!
 const firebaseConfig = {
   apiKey: "AIzaSyC5RonENSj0fRj5yqI00z7cHGHpbYKkjEQ",
   authDomain: "elvionai.firebaseapp.com",
@@ -987,9 +988,17 @@ const firebaseConfig = {
   measurementId: "G-J1YTKP10ZX"
 };
 
-const fbApp = initializeApp(firebaseConfig);
-const auth = getAuth(fbApp);
-const provider = new GoogleAuthProvider();
+let fbApp, auth, provider;
+
+// Added robust error handling so if the config is slightly mis-typed, it alerts you
+try {
+  fbApp = initializeApp(firebaseConfig);
+  auth = getAuth(fbApp);
+  provider = new GoogleAuthProvider();
+} catch (err) {
+  console.error("Firebase Configuration Error: ", err);
+  alert("Firebase Setup Failed! Please check your API Key configuration.");
+}
 
 const API = 'https://api.elvionai.com.ng';
 let tok = null, bal = 0, curUser = null;
@@ -1013,7 +1022,7 @@ let refIds = { voiceId: null, instrumentalId: null };
 let narrFile = null, analFile = null;
 
 // History
-let history = [];
+let history =[];
 try { history = JSON.parse(localStorage.getItem('paud_hist') || '[]'); } catch(e){}
 
 // Draft saves
@@ -1027,23 +1036,42 @@ function autoSave(key) {
 
 // ── Auth ──
 window.signIn = async () => {
-  try { await signInWithPopup(auth, provider); }
-  catch(e) { toast('Sign-in failed: ' + e.message, 'e'); }
+  if (!auth) {
+     toast('Firebase failed to initialize. Check config.', 'e');
+     return;
+  }
+  try { 
+    await signInWithPopup(auth, provider); 
+  }
+  catch(e) { 
+    console.error("Sign in failed:", e);
+    toast('Sign-in failed: ' + e.message, 'e'); 
+    
+    // Explicit alerts to help you debug why it's failing
+    if (e.code === 'auth/invalid-api-key') {
+        alert("Firebase Auth Error: Invalid API Key.\n\nPlease copy your exact firebaseConfig object from one of your working pages into this file. Even one wrong letter causes this.");
+    } else if (e.code === 'auth/unauthorized-domain' || e.message.includes('network')) {
+        alert("Firebase Auth Error: Unauthorized Domain.\n\nAre you opening this file directly (file://)? Firebase Google Sign-In requires a local server (like Live Server extension) or a real web domain.");
+    }
+  }
 };
+
 window.signOut = async () => {
   try { await fbSignOut(auth); tok = null; curUser = null; showAuth(); }
   catch(e) {}
 };
 
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    curUser = user;
-    tok = await user.getIdToken();
-    showApp(user);
-  } else {
-    showAuth();
-  }
-});
+if (auth) {
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      curUser = user;
+      tok = await user.getIdToken();
+      showApp(user);
+    } else {
+      showAuth();
+    }
+  });
+}
 
 function showAuth() {
   $('hdr').classList.remove('on');
@@ -1122,7 +1150,7 @@ function initVoicePanel() {
     c.classList.toggle('on', c.dataset.style === geminiStyle);
   });
   // Build MiniMax voice grid
-  const voices = [
+  const voices =[
     {id:'elder',label:'Wise Elder',desc:'Authoritative',icon:'fa-scroll'},
     {id:'narrator',label:'Narrator',desc:'Clear & warm',icon:'fa-book-open'},
     {id:'casual',label:'Casual',desc:'Natural & friendly',icon:'fa-comments'},
@@ -1174,8 +1202,7 @@ window.selectMode = (el) => {
 };
 
 // ── Build Waveforms ──
-function buildWaveForms() {
-  ['voice-wave','music-wave','narr-wave'].forEach(id => {
+function buildWaveForms() {['voice-wave','music-wave','narr-wave'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.innerHTML = '';
@@ -1395,7 +1422,7 @@ window.handleRefUpload = async (inp, type) => {
 
 function updateRefIds() {
   const el = $('ref-ids-display');
-  const rows = [];
+  const rows =[];
   if (refIds.voiceId) rows.push(`<div class="ref-id-row"><i class="fa-solid fa-microphone-lines"></i><span>Vocal ref active</span><span class="ref-id-val">${refIds.voiceId.slice(0,20)}…</span></div>`);
   if (refIds.instrumentalId) rows.push(`<div class="ref-id-row"><i class="fa-solid fa-guitar"></i><span>Instrumental ref active</span><span class="ref-id-val">${refIds.instrumentalId.slice(0,20)}…</span></div>`);
   el.innerHTML = rows.join('');
@@ -1794,4 +1821,3 @@ setTimeout(()=>{ if(tok) checkPayReturn(); }, 3000);
 </script>
 </body>
 </html>
-
