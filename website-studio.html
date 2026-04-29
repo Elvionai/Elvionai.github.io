@@ -296,7 +296,7 @@ html,body{height:100%;width:100%;background:var(--void);color:var(--t1);font-fam
 .pctrl{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);color:var(--t3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:.18s}
 .pctrl.on,.pctrl:hover{background:var(--gs);color:var(--g1);border-color:var(--gbdr)}
 .pctrl-spacer{flex:1}
-#site-preview{flex:1;border:none;background:#fff;transition:width .3s ease;display:block}
+#site-preview{flex:1;width:100%;border:none;background:#fff;transition:width .3s ease;display:block}
 .sections-pane,.images-pane,.history-pane{flex:1;display:none;overflow-y:auto;padding:12px 14px;scrollbar-width:none}
 .sections-pane.on,.images-pane.on,.history-pane.on{display:block}
 .sections-pane::-webkit-scrollbar,.images-pane::-webkit-scrollbar,.history-pane::-webkit-scrollbar{display:none}
@@ -339,9 +339,6 @@ html,body{height:100%;width:100%;background:var(--void);color:var(--t1);font-fam
 @keyframes progFill{0%{width:3%}50%{width:70%}90%{width:92%}100%{width:96%}}
 
 /* ── PROFILE ── */
-#scr-profile{top:var(--nh);bottom:var(--bnh);overflow-y:auto;scrollbar-width:none}
-#scr-profile::-webkit-scrollbar{display:none}
-.profile-body{padding:14px 14px 22px;display:flex;flex-direction:column;gap:12px}
 .profile-card{background:linear-gradient(135deg,rgba(201,169,110,.1),rgba(155,108,246,.06));border:1px solid var(--gbdr);border-radius:var(--r18);padding:22px 16px;text-align:center;position:relative;overflow:hidden}
 .profile-card::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(201,169,110,.15),transparent 70%);pointer-events:none}
 .pav{width:62px;height:62px;border-radius:50%;border:2px solid var(--gbdr);margin:0 auto 10px;overflow:hidden;background:linear-gradient(135deg,var(--pur),var(--g1));display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#fff}
@@ -361,18 +358,6 @@ html,body{height:100%;width:100%;background:var(--void);color:var(--t1);font-fam
 .wc-btn:hover{border-color:var(--gbdr);color:var(--g1);background:var(--gs)}
 .wc-btn.primary{background:linear-gradient(135deg,rgba(201,169,110,.15),rgba(201,169,110,.08));border-color:var(--gbdr);color:var(--g2)}
 .wc-btn.primary:hover{background:rgba(201,169,110,.22)}
-.settings-list{display:flex;flex-direction:column;gap:5px}
-.sl-item{display:flex;align-items:center;gap:11px;padding:12px 13px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r12);cursor:pointer;transition:.18s}
-.sl-item:hover{border-color:var(--gbdr);background:var(--card2)}
-.sl-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0}
-.sl-ico.gold{background:rgba(201,169,110,.12);color:var(--g1)}
-.sl-ico.green{background:rgba(0,200,122,.1);color:var(--green)}
-.sl-ico.purple{background:rgba(155,108,246,.1);color:var(--pur)}
-.sl-ico.red{background:rgba(224,84,122,.1);color:var(--red)}
-.sl-txt{flex:1}
-.sl-t{font-size:.8rem;color:var(--t1);margin-bottom:1px}
-.sl-s{font-size:.62rem;color:var(--t3)}
-.sl-arr{color:var(--t3);font-size:.72rem}
 
 /* ── BOBBY ── */
 .bobby-fab{position:fixed;bottom:calc(var(--bnh) + 14px);right:14px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#6366f1,var(--pur));border:2px solid rgba(155,108,246,.4);box-shadow:0 4px 20px rgba(99,102,241,.5);z-index:500;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;transition:.22s}
@@ -775,7 +760,7 @@ html,body{height:100%;width:100%;background:var(--void);color:var(--t1);font-fam
         <button class="pctrl" onclick="fullscreenPreview()" title="Fullscreen"><i class="fas fa-expand"></i></button>
         <button class="pctrl" onclick="refreshPreview()" title="Refresh"><i class="fas fa-arrows-rotate"></i></button>
       </div>
-      <iframe id="site-preview" sandbox="allow-scripts allow-same-origin allow-forms" style="flex:1;width:100%;border:none;background:#fff;display:block"></iframe>
+      <iframe id="site-preview" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
     </div>
     <!-- Sections -->
     <div class="sections-pane" id="ed-sections-pane">
@@ -1036,7 +1021,7 @@ html,body{height:100%;width:100%;background:var(--void);color:var(--t1);font-fam
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ── CONFIG ── */
 const API = "https://web-production-9a18.up.railway.app";
@@ -1056,12 +1041,12 @@ const gp = new GoogleAuthProvider();
 /* ── STATE ── */
 const $ = id => document.getElementById(id);
 let cu = null, tok = null, bal = 0;
-let projects = [];
+let projects =[];
 let curProjId = null;
 let selVersion = 'v1';
 let c_selTpl = '';
 let createImgs = [];
-let editorImgs = [];
+let editorImgs =[];
 let isBobbyOpen = false;
 let bobbySending = false;
 let wizStep = 0, wizData = {};
@@ -1088,7 +1073,7 @@ window.closeM = id => $(id)?.classList.remove('on');
 document.querySelectorAll('.mbg').forEach(bg => bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('on'); }));
 
 /* ── NAV ── */
-const SCREENS = ['home','create','projects','editor','profile'];
+const SCREENS =['home','create','projects','editor','profile'];
 window.nav = name => {
   SCREENS.forEach(s => { $('scr-'+s)?.classList.remove('on'); $('ni-'+s)?.classList.remove('on'); });
   $('scr-'+name)?.classList.add('on');
@@ -1114,7 +1099,7 @@ window.signOutUser = async () => {
   $('bnav').classList.remove('on');
   $('bobby-fab').classList.remove('visible');
   SCREENS.forEach(s => $('scr-'+s)?.classList.remove('on'));
-  cu = null; tok = null; projects = [];
+  cu = null; tok = null; projects =[];
 };
 
 onAuthStateChanged(auth, async user => {
@@ -1172,37 +1157,75 @@ function updateBalUI() {
 /* ── FIRESTORE PROJECT STORAGE — Permanent Cloud Save ── */
 async function saveProjects() {
   if(!cu) return;
-  // Always save to localStorage as instant cache
-  try { localStorage.setItem('pws_v3_'+cu.uid, JSON.stringify(projects)); } catch(e) {}
-  // Also persist to Firestore (permanent cloud storage)
-  try {
-    await setDoc(doc(db, 'philly_ws_projects', cu.uid), {
-      projects: projects,
-      updated_at: new Date().toISOString()
-    });
+  // 1. Save to LocalStorage with fallback for quota exceeded
+  try { 
+    localStorage.setItem('pws_v3_'+cu.uid, JSON.stringify(projects)); 
   } catch(e) {
-    // Firestore save failed, localStorage already has it as backup
-    console.warn('Firestore save failed, localStorage cached:', e.message);
+    // Trim history drastically if local limit is reached
+    let pruned = projects.map(p => ({...p, history: p.history ? p.history.slice(-2) :[]}));
+    try { localStorage.setItem('pws_v3_'+cu.uid, JSON.stringify(pruned)); } catch(err) {}
+  }
+
+  // 2. Save to Firestore (Permanent Cloud Save) using Batches to avoid 1MB document limit
+  try {
+    let batches =[];
+    let batch = writeBatch(db);
+    let count = 0;
+    
+    for (let i = 0; i < projects.length; i++) {
+        const pRef = doc(db, 'philly_ws_projects', cu.uid, 'sites', projects[i].id);
+        batch.set(pRef, projects[i]);
+        count++;
+        // Commit batches of 490 to stay safely under Firestore's 500 limit
+        if (count === 490) {
+            batches.push(batch.commit());
+            batch = writeBatch(db);
+            count = 0;
+        }
+    }
+    if (count > 0) batches.push(batch.commit());
+    await Promise.all(batches);
+  } catch(e) {
+    console.warn('Firestore subcollection save failed:', e.message);
+    // Fallback to legacy single document as a last resort
+    try {
+      await setDoc(doc(db, 'philly_ws_projects', cu.uid), {
+        projects: projects.map(p => ({...p, history: p.history ? p.history.slice(-2) :[]})),
+        updated_at: new Date().toISOString()
+      });
+    } catch(err) {}
   }
 }
 
 async function loadProjects() {
   if(!cu) return;
-  // 1. Show localStorage data immediately (fast)
+  // 1. Immediate Local Cache loading
   try {
     const cached = localStorage.getItem('pws_v3_'+cu.uid);
     if(cached) { projects = JSON.parse(cached); updateHomeStats(); renderHomeRecent(); }
   } catch(e) {}
-  // 2. Load from Firestore (authoritative / permanent)
+
+  // 2. Load from isolated Firestore subcollections
   try {
-    const snap = await getDoc(doc(db, 'philly_ws_projects', cu.uid));
-    if(snap.exists()) {
-      const data = snap.data();
-      const cloud = data.projects || [];
-      // Merge: prefer cloud if it has more or is newer
-      if(cloud.length >= projects.length) {
-        projects = cloud;
-        try { localStorage.setItem('pws_v3_'+cu.uid, JSON.stringify(projects)); } catch(e) {}
+    const sitesRef = collection(db, 'philly_ws_projects', cu.uid, 'sites');
+    const snap = await getDocs(sitesRef);
+    let cloud =[];
+    snap.forEach(d => cloud.push(d.data()));
+    
+    if(cloud.length > 0) {
+      projects = cloud;
+      try { localStorage.setItem('pws_v3_'+cu.uid, JSON.stringify(projects)); } catch(e) {}
+    } else {
+      // Fallback: migrate from legacy structure if it exists
+      const oldSnap = await getDoc(doc(db, 'philly_ws_projects', cu.uid));
+      if(oldSnap.exists()) {
+        const data = oldSnap.data();
+        if(data.projects && data.projects.length >= projects.length) {
+          projects = data.projects;
+          try { localStorage.setItem('pws_v3_'+cu.uid, JSON.stringify(projects)); } catch(e) {}
+          // Immediately save to new split structure to fix 1MB bug
+          saveProjects(); 
+        }
       }
     }
   } catch(e) {
@@ -1309,12 +1332,17 @@ window.confirmRename = () => {
   toast("Renamed!",'s'); closeM('rename-m');
 };
 window.exportProjHTML = () => { const p=getProject(window.optProjId); if(!p?.html){toast("No HTML to export",'e');return;} downloadHTML(p.html,p.name.replace(/\s+/g,'-').toLowerCase()+'.html'); closeM('proj-opt-m'); };
-window.deleteProj = () => {
-  const p=getProject(window.optProjId);
+window.deleteProj = async () => {
+  const p = getProject(window.optProjId);
   if(!p) return;
   if(!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
-  projects=projects.filter(x=>x.id!==window.optProjId);
-  saveProjects();
+  projects = projects.filter(x => x.id !== window.optProjId);
+  
+  if (cu) {
+      try { await deleteDoc(doc(db, 'philly_ws_projects', cu.uid, 'sites', p.id)); } catch(e){}
+  }
+  
+  await saveProjects();
   if(curProjId===window.optProjId){curProjId=null; nav('projects');}
   else renderProjects();
   updateHomeStats(); renderHomeRecent();
@@ -1343,7 +1371,7 @@ window.exitEditor = () => nav(projects.length?'projects':'home');
 window.openSiteUrl = () => { const p=getProject(curProjId); if(p?.url)window.open(p.url,'_blank'); else toast("Deploy first",'e'); };
 
 /* ── EDITOR TABS ── */
-const ED_TABS = ['ai','code','preview','sections','images','history'];
+const ED_TABS =['ai','code','preview','sections','images','history'];
 window.edTab = active => {
   ED_TABS.forEach(t => {
     $('etab-'+t)?.classList.remove('on');
@@ -1356,7 +1384,20 @@ window.edTab = active => {
 };
 
 /* ── PREVIEW ── */
-function updatePreview(html) { if(!html||!$('site-preview'))return; $('site-preview').srcdoc=html; }
+function updatePreview(html) {
+  const iframe = $('site-preview');
+  if (!html || !iframe) return;
+  
+  // Re-create the iframe to absolutely ensure a clean state and fix stuck parsers
+  const parent = iframe.parentNode;
+  const newIframe = document.createElement('iframe');
+  newIframe.id = 'site-preview';
+  newIframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals';
+  newIframe.style.cssText = iframe.style.cssText || 'flex:1;width:100%;border:none;background:#fff;display:block;transition:width .3s ease;';
+  newIframe.srcdoc = html;
+  
+  parent.replaceChild(newIframe, iframe);
+}
 window.onCodeChange = () => {
   const p=getProject(curProjId);
   if(p){p.html=$('code-editor').value; p.updated_at=new Date().toISOString(); saveProjects();}
@@ -1367,19 +1408,28 @@ window.applyCodeEdit = () => { const html=$('code-editor').value; if(html){updat
 window.copyCode = () => { const c=$('code-editor').value; if(!c){toast("Nothing to copy",'e');return;} navigator.clipboard.writeText(c).then(()=>toast("Code copied!",'s')).catch(()=>toast("Copy failed",'e')); };
 window.previewSize = mode => {
   const pf=$('site-preview');
+  if(!pf) return;
   document.querySelectorAll('.pctrl').forEach(b=>b.classList.remove('on'));
   if(mode==='mobile'){pf.style.width='375px';pf.style.margin='0 auto';$('pctrl-m')?.classList.add('on');}
   else if(mode==='tablet'){pf.style.width='768px';pf.style.margin='0 auto';$('pctrl-t')?.classList.add('on');}
   else{pf.style.width='100%';pf.style.margin='';$('pctrl-d')?.classList.add('on');}
 };
 window.fullscreenPreview = () => {
-  const p=getProject(curProjId);
-  if(p?.url){window.open(p.url,'_blank');return;}
-  const html=p?.html||$('code-editor').value;
-  if(html){const b=new Blob([html],{type:'text/html'});window.open(URL.createObjectURL(b),'_blank');}
-  else toast("Nothing to preview",'e');
+  const html = $('code-editor').value;
+  if(html){
+      const b=new Blob([html],{type:'text/html'});
+      window.open(URL.createObjectURL(b),'_blank');
+  } else {
+      toast("Nothing to preview",'e');
+  }
 };
-window.refreshPreview = () => { const p=getProject(curProjId); if(p?.url){$('site-preview').src=p.url;}else if(p?.html)updatePreview(p.html); };
+window.refreshPreview = () => { 
+    const html = $('code-editor').value; 
+    if(html) {
+        updatePreview(html); 
+        toast("Preview refreshed",'s');
+    }
+};
 
 /* ── SECTION DETECT ── */
 function detectSections(html) {
@@ -1472,7 +1522,11 @@ window.generateWebsite = async () => {
   $('ed-proj-name').textContent=name;
   $('ed-url-tag').classList.add('hidden');
   $('code-editor').value='';
-  updatePreview('');
+  
+  // Clear preview completely
+  const iframe = $('site-preview');
+  if(iframe) iframe.removeAttribute('srcdoc');
+  
   edTab('ai');
   nav('editor');
 
@@ -1497,7 +1551,6 @@ window.generateWebsite = async () => {
     let html = d.html||d.content||'';
     const url = d.site_url||d.url||d.deploy_url||'';
 
-    // If no HTML returned but we have URL, fetch via proxy
     if(!html && url) {
       try {
         const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url+'?_='+Date.now())}`);
@@ -1505,7 +1558,6 @@ window.generateWebsite = async () => {
       } catch(e2) {}
     }
 
-    // Fallback minimal HTML
     if(!html) {
       html = url
         ? `<!DOCTYPE html><html><head><title>${name}</title><style>body{margin:0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#050510;color:#f0ead8}</style></head><body><div style="text-align:center"><h1 style="color:#c9a96e">${name}</h1><p>Website deployed!</p><a href="${url}" style="color:#c9a96e">${url}</a></div></body></html>`
@@ -1522,7 +1574,7 @@ window.generateWebsite = async () => {
     clearInterval(msgIv);
     $('gen-status-msg').textContent='Writing your code...';
 
-    // TYPE the code live
+    // Type code but wait till end to update preview to avoid breaking JS/HTML parser
     await typeCode(html);
 
     $('gen-overlay').classList.remove('on');
@@ -1541,7 +1593,6 @@ window.generateWebsite = async () => {
     clearInterval(msgIv);
     $('gen-overlay').classList.remove('on');
     stopGenAnimation();
-    // Remove the project that failed
     projects=projects.filter(p=>p.id!==id);
     await saveProjects();
     nav('create');
@@ -1560,16 +1611,21 @@ window.generateWebsite = async () => {
 async function typeCode(html) {
   const ta = $('code-editor');
   if(!ta) return;
-  const CHUNK = 18;
+  const CHUNK = 30; // slightly faster typing effect
   let i = 0;
   return new Promise(resolve => {
     const iv = setInterval(() => {
-      if(i>=html.length){clearInterval(iv);ta.value=html;updatePreview(html);resolve();return;}
+      if(i>=html.length){
+          clearInterval(iv);
+          ta.value=html;
+          updatePreview(html);
+          resolve();
+          return;
+      }
       const end=Math.min(i+CHUNK,html.length);
       ta.value=html.substring(0,end); i=end;
-      if(i%600===0) updatePreview(ta.value);
       ta.scrollTop=ta.scrollHeight;
-    }, 8);
+    }, 5);
   });
 }
 
@@ -1609,7 +1665,6 @@ async function runEdit(instr, p) {
   $('gen-status-msg').textContent='AI is applying your edit...';
   startGenAnimation();
 
-  // Inject SPA instruction for page additions
   const fullInstr = instr + "\n\nCRITICAL: If adding a page/view, implement as SPA: add a hidden section and write JS to show/hide sections via navigation links. Never create separate HTML files.";
 
   await refreshToken();
@@ -1631,12 +1686,12 @@ async function runEdit(instr, p) {
         if(res.ok) html=await res.text();
       } catch(e2) {}
     }
-    if(!html) html = p.html; // Fallback: keep existing
+    if(!html) html = p.html;
 
-    // Save new version to history (max 10)
     if(!p.history) p.history=[];
     p.history.push({html:p.html, label:instr.slice(0,40), ts:new Date().toISOString(), ver:p.version||'v1'});
-    if(p.history.length>10) p.history.shift();
+    // Limit to 4 to drastically save space and fix quota issues
+    if(p.history.length>4) p.history.shift(); 
 
     p.html=html; p.url=url||p.url;
     p.edit_count=(p.edit_count||0)+1;
@@ -1784,7 +1839,6 @@ window.sendBobby=async()=>{
     if(!r.ok)throw new Error(d.detail||'Bobby unavailable');
     const text=d.response||d.text||d.content||d.reply||"I couldn't generate a response. Please try again.";
     let formatted=formatBobbyText(text);
-    // Check for edit command
     const editMatch=text.match(/EDIT_SITE:\s*(.+)/s);
     if(editMatch&&p?.html){
       const instr=editMatch[1].trim().split('\n')[0];
@@ -1980,8 +2034,7 @@ function startAurora(){
   resize();addEventListener('resize',resize);
   let t=0;
   (function draw(){
-    requestAnimationFrame(draw);ctx.clearRect(0,0,cv.width,cv.height);t+=.0022;
-    [{cx:.2+Math.sin(t*.6)*.14,cy:.15+Math.cos(t*.5)*.1,r:.55,c:`rgba(201,169,110,${.055+Math.sin(t)*.02})`},
+    requestAnimationFrame(draw);ctx.clearRect(0,0,cv.width,cv.height);t+=.0022;[{cx:.2+Math.sin(t*.6)*.14,cy:.15+Math.cos(t*.5)*.1,r:.55,c:`rgba(201,169,110,${.055+Math.sin(t)*.02})`},
      {cx:.82+Math.cos(t*.5)*.1,cy:.82+Math.sin(t*.4)*.08,r:.42,c:`rgba(155,108,246,${.04+Math.cos(t*.7)*.015})`},
      {cx:.52+Math.sin(t*.8)*.08,cy:.48+Math.cos(t*.6)*.06,r:.3,c:`rgba(245,224,160,${.022+Math.sin(t*1.1)*.01})`},
      {cx:.08+Math.cos(t*.4)*.07,cy:.62+Math.sin(t*.35)*.09,r:.28,c:`rgba(74,124,220,${.022+Math.sin(t*.9)*.01})`},
