@@ -618,7 +618,6 @@ select.inp{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
         <textarea id="music-lyrics" class="inp" rows="6" placeholder="Write your lyrics here, or leave empty for an instrumental…&#10;&#10;[Verse 1]&#10;…" oninput="updateCharCount('music-lyrics','music-char',3000);autoSave('music')"></textarea>
         <div class="char-row">
           <div class="char-c" id="music-char">0 / 3000</div>
-          <span class="sug" style="margin:0" onclick="writeLyricsAI()"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:3px"></i>AI Write Lyrics</span>
         </div>
       </div>
 
@@ -1583,49 +1582,6 @@ window.analyzeAudio = async () => {
 window.copyResult = () => {
   const txt = $id('anal-res-txt').textContent; if (!txt) return;
   navigator.clipboard.writeText(txt).then(()=>toast('Copied!','s')).catch(()=>toast('Copy failed','e'));
-};
-
-// ═══════════════════════════════════
-// ── AI LYRICS WRITER ──
-// Uses the /chat endpoint (streaming SSE)
-// ═══════════════════════════════════
-window.writeLyricsAI = async () => {
-  const prompt = $id('music-prompt').value.trim();
-  if (!prompt) { toast('Add a mood description first', 'e'); return; }
-  if (!tok) { toast('Please sign in', 'e'); return; }
-  const sug = document.querySelector('[onclick="writeLyricsAI()"]');
-  if (sug) { sug.textContent = 'Writing…'; sug.style.pointerEvents='none'; }
-  toast('Crafting lyrics…', 'i');
-  try {
-    tok = await curUser.getIdToken();
-    const r = await fetch(`${API}/chat`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
-      body: JSON.stringify({
-        message: `Write complete, emotionally powerful song lyrics for a track with this mood/style: "${prompt}". Structure: [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Outro]. Be poetic, vivid, and fitting to the genre. Output the lyrics ONLY — no explanations, no preamble.`,
-        grounded: false
-      })
-    });
-    if (!r.ok) throw new Error('Could not reach AI');
-    const reader = r.body.getReader(); const decoder = new TextDecoder(); let full = '';
-    while (true) {
-      const { done, value } = await reader.read(); if (done) break;
-      for (const line of decoder.decode(value).split('\n')) {
-        if (line.startsWith('data: ')) {
-          try { const d = JSON.parse(line.slice(6)); if (d.type === 'text') full += d.content; } catch{}
-        }
-      }
-    }
-    if (full.trim()) {
-      $id('music-lyrics').value = full.trim();
-      updateCharCount('music-lyrics','music-char',3000);
-      autoSave('music');
-      toast('Lyrics written!', 's');
-    }
-  } catch(e) { toast('Lyrics generation failed', 'e'); }
-  finally {
-    if (sug) { sug.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="margin-right:3px"></i>AI Write Lyrics'; sug.style.pointerEvents=''; }
-  }
 };
 
 // ═══════════════════════════════════
