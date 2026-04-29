@@ -949,9 +949,28 @@ try {
 } catch(err) { console.error("Firebase init error:", err); }
 
 const API = 'https://web-production-9a18.up.railway.app';
+
+// ── App State & Database Upgrade ──
+const dbPromise = new Promise((resolve, reject) => {
+  const req = indexedDB.open('PhiladelphiaAudioDB', 1);
+  req.onupgradeneeded = e => {
+    const db = e.target.result;
+    if (!db.objectStoreNames.contains('history')) db.createObjectStore('history', { keyPath: 'ts' });
+  };
+  req.onsuccess = e => resolve(e.target.result);
+  req.onerror = e => reject(e.target.error);
+});
+
+async function loadHistoryFromDB() {
+  const db = await dbPromise;
+  return new Promise(r => {
+    const req = db.transaction('history', 'readonly').objectStore('history').getAll();
+    req.onsuccess = () => r((req.result ||[]).sort((a,b) => b.ts - a.ts));
+  });
+}
+
 let tok = null, bal = 0, curUser = null;
 
-// ── App State ──
 // v1 = Gemini-backed, v2 = premium engine. User sees no brand names.
 let voiceProvider = localStorage.getItem('paud_vp') || 'v1';
 let v1Style      = localStorage.getItem('paud_gs') || 'podcast';
@@ -969,11 +988,15 @@ const audioLoops= { voice: false, music: false, narr: false };
 let refIds   = { voiceId: null, instrumentalId: null };
 let narrFile = null, analFile = null;
 
-let histList = [];
+let histList =[];
 try { histList = JSON.parse(localStorage.getItem('paud_hist') || '[]'); } catch(e){}
 
+loadHistoryFromDB().then(list => {
+  if (list.length > 0) { histList = list; renderHistory(); updateStats(); }
+});
+
 // V2 voice definitions (maps display label → backend key for VOICE_OPTIONS)
-const V2_VOICES = [
+const V2_VOICES =[
   {id:'elder',     label:'Wise Elder',   desc:'Authoritative & deep',     icon:'fa-scroll'},
   {id:'narrator',  label:'Narrator',     desc:'Clear & warm',              icon:'fa-book-open'},
   {id:'casual',    label:'Casual',       desc:'Natural & friendly',        icon:'fa-comments'},
@@ -1282,24 +1305,20 @@ window.generateVoice = async () => {
   showGenOv('voice', true);
   try {
     tok = await curUser.getIdToken();
-    let url, fmt, label;
+    let url, fmt, label, blob;
 
     if (voiceProvider === 'v1') {
-      // ─ Philadelphia V1 ─
       $id('voice-gen-txt').textContent = `Synthesising ${v1Style} voice…`;
       const fd = new FormData();
       fd.append('text', text);
       fd.append('style', v1Style);
       const r = await fetch(`${API}/voicegen`, { method:'POST', headers:{'X-Firebase-Token':tok}, body:fd });
       if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || 'Voice generation failed');
-      url = URL.createObjectURL(await r.blob());
+      blob = await r.blob();
+      url = URL.createObjectURL(blob);
       fmt = 'wav'; label = `V1 · ${v1Style}`;
 
     } else {
-      // ─ Philadelphia V2 ─
-      // Endpoint: POST /api/tools/text-to-speech
-      // Body: JSON {text: string, voice_id: string}
-      // The voice_id must be one of the VOICE_OPTIONS keys: elder, narrator, casual, etc.
       $id('voice-gen-txt').textContent = `Synthesising premium voice…`;
       const r = await fetch(`${API}/api/tools/text-to-speech`, {
         method: 'POST',
@@ -1307,13 +1326,14 @@ window.generateVoice = async () => {
         body: JSON.stringify({ text, voice_id: v2Voice })
       });
       if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || 'Voice generation failed');
-      url = URL.createObjectURL(await r.blob());
+      blob = await r.blob();
+      url = URL.createObjectURL(blob);
       fmt = 'mp3'; label = `V2 · ${V2_VOICES.find(v=>v.id===v2Voice)?.label||v2Voice}`;
     }
 
     const title = `${label} · "${text.slice(0,48)}${text.length>48?'…':''}"`;
     setupPlayer('voice', url, title, fmt);
-    addHistory({ type:'voice', title, sub:label, ic:'v' });
+    addHistory({ type:'voice', title, sub:label, ic:'v', fmt }, blob);
     await loadUser();
     toast('Voice ready!', 's');
 
@@ -1357,10 +1377,11 @@ window.generateMusic = async () => {
     });
     if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || 'Music generation failed');
 
-    const url = URL.createObjectURL(await r.blob());
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
     const title = prompt ? `"${prompt.slice(0,52)}${prompt.length>52?'…':''}"` : 'Custom Track';
     setupPlayer('music', url, title, 'mp3');
-    addHistory({ type:'music', title, sub:`Studio · ${new Date().toLocaleDateString()}`, ic:'m' });
+    addHistory({ type:'music', title, sub:`Studio · ${new Date().toLocaleDateString()}`, ic:'m', fmt:'mp3' }, blob);
     await loadUser();
     toast('Track ready!', 's');
 
@@ -1405,7 +1426,7 @@ window.handleRefUpload = async (inp, type) => {
 };
 
 function updateRefIds() {
-  const el = $id('ref-ids-display'); const rows = [];
+  const el = $id('ref-ids-display'); const rows =[];
   if (refIds.voiceId)        rows.push(`<div class="ref-id-row"><i class="fa-solid fa-microphone-lines"></i><span>Vocal ref active</span><span class="ref-id-val">${refIds.voiceId}</span><span class="ref-id-rm" onclick="clearRefId('voiceId')"><i class="fa-solid fa-xmark"></i></span></div>`);
   if (refIds.instrumentalId) rows.push(`<div class="ref-id-row"><i class="fa-solid fa-guitar"></i><span>Instrumental ref active</span><span class="ref-id-val">${refIds.instrumentalId}</span><span class="ref-id-rm" onclick="clearRefId('instrumentalId')"><i class="fa-solid fa-xmark"></i></span></div>`);
   el.innerHTML = rows.join(''); el.style.display = rows.length ? '' : 'none';
@@ -1462,10 +1483,11 @@ window.generateNarration = async () => {
       fd.append('file', narrFile); fd.append('style', narrStyle);
       const r = await fetch(`${API}/api/tools/audio-narration`, { method:'POST', headers:{'X-Firebase-Token':tok}, body:fd });
       if (!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || 'Narration failed');
-      const url = URL.createObjectURL(await r.blob());
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
       const title = `${narrFile.name} · ${narrStyle}`;
       setupPlayer('narr', url, title, 'wav');
-      addHistory({ type:'narrate', title, sub:`V1 · ${narrStyle}`, ic:'n' });
+      addHistory({ type:'narrate', title, sub:`V1 · ${narrStyle}`, ic:'n', fmt:'wav' }, blob);
 
     } else {
       // ─ Philadelphia V2: two-step process ─
@@ -1505,11 +1527,12 @@ window.generateNarration = async () => {
         body: JSON.stringify({ text: summaryText.slice(0, 3000), voice_id: narrV2Voice })
       });
       if (!r2.ok) throw new Error((await r2.json().catch(()=>({}))).detail || 'TTS failed');
-      const url = URL.createObjectURL(await r2.blob());
+      const blob = await r2.blob();
+      const url = URL.createObjectURL(blob);
       const voiceName = V2_VOICES.find(v=>v.id===narrV2Voice)?.label || narrV2Voice;
       const title = `${narrFile.name} · V2 · ${voiceName}`;
       setupPlayer('narr', url, title, 'mp3');
-      addHistory({ type:'narrate', title, sub:`V2 · ${voiceName}`, ic:'n' });
+      addHistory({ type:'narrate', title, sub:`V2 · ${voiceName}`, ic:'n', fmt:'mp3' }, blob);
       $id('narr-ap-fmt').textContent = 'MP3';
       audioFmts.narr = 'mp3';
     }
@@ -1569,7 +1592,7 @@ window.analyzeAudio = async () => {
     if (!r.ok) throw new Error(d.detail || 'Analysis failed');
     $id('anal-res-txt').textContent = d.response;
     $id('anal-result').classList.add('on');
-    addHistory({ type:'analyze', title:`Analysis: ${analFile.name}`, sub:`${analMode} · ${new Date().toLocaleDateString()}`, ic:'a' });
+    addHistory({ type:'analyze', title:`Analysis: ${analFile.name}`, sub:`${analMode} · ${new Date().toLocaleDateString()}`, ic:'a', resultText: d.response });
     await loadUser(); toast('Analysis complete!', 's');
   } catch(e) {
     toast(e.message || 'Analysis failed', 'e');
@@ -1587,13 +1610,21 @@ window.copyResult = () => {
 // ═══════════════════════════════════
 // ── HISTORY ──
 // ═══════════════════════════════════
-function addHistory(item) {
+window.addHistory = async (item, blob = null) => {
   item.ts = Date.now();
+  if (blob) item.audioBlob = blob;
   histList.unshift(item);
   if (histList.length > 40) histList = histList.slice(0, 40);
-  localStorage.setItem('paud_hist', JSON.stringify(histList));
+  
+  const db = await dbPromise;
+  const tx = db.transaction('history', 'readwrite');
+  tx.objectStore('history').put(item);
+  
+  const lightList = histList.map(h => ({...h, audioBlob: null}));
+  localStorage.setItem('paud_hist', JSON.stringify(lightList));
+  
   renderHistory(); updateStats();
-}
+};
 
 function renderHistory() {
   const renderList = (el, type, limit) => {
@@ -1602,7 +1633,7 @@ function renderHistory() {
     if (!items.length) { el.innerHTML = `<div class="empty-hist"><i class="fa-solid fa-compact-disc"></i>No ${type||''} creations yet</div>`; return; }
     const icons = { voice:'fa-microphone', music:'fa-music', narrate:'fa-book-open-reader', analyze:'fa-waveform-lines' };
     el.innerHTML = items.map(item => `
-      <div class="hist-item">
+      <div class="hist-item" onclick="playHistoryItem(${item.ts})" style="cursor:pointer">
         <div class="hi-ic ${item.ic}"><i class="fa-solid ${icons[item.type]||'fa-circle'}"></i></div>
         <div class="hi-meta">
           <div class="hi-ttl">${escHtml(item.title)}</div>
@@ -1616,6 +1647,27 @@ function renderHistory() {
   renderList($id('narr-hist'), 'narrate', 6);
   renderList($id('anal-hist'), 'analyze', 6);
 }
+
+window.playHistoryItem = async (ts) => {
+  const db = await dbPromise;
+  const tx = db.transaction('history', 'readonly');
+  const req = tx.objectStore('history').get(ts);
+  req.onsuccess = () => {
+    const item = req.result;
+    if (!item) return;
+    if (item.type === 'analyze') {
+        $id('anal-res-txt').textContent = item.resultText || 'Analysis text missing.';
+        $id('anal-result').classList.add('on');
+        navTo('analyze');
+        return;
+    }
+    if (!item.audioBlob) { toast('Old file not saved in database', 'e'); return; }
+    const url = URL.createObjectURL(item.audioBlob);
+    setupPlayer(item.type, url, item.title, item.fmt || 'mp3');
+    navTo(item.type);
+    setTimeout(() => togglePlay(item.type), 150);
+  };
+};
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -1743,8 +1795,7 @@ function startAurora() {
   const resize=()=>{cv.width=innerWidth;cv.height=innerHeight;};
   resize(); addEventListener('resize',resize); let t=0;
   (function draw(){
-    requestAnimationFrame(draw); ctx.clearRect(0,0,cv.width,cv.height); t+=.0025;
-    [{cx:.2+Math.sin(t*.6)*.14,cy:.17+Math.cos(t*.5)*.1,r:.55,c:`rgba(201,169,110,${.055+Math.sin(t)*.02})`},
+    requestAnimationFrame(draw); ctx.clearRect(0,0,cv.width,cv.height); t+=.0025;[{cx:.2+Math.sin(t*.6)*.14,cy:.17+Math.cos(t*.5)*.1,r:.55,c:`rgba(201,169,110,${.055+Math.sin(t)*.02})`},
      {cx:.82+Math.cos(t*.5)*.1,cy:.8+Math.sin(t*.4)*.08,r:.4,c:`rgba(155,108,246,${.038+Math.cos(t*.7)*.014})`},
      {cx:.52+Math.sin(t*.8)*.08,cy:.48+Math.cos(t*.6)*.06,r:.3,c:`rgba(245,224,160,${.022+Math.sin(t*1.1)*.01})`},
      {cx:.1+Math.cos(t*.4)*.07,cy:.6+Math.sin(t*.35)*.09,r:.28,c:`rgba(74,128,224,${.02+Math.sin(t*.9)*.01})`}
@@ -1794,8 +1845,7 @@ function startTypewriter(){
 // ── INIT ──
 startAurora(); spawnParticles();
 setTimeout(()=>{const s=$id('splash');if(s){s.style.transition='opacity .5s';s.style.opacity='0';setTimeout(()=>s.style.display='none',520);}},2900);
-setTimeout(startTypewriter,3100);
-['narr-zone','anal-zone','voice-ref-zone','inst-ref-zone'].forEach(setupDrag);
+setTimeout(startTypewriter,3100);['narr-zone','anal-zone','voice-ref-zone','inst-ref-zone'].forEach(setupDrag);
 </script>
 </body>
 </html>
