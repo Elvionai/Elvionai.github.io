@@ -1715,22 +1715,40 @@ window.generateWebsite = async () => {
   }, 2500);
 
   try {
-    const r = await fetch(`${API}/api/tools/create-website`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
-      body: JSON.stringify({ prompt, version:selVersion, user_id:cu.uid })
-    });
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.detail||d.error||'Generation failed');
+    let html = '', url = '';
 
-    let html = d.html||d.content||'';
-    const url = d.site_url||d.url||d.deploy_url||d.live_url||'';
-
-    if(!html && url) {
-      try {
-        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url+'?_='+Date.now())}`);
-        if(res.ok) html = await res.text();
-      } catch(e2) {}
+    if (selVersion === 'v2') {
+      // V2 Engine: call MiniMax chat directly
+      const sysPrompt = `You are an elite frontend web developer. When asked to build a website, return ONLY the complete raw HTML5 document — nothing else. No markdown, no code fences, no explanations. Always start with <!DOCTYPE html> and end with </html>. Embed all CSS and JavaScript inside the single file. Make it visually stunning, fully responsive, and production-quality.`;
+      const r = await fetch(`${API}/api/minimax/chat`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Firebase-Token': tok},
+        body: JSON.stringify({ message: prompt, history: [], system_prompt: sysPrompt })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || 'V2 generation failed');
+      html = (d.reply || '').trim();
+      // Strip accidental markdown fences
+      if (html.startsWith('```')) {
+        html = html.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      }
+    } else {
+      // V1 Engine: original backend
+      const r = await fetch(`${API}/api/tools/create-website`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
+        body: JSON.stringify({ prompt, version:selVersion, user_id:cu.uid })
+      });
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail||d.error||'Generation failed');
+      html = d.html||d.content||'';
+      url = d.site_url||d.url||d.deploy_url||d.live_url||'';
+      if(!html && url) {
+        try {
+          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url+'?_='+Date.now())}`);
+          if(res.ok) html = await res.text();
+        } catch(e2) {}
+      }
     }
 
     if(!html) {
@@ -1851,26 +1869,46 @@ async function runEdit(instr, p) {
 
   await refreshToken();
   try {
-    const r = await fetch(`${API}/api/tools/edit-website`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
-      body: JSON.stringify({
-        instruction:fullInstr, html:p.html, url:p.url, version:editVer, user_id:cu.uid
-      })
-    });
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.detail||d.error||'Edit failed');
+    let html = '', url = p.url || '';
 
-    let html = d.html||d.new_html||d.content||'';
-    // FIX 2: Preserve existing URL if API doesn't return new one
-    const url = d.site_url||d.new_url||d.url||p.url||'';
-
-    if(!html && url) {
-      try {
-        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url+'?_='+Date.now())}`);
-        if(res.ok) html=await res.text();
-      } catch(e2) {}
+    if (editVer === 'v2') {
+      // V2 Engine: call MiniMax chat directly
+      const sysPrompt = `You are an elite frontend web developer. When asked to edit a website, return ONLY the complete updated raw HTML5 document — nothing else. No markdown, no code fences, no explanations. Always start with <!DOCTYPE html> and end with </html>. Preserve all existing sections unless explicitly told to remove them.`;
+      const editMsg = `Apply this change to the website:\n${fullInstr}\n\nExisting HTML:\n${p.html}`;
+      const r = await fetch(`${API}/api/minimax/chat`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Firebase-Token': tok},
+        body: JSON.stringify({ message: editMsg, history: [], system_prompt: sysPrompt })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || d.error || 'V2 edit failed');
+      html = (d.reply || '').trim();
+      // Strip accidental markdown fences
+      if (html.startsWith('```')) {
+        html = html.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      }
+    } else {
+      // V1 Engine: original backend
+      const r = await fetch(`${API}/api/tools/edit-website`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Firebase-Token':tok},
+        body: JSON.stringify({
+          instruction:fullInstr, html:p.html, url:p.url, version:editVer, user_id:cu.uid
+        })
+      });
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail||d.error||'Edit failed');
+      html = d.html||d.new_html||d.content||'';
+      // FIX 2: Preserve existing URL if API doesn't return new one
+      url = d.site_url||d.new_url||d.url||p.url||'';
+      if(!html && url) {
+        try {
+          const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url+'?_='+Date.now())}`);
+          if(res.ok) html=await res.text();
+        } catch(e2) {}
+      }
     }
+
     if(!html) html = p.html;
 
     if(!p.history) p.history=[];
