@@ -1560,7 +1560,7 @@ function setEditorUrl(url) {
     $('deploy-url-show').value = url;
     $('share-url-inp').value = url;
   } else {
-    $('ed-url-tag').classList.⁸add('hidden');
+    $('ed-url-tag').classList.add('hidden');
     $('deploy-url-show').value = '';
     $('share-url-inp').value = '';
   }
@@ -1732,6 +1732,17 @@ window.generateWebsite = async () => {
       if (html.startsWith('```')) {
         html = html.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
       }
+      // Deploy the generated HTML to Vercel
+      $('gen-status-msg').textContent = 'Deploying your website...';
+      try {
+        const dr = await fetch(`${API}/api/tools/deploy-html`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-Firebase-Token': tok},
+          body: JSON.stringify({ prompt: html, user_id: cu.uid })
+        });
+        const dd = await dr.json();
+        if (dr.ok) url = dd.url || '';
+      } catch(deployErr) { console.warn('Deploy step failed:', deployErr); }
     } else {
       // V1 Engine: original backend
       const r = await fetch(`${API}/api/tools/create-website`, {
