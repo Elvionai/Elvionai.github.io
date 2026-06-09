@@ -2416,6 +2416,7 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
 
   const contentEl=aiG.querySelector('.ai-content');
   let fullText='';
+  let thinkingText='';
   const t0=performance.now();
 
     try {
@@ -2452,13 +2453,9 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       }
       
       const data = await res.json(); 
-      const aiText = data.content || data.response || data.reply || (typeof data === 'string' ? data : 'No response.');
       fullText = (data.reply || data.content || "No response.").trim();
-const thinkingText = data.thinking || "";
-await typewriterReveal(contentEl, fullText, currentCtrl.signal);
-if (thinkingText) {
-  contentEl.innerHTML = renderThinking(thinkingText, contentEl.innerHTML);
-}
+      thinkingText = data.thinking || "";
+      await typewriterReveal(contentEl, fullText, currentCtrl.signal);
         
     } else {
       const historyPayload = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
@@ -2477,6 +2474,7 @@ if (thinkingText) {
       }
       const data = await res.json();
       fullText = (data.reply || data.content || "No response.").trim();
+      thinkingText = data.thinking || "";
       await typewriterReveal(contentEl, fullText, currentCtrl.signal);
     }
   } catch(err) {
@@ -2486,6 +2484,11 @@ if (thinkingText) {
   const dur=((performance.now()-t0)/1000).toFixed(1);
   let finalHtml=renderMd(fullText);
   finalHtml=finalHtml.replace(/&lt;think&gt;/g,'<think>').replace(/&lt;\/think&gt;/g,'</think>');
+  
+  if (thinkingText) {
+      finalHtml = renderThinking(thinkingText, finalHtml);
+  }
+  
   contentEl.innerHTML=finalHtml;
   enhanceCode(aiG);
 
