@@ -1394,6 +1394,18 @@ When relevant, explain concepts, trade-offs, and limitations.
 
 ---
 
+## WEB SEARCH POLICY
+
+You have access to live web search. When you search the internet, web results will appear in your context.
+
+When search results are provided:
+- Use them as your PRIMARY source of truth
+- Always cite sources using markdown links: [Source Title](URL)
+- Synthesize naturally — don't sound like a search engine
+- Never say "I don't have access to the internet" — you do
+
+When no search results are provided: answer from knowledge, clearly noting uncertainty if relevant.
+
 ## TOOL GUIDANCE
 
 Elvion Studio includes: Image Generation, Comic Generation, Website Generation, Music Generation, Video Generation.
@@ -1564,13 +1576,15 @@ If uncertain, say so clearly. Never hallucinate.
 
 ## WEB SEARCH POLICY
 
-When [LIVE WEB SEARCH RESULTS] appear in your context, you MUST use them as your primary source of truth.
+You have access to live web search. When you search the internet, web results will appear in your context.
 
-Cite every claim drawn from search results using a clickable Markdown link — format: [Source Title](URL).
+When search results are provided:
+- Use them as your PRIMARY source of truth
+- Always cite sources using markdown links: [Source Title](URL)
+- Synthesize naturally — don't sound like a search engine
+- Never say "I don't have access to the internet" — you do
 
-Do not sound like a search engine. Synthesize the results and speak naturally.
-
-When no search results are provided, answer from knowledge. If you are not certain, say so plainly.
+When no search results are provided: answer from knowledge, clearly noting uncertainty if relevant.
 
 ---
 
@@ -2264,39 +2278,27 @@ async function typewriterReveal(el,text,signal){
   el.innerHTML=renderMd(text);
 }
 
-// ── BOBBY FRONTEND WEB SEARCH ──
+// ── BOBBY WEB SEARCH (uses backend — reliable, no CORS proxy) ──
 async function fetchFrontendContext(query) {
     try {
-        const q = query.trim().toLowerCase();
-        const isCasual = /^(how are you|how's it|what's up|hey|hi|hello|good morning|good evening|thanks|thank you|lol|haha|okay|ok|yes|no|sure|who are you|what are you|what is your name)\b/i.test(q);
-        if (!isCasual && /^(how|what|who|when|where|why|can you explain|is there|best|latest|current|top|news)/i.test(q) && q.split(' ').length > 2) {
-            updateOrbStatus('Searching the web…');
-            const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
-            const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-            const data = await response.json();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(data.contents, 'text/html');
-            const results = doc.querySelectorAll('.result__body');
-            let contextStr = "";
-            let count = 0;
-            results.forEach(res => {
-                if(count >= 4) return;
-                const title = res.querySelector('.result__title')?.textContent.trim();
-                const snippet = res.querySelector('.result__snippet')?.textContent.trim();
-                let link = res.querySelector('.result__url')?.getAttribute('href') || '';
-                if(link.startsWith('//')) link = 'https:' + link;
-                if(title && snippet) {
-                    contextStr += `[Source ${count+1}: ${title}]\nURL: ${link}\nSnippet: ${snippet}\n\n`;
-                    count++;
-                }
-            });
-            if(contextStr.length > 0) return contextStr;
+        const q = query.trim();
+        if (q.length < 5) return null;
+
+        const CASUAL = /^(how are you|how's it|what's up|hey\b|hi\b|hello\b|good morning|good evening|thanks|thank you|lol|haha|okay|ok\b|yes\b|no\b|sure\b|who are you|what are you|what is your name)/i;
+        if (CASUAL.test(q.toLowerCase())) return null;
+
+        updateOrbStatus('Searching the web…');
+        const res = await fetch(`${API}/api/search?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+            const data = await res.json();
+            return data.result || null;
         }
-    } catch(e) { console.warn('Frontend search error:', e); }
+    } catch(e) {
+        console.warn('Search failed:', e);
+    }
     return null;
 }
-
+            
 // ── FILE PROCESSING ─────────────────────────────────────
 async function processFiles(files,userPrompt,signal){
   if(!files||!files.length) return '';
