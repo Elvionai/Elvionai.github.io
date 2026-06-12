@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Philadelphia Computer | Agentic Workspace</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+    /* =========================================================
+       PHILADELPHIA COMPUTER - DARK & GOLD THEME
+       ========================================================= */
+    :root {
+        --bg-base: #030303;
+        --bg-panel: #0a0a0a;
+        --bg-surface: #121212;
+        --bg-hover: #1a1a1a;
+        --border: rgba(201, 169, 110, 0.15);
+        --border-light: rgba(201, 169, 110, 0.08);
+        --gold: #c9a96e;
+        --gold-muted: #967d4e;
+        --gold-glow: rgba(201, 169, 110, 0.2);
+        --text-main: #e0e0e0;
+        --text-muted: #888888;
+        --font-ui: 'Inter', sans-serif;
+        --font-brand: 'Cinzel', serif;
+        --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+        background-color: var(--bg-base);
+        color: var(--text-main);
+        font-family: var(--font-ui);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+    }
+
+    /* ── LAYOUT ── */
+    #desktop {
+        display: grid;
+        grid-template-columns: 280px 1fr 450px;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    /* ── SIDEBAR (Left) ── */
+    #sidebar {
+        background-color: var(--bg-panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 20px 0;
+        z-index: 10;
+    }
+
+    .brand {
+        font-family: var(--font-brand);
+        font-size: 1.2rem;
+        color: var(--gold);
+        letter-spacing: 2px;
+        text-align: center;
+        padding: 0 20px 20px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .brand i { font-size: 1.4rem; text-shadow: 0 0 10px var(--gold-glow); }
+
+    .nav-btn {
+        margin: 15px 20px 0;
+        padding: 12px;
+        background: transparent;
+        border: 1px dashed var(--gold-muted);
+        color: var(--gold);
+        border-radius: 8px;
+        font-family: var(--font-ui);
+        font-size: 0.85rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: 0.2s;
+    }
+    .nav-btn:hover { background: var(--gold-glow); border-style: solid; }
+
+    .history-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px 10px;
+    }
+    
+    .history-item {
+        padding: 10px 15px;
+        border-radius: 6px;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        cursor: pointer;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .history-item:hover { background: var(--bg-surface); color: var(--text-main); }
+    .history-item.active { background: var(--bg-hover); border-left: 2px solid var(--gold); color: var(--gold); }
+
+    .user-profile {
+        padding: 15px 20px;
+        border-top: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--gold); }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 0.85rem; font-weight: 600; }
+    .user-credits { font-size: 0.75rem; color: var(--gold); font-family: var(--font-mono); }
+
+    /* ── TERMINAL / AGENT CONSOLE (Center) ── */
+    #console {
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-base);
+        position: relative;
+    }
+
+    .console-header {
+        height: 60px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        padding: 0 30px;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        justify-content: space-between;
+    }
+
+    .status-indicator { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #4caf50; box-shadow: 0 0 8px #4caf50; }
+
+    #chat-stream {
+        flex: 1;
+        overflow-y: auto;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        scroll-behavior: smooth;
+    }
+
+    /* Manus-style Bubbles */
+    .msg { max-width: 85%; font-size: 0.95rem; line-height: 1.6; }
+    .msg.user { align-self: flex-end; background: var(--bg-surface); padding: 15px 20px; border-radius: 12px 12px 0 12px; border: 1px solid var(--border-light); }
+    .msg.agent { align-self: flex-start; max-width: 95%; }
+
+    /* Manus Execution Trace */
+    .execution-block {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+    }
+    
+    .exec-header { display: flex; align-items: center; gap: 10px; color: var(--gold); cursor: pointer; user-select: none; }
+    .exec-header i { font-size: 0.9rem; transition: 0.2s; }
+    .exec-header.open i { transform: rotate(90deg); }
+    
+    .exec-steps { margin-top: 10px; padding-left: 20px; border-left: 1px solid var(--border-light); display: none; }
+    .exec-steps.open { display: block; }
+    
+    .step { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--text-muted); }
+    .step i.spin { animation: spin 1s linear infinite; color: var(--gold); }
+    .step i.done { color: #4caf50; }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* Input Area */
+    .input-zone {
+        padding: 20px 40px 30px;
+        background: linear-gradient(to top, var(--bg-base) 60%, transparent);
+    }
+    .input-box {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        transition: 0.3s;
+    }
+    .input-box:focus-within { border-color: var(--gold); box-shadow: 0 10px 30px var(--gold-glow); }
+    
+    textarea {
+        background: transparent;
+        border: none;
+        color: var(--text-main);
+        font-family: var(--font-ui);
+        font-size: 0.95rem;
+        resize: none;
+        outline: none;
+        min-height: 44px;
+        max-height: 200px;
+        padding: 10px;
+    }
+    textarea::placeholder { color: #555; }
+
+    .input-tools {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 10px;
+    }
+    .tool-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: 0.2s;
+    }
+    .tool-btn:hover { color: var(--gold); }
+    
+    .send-btn {
+        background: var(--text-main);
+        color: #000;
+        border: none;
+        border-radius: 8px;
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: 0.2s;
+    }
+    .send-btn:hover { background: var(--gold); transform: scale(1.05); }
+
+    /* ── WORKSPACE CANVAS (Right) ── */
+    #canvas {
+        background-color: var(--bg-panel);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .canvas-header {
+        height: 60px;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        font-family: var(--font-brand);
+        color: var(--gold);
+        font-size: 0.9rem;
+        letter-spacing: 1px;
+    }
+
+    #canvas-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .empty-canvas {
+        text-align: center;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+    }
+    .empty-canvas i { font-size: 3rem; opacity: 0.2; margin-bottom: 15px; display: block; }
+
+    /* File/Output Previews */
+    .file-preview {
+        width: 100%;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-light);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        animation: slideIn 0.4s ease;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+    
+    .file-header {
+        padding: 12px 15px;
+        background: rgba(201, 169, 110, 0.05);
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .file-title { font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .file-title i { color: var(--gold); }
+    .file-actions button { background: none; border: none; color: var(--text-main); cursor: pointer; margin-left: 10px; }
+    
+    .file-body {
+        padding: 20px;
+        min-height: 200px;
+        background: #fff; /* For documents */
+        color: #000;
+        font-family: 'Times New Roman', serif;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        text-align: justify;
+    }
+
+    .file-body.dark-mode { background: var(--bg-base); color: var(--text-main); font-family: var(--font-ui); }
+    .file-body img { max-width: 100%; border-radius: 8px; }
+
+</style>
+</head>
+<body>
+
+<div id="desktop">
+    <!-- LEFT SIDEBAR -->
+    <div id="sidebar">
+        <div class="brand">
+            <i class="fa-solid fa-microchip"></i>
+            <div>
+                PHILADELPHIA
+                <div style="font-size: 0.5rem; letter-spacing: 3px; font-family: var(--font-mono); color: var(--text-muted);">COMPUTER</div>
+            </div>
+        </div>
+        
+        <button class="nav-btn" onclick="startNewTask()"><i class="fa-solid fa-plus"></i> New Task</button>
+
+        <div class="history-list">
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 10px; font-family: var(--font-mono); text-transform: uppercase;">Recent Tasks</div>
+            <div class="history-item active">Format Short Story PDF</div>
+            <div class="history-item">Generate Slideshow (4 images)</div>
+            <div class="history-item">Extract Logo to PNG</div>
+        </div>
+
+        <div class="user-profile">
+            <img src="https://i.ibb.co/YTkKPfvf/IMG-20250715-102103-129.jpg" alt="User" class="user-avatar">
+            <div class="user-info">
+                <span class="user-name">Developer Workspace</span>
+                <span class="user-credits">8,450 credits</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CENTER TERMINAL -->
+    <div id="console">
+        <div class="console-header">
+            <div class="status-indicator">
+                <div class="dot"></div>
+                Philadelphia M3 Engine Online
+            </div>
+            <div>CPU: OPTIMAL</div>
+        </div>
+
+        <div id="chat-stream">
+            <div class="msg agent">
+                <div class="execution-block">
+                    <div class="exec-header open" onclick="toggleTrace(this)">
+                        <i class="fa-solid fa-chevron-right"></i> System Initialization
+                    </div>
+                    <div class="exec-steps open">
+                        <div class="step"><i class="fa-solid fa-check done"></i> Loaded modules</div>
+                        <div class="step"><i class="fa-solid fa-check done"></i> Connected to Firebase</div>
+                        <div class="step"><i class="fa-solid fa-check done"></i> Workspace ready. Waiting for input...</div>
+                    </div>
+                </div>
+                Hi. I am the Philadelphia Computer interface. Drop a file, paste text, or tell me what to build, format, or generate. 
+            </div>
+        </div>
+
+        <div class="input-zone">
+            <div class="input-box">
+                <textarea id="prompt-input" placeholder="Ask Philadelphia to format a document, generate media, or analyze files..." oninput="autoGrow(this)"></textarea>
+                <div class="input-tools">
+                    <div style="display: flex; gap: 15px;">
+                        <button class="tool-btn" title="Upload Files"><i class="fa-solid fa-paperclip"></i></button>
+                        <button class="tool-btn" title="Web Search Enabled"><i class="fa-solid fa-globe"></i></button>
+                    </div>
+                    <button class="send-btn" onclick="executeCommand()"><i class="fa-solid fa-arrow-up"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT WORKSPACE -->
+    <div id="canvas">
+        <div class="canvas-header">
+            <i class="fa-solid fa-layer-group" style="margin-right: 8px;"></i> WORKSPACE CANVAS
+        </div>
+        <div id="canvas-content">
+            <div class="empty-canvas">
+                <i class="fa-solid fa-cubes"></i>
+                Outputs, generated PDFs, and media<br>will appear here.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Utility for Auto-expanding textarea
+    function autoGrow(el) {
+        el.style.height = "5px";
+        el.style.height = (el.scrollHeight) + "px";
+    }
+
+    function toggleTrace(headerEl) {
+        headerEl.classList.toggle('open');
+        headerEl.nextElementSibling.classList.toggle('open');
+    }
+
+    // Scroll to bottom
+    function scrollConsole() {
+        const stream = document.getElementById('chat-stream');
+        stream.scrollTop = stream.scrollHeight;
+    }
+
+    // Agent Simulator Logic
+    async function executeCommand() {
+        const inputEl = document.getElementById('prompt-input');
+        const text = inputEl.value.trim();
+        if(!text) return;
+
+        inputEl.value = '';
+        inputEl.style.height = '44px';
+
+        const stream = document.getElementById('chat-stream');
+
+        // 1. Add User Message
+        const userMsg = document.createElement('div');
+        userMsg.className = 'msg user';
+        userMsg.textContent = text;
+        stream.appendChild(userMsg);
+        scrollConsole();
+
+        // 2. Add Agent Placeholder with Execution Trace
+        const agentMsg = document.createElement('div');
+        agentMsg.className = 'msg agent';
+        
+        // Determine "Intent" based on keywords (Manus style simulation)
+        let intent = "general";
+        if (text.toLowerCase().includes("pdf") || text.toLowerCase().includes("format") || text.toLowerCase().includes("story")) intent = "document";
+        else if (text.toLowerCase().includes("slideshow") || text.toLowerCase().includes("video")) intent = "video";
+        else if (text.toLowerCase().includes("image") || text.toLowerCase().includes("logo")) intent = "image";
+
+        // Create Execution Trace HTML
+        agentMsg.innerHTML = `
+            <div class="execution-block">
+                <div class="exec-header open" onclick="toggleTrace(this)">
+                    <i class="fa-solid fa-chevron-right"></i> Processing Request
+                </div>
+                <div class="exec-steps open" id="exec-steps-${Date.now()}">
+                    <div class="step"><i class="fa-solid fa-circle-notch spin"></i> Analyzing intent...</div>
+                </div>
+            </div>
+            <div class="agent-response" style="display:none;"></div>
+        `;
+        stream.appendChild(agentMsg);
+        scrollConsole();
+
+        const stepsContainer = agentMsg.querySelector('.exec-steps');
+        const responseContainer = agentMsg.querySelector('.agent-response');
+
+        // Simulate Agentic steps
+        await sleep(1000);
+        stepsContainer.innerHTML = `<div class="step"><i class="fa-solid fa-check done"></i> Intent parsed: <b>${intent}_task</b></div>
+                                    <div class="step"><i class="fa-solid fa-circle-notch spin"></i> Executing backend tools...</div>`;
+        
+        await sleep(1500);
+
+        // Branching logic based on intent
+        if (intent === "document") {
+            stepsContainer.innerHTML += `<div class="step"><i class="fa-solid fa-check done"></i> Formatted text to Justify Left</div>
+                                         <div class="step"><i class="fa-solid fa-check done"></i> Generated PDF via FPDF Engine</div>`;
+            responseContainer.innerHTML = "I have formatted your story and generated the document. I've placed the preview and download link in your Workspace Canvas.";
+            renderWorkspaceDocument(text);
+        } 
+        else if (intent === "video") {
+            stepsContainer.innerHTML += `<div class="step"><i class="fa-solid fa-check done"></i> Uploaded photos to MiniMax</div>
+                                         <div class="step"><i class="fa-solid fa-check done"></i> Stitched frames into slideshow</div>`;
+            responseContainer.innerHTML = "The slideshow has been generated successfully. It is playing in your Workspace.";
+            renderWorkspaceMedia('video');
+        } 
+        else {
+            stepsContainer.innerHTML += `<div class="step"><i class="fa-solid fa-check done"></i> Querying MiniMax M3...</div>`;
+            responseContainer.innerHTML = "Task complete. Let me know if you need anything else adjusted.";
+        }
+
+        // Finalize Trace
+        stepsContainer.querySelector('.spin').className = "fa-solid fa-check done";
+        responseContainer.style.display = "block";
+        scrollConsole();
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    /* ── WORKSPACE RENDERING ── */
+    function renderWorkspaceDocument(content) {
+        const canvas = document.getElementById('canvas-content');
+        canvas.innerHTML = `
+            <div class="file-preview">
+                <div class="file-header">
+                    <div class="file-title"><i class="fa-solid fa-file-pdf" style="color: #e53935;"></i> Formatted_Story.pdf</div>
+                    <div class="file-actions">
+                        <button title="Print"><i class="fa-solid fa-print"></i></button>
+                        <button title="Download"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
+                <div class="file-body">
+                    <h2>Chapter 1</h2>
+                    <p style="text-align: left;">${content.length > 50 ? content : "The cold wind howled through the narrow streets of the city. Shadows danced against the brick walls as the streetlights flickered overhead. She pulled her coat tighter, clutching the envelope that held the only key to the mystery."}</p>
+                    <p style="text-align: left; margin-top: 10px;">(Document formatted as requested: Justify Left, Times New Roman, 12pt).</p>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderWorkspaceMedia(type) {
+        const canvas = document.getElementById('canvas-content');
+        canvas.innerHTML = `
+            <div class="file-preview">
+                <div class="file-header">
+                    <div class="file-title"><i class="fa-solid fa-film" style="color: #3949ab;"></i> Generated_Slideshow.mp4</div>
+                    <div class="file-actions">
+                        <button title="Download"><i class="fa-solid fa-download"></i></button>
+                    </div>
+                </div>
+                <div class="file-body dark-mode" style="display:flex; justify-content:center; align-items:center; height: 250px;">
+                    <i class="fa-solid fa-play" style="font-size: 3rem; color: var(--gold); cursor:pointer;"></i>
+                </div>
+            </div>
+        `;
+    }
+
+    function startNewTask() {
+        document.getElementById('canvas-content').innerHTML = `
+            <div class="empty-canvas">
+                <i class="fa-solid fa-cubes"></i>
+                Outputs, generated PDFs, and media<br>will appear here.
+            </div>
+        `;
+        document.getElementById('chat-stream').innerHTML = `
+            <div class="msg agent">
+                Workspace cleared. What are we building next?
+            </div>
+        `;
+    }
+</script>
+</body>
+</html>
+
+ <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
