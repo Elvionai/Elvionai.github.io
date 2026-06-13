@@ -2452,97 +2452,106 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
           throw new Error(errData.detail || 'Engine is unavailable. Please check your credits.');
       }
       
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
+      const contentType = res.headers.get('content-type') || '';
       
-      fullText = '';
-      thinkingText = '';
-      let isThinkingOpen = true; 
-      
-      contentEl.innerHTML = ''; 
-      
-      while(true) {
-          const {value, done} = await reader.read();
-          if (done) break;
-          buf += dec.decode(value, {stream: true});
-          let nl;
-          while ((nl = buf.indexOf('\n\n')) !== -1) {
-              const chunkStr = buf.slice(0, nl);
-              buf = buf.slice(nl + 2);
-              
-              if (chunkStr.startsWith('data: ')) {
-                  const dataStr = chunkStr.slice(6).trim();
-                  if (dataStr === '[DONE]') break;
+      if (!contentType.includes('text/event-stream')) {
+          const data = await res.json();
+          fullText = (data.reply || data.content || "No response.").trim();
+          thinkingText = data.thinking || "";
+          
+          let prefixHtml = '';
+          if (thinkingText) {
+              prefixHtml = `<details class="think-block"><summary class="think-toggle"><i class="fa-solid fa-brain"></i><span>Thinking</span><i class="fa-solid fa-chevron-down think-chevron"></i></summary><div class="think-content">${renderMd(thinkingText)}</div></details>`;
+          }
+          await typewriterReveal(contentEl, fullText, currentCtrl.signal, prefixHtml);
+      } else {
+          const reader = res.body.getReader();
+          const dec = new TextDecoder();
+          let buf = '';
+          
+          fullText = '';
+          thinkingText = '';
+          let isThinkingOpen = true; 
+          
+          contentEl.innerHTML = ''; 
+          
+          while(true) {
+              const {value, done} = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, {stream: true});
+              let nl;
+              while ((nl = buf.indexOf('\n\n')) !== -1) {
+                  const chunkStr = buf.slice(0, nl);
+                  buf = buf.slice(nl + 2);
                   
-                  try {
-                      const d = JSON.parse(dataStr);
-                      if (d.type === 'thinking') {
-                          thinkingText += d.content;
-                      } else if (d.type === 'content') {
-                          fullText += d.content;
-                      } else if (d.type === 'status') {
-                          const st = document.getElementById('orb-status-text');
-                          if (st) st.textContent = d.content;
-                      }
+                  if (chunkStr.startsWith('data: ')) {
+                      const dataStr = chunkStr.slice(6).trim();
+                      if (dataStr === '[DONE]') break;
                       
-                      let html = '';
-                      if (thinkingText) {
-                          html += `<details class="think-block" ${isThinkingOpen ? 'open' : ''}>
-                              <summary class="think-toggle">
-                                <i class="fa-solid fa-brain"></i>
-                                <span>Thinking</span>
-                                <i class="fa-solid fa-chevron-down think-chevron"></i>
-                              </summary>
-                              <div class="think-content">${renderMd(thinkingText)}<span class="cursor"></span></div>
-                            </details>`;
+                      try {
+                          const d = JSON.parse(dataStr);
+                          if (d.type === 'thinking') {
+                              thinkingText += d.content;
+                          } else if (d.type === 'content') {
+                              fullText += d.content;
+                          } else if (d.type === 'status') {
+                              const st = document.getElementById('orb-status-text');
+                              if (st) st.textContent = d.content;
+                          } else if (d.type === 'error') {
+                              throw new Error(d.content);
+                          }
+                          
+                          let html = '';
+                          if (thinkingText) {
+                              html += `<details class="think-block" ${isThinkingOpen ? 'open' : ''}>
+                                  <summary class="think-toggle">
+                                    <i class="fa-solid fa-brain"></i>
+                                    <span>Thinking</span>
+                                    <i class="fa-solid fa-chevron-down think-chevron"></i>
+                                  </summary>
+                                  <div class="think-content">${renderMd(thinkingText)}<span class="cursor"></span></div>
+                                </details>`;
+                          }
+                          if (fullText) {
+                              html += renderMd(fullText) + '<span class="cursor"></span>';
+                          }
+                          
+                          if (html) {
+                              contentEl.innerHTML = html;
+                              scrollBot();
+                          }
+                      } catch(e) {
+                          if (e.message && !e.message.includes('JSON')) {
+                              fullText += `\n\n❌ ${e.message}`;
+                          }
                       }
-                      if (fullText) {
-                          html += renderMd(fullText) + '<span class="cursor"></span>';
-                      }
-                      
-                      if (html) {
-                          contentEl.innerHTML = html;
-                          scrollBot();
-                      }
-                  } catch(e) {}
+                  }
               }
           }
       }
-      
-      isThinkingOpen = false;
-      let finalHtml = '';
-      
-      if (thinkingText) {
-          finalHtml += `<details class="think-block">
-              <summary class="think-toggle">
-                <i class="fa-solid fa-brain"></i>
-                <span>Thinking</span>
-                <i class="fa-solid fa-chevron-down think-chevron"></i>
-              </summary>
-              <div class="think-content">${renderMd(thinkingText)}</div>
-            </details>`;
-      }
-      
-      finalHtml += renderMd(fullText);
-      contentEl.innerHTML = finalHtml || "No response.";
-                          }
-       
+    }
   } catch(err) {
     fullText += err.name === 'AbortError' ? '\n\n*(Response stopped)*' : `\n\n❌ ${err.message}`;
   }
-    
+
   const dur=((performance.now()-t0)/1000).toFixed(1);
-  let finalHtml=renderMd(fullText);
-  finalHtml=finalHtml.replace(/&lt;think&gt;/g,'<think>').replace(/&lt;\/think&gt;/g,'</think>');
+  let finalHtml = '';
   
   if (thinkingText) {
-      finalHtml = renderThinking(thinkingText, finalHtml);
+      finalHtml += `<details class="think-block">
+          <summary class="think-toggle">
+            <i class="fa-solid fa-brain"></i>
+            <span>Thinking</span>
+            <i class="fa-solid fa-chevron-down think-chevron"></i>
+          </summary>
+          <div class="think-content">${renderMd(thinkingText)}</div>
+        </details>`;
   }
   
-  contentEl.innerHTML=finalHtml;
+  finalHtml += renderMd(fullText || "No response.");
+  contentEl.innerHTML = finalHtml;
   enhanceCode(aiG);
-
+    
   const ctrl=document.createElement('div');
   ctrl.className='msg-controls';
   ctrl.innerHTML=`<span class="meta-lbl">${dur}s · ${currentModel}</span>
