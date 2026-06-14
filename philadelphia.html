@@ -286,7 +286,7 @@
       display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; margin-top: 4rem;
     }
     .developer-banner img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
-    .dev-info { flex: 1; min-width: 250px; } /* FIXED CSS BUG HERE */
+    .dev-info { flex: 1; min-width: 250px; }
     .dev-info h4 { font-family: var(--font-futuristic); font-size: 1.3rem; color: var(--accent); margin-bottom: 0.5rem; }
     .dev-info p { color: var(--text-secondary); font-size: 0.95rem; margin: 0; }
     .dev-links { display: flex; gap: 1rem; }
@@ -321,6 +321,7 @@
     @keyframes trail { 0% { height: 0; opacity: 0; } 30% { height: 40%; opacity: 1; } 100% { height: 100%; opacity: 0; } }
     .hide-splash { opacity: 0; visibility: hidden; }
 
+    /* Always Visible Floating Neon Install Button */
     #installButton {
       position: fixed; bottom: 25px; right: 25px;
       background: var(--gradient-gold); color: #000; font-family: var(--font-futuristic);
@@ -330,6 +331,49 @@
     }
     #installButton:hover { transform: scale(1.1); }
     @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 15px var(--accent); } 50% { box-shadow: 0 0 30px var(--accent-soft); } }
+
+    /* Elegant Custom PWA Instructions Card */
+    .pwa-instructions {
+      display: none;
+      position: fixed;
+      bottom: 90px;
+      right: 25px;
+      width: 320px;
+      max-width: 90vw;
+      background: rgba(15, 15, 12, 0.95);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-cosmic);
+      z-index: 1001;
+      backdrop-filter: blur(8px);
+      animation: slideUpInst 0.3s ease-out;
+    }
+    @keyframes slideUpInst {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pwa-inst-content h3 {
+      font-family: var(--font-futuristic);
+      font-size: 1.05rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .pwa-inst-content p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+    .close-inst {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .close-inst:hover {
+      color: var(--danger);
+    }
 
     #installToast {
       position: fixed; bottom: 90px; right: 25px;
@@ -557,8 +601,21 @@ console.log(sum(2, 3)); // 5</code></pre></div>
     </div>
   </footer>
 
-  <!-- PWA Install Button & Toast -->
+  <!-- Floating Install & Instruction elements -->
   <button id="installButton"><i class="fa-solid fa-bolt"></i> Install App</button>
+  
+  <div id="pwaInstructionsModal" class="pwa-instructions">
+    <div class="pwa-inst-content">
+      <span class="close-inst">&times;</span>
+      <h3>Install Philadelphia AI</h3>
+      <p>To add this application to your device home screen:</p>
+      <ul style="text-align: left; margin-top: 10px; font-size: 0.85rem; padding-left: 20px; color: var(--text-secondary);">
+        <li style="margin-bottom: 6px;">On **iOS Safari**: Tap the Share icon <i class="fa-solid fa-share-from-square"></i> and select <b>"Add to Home Screen"</b>.</li>
+        <li>On **Chrome / Android**: Tap the three dots <i class="fa-solid fa-ellipsis-vertical"></i> and select <b>"Install app"</b> or <b>"Add to Home screen"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
   <div id="installToast"><i class="fa-solid fa-check"></i> Philadelphia AI App Installed!</div>
 
   <script>
@@ -692,21 +749,38 @@ console.log(sum(2, 3)); // 5</code></pre></div>
       let deferredPrompt;
       const installButton = document.getElementById('installButton');
       const installToast = document.getElementById('installToast');
+      const instModal = document.getElementById('pwaInstructionsModal');
+      const closeInst = document.querySelector('.close-inst');
+
+      // Make the button display after the splash screen has faded
+      setTimeout(() => {
+        installButton.style.display = 'flex';
+      }, 3000);
 
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installButton.style.display = 'block'; 
       });
 
       installButton.addEventListener('click', async () => {
-        installButton.style.display = 'none';
         if (deferredPrompt) {
+          installButton.style.display = 'none';
           deferredPrompt.prompt();
           await deferredPrompt.userChoice;
           deferredPrompt = null;
+        } else {
+          // Fallback: Show elegant, gold instructions card
+          if (instModal) {
+            instModal.style.display = 'block';
+          }
         }
       });
+
+      if (closeInst) {
+        closeInst.addEventListener('click', () => {
+          if (instModal) instModal.style.display = 'none';
+        });
+      }
 
       window.addEventListener('appinstalled', () => {
         installToast.classList.add('show');
