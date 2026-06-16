@@ -75,6 +75,8 @@
       z-index: 0;
     }
 
+    #snow-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.7; }
+
     h1, h2, h3, h4, h5, h6 { font-family: var(--font-brand); color: #fff; font-weight: 700; margin-bottom: 1rem; }
     a { color: var(--accent); text-decoration: none; transition: all 0.3s ease; }
     a:hover { color: var(--accent-soft); text-shadow: var(--glow-gold); }
@@ -181,6 +183,10 @@
       text-decoration: none;
       color: inherit;
     }
+    .studio-tile.featured {
+      background: linear-gradient(135deg, rgba(201, 169, 110, 0.12) 0%, rgba(15, 15, 12, 0.95) 70%);
+      border-color: var(--border-glow);
+    }
     .studio-tile::before {
       content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
       background: var(--gradient-gold); transform: scaleX(0); transform-origin: left;
@@ -192,7 +198,15 @@
       box-shadow: var(--shadow-cosmic);
       background: var(--bg-elevated);
     }
+    .studio-tile.featured:hover { background: linear-gradient(135deg, rgba(201, 169, 110, 0.18) 0%, rgba(22, 22, 20, 0.95) 70%); }
     .studio-tile:hover::before, .studio-tile:focus::before, .studio-tile.active::before { transform: scaleX(1); }
+
+    .tile-badge {
+      position: absolute; top: 12px; right: 12px;
+      background: var(--gradient-gold); color: #000;
+      font-family: var(--font-futuristic); font-size: 0.65rem; font-weight: 700;
+      padding: 3px 8px; border-radius: 50px; text-transform: uppercase; letter-spacing: 1px;
+    }
 
     .tile-header { display: flex; align-items: center; gap: 12px; margin-bottom: 0.6rem; }
     .tile-icon {
@@ -262,6 +276,9 @@
     <h1>Philadelphia AI</h1>
   </div>
 
+  <!-- Snow canvas (same as website) -->
+  <canvas id="snow-canvas"></canvas>
+
   <!-- App Header -->
   <header class="app-header">
     <div class="app-brand">
@@ -291,12 +308,13 @@
     <div class="section-title"><h2>Studios</h2></div>
     <div class="studio-grid">
 
-      <a href="studio.html" class="studio-tile">
+      <a href="https://elvionai.com.ng/profile.html" class="studio-tile featured">
+        <span class="tile-badge">Popular</span>
         <div class="tile-header">
           <div class="tile-icon"><i class="fa-solid fa-comments"></i></div>
           <h3 class="tile-title">Chat Studio</h3>
         </div>
-        <p class="tile-description">Have deep, meaningful conversations with Philadelphia AI or Bobby. Code, brainstorm, ask anything, get real-time answers.</p>
+        <p class="tile-description">Have deep, meaningful conversations with Philadelphia AI or Bobby. Code, brainstorm, ask anything, get real-time answers, and manage your account.</p>
         <div class="tile-cta">Open Chat <i class="fa-solid fa-arrow-right"></i></div>
       </a>
 
@@ -363,15 +381,6 @@
         <div class="tile-cta">Start Learning <i class="fa-solid fa-arrow-right"></i></div>
       </a>
 
-      <a href="https://elvionai.com.ng/profile.html" class="studio-tile">
-        <div class="tile-header">
-          <div class="tile-icon"><i class="fa-solid fa-bolt"></i></div>
-          <h3 class="tile-title">General Studio</h3>
-        </div>
-        <p class="tile-description">Your full Elvion AI dashboard. Manage credits, subscriptions, account settings, and access every tool in one place.</p>
-        <div class="tile-cta">Open Dashboard <i class="fa-solid fa-arrow-right"></i></div>
-      </a>
-
     </div>
 
   </main>
@@ -399,6 +408,48 @@
       // Year
       document.getElementById('year').textContent = new Date().getFullYear();
 
+      // Gold Snow Background (same as website)
+      const canvas = document.getElementById('snow-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        let flakes = [];
+        function resize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          flakes = [];
+          for (let i = 0; i < 60; i++) {
+            flakes.push({
+              x: Math.random() * canvas.width,
+              y: Math.random() * canvas.height,
+              r: Math.random() * 2 + 0.5,
+              speed: Math.random() * 1.0 + 0.3,
+              wind: Math.random() * 0.4 - 0.2,
+              opacity: Math.random() * 0.5 + 0.1
+            });
+          }
+        }
+        function draw() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          flakes.forEach(f => {
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(201, 169, 110, ${f.opacity})`;
+            ctx.shadowBlur = 6;
+            ctx.shadowColor = 'rgba(201, 169, 110, 0.4)';
+            ctx.fill();
+            f.y += f.speed;
+            f.x += f.wind;
+            if (f.y > canvas.height) { f.y = -5; f.x = Math.random() * canvas.width; }
+            if (f.x < 0) f.x = canvas.width;
+            if (f.x > canvas.width) f.x = 0;
+          });
+          requestAnimationFrame(draw);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        draw();
+      }
+
       // Active tile highlight on tap (mobile)
       const tiles = document.querySelectorAll('.studio-tile');
       tiles.forEach(tile => {
@@ -408,9 +459,9 @@
     });
   </script>
 </body>
-          </html>
+</html>
 
-           <!-- Google tag (gtag.js) -->
+ <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
