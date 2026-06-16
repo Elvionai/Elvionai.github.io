@@ -1,7 +1,8 @@
 // ✅ Philadelphia AI Service Worker
-const CACHE_NAME = "philadelphia-ai-cache-v2";
+const CACHE_NAME = "philadelphia-ai-cache-v3";
 const CACHE_ASSETS = [
   "/",
+  "/app.html",
   "/philadelphia.html",
   "/index.html",
   "/about.html",
@@ -12,6 +13,15 @@ const CACHE_ASSETS = [
   "/studyingatelvion.html",
   "/terms.html",
   "/university.html",
+  "/studio.html",
+  "/image-studio.html",
+  "/video-studio.html",
+  "/audio-studio.html",
+  "/website-studio.html",
+  "/writing-studio.html",
+  "/cover-studio.html",
+  "/api.html",
+  "/blog.html",
   "/manifest.json",
   "/images/IMG_20250715_102103_129.jpg",
   "/images/IMG_20250824_133336_309.jpg",
@@ -19,16 +29,16 @@ const CACHE_ASSETS = [
   "https://fonts.gstatic.com"
 ];
 
-// ✅ INSTALL EVENT – cache all essential assets immediately
+// ✅ INSTALL — cache all essential assets immediately
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_ASSETS))
   );
-  self.skipWaiting(); // ⚡ instantly activate this SW
+  self.skipWaiting();
   console.log("✅ Philadelphia AI Service Worker installed and cached assets");
 });
 
-// ✅ ACTIVATE EVENT – clean up old caches and take control right away
+// ✅ ACTIVATE — clean up old caches and take control
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -42,17 +52,17 @@ self.addEventListener("activate", (event) => {
       );
     })
   );
-  clients.claim(); // ⚡ take control of all open pages immediately
+  clients.claim();
   console.log("🔥 Philadelphia AI Service Worker activated");
 });
 
-// ✅ FETCH EVENT – serve from cache first, fallback to network, offline fallback
+// ✅ FETCH — cache first, fallback to network, offline fallback to app.html
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       return (
         cachedResponse ||
-        fetch(event.request).catch(() => caches.match("/philadelphia.html"))
+        fetch(event.request).catch(() => caches.match("/app.html"))
       );
     })
   );
