@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Philadelphia AI — App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Philadelphia AI App — your mobile creative suite for chat, image, video, audio, writing, and more.">
+  <meta name="theme-color" content="#050505" />
+
+  <link rel="apple-touch-icon" href="images/IMG_20250715_102103_129.jpg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="images/IMG_20250715_102103_129.jpg" />
+  <link rel="icon" type="image/png" sizes="512x512" href="images/IMG_20250824_133336_309.jpg" />
+  <link rel="manifest" href="manifest.json" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Philadelphia AI" />
+  <meta name="application-name" content="Philadelphia AI" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    :root {
+      --font-brand: 'Playfair Display', serif;
+      --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-futuristic: 'Orbitron', sans-serif;
+      --bg-deep: #050505;
+      --bg-space: #0a0a08;
+      --bg-card: rgba(15, 15, 12, 0.95);
+      --bg-elevated: #161614;
+      --text-primary: #efefef;
+      --text-secondary: #b5b0a3;
+      --text-muted: #6b665c;
+      --accent: #c9a96e;
+      --accent-soft: #e8d5b0;
+      --accent-green: #5fb87a;
+      --danger: #e05a5a;
+      --border-subtle: rgba(201, 169, 110, 0.15);
+      --border-glow: rgba(201, 169, 110, 0.4);
+      --shadow-cosmic: 0 0 30px rgba(201, 169, 110, 0.15);
+      --shadow-intense: 0 14px 50px rgba(0, 0, 0, 0.9);
+      --glow-gold: 0 0 20px rgba(201, 169, 110, 0.4);
+      --gradient-gold: linear-gradient(135deg, #c9a96e 0%, #e8d5b0 50%, #af8f50 100%);
+      --gradient-deep: radial-gradient(circle at top, rgba(201, 169, 110, 0.1) 0%, transparent 60%),
+                       radial-gradient(circle at bottom, rgba(15, 15, 12, 0.8) 0%, transparent 60%);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--accent) var(--bg-space); }
+    *::-webkit-scrollbar { width: 6px; }
+    *::-webkit-scrollbar-track { background: var(--bg-space); }
+    *::-webkit-scrollbar-thumb { background: var(--gradient-gold); border-radius: 10px; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      position: relative;
+      padding-bottom: 90px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: var(--gradient-deep);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    h1, h2, h3, h4, h5, h6 { font-family: var(--font-brand); color: #fff; font-weight: 700; margin-bottom: 1rem; }
+    a { color: var(--accent); text-decoration: none; transition: all 0.3s ease; }
+    a:hover { color: var(--accent-soft); text-shadow: var(--glow-gold); }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 2; }
+
+    /* Splash */
+    #splash-screen {
+      position: fixed; inset: 0; background: var(--bg-deep);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 9999; transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #splash-screen img {
+      width: 110px; height: 110px; border-radius: 50%; border: 3px solid var(--accent);
+      box-shadow: 0 0 20px var(--accent), 0 0 60px var(--accent-soft);
+      animation: pulseSplash 1.6s infinite alternate;
+    }
+    #splash-screen h1 {
+      margin-top: 1.2rem; font-family: var(--font-futuristic); font-size: 1.4rem;
+      color: var(--accent); text-shadow: var(--glow-gold); letter-spacing: 2px;
+    }
+    @keyframes pulseSplash { from { transform: scale(1); opacity: 0.85; } to { transform: scale(1.05); opacity: 1; } }
+    .hide-splash { opacity: 0; visibility: hidden; }
+
+    /* App Header */
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10, 10, 8, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.9rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .app-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-futuristic); font-weight: 800; color: #fff;
+      font-size: 1.1rem; letter-spacing: 0.5px;
+    }
+    .app-brand img { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--accent); }
+    .app-brand span { font-family: var(--font-body); font-weight: 300; }
+
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: rgba(201, 169, 110, 0.08);
+      border: 1px solid var(--border-subtle);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent); cursor: pointer; transition: 0.3s;
+    }
+    .icon-btn:hover { background: var(--accent); color: #000; transform: scale(1.05); box-shadow: var(--glow-gold); }
+
+    /* Welcome Section */
+    .welcome {
+      padding: 2.5rem 0 1.5rem;
+      text-align: center;
+    }
+    .welcome-greeting {
+      font-size: 0.9rem; color: var(--accent); text-transform: uppercase;
+      letter-spacing: 2px; font-weight: 600; margin-bottom: 0.5rem;
+    }
+    .welcome h1 {
+      font-family: var(--font-brand);
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      background: var(--gradient-gold);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    .welcome p { color: var(--text-secondary); font-size: 1rem; max-width: 600px; margin: 0 auto; }
+
+    /* Section Title */
+    .section-title {
+      display: flex; align-items: center; gap: 12px;
+      margin: 2rem 0 1.2rem;
+    }
+    .section-title h2 {
+      font-family: var(--font-futuristic); font-size: 1.05rem; font-weight: 700;
+      color: var(--accent-soft); margin: 0; text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    .section-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(to right, var(--border-subtle), transparent);
+    }
+
+    /* Studio Grid */
+    .studio-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+    }
+
+    .studio-tile {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      min-height: 160px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .studio-tile::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--gradient-gold); transform: scaleX(0); transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .studio-tile:hover, .studio-tile:focus, .studio-tile:active {
+      transform: translateY(-3px);
+      border-color: var(--border-glow);
+      box-shadow: var(--shadow-cosmic);
+      background: var(--bg-elevated);
+    }
+    .studio-tile:hover::before, .studio-tile:focus::before, .studio-tile.active::before { transform: scaleX(1); }
+
+    .tile-header { display: flex; align-items: center; gap: 12px; margin-bottom: 0.6rem; }
+    .tile-icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      background: rgba(201, 169, 110, 0.1);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent); font-size: 1.3rem;
+      border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .tile-title {
+      font-family: var(--font-brand); font-size: 1.2rem; font-weight: 700;
+      color: #fff; margin: 0;
+    }
+    .tile-description {
+      font-size: 0.9rem; color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .tile-cta {
+      margin-top: auto; padding-top: 1rem;
+      font-size: 0.85rem; color: var(--accent); font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tile-cta i { transition: transform 0.3s ease; }
+    .studio-tile:hover .tile-cta i { transform: translateX(4px); }
+
+    /* Bottom Nav (Mobile) */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10, 10, 8, 0.96);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border-subtle);
+      display: none;
+      justify-content: space-around;
+      padding: 0.7rem 0.5rem calc(0.7rem + env(safe-area-inset-bottom));
+      z-index: 100;
+    }
+    .bottom-nav a {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      color: var(--text-muted); font-size: 0.7rem; font-weight: 500;
+      padding: 0.3rem 0.8rem; border-radius: 8px; transition: 0.3s;
+    }
+    .bottom-nav a i { font-size: 1.1rem; }
+    .bottom-nav a:hover, .bottom-nav a.active { color: var(--accent); }
+    .bottom-nav a.active { background: rgba(201, 169, 110, 0.08); }
+
+    /* Desktop footer (when not on mobile) */
+    .app-footer {
+      text-align: center; padding: 2.5rem 0 1.5rem; color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    .app-footer span { color: var(--accent); font-weight: 500; }
+
+    @media (max-width: 768px) {
+      .bottom-nav { display: flex; }
+      .app-footer { display: none; }
+      .studio-grid { grid-template-columns: 1fr; }
+      .welcome { padding: 1.5rem 0 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Splash -->
+  <div id="splash-screen">
+    <img src="images/IMG_20250715_102103_129.jpg" alt="Philadelphia AI">
+    <h1>Philadelphia AI</h1>
+  </div>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="app-brand">
+      <img src="images/IMG_20250715_102103_129.jpg" alt="Logo">
+      Philadelphia <span>AI</span>
+    </div>
+    <div class="header-actions">
+      <a href="https://elvionai.com.ng/profile.html" class="icon-btn" title="Profile">
+        <i class="fa-solid fa-user"></i>
+      </a>
+      <a href="philadelphia.html" class="icon-btn" title="Back to Website">
+        <i class="fa-solid fa-globe"></i>
+      </a>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- Welcome -->
+    <section class="welcome">
+      <div class="welcome-greeting">Welcome back</div>
+      <h1>Where do you want to begin?</h1>
+      <p>Pick a studio to start creating, learning, or building. Your tools, one tap away.</p>
+    </section>
+
+    <!-- Studios Section -->
+    <div class="section-title"><h2>Studios</h2></div>
+    <div class="studio-grid">
+
+      <a href="studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-comments"></i></div>
+          <h3 class="tile-title">Chat Studio</h3>
+        </div>
+        <p class="tile-description">Have deep, meaningful conversations with Philadelphia AI or Bobby. Code, brainstorm, ask anything, get real-time answers.</p>
+        <div class="tile-cta">Open Chat <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="image-studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+          <h3 class="tile-title">Image Studio</h3>
+        </div>
+        <p class="tile-description">Generate stunning visuals — from anime and cinematic portraits to photorealism and abstract art. Just describe it.</p>
+        <div class="tile-cta">Create Images <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="video-studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-film"></i></div>
+          <h3 class="tile-title">Video Studio</h3>
+        </div>
+        <p class="tile-description">Render cinematic Text-to-Video, animate starting frames, or lock animations to a subject. Bring stories to motion.</p>
+        <div class="tile-cta">Make Videos <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="audio-studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-music"></i></div>
+          <h3 class="tile-title">Audio Studio</h3>
+        </div>
+        <p class="tile-description">Synthesize premium ultra-realistic voiceovers with 17 unique characters, or compose full music tracks from a single prompt.</p>
+        <div class="tile-cta">Generate Audio <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="writing-studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-pen-nib"></i></div>
+          <h3 class="tile-title">Writing Studio</h3>
+        </div>
+        <p class="tile-description">Draft novels, scripts, essays, and poems. Get expert editing, plot help, character development, and finishing power.</p>
+        <div class="tile-cta">Start Writing <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="cover-studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-book"></i></div>
+          <h3 class="tile-title">Cover Studio</h3>
+        </div>
+        <p class="tile-description">Create excellent book covers with spine, full-wrap marketing versions, series sets, and print-ready files in minutes.</p>
+        <div class="tile-cta">Design a Cover <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="website-studio.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-globe"></i></div>
+          <h3 class="tile-title">Website Studio</h3>
+        </div>
+        <p class="tile-description">Describe the landing page you want, and watch us design, code, and deploy it live — instantly, beautifully.</p>
+        <div class="tile-cta">Build a Site <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="university.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+          <h3 class="tile-title">Elvion University</h3>
+        </div>
+        <p class="tile-description">Earn free simulated degrees and ELV certifications. Learn, grow, and build credentials across creative and tech fields.</p>
+        <div class="tile-cta">Start Learning <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+      <a href="https://elvionai.com.ng/profile.html" class="studio-tile">
+        <div class="tile-header">
+          <div class="tile-icon"><i class="fa-solid fa-bolt"></i></div>
+          <h3 class="tile-title">General Studio</h3>
+        </div>
+        <p class="tile-description">Your full Elvion AI dashboard. Manage credits, subscriptions, account settings, and access every tool in one place.</p>
+        <div class="tile-cta">Open Dashboard <i class="fa-solid fa-arrow-right"></i></div>
+      </a>
+
+    </div>
+
+  </main>
+
+  <!-- Bottom Nav (Mobile) -->
+  <nav class="bottom-nav">
+    <a href="app.html" class="active"><i class="fa-solid fa-house"></i><span>Home</span></a>
+    <a href="https://elvionai.com.ng/profile.html"><i class="fa-solid fa-comments"></i><span>Chat</span></a>
+    <a href="image-studio.html"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Create</span></a>
+    <a href="writing-studio.html"><i class="fa-solid fa-pen-nib"></i><span>Write</span></a>
+    <a href="https://elvionai.com.ng/profile.html"><i class="fa-solid fa-user"></i><span>Profile</span></a>
+  </nav>
+
+  <footer class="app-footer">
+    <p>&copy; <span id="year"></span> Philadelphia AI by Elvion.<br><span>The Future is Now.</span></p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Splash
+      const splash = document.getElementById('splash-screen');
+      setTimeout(() => splash.classList.add('hide-splash'), 1500);
+      setTimeout(() => splash.style.display = 'none', 2500);
+
+      // Year
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      // Active tile highlight on tap (mobile)
+      const tiles = document.querySelectorAll('.studio-tile');
+      tiles.forEach(tile => {
+        tile.addEventListener('touchstart', () => tile.classList.add('active'), { passive: true });
+        tile.addEventListener('touchend', () => setTimeout(() => tile.classList.remove('active'), 300));
+      });
+    });
+  </script>
+</body>
+          </html>
+
+           <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
+
+  gtag('config', 'G-J1YTKP10ZX');
+</script>
