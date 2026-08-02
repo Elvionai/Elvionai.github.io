@@ -2,2218 +2,754 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Philadelphia AI Computer</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kola the Computer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 <style>
-/* ================================================================
-   PHILADELPHIA AI COMPUTER — GOLD/DARK WORKSTATION
-   Inspired by Manus / Perplexity Computer
-   ================================================================ */
-:root {
-  --bg-void: #050505;
-  --bg-base: #0a0a0a;
-  --bg-panel: #0f0f0f;
-  --bg-card: #141414;
-  --bg-hover: #1a1a1a;
-  --bg-input: #111111;
+:root{
+  --font-brand:'Playfair Display',serif;--font-body:'Times New Roman',Times,serif;--font-code:'JetBrains Mono','Courier New',monospace;
+  --r-sm:6px;--r-md:12px;--r-lg:18px;--r-xl:24px;--tr:.25s cubic-bezier(.4,0,.2,1);
+  --bg-base:#080808;--bg-surface:#0e0e0e;--bg-panel:#111111;--bg-input:#141414;
+  --border:rgba(255,255,255,.08);--border-focus:rgba(255,255,255,.22);
+  --t1:#efefef;--t2:#888;--t-muted:#444;
+  --accent:#c9a96e;--accent-2:#e8d5b0;--accent-green:#5fb87a;--danger:#e05a5a;--pur:#9b6cf6;
+  --shadow:0 8px 40px rgba(0,0,0,.8);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden}
+body{font-family:var(--font-body);background:var(--bg-base);color:var(--t1);display:flex;justify-content:center;align-items:center}
 
-  --gold-1: #c9a96e;
-  --gold-2: #e2c48a;
-  --gold-3: #f0d9a0;
-  --gold-dim: rgba(201,169,110,0.12);
-  --gold-border: rgba(201,169,110,0.2);
-  --gold-glow: 0 0 30px rgba(201,169,110,0.08);
+.app{position:relative;z-index:5;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-surface)}
+@media(min-width:1024px){.app{width:94vw;height:92vh;max-width:1100px;border-radius:var(--r-xl);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}}
 
-  --text-1: #f0f0f0;
-  --text-2: #888;
-  --text-3: #444;
-  --text-code: #a8d8a8;
+/* HEADER */
+.hdr{padding:12px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.5);flex-shrink:0}
+.hdr .ibtn{width:36px;height:36px;border-radius:var(--r-md);background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--t2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:var(--tr)}
+.hdr .ibtn:hover{background:rgba(255,255,255,.08);color:var(--t1)}
+.brand-wrap{flex:1;text-align:center}
+.brand{font-family:var(--font-brand);font-size:1.2rem;font-weight:900;letter-spacing:3px;color:var(--accent)}
+.brand-sub{font-size:.56rem;color:var(--t-muted);letter-spacing:2px;text-transform:uppercase;margin-top:1px}
+.bal-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(201,169,110,.1);border:1px solid var(--border);border-radius:16px;cursor:pointer;font-size:.78rem;color:var(--accent);font-weight:700;flex-shrink:0}
+.bal-chip i{font-size:.7rem}
 
-  --green: #4caf7d;
-  --red: #e05a5a;
-  --blue: #6b9ef0;
-  --purple: #9b7fe8;
+/* CHAT VIEWPORT */
+#chat-vp{flex:1;overflow-y:auto;padding:22px 18px;display:flex;flex-direction:column;gap:20px;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--border-focus) transparent}
+#chat-vp::-webkit-scrollbar{width:4px}
+#chat-vp::-webkit-scrollbar-thumb{background:var(--border-focus);border-radius:10px}
+.msg-group{display:flex;flex-direction:column;gap:6px;max-width:86%;animation:pop .3s ease}
+@keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.msg-group.usr{align-self:flex-end;align-items:flex-end}
+.msg-group.ai{align-self:flex-start;max-width:92%}
+.bubble{font-size:1rem;line-height:1.75;overflow-wrap:break-word}
+.usr .bubble{padding:11px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-lg) var(--r-lg) 4px var(--r-lg)}
+.ai .bubble{background:transparent;padding:0}
+.meta-lbl{font-size:.66rem;color:var(--t-muted);margin-top:2px}
 
-  --border: rgba(255,255,255,0.06);
-  --border-focus: rgba(201,169,110,0.35);
+/* THINKING — always visible, never collapses by default */
+.think-block{margin:8px 0;border:1px solid rgba(201,169,110,.22);border-radius:var(--r-md);background:rgba(201,169,110,.04);overflow:hidden}
+.think-hdr{display:flex;align-items:center;gap:7px;padding:8px 13px;font-size:.72rem;color:var(--accent);border-bottom:1px solid rgba(201,169,110,.12)}
+.think-hdr i{font-size:.72rem}
+.think-body{padding:11px 14px;font-size:.82rem;color:var(--t2);line-height:1.7;white-space:pre-wrap}
 
-  --sidebar-w: 260px;
-  --activity-w: 340px;
-  --font: 'Inter', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', monospace;
-  --r: 8px;
-  --r-lg: 14px;
-}
+/* TOOL STATUS CHIPS — friendly, never show raw function/file names */
+.tool-chip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;background:rgba(155,108,246,.08);border:1px solid rgba(155,108,246,.22);border-radius:var(--r-md);font-size:.82rem;color:#c4b5fd;margin:6px 0}
+.tool-chip .dot3{display:inline-flex;gap:3px}
+.tool-chip .dot3 span{width:5px;height:5px;border-radius:50%;background:#c4b5fd;animation:dotp 1.1s ease-in-out infinite}
+.tool-chip .dot3 span:nth-child(2){animation-delay:.15s}
+.tool-chip .dot3 span:nth-child(3){animation-delay:.3s}
+@keyframes dotp{0%,80%,100%{opacity:.25;transform:scale(.7)}40%{opacity:1;transform:scale(1)}}
+.tool-result{margin-top:6px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r-md)}
+.tool-result img,.tool-result video{max-width:100%;border-radius:var(--r-sm);display:block;margin-top:6px}
+.tool-result audio{width:100%;margin-top:6px}
+.tool-result a.file-link{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;background:rgba(201,169,110,.08);border:1px solid var(--border);border-radius:var(--r-md);color:var(--accent);text-decoration:none;margin-top:6px;font-size:.84rem}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; background: var(--bg-void); }
-body { font-family: var(--font); color: var(--text-1); display: flex; }
+/* FILE PILLS (attachments + auto-txt from long paste) */
+#file-preview-bar{display:none;flex-wrap:wrap;gap:6px;padding:8px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,.2)}
+#file-preview-bar.show{display:flex}
+.file-pill{display:flex;align-items:center;gap:6px;padding:5px 10px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:16px;font-size:.78rem;color:var(--t2);cursor:pointer}
+.file-pill:hover{border-color:var(--border-focus)}
+.rm-file{background:none;border:none;color:var(--t-muted);cursor:pointer;font-size:.85rem}
+.rm-file:hover{color:var(--danger)}
 
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+/* INPUT DOCK */
+#input-dock{padding:12px 16px 6px;background:rgba(0,0,0,.4);border-top:1px solid var(--border);display:flex;align-items:flex-end;gap:10px;flex-shrink:0}
+.capsule{flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;padding:4px 8px 4px 14px;transition:var(--tr)}
+.capsule:focus-within{border-color:var(--border-focus)}
+.capsule textarea{width:100%;background:transparent;border:none;color:var(--t1);padding:10px 0;font-size:.96rem;resize:none;min-height:44px;max-height:170px;outline:none;line-height:1.6;font-family:var(--font-body)}
+.input-bar{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 6px 0}
+.bar-btn{width:32px;height:32px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--t-muted);cursor:pointer;transition:var(--tr);display:flex;align-items:center;justify-content:center;font-size:.92rem}
+.bar-btn:hover{background:rgba(255,255,255,.06);color:var(--t1)}
+.send-btn{width:38px;height:38px;border-radius:var(--r-md);background:var(--t1);color:#000;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:var(--tr);flex-shrink:0}
+.send-btn:hover{background:var(--accent)}
+.disclaimer{text-align:center;font-size:.62rem;color:var(--t-muted);padding:3px 18px 10px;background:rgba(0,0,0,.4);flex-shrink:0}
 
-/* ================================================================
-   LEFT SIDEBAR
-   ================================================================ */
-#sidebar {
-  width: var(--sidebar-w);
-  height: 100vh;
-  background: var(--bg-base);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  z-index: 20;
-}
+/* PANELS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;opacity:0;transition:opacity .3s}
+.overlay.open{display:block;opacity:1}
+.panel{position:fixed;top:0;left:-420px;height:100%;width:380px;max-width:88vw;background:var(--bg-panel);border-right:1px solid var(--border);box-shadow:var(--shadow);z-index:1010;display:flex;flex-direction:column;transition:left .4s cubic-bezier(.34,1.56,.64,1);overflow:hidden}
+.panel.open{left:0}
+.panel-hdr{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.3);flex-shrink:0}
+.panel-hdr h2{font-family:var(--font-brand);font-size:.9rem;font-weight:700;color:var(--t1);letter-spacing:1px}
+.panel-body{padding:16px;flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sec-title{font-family:var(--font-brand);font-size:.66rem;color:var(--accent);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:16px 0 8px}
+.sec-title:first-child{margin-top:0}
+.wallet-card{background:rgba(201,169,110,.05);border:1px solid rgba(201,169,110,.2);border-radius:12px;padding:15px;text-align:center;margin-bottom:14px}
+.wallet-card .bal{font-size:2.1rem;font-weight:900;color:var(--accent);font-family:var(--font-brand);margin:2px 0}
+.wallet-card .lbl{font-size:.7rem;color:var(--t2);text-transform:uppercase;letter-spacing:1px}
+.wbtns{display:flex;gap:8px;margin-top:12px}
+.form-input,.form-textarea{width:100%;padding:9px 12px;background:var(--bg-base);border:1px solid var(--border);border-radius:var(--r-md);color:var(--t1);font-size:.86rem;outline:none;font-family:var(--font-body)}
+.form-textarea{resize:vertical;min-height:80px}
+.submit-btn{width:100%;padding:10px;border-radius:var(--r-md);background:var(--t1);color:#000;border:none;cursor:pointer;font-weight:700;font-size:.84rem;font-family:var(--font-body);margin-top:10px;transition:var(--tr)}
+.submit-btn:hover{background:var(--accent)}
+.submit-btn.green{background:var(--accent-green);color:#000}
+.submit-btn.danger{background:rgba(224,90,90,.12);color:var(--danger);border:1px solid rgba(224,90,90,.3)}
+.status-msg{margin-top:8px;font-size:.78rem;text-align:center;color:var(--accent-green);min-height:20px}
+.chat-item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:var(--r-sm);background:rgba(255,255,255,.03);cursor:pointer;margin-bottom:5px;transition:var(--tr)}
+.chat-item:hover,.chat-item.active{background:rgba(255,255,255,.06)}
+.chat-item span{flex:1;font-size:.84rem;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-item.active span{color:var(--t1)}
+.chat-item button{background:none;border:none;color:var(--t-muted);cursor:pointer;padding:3px 5px;font-size:.76rem}
+.chat-item button:hover{color:var(--danger)}
+.info-note{font-size:.76rem;color:var(--t2);line-height:1.6;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;margin-bottom:10px}
 
-.brand {
-  padding: 20px 18px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.brand-icon {
-  width: 30px; height: 30px;
-  background: var(--gold-dim);
-  border: 1px solid var(--gold-border);
-  border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.85rem; color: var(--gold-1);
-  flex-shrink: 0;
-}
-.brand-name {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--gold-1);
-  letter-spacing: 0.5px;
-  line-height: 1.2;
-}
-.brand-sub { font-size: 0.6rem; color: var(--text-3); letter-spacing: 1.5px; text-transform: uppercase; }
+/* LIGHTBOX */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:5000;justify-content:center;align-items:center;cursor:zoom-out}
+#lightbox.show{display:flex}
+#lightbox img{max-width:95vw;max-height:94vh;border-radius:var(--r-md)}
 
-.sidebar-section {
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.sidebar-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-3);
-  padding: 0 8px;
-  margin-bottom: 6px;
-}
-
-.new-task-btn {
-  width: 100%;
-  padding: 9px 12px;
-  background: var(--gold-dim);
-  border: 1px solid var(--gold-border);
-  border-radius: var(--r);
-  color: var(--gold-1);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  font-family: var(--font);
-}
-.new-task-btn:hover { background: rgba(201,169,110,0.2); border-color: rgba(201,169,110,0.4); }
-
-.task-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 10px;
-}
-.task-item {
-  padding: 8px 10px;
-  border-radius: var(--r);
-  cursor: pointer;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  transition: background 0.15s;
-  margin-bottom: 2px;
-}
-.task-item:hover { background: var(--bg-hover); }
-.task-item.active { background: var(--gold-dim); }
-.task-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--text-3);
-  margin-top: 5px;
-  flex-shrink: 0;
-}
-.task-item.active .task-dot { background: var(--gold-1); }
-.task-item.running .task-dot { background: var(--green); animation: pulseDot 1.2s infinite; }
-@keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:0.3} }
-.task-name {
-  font-size: 0.8rem;
-  color: var(--text-2);
-  line-height: 1.3;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.task-item.active .task-name { color: var(--gold-2); }
-
-.sidebar-bottom {
-  padding: 12px 10px;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.sb-btn {
-  width: 100%;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  border-radius: var(--r);
-  color: var(--text-2);
-  font-size: 0.8rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.15s;
-  font-family: var(--font);
-  text-align: left;
-}
-.sb-btn:hover { background: var(--bg-hover); color: var(--text-1); }
-.sb-btn i { width: 14px; color: var(--text-3); }
-.sb-btn:hover i { color: var(--gold-1); }
-.balance-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  background: var(--gold-dim);
-  border-radius: 20px;
-  font-size: 0.68rem;
-  color: var(--gold-1);
-  margin-left: auto;
-}
-
-/* ================================================================
-   MAIN STAGE
-   ================================================================ */
-#main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  position: relative;
-}
-
-/* ── TOP BAR ── */
-#topbar {
-  height: 48px;
-  background: var(--bg-base);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 18px;
-  gap: 12px;
-  flex-shrink: 0;
-  z-index: 10;
-}
-.topbar-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-1);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.topbar-badge {
-  padding: 3px 9px;
-  border-radius: 20px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.badge-running { background: rgba(76,175,125,0.12); color: var(--green); border: 1px solid rgba(76,175,125,0.25); }
-.badge-idle { background: rgba(255,255,255,0.04); color: var(--text-2); border: 1px solid var(--border); }
-.badge-done { background: var(--gold-dim); color: var(--gold-1); border: 1px solid var(--gold-border); }
-
-.tb-btn {
-  width: 30px; height: 30px;
-  border-radius: 6px;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  font-size: 0.78rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-}
-.tb-btn:hover { background: var(--bg-hover); color: var(--text-1); border-color: rgba(255,255,255,0.12); }
-
-/* ── SPLIT VIEW ── */
-#workspace {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-/* ── CONVERSATION PANE ── */
-#conv-pane {
-  width: 420px;
-  min-width: 320px;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border);
-  background: var(--bg-base);
-  flex-shrink: 0;
-}
-
-#messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Message bubbles */
-.msg { display: flex; flex-direction: column; gap: 4px; animation: msgIn 0.25s ease; }
-@keyframes msgIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
-
-.msg.user { align-items: flex-end; }
-.msg.ai { align-items: flex-start; }
-
-.msg-bubble {
-  font-size: 0.85rem;
-  line-height: 1.75;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-.msg.user .msg-bubble {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg) var(--r-lg) 4px var(--r-lg);
-  padding: 10px 14px;
-  max-width: 85%;
-}
-.msg.ai .msg-bubble {
-  color: var(--text-1);
-  max-width: 100%;
-}
-
-.msg-meta {
-  font-size: 0.65rem;
-  color: var(--text-3);
-  padding: 0 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.msg-meta .model-tag {
-  color: var(--gold-1);
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* AI indicator */
-.ai-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-.ai-avatar {
-  width: 20px; height: 20px;
-  border-radius: 5px;
-  background: var(--gold-dim);
-  border: 1px solid var(--gold-border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.6rem;
-  color: var(--gold-1);
-}
-.ai-name { font-size: 0.7rem; color: var(--gold-1); font-weight: 600; }
-
-/* Thinking block */
-.think-block {
-  background: rgba(201,169,110,0.03);
-  border: 1px solid rgba(201,169,110,0.12);
-  border-radius: var(--r);
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-.think-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  cursor: pointer;
-  font-size: 0.72rem;
-  color: var(--text-2);
-  list-style: none;
-  user-select: none;
-}
-.think-toggle::-webkit-details-marker { display: none; }
-.think-toggle i { color: var(--gold-1); font-size: 0.7rem; }
-.think-chevron { margin-left: auto; transition: 0.2s; font-size: 0.65rem; }
-.think-block[open] .think-chevron { transform: rotate(180deg); }
-.think-content { padding: 10px 14px; font-size: 0.78rem; color: var(--text-2); border-top: 1px solid rgba(201,169,110,0.1); line-height: 1.7; }
-
-/* Typing dots */
-.typing-dots {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 0;
-}
-.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold-1); animation: dotBounce 1.1s infinite; opacity: 0.4; }
-.dot:nth-child(2) { animation-delay: 0.15s; }
-.dot:nth-child(3) { animation-delay: 0.3s; }
-@keyframes dotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.2} 40%{transform:scale(1.2);opacity:1} }
-
-/* Code blocks */
-pre {
-  background: var(--bg-void);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 14px;
-  overflow-x: auto;
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  line-height: 1.6;
-  margin: 8px 0;
-  position: relative;
-}
-.code-lang {
-  position: absolute;
-  top: 8px; right: 8px;
-  font-size: 0.6rem;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: var(--font);
-}
-.copy-code-btn {
-  position: absolute;
-  top: 5px; right: 48px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text-2);
-  font-size: 0.65rem;
-  padding: 3px 8px;
-  cursor: pointer;
-  font-family: var(--font);
-  transition: 0.15s;
-}
-.copy-code-btn:hover { color: var(--text-1); }
-
-/* Inline styles */
-.msg-bubble strong { color: var(--gold-2); font-weight: 600; }
-.msg-bubble em { color: var(--text-2); font-style: italic; }
-.msg-bubble code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 0.8em; color: var(--text-code); }
-.msg-bubble a { color: var(--gold-1); text-decoration: underline; }
-.msg-bubble h1,.msg-bubble h2,.msg-bubble h3 { color: var(--gold-2); margin: 10px 0 4px; }
-.msg-bubble ul,.msg-bubble ol { margin-left: 18px; margin-top: 4px; }
-.msg-bubble li { margin-bottom: 3px; }
-.msg-bubble blockquote { border-left: 2px solid var(--gold-border); padding-left: 12px; color: var(--text-2); margin: 8px 0; }
-
-/* ── INPUT ZONE ── */
-#input-zone {
-  padding: 14px 16px;
-  background: var(--bg-base);
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.input-shell {
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-.input-shell:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(201,169,110,0.05); }
-
-#cmd-input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  color: var(--text-1);
-  font-size: 0.88rem;
-  font-family: var(--font);
-  padding: 13px 14px 6px;
-  resize: none;
-  min-height: 44px;
-  max-height: 140px;
-  outline: none;
-  scrollbar-width: none;
-  line-height: 1.5;
-}
-#cmd-input::-webkit-scrollbar { display: none; }
-#cmd-input::placeholder { color: var(--text-3); }
-
-.input-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-}
-.ia-btn {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  background: none;
-  border: none;
-  color: var(--text-3);
-  font-size: 0.82rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: 0.15s;
-}
-.ia-btn:hover { background: var(--bg-hover); color: var(--text-2); }
-.ia-spacer { flex: 1; }
-.send-btn {
-  width: 30px; height: 30px;
-  border-radius: 7px;
-  background: var(--gold-1);
-  border: none;
-  color: #000;
-  font-size: 0.82rem;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: 0.15s;
-  flex-shrink: 0;
-}
-.send-btn:hover { background: var(--gold-2); transform: scale(1.05); }
-.send-btn.stop { background: var(--red); color: #fff; }
-
-/* Model selector */
-.model-select-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 4px 8px;
-}
-.model-chip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 9px;
-  border-radius: 20px;
-  font-size: 0.68rem;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  background: none;
-  transition: 0.15s;
-  font-family: var(--font);
-}
-.model-chip.active { background: var(--gold-dim); border-color: var(--gold-border); color: var(--gold-1); }
-.model-chip:hover:not(.active) { background: var(--bg-hover); color: var(--text-1); }
-.model-chip i { font-size: 0.6rem; }
-
-/* Attach preview */
-#attach-bar { display: none; flex-wrap: wrap; gap: 5px; padding: 8px 12px 0; }
-#attach-bar.show { display: flex; }
-.attach-pill {
-  display: flex; align-items: center; gap: 5px;
-  padding: 3px 9px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 0.72rem;
-  color: var(--text-2);
-}
-.rm-attach { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 0.75rem; transition: 0.1s; }
-.rm-attach:hover { color: var(--red); }
-
-/* ================================================================
-   ACTIVITY / OUTPUT PANE
-   ================================================================ */
-#activity-pane {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-panel);
-  overflow: hidden;
-}
-
-#activity-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  height: 42px;
-}
-.activity-tab {
-  padding: 0 14px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: var(--text-2);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: 0.15s;
-  white-space: nowrap;
-}
-.activity-tab:hover { color: var(--text-1); }
-.activity-tab.active { color: var(--gold-1); border-bottom-color: var(--gold-1); }
-.activity-tab i { font-size: 0.7rem; }
-.tab-count {
-  background: rgba(255,255,255,0.06);
-  border-radius: 10px;
-  padding: 1px 5px;
-  font-size: 0.6rem;
-  color: var(--text-3);
-}
-
-#activity-body { flex: 1; overflow-y: auto; }
-
-/* ── ACTIVITY TIMELINE ── */
-.activity-panel { display: none; padding: 16px; flex-direction: column; gap: 8px; }
-.activity-panel.active { display: flex; }
-
-.step-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 12px 14px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  transition: border-color 0.2s;
-}
-.step-card.running { border-color: rgba(76,175,125,0.3); }
-.step-card.done { border-color: var(--border); }
-.step-card.error { border-color: rgba(224,90,90,0.3); }
-
-.step-icon {
-  width: 28px; height: 28px;
-  border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-.step-card.pending .step-icon { background: rgba(255,255,255,0.04); color: var(--text-3); }
-.step-card.running .step-icon { background: rgba(76,175,125,0.1); color: var(--green); }
-.step-card.done .step-icon { background: var(--gold-dim); color: var(--gold-1); }
-.step-card.error .step-icon { background: rgba(224,90,90,0.1); color: var(--red); }
-
-.step-info { flex: 1; min-width: 0; }
-.step-title { font-size: 0.8rem; font-weight: 600; color: var(--text-1); margin-bottom: 2px; }
-.step-desc { font-size: 0.73rem; color: var(--text-2); line-height: 1.4; }
-.step-card.running .step-title { color: var(--green); }
-.step-card.done .step-title { color: var(--gold-1); }
-
-.step-time { font-size: 0.65rem; color: var(--text-3); flex-shrink: 0; margin-top: 2px; }
-
-/* Spinner */
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── OUTPUT PANEL ── */
-.output-panel { display: none; padding: 16px; flex-direction: column; gap: 10px; }
-.output-panel.active { display: flex; }
-
-.output-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-}
-.output-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,0.01);
-}
-.output-card-icon { color: var(--gold-1); font-size: 0.8rem; }
-.output-card-title { font-size: 0.78rem; font-weight: 600; color: var(--text-1); flex: 1; }
-.output-card-actions { display: flex; gap: 4px; }
-.oca-btn {
-  padding: 3px 9px;
-  border-radius: 5px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  font-size: 0.68rem;
-  cursor: pointer;
-  transition: 0.15s;
-  font-family: var(--font);
-  display: flex; align-items: center; gap: 4px;
-}
-.oca-btn:hover { background: var(--gold-dim); color: var(--gold-1); border-color: var(--gold-border); }
-
-.output-card-body { padding: 14px; }
-
-/* Image output */
-.output-img { width: 100%; border-radius: var(--r); display: block; cursor: zoom-in; }
-.output-img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
-.output-img-grid img { width: 100%; border-radius: 6px; cursor: zoom-in; }
-
-/* Audio output */
-.output-audio { width: 100%; border-radius: var(--r); margin-top: 4px; }
-
-/* Video output */
-.output-video { width: 100%; border-radius: var(--r); display: block; }
-
-/* Download tile */
-.dl-tile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(201,169,110,0.04);
-  border: 1px solid var(--gold-border);
-  border-radius: var(--r);
-  cursor: pointer;
-  transition: 0.15s;
-  text-decoration: none;
-}
-.dl-tile:hover { background: var(--gold-dim); }
-.dl-tile-icon { font-size: 1.5rem; color: var(--gold-1); }
-.dl-tile-info { flex: 1; }
-.dl-tile-name { font-size: 0.82rem; font-weight: 600; color: var(--text-1); }
-.dl-tile-size { font-size: 0.7rem; color: var(--text-2); margin-top: 1px; }
-.dl-tile-action { font-size: 0.75rem; color: var(--gold-1); font-weight: 600; display: flex; align-items: center; gap: 4px; }
-
-/* ── TOOLS PANEL ── */
-.tools-panel { display: none; padding: 16px; flex-direction: column; gap: 8px; }
-.tools-panel.active { display: flex; }
-
-.tool-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.tool-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.tool-card:hover { border-color: var(--gold-border); background: var(--gold-dim); transform: translateY(-1px); }
-.tool-card-icon { font-size: 1rem; color: var(--gold-1); }
-.tool-card-name { font-size: 0.78rem; font-weight: 600; color: var(--text-1); }
-.tool-card-desc { font-size: 0.68rem; color: var(--text-2); line-height: 1.35; }
-.tool-card-cost {
-  font-size: 0.62rem;
-  color: var(--gold-1);
-  background: var(--gold-dim);
-  padding: 1px 6px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  width: fit-content;
-}
-
-/* ── FORM PANEL ── */
-#form-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 100;
-  display: none;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0;
-}
-#form-overlay.show { display: flex; }
-.form-drawer {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
-  width: 100%;
-  max-width: 560px;
-  max-height: 80vh;
-  overflow-y: auto;
-  animation: drawerUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
-}
-@keyframes drawerUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-.form-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  background: var(--bg-panel);
-  z-index: 1;
-}
-.form-drawer-title { font-size: 0.88rem; font-weight: 700; color: var(--gold-1); }
-.form-drawer-close { background: none; border: none; color: var(--text-2); font-size: 0.9rem; cursor: pointer; padding: 4px 8px; border-radius: 5px; }
-.form-drawer-close:hover { color: var(--red); }
-.form-drawer-body { padding: 18px 20px; }
-.form-group { margin-bottom: 14px; }
-.form-group label {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 6px;
-}
-.form-input, .form-select, .form-textarea {
-  width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  color: var(--text-1);
-  font-family: var(--font);
-  font-size: 0.85rem;
-  padding: 9px 12px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--border-focus); }
-.form-textarea { resize: vertical; min-height: 80px; }
-.form-select option { background: #111; }
-.form-submit-btn {
-  width: 100%;
-  padding: 11px;
-  background: var(--gold-1);
-  border: none;
-  border-radius: var(--r);
-  color: #000;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: var(--font);
-  letter-spacing: 0.5px;
-  transition: 0.15s;
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.form-submit-btn:hover { background: var(--gold-2); transform: translateY(-1px); }
-
-/* ================================================================
-   LIGHTBOX
-   ================================================================ */
-#lightbox {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.95);
-  z-index: 999;
-  align-items: center;
-  justify-content: center;
-  cursor: zoom-out;
-}
-#lightbox.show { display: flex; }
-#lb-img { max-width: 94vw; max-height: 94vh; border-radius: var(--r); object-fit: contain; }
-
-/* ================================================================
-   WELCOME STATE
-   ================================================================ */
-#welcome {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 24px;
-  gap: 24px;
-}
-.welcome-logo {
-  width: 60px; height: 60px;
-  border-radius: 16px;
-  background: var(--gold-dim);
-  border: 1px solid var(--gold-border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem;
-  color: var(--gold-1);
-}
-.welcome-title { font-size: 1.3rem; font-weight: 700; color: var(--text-1); text-align: center; }
-.welcome-sub { font-size: 0.82rem; color: var(--text-2); text-align: center; max-width: 280px; line-height: 1.6; }
-.welcome-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 300px; }
-.welcome-chip {
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: 0.15s;
-}
-.welcome-chip:hover { border-color: var(--gold-border); color: var(--gold-1); background: var(--gold-dim); }
-
-/* ================================================================
-   EMPTY STATE
-   ================================================================ */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  gap: 10px;
-  color: var(--text-3);
-  font-size: 0.8rem;
-  text-align: center;
-}
-.empty-state i { font-size: 1.5rem; margin-bottom: 6px; }
-
-/* ================================================================
-   RESPONSIVE
-   ================================================================ */
-@media (max-width: 900px) {
-  #sidebar { display: none; }
-  #activity-pane { display: none; }
-  #conv-pane { width: 100%; border-right: none; }
-}
-@media (max-width: 1100px) {
-  #activity-pane { display: none; }
-  #conv-pane { width: 100%; border-right: none; }
-}
-
-/* ── TAGS in messages ── */
-.file-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  background: var(--gold-dim);
-  border: 1px solid var(--gold-border);
-  border-radius: 12px;
-  font-size: 0.7rem;
-  color: var(--gold-1);
-  margin-bottom: 6px;
-}
-
-/* ── Cursor blink ── */
-.cursor { display: inline-block; width: 2px; height: 0.9em; background: var(--gold-1); border-radius: 1px; animation: cursorBlink 0.6s infinite; vertical-align: middle; margin-left: 1px; }
-@keyframes cursorBlink { 50% { opacity: 0; } }
-
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 0.78rem;
-  color: var(--text-1);
-  z-index: 9999;
-  animation: toastIn 0.25s ease;
-  white-space: nowrap;
-}
-@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-.toast.success { border-color: rgba(76,175,125,0.3); color: var(--green); }
-.toast.error { border-color: rgba(224,90,90,0.3); color: var(--red); }
-
-/* Progress bar in step cards */
-.step-progress {
-  height: 2px;
-  background: var(--border);
-  border-radius: 2px;
-  margin-top: 6px;
-  overflow: hidden;
-}
-.step-progress-fill {
-  height: 100%;
-  background: var(--gold-1);
-  border-radius: 2px;
-  transition: width 0.4s ease;
-}
+@media(max-width:768px){.panel{width:88vw}}
 </style>
 </head>
 <body>
 
-<!-- LEFT SIDEBAR -->
-<aside id="sidebar">
-  <div class="brand">
-    <div class="brand-icon"><i class="fa-solid fa-eagle" style="font-size:0.7rem">🦅</i></div>
-    <div>
-      <div class="brand-name">Philadelphia</div>
-      <div class="brand-sub">AI Computer</div>
+<div class="app" id="app">
+  <header class="hdr">
+    <button class="ibtn" id="open-workspace"><i class="fa-solid fa-bars"></i></button>
+    <div class="brand-wrap">
+      <div class="brand">KOLA</div>
+      <div class="brand-sub">The Computer</div>
+    </div>
+    <div class="bal-chip" id="open-wallet"><i class="fa-solid fa-coins"></i><span id="hdr-bal">--</span></div>
+  </header>
+
+  <div id="chat-vp"></div>
+
+  <div id="file-preview-bar"></div>
+
+  <div id="input-dock">
+    <div class="capsule">
+      <textarea id="txt-input" placeholder="Ask Kola anything — or tell it what to build..." rows="1"></textarea>
+      <div class="input-bar">
+        <div style="display:flex;gap:2px">
+          <label for="file-input" class="bar-btn" title="Attach"><i class="fa-solid fa-paperclip"></i></label>
+          <input type="file" id="file-input" accept="application/pdf,image/*,audio/*,video/*,.txt,.md" multiple style="display:none">
+        </div>
+        <button class="send-btn" id="send-btn"><i class="fa-solid fa-arrow-up"></i></button>
+      </div>
     </div>
   </div>
+  <div class="disclaimer">Kola can make mistakes. Check important results before relying on them.</div>
+</div>
 
-  <div class="sidebar-section">
-    <button class="new-task-btn" id="new-task-btn">
-      <i class="fa-solid fa-plus" style="font-size:0.7rem"></i>
-      New Task
-    </button>
-  </div>
+<div id="lightbox"><img id="lb-img" src="" alt=""></div>
 
-  <div class="sidebar-section" style="flex:1; overflow:hidden; padding-top:8px; border-bottom:none;">
-    <div class="sidebar-label">Recent Tasks</div>
-    <div class="task-list" id="task-list">
-      <!-- Tasks render here -->
-    </div>
-  </div>
+<!-- WORKSPACE PANEL: chats + memory -->
+<div class="overlay" id="ws-overlay"></div>
+<aside class="panel" id="workspace-panel">
+  <div class="panel-hdr"><h2>CHATS & MEMORY</h2><button class="ibtn" onclick="closePanel('workspace')"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="panel-body">
+    <button class="submit-btn" id="new-chat-btn" style="margin-bottom:14px"><i class="fa-solid fa-plus"></i> New Conversation</button>
+    <div id="chats-list"></div>
 
-  <div class="sidebar-bottom">
-    <button class="sb-btn" id="sb-tools">
-      <i class="fa-solid fa-wand-magic-sparkles"></i>
-      Creator Tools
-    </button>
-    <button class="sb-btn" id="sb-profile">
-      <i class="fa-solid fa-user"></i>
-      Profile
-      <span class="balance-pill" id="sb-balance"><i class="fa-solid fa-coins" style="font-size:0.55rem"></i> --</span>
-    </button>
+    <div class="sec-title">Persistent Memory</div>
+    <div class="info-note">Tell Kola things to remember about you across every conversation — your name, preferences, how you like things done.</div>
+    <textarea class="form-textarea" id="memory-input" placeholder="My name is... I prefer... Always..."></textarea>
+    <button class="submit-btn" id="save-memory-btn"><i class="fa-solid fa-database"></i> Save Memory</button>
+    <div class="status-msg" id="memory-status"></div>
   </div>
 </aside>
 
-<!-- MAIN STAGE -->
-<div id="main">
+<!-- WALLET PANEL -->
+<div class="overlay" id="wallet-overlay"></div>
+<aside class="panel" id="wallet-panel" style="left:auto;right:-420px;border-right:none;border-left:1px solid var(--border)">
+  <div class="panel-hdr"><h2>WALLET</h2><button class="ibtn" onclick="closePanel('wallet')"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="panel-body">
+    <div class="wallet-card">
+      <div class="lbl">Available Balance</div>
+      <div class="bal" id="wallet-bal">--</div>
+      <div class="wbtns">
+        <button class="submit-btn" id="claim-daily-btn" style="margin-top:0"><i class="fa-solid fa-gift"></i> Daily</button>
+        <button class="submit-btn green" id="fund-wallet-btn" style="margin-top:0"><i class="fa-solid fa-wallet"></i> Fund</button>
+      </div>
+      <div class="status-msg" id="wallet-status"></div>
+    </div>
 
-  <!-- TOP BAR -->
-  <div id="topbar">
-    <span class="topbar-title" id="topbar-title">Philadelphia AI Computer</span>
-    <span class="topbar-badge badge-idle" id="topbar-badge">Idle</span>
-    <button class="tb-btn" id="tb-tools-toggle" title="Tools"><i class="fa-solid fa-layer-group"></i></button>
-    <button class="tb-btn" id="tb-activity-toggle" title="Activity"><i class="fa-solid fa-chart-gantt"></i></button>
+    <div class="sec-title">Referrals</div>
+    <div class="info-note">Share your code, earn credits when friends join.</div>
+    <div style="background:rgba(0,0,0,.3);padding:8px 10px;border-radius:8px;font-size:.7rem;color:var(--pur);word-break:break-all;margin-bottom:10px" id="user-ref-code">Loading...</div>
+    <div style="display:flex;gap:6px">
+      <input type="text" class="form-input" id="referral-input" placeholder="Friend's code">
+      <button class="submit-btn" id="redeem-btn" style="margin-top:0;width:90px">Redeem</button>
+    </div>
+    <div class="status-msg" id="ref-status"></div>
+
+    <div class="sec-title">Account</div>
+    <button class="submit-btn danger" id="logout-btn"><i class="fa-solid fa-power-off"></i> Sign Out</button>
   </div>
+</aside>
 
-  <!-- WORKSPACE SPLIT -->
-  <div id="workspace">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, deleteDoc, query, orderBy, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    <!-- CONVERSATION PANE -->
-    <div id="conv-pane">
-      <div id="messages">
-        <!-- Welcome state -->
-        <div id="welcome">
-          <div class="welcome-logo">🦅</div>
-          <div class="welcome-title">Philadelphia AI Computer</div>
-          <div class="welcome-sub">Give me a command. I'll execute it — build files, generate media, write code, create anything.</div>
-          <div class="welcome-chips">
-            <div class="welcome-chip" onclick="quickCommand('Convert this story to a justified PDF with 1.5 line spacing')">📄 Story → PDF</div>
-            <div class="welcome-chip" onclick="quickCommand('Create an animated slideshow from these photos')">🎞 Photo Slideshow</div>
-            <div class="welcome-chip" onclick="quickCommand('Generate a music track — Afrobeats, warm guitar, midnight energy')">🎵 Create Music</div>
-            <div class="welcome-chip" onclick="quickCommand('Build me a portfolio website, dark gold theme')">🌐 Build Website</div>
-            <div class="welcome-chip" onclick="quickCommand('Create an image: golden eagle soaring over Lagos at sunrise')">🖼 Generate Image</div>
-            <div class="welcome-chip" onclick="quickCommand('Write a short story and export it as a Word document')">📝 Story → DOCX</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Attachment bar -->
-      <div id="attach-bar"></div>
-
-      <!-- Input zone -->
-      <div id="input-zone">
-        <div class="input-shell">
-          <div id="attach-bar-inner"></div>
-          <textarea id="cmd-input" placeholder="Give Philadelphia a command..." rows="1"></textarea>
-          <div class="model-select-row">
-            <button class="model-chip active" data-m="philadelphia" id="chip-ph"><i class="fa-solid fa-sparkles"></i> Philadelphia</button>
-            <button class="model-chip" data-m="bobby" id="chip-bob"><i class="fa-solid fa-robot"></i> Bobby</button>
-            <div style="flex:1"></div>
-            <label for="file-in" class="ia-btn" title="Attach file"><i class="fa-solid fa-paperclip"></i></label>
-            <input type="file" id="file-in" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
-          </div>
-          <div class="input-actions">
-            <button class="ia-btn" id="voice-btn" title="Voice call"><i class="fa-solid fa-phone"></i></button>
-            <div class="ia-spacer"></div>
-            <button class="send-btn" id="send-btn"><i class="fa-solid fa-arrow-up"></i></button>
-            <button class="send-btn stop" id="stop-btn" style="display:none"><i class="fa-solid fa-square"></i></button>
-          </div>
-        </div>
-        <div style="text-align:center;font-size:0.6rem;color:var(--text-3);margin-top:8px;">
-          Philadelphia AI may make errors. Verify important outputs.
-        </div>
-      </div>
-    </div>
-
-    <!-- ACTIVITY / OUTPUT PANE -->
-    <div id="activity-pane">
-
-      <!-- Tabs -->
-      <div id="activity-tabs">
-        <div class="activity-tab active" data-tab="activity"><i class="fa-solid fa-chart-gantt"></i> Activity</div>
-        <div class="activity-tab" data-tab="output"><i class="fa-solid fa-box-open"></i> Outputs <span class="tab-count" id="output-count">0</span></div>
-        <div class="activity-tab" data-tab="tools"><i class="fa-solid fa-wand-magic-sparkles"></i> Tools</div>
-      </div>
-
-      <!-- Activity Timeline -->
-      <div id="activity-body">
-
-        <div class="activity-panel active" id="tab-activity">
-          <div class="empty-state" id="activity-empty">
-            <i class="fa-regular fa-clock"></i>
-            <div>Activity will appear here<br>while Philadelphia works</div>
-          </div>
-          <div id="steps-container"></div>
-        </div>
-
-        <!-- Outputs -->
-        <div class="output-panel" id="tab-output">
-          <div class="empty-state" id="output-empty">
-            <i class="fa-regular fa-folder-open"></i>
-            <div>Generated files and media<br>will appear here</div>
-          </div>
-          <div id="outputs-container"></div>
-        </div>
-
-        <!-- Tools Grid -->
-        <div class="tools-panel" id="tab-tools">
-          <div class="sidebar-label" style="margin-bottom:0">Images & Art</div>
-          <div class="tool-grid">
-            <div class="tool-card" data-tool="image">
-              <div class="tool-card-icon"><i class="fa-solid fa-image"></i></div>
-              <div class="tool-card-name">Generate Image</div>
-              <div class="tool-card-desc">Create stunning visuals from text</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 10 credits</div>
-            </div>
-            <div class="tool-card" data-tool="edit-photo">
-              <div class="tool-card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-              <div class="tool-card-name">Edit Photo</div>
-              <div class="tool-card-desc">Transform any image with AI</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 10 credits</div>
-            </div>
-            <div class="tool-card" data-tool="remove-bg">
-              <div class="tool-card-icon"><i class="fa-solid fa-scissors"></i></div>
-              <div class="tool-card-name">Remove BG</div>
-              <div class="tool-card-desc">Clean background removal</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 5 credits</div>
-            </div>
-            <div class="tool-card" data-tool="comic">
-              <div class="tool-card-icon"><i class="fa-solid fa-book-open"></i></div>
-              <div class="tool-card-name">Comic Strip</div>
-              <div class="tool-card-desc">Story → visual panels</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 30 credits</div>
-            </div>
-          </div>
-
-          <div class="sidebar-label" style="margin-top:8px;margin-bottom:0">Audio & Video</div>
-          <div class="tool-grid">
-            <div class="tool-card" data-tool="voice-gen">
-              <div class="tool-card-icon"><i class="fa-solid fa-microphone-lines"></i></div>
-              <div class="tool-card-name">Voice Gen</div>
-              <div class="tool-card-desc">Text to lifelike speech</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 5 credits</div>
-            </div>
-            <div class="tool-card" data-tool="music">
-              <div class="tool-card-icon"><i class="fa-solid fa-music"></i></div>
-              <div class="tool-card-name">Create Music</div>
-              <div class="tool-card-desc">AI-composed original tracks</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 20 credits</div>
-            </div>
-            <div class="tool-card" data-tool="video-text">
-              <div class="tool-card-icon"><i class="fa-solid fa-film"></i></div>
-              <div class="tool-card-name">Text → Video</div>
-              <div class="tool-card-desc">Generate cinematic video</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 60 credits</div>
-            </div>
-            <div class="tool-card" data-tool="video-image">
-              <div class="tool-card-icon"><i class="fa-solid fa-photo-film"></i></div>
-              <div class="tool-card-name">Image → Video</div>
-              <div class="tool-card-desc">Animate any photo</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 60 credits</div>
-            </div>
-          </div>
-
-          <div class="sidebar-label" style="margin-top:8px;margin-bottom:0">Web & Research</div>
-          <div class="tool-grid">
-            <div class="tool-card" data-tool="website">
-              <div class="tool-card-icon"><i class="fa-solid fa-globe"></i></div>
-              <div class="tool-card-name">Build Website</div>
-              <div class="tool-card-desc">Deploy live in seconds</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 20 credits</div>
-            </div>
-            <div class="tool-card" data-tool="research-report">
-              <div class="tool-card-icon"><i class="fa-solid fa-flask-vial"></i></div>
-              <div class="tool-card-name">Research PDF</div>
-              <div class="tool-card-desc">Deep-research any topic</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 15 credits</div>
-            </div>
-            <div class="tool-card" data-tool="narrate">
-              <div class="tool-card-icon"><i class="fa-solid fa-file-audio"></i></div>
-              <div class="tool-card-name">Narrate Doc</div>
-              <div class="tool-card-desc">Turn any document to audio</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 8 credits</div>
-            </div>
-            <div class="tool-card" data-tool="slideshow">
-              <div class="tool-card-icon"><i class="fa-solid fa-images"></i></div>
-              <div class="tool-card-name">Photo Slideshow</div>
-              <div class="tool-card-desc">Photos → animated video</div>
-              <div class="tool-card-cost"><i class="fa-solid fa-coins"></i> 40 credits</div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- FORM DRAWER OVERLAY -->
-<div id="form-overlay">
-  <div class="form-drawer" id="form-drawer">
-    <div class="form-drawer-header">
-      <span class="form-drawer-title" id="form-drawer-title">Tool</span>
-      <button class="form-drawer-close" id="form-drawer-close"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div class="form-drawer-body" id="form-drawer-body"></div>
-  </div>
-</div>
-
-<!-- LIGHTBOX -->
-<div id="lightbox"><img id="lb-img" src="" alt=""></div>
-
-<script>
-// ================================================================
-//  PHILADELPHIA AI COMPUTER — ENGINE
-// ================================================================
-
-const API = 'https://web-production-9a18.up.railway.app';
-const EP = {
-  philly: `${API}/chat`,
-  philly_mm: `${API}/api/minimax/chat`,
-  bobby:  `${API}/api/llama/chat`,
-};
-
-// ── DOM shortcuts ──
-const $ = id => document.getElementById(id);
-const qs = sel => document.querySelector(sel);
-
-// ── State ──
-let currentModel = 'philadelphia';
-let isRunning = false;
-let abortCtrl = null;
-let attachedFiles = [];
-let outputCount = 0;
-let tasks = [];
-let currentTaskId = null;
-let stepIdCounter = 0;
-
-// ── Firebase placeholders (works alongside existing firebase if loaded) ──
-let currentUser = null;
-const fireToken = () => currentUser?.getIdToken?.() || Promise.resolve('');
-
-// ── UTILS ──
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function renderMd(raw = '') {
-  if (!raw) return '';
-  const blocks = [];
-  let last = 0;
-  const codeRx = /```(\w+)?\n?([\s\S]*?)```/g;
-  let m;
-  while ((m = codeRx.exec(raw)) !== null) {
-    if (m.index > last) blocks.push({ type: 'text', content: raw.slice(last, m.index) });
-    blocks.push({ type: 'code', lang: (m[1]||'code').toLowerCase(), content: m[2].replace(/\n$/,'') });
-    last = m.index + m[0].length;
-  }
-  if (last < raw.length) blocks.push({ type: 'text', content: raw.slice(last) });
-
-  return blocks.map(b => {
-    if (b.type === 'code') {
-      return `<pre><span class="code-lang">${esc(b.lang)}</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button><code>${esc(b.content)}</code></pre>`;
-    }
-    let s = esc(b.content);
-    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    s = s.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
-    s = s.replace(/~~(.+?)~~/g, '<del>$1</del>');
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-    s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-    s = s.replace(/^\d+\.\s+(.+)$/gm, '<li style="list-style-type:decimal;margin-left:16px;margin-bottom:3px">$1</li>');
-    s = s.replace(/^[-*+]\s+(.+)$/gm, '<li style="list-style-type:disc;margin-left:16px;margin-bottom:3px">$1</li>');
-    s = s.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
-    s = s.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
-    return s.replace(/\n/g, '<br>');
-  }).join('');
-}
-
-window.copyCode = async (btn) => {
-  const code = btn.closest('pre').querySelector('code');
-  await navigator.clipboard.writeText(code.innerText).catch(()=>{});
-  const orig = btn.textContent;
-  btn.textContent = 'Copied!';
-  setTimeout(() => btn.textContent = orig, 1400);
-};
-
-// ── TOAST ──
-function toast(msg, type='') {
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2800);
-}
-
-// ── TASK MANAGEMENT ──
-function createTask(name) {
-  const id = Date.now().toString();
-  tasks.unshift({ id, name, status: 'running', steps: [], outputs: [] });
-  currentTaskId = id;
-  renderTaskList();
-  setCurrentTask(id);
-  return id;
-}
-
-function renderTaskList() {
-  const tl = $('task-list');
-  if (!tl) return;
-  tl.innerHTML = tasks.slice(0, 20).map(t => `
-    <div class="task-item ${t.status === 'running' ? 'running' : ''} ${t.id === currentTaskId ? 'active' : ''}" onclick="setCurrentTask('${t.id}')">
-      <div class="task-dot"></div>
-      <div class="task-name">${esc(t.name)}</div>
-    </div>
-  `).join('');
-}
-
-function setCurrentTask(id) {
-  currentTaskId = id;
-  renderTaskList();
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-  $('topbar-title').textContent = task.name;
-  rerenderActivity(task);
-}
-
-function getTask() { return tasks.find(t => t.id === currentTaskId); }
-
-// ── ACTIVITY STEPS ──
-function addStep(title, desc, status = 'pending') {
-  const task = getTask(); if (!task) return null;
-  const id = `step-${++stepIdCounter}`;
-  task.steps.push({ id, title, desc, status, time: new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) });
-  rerenderActivity(task);
-  return id;
-}
-
-function updateStep(stepId, status, desc = null) {
-  const task = getTask(); if (!task) return;
-  const step = task.steps.find(s => s.id === stepId);
-  if (!step) return;
-  step.status = status;
-  if (desc) step.desc = desc;
-  rerenderActivity(task);
-}
-
-function stepIcon(status) {
-  if (status === 'running') return '<i class="fa-solid fa-circle-notch spin"></i>';
-  if (status === 'done') return '<i class="fa-solid fa-check"></i>';
-  if (status === 'error') return '<i class="fa-solid fa-xmark"></i>';
-  return '<i class="fa-regular fa-clock"></i>';
-}
-
-function rerenderActivity(task) {
-  const sc = $('steps-container');
-  const ae = $('activity-empty');
-  if (!sc) return;
-  if (task.steps.length > 0) { ae.style.display = 'none'; } else { ae.style.display = 'flex'; }
-  sc.innerHTML = task.steps.map(s => `
-    <div class="step-card ${s.status}" id="sc-${s.id}">
-      <div class="step-icon">${stepIcon(s.status)}</div>
-      <div class="step-info">
-        <div class="step-title">${esc(s.title)}</div>
-        <div class="step-desc">${esc(s.desc)}</div>
-        ${s.status === 'running' ? '<div class="step-progress"><div class="step-progress-fill" style="width:60%;animation:indeterminate 1.5s infinite"></div></div>' : ''}
-      </div>
-      <div class="step-time">${s.time}</div>
-    </div>
-  `).join('');
-  $('activity-empty').style.display = task.steps.length ? 'none' : '';
-}
-
-// Indeterminate progress bar
-const style = document.createElement('style');
-style.textContent = '@keyframes indeterminate{0%{width:20%;margin-left:-20%}100%{width:60%;margin-left:110%}}';
-document.head.appendChild(style);
-
-// ── ADD OUTPUT ──
-function addOutput(type, title, payload) {
-  const task = getTask(); if (!task) return;
-  outputCount++;
-  $('output-count').textContent = outputCount;
-  const oc = $('outputs-container');
-  const oe = $('output-empty');
-  if (oe) oe.style.display = 'none';
-
-  const card = document.createElement('div');
-  card.className = 'output-card';
-
-  let body = '';
-  let actions = '';
-
-  if (type === 'image') {
-    const src = payload.b64 ? `data:image/png;base64,${payload.b64}` : payload.url;
-    body = `<img class="output-img" src="${src}" onclick="openLightbox('${src}')">`;
-    actions = `<button class="oca-btn" onclick="dlFile('${src}', 'image.png')"><i class="fa-solid fa-download"></i> Download</button>`;
-  } else if (type === 'image-grid') {
-    body = `<div class="output-img-grid">${payload.images.map((b64,i) => `<img src="data:image/png;base64,${b64}" onclick="openLightbox('data:image/png;base64,${b64}')">`).join('')}</div>`;
-    actions = `<button class="oca-btn" onclick="dlAllImages(${JSON.stringify(payload.images)})"><i class="fa-solid fa-download"></i> Download All</button>`;
-  } else if (type === 'audio') {
-    body = `<audio class="output-audio" controls src="${payload.url}"></audio>`;
-    actions = `<button class="oca-btn" onclick="dlFile('${payload.url}', 'audio.mp3')"><i class="fa-solid fa-download"></i> Download</button>`;
-  } else if (type === 'video') {
-    body = `<video class="output-video" controls src="${payload.url}"></video>`;
-    actions = `<button class="oca-btn" onclick="dlFile('${payload.url}', 'video.mp4')"><i class="fa-solid fa-download"></i> Download</button>`;
-  } else if (type === 'link') {
-    body = `<a href="${payload.url}" target="_blank" class="dl-tile">
-      <div class="dl-tile-icon"><i class="fa-solid fa-globe"></i></div>
-      <div class="dl-tile-info"><div class="dl-tile-name">${esc(payload.label||'Open Link')}</div><div class="dl-tile-size">${esc(payload.url)}</div></div>
-      <div class="dl-tile-action"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open</div>
-    </a>`;
-  } else if (type === 'download') {
-    const icons = { pdf: 'fa-file-pdf', docx: 'fa-file-word', pptx: 'fa-file-powerpoint', default: 'fa-file' };
-    const ext = (payload.filename||'').split('.').pop().toLowerCase();
-    const icon = icons[ext] || icons.default;
-    body = `<a href="${payload.url}" download="${payload.filename||'file'}" class="dl-tile">
-      <div class="dl-tile-icon"><i class="fa-solid ${icon}"></i></div>
-      <div class="dl-tile-info"><div class="dl-tile-name">${esc(payload.filename||'Download File')}</div><div class="dl-tile-size">Click to download</div></div>
-      <div class="dl-tile-action"><i class="fa-solid fa-download"></i> Save</div>
-    </a>`;
-  }
-
-  card.innerHTML = `
-    <div class="output-card-header">
-      <span class="output-card-icon"><i class="fa-solid fa-box-open"></i></span>
-      <span class="output-card-title">${esc(title)}</span>
-      <div class="output-card-actions">${actions}</div>
-    </div>
-    <div class="output-card-body">${body}</div>
-  `;
-
-  oc.prepend(card);
-  task.outputs.push({ type, title });
-
-  // Switch to output tab automatically
-  switchTab('output');
-}
-
-window.dlFile = (url, filename) => {
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
-};
-window.dlAllImages = (images) => {
-  images.forEach((b64, i) => {
-    const a = document.createElement('a');
-    a.href = `data:image/png;base64,${b64}`;
-    a.download = `panel_${i+1}.png`;
-    a.click();
-  });
-};
-window.openLightbox = (src) => {
-  $('lb-img').src = src;
-  $('lightbox').classList.add('show');
-};
-$('lightbox').onclick = () => $('lightbox').classList.remove('show');
-
-// ── TAB SWITCHING ──
-function switchTab(name) {
-  document.querySelectorAll('.activity-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-  document.querySelectorAll('#tab-activity, #tab-output, #tab-tools').forEach(p => p.classList.remove('active'));
-  const panels = { activity: 'tab-activity', output: 'tab-output', tools: 'tab-tools' };
-  const el = $(panels[name]);
-  if (el) el.classList.add('active');
-}
-document.querySelectorAll('.activity-tab').forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
-$('sb-tools').onclick = () => { switchTab('tools'); showActivityPane(); };
-$('tb-tools-toggle').onclick = () => { switchTab('tools'); showActivityPane(); };
-$('tb-activity-toggle').onclick = () => { switchTab('activity'); showActivityPane(); };
-
-function showActivityPane() {
-  const ap = $('activity-pane');
-  if (ap) ap.style.display = 'flex';
-}
-
-// ── MODEL SELECT ──
-document.querySelectorAll('.model-chip').forEach(chip => {
-  chip.onclick = () => {
-    document.querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    currentModel = chip.dataset.m;
-    toast(`Engine: ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}`);
-  };
+const fbApp = initializeApp({
+  apiKey:"AIzaSyAyROm0aBGjry6NUfhNM3e0qwPcCDoIqSk",
+  authDomain:"elvionai.firebaseapp.com",
+  projectId:"elvionai",
+  storageBucket:"elvionai.appspot.com",
+  messagingSenderId:"161078300830",
+  appId:"1:161078300830:web:f460df8591704eb0e96b8f"
 });
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+const $ = id => document.getElementById(id);
+const API = 'https://web-production-9a18.up.railway.app';
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-// ── FILE ATTACH ──
-$('file-in').onchange = function() {
-  attachedFiles = [...attachedFiles, ...Array.from(this.files||[])];
-  renderAttachBar();
-};
-
-function renderAttachBar() {
-  const bar = $('attach-bar');
-  if (!attachedFiles.length) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
-  bar.classList.add('show');
-  bar.innerHTML = attachedFiles.map((f, i) => {
-    const icon = f.type.startsWith('image/') ? 'fa-image' : f.type === 'application/pdf' ? 'fa-file-pdf' : f.type.startsWith('audio/') ? 'fa-file-audio' : 'fa-file';
-    return `<div class="attach-pill"><i class="fa-solid ${icon}"></i> ${esc(f.name)} <button class="rm-attach" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`;
-  }).join('');
-  bar.querySelectorAll('.rm-attach').forEach(b => { b.onclick = () => { attachedFiles.splice(+b.dataset.i, 1); renderAttachBar(); }; });
-}
-
-// ── INPUT AUTO-RESIZE ──
-const inp = $('cmd-input');
-inp.oninput = () => { inp.style.height = 'auto'; inp.style.height = Math.min(inp.scrollHeight, 140) + 'px'; };
-inp.onkeydown = (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendCommand(); }
-};
-
-// ── SEND BUTTON ──
-$('send-btn').onclick = sendCommand;
-$('stop-btn').onclick = () => { if (abortCtrl) abortCtrl.abort(); };
-
-function quickCommand(text) {
-  inp.value = text;
-  inp.dispatchEvent(new Event('input'));
-  sendCommand();
-}
-window.quickCommand = quickCommand;
-
-// ── TOPBAR BADGE ──
-function setBadge(state) {
-  const b = $('topbar-badge');
-  b.className = 'topbar-badge';
-  if (state === 'running') { b.classList.add('badge-running'); b.textContent = 'Running'; }
-  else if (state === 'done') { b.classList.add('badge-done'); b.textContent = 'Done'; }
-  else { b.classList.add('badge-idle'); b.textContent = 'Idle'; }
-}
-
-// ================================================================
-//  RENDER MESSAGE
-// ================================================================
-function appendMsg(role, html, files=[]) {
-  const welcome = $('welcome');
-  if (welcome) welcome.remove();
-
-  const vp = $('messages');
-  const d = document.createElement('div');
-  d.className = `msg ${role}`;
-
-  if (role === 'user') {
-    const filesHtml = files.map(f => `<div class="file-tag"><i class="fa-solid fa-paperclip"></i>${esc(f.name)}</div>`).join('');
-    d.innerHTML = `${filesHtml ? `<div>${filesHtml}</div>` : ''}<div class="msg-bubble">${renderMd(html)}</div>`;
-  } else {
-    d.innerHTML = `
-      <div class="ai-indicator">
-        <div class="ai-avatar">🦅</div>
-        <div class="ai-name">${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}</div>
-      </div>
-      <div class="msg-bubble ai-content">${html}</div>
-    `;
+// ── Auth token interceptor (same pattern as your other apps) ──
+const originalFetch = window.fetch;
+window.fetch = async function(resource, config) {
+  let url = resource;
+  if (resource instanceof Request) url = resource.url;
+  if (typeof url === 'string' && url.startsWith(API) && auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      config = config || {};
+      config.headers = config.headers || {};
+      if (config.headers instanceof Headers) config.headers.set('X-Firebase-Token', token);
+      else config.headers['X-Firebase-Token'] = token;
+    } catch(e) {}
   }
-  vp.appendChild(d);
-  vp.scrollTop = vp.scrollHeight;
-  return d;
+  return originalFetch.call(window, resource, config);
+};
+
+let currentUser=null, currentChatId=null, currentMessages=[];
+let chatsUnsub=null, msgsUnsub=null;
+let userMemory = localStorage.getItem('kola_memory') || null;
+let isResponding=false, currentCtrl=null;
+let uploadedFiles=[];
+
+// ── PANELS ──
+const panels={workspace:{p:'workspace-panel',o:'ws-overlay'},wallet:{p:'wallet-panel',o:'wallet-overlay'}};
+function openPanel(name){const p=panels[name];$(p.o).classList.add('open');$(p.p).classList.add('open');}
+window.closePanel=name=>{const p=panels[name];$(p.o).classList.remove('open');$(p.p).classList.remove('open');};
+Object.entries(panels).forEach(([name,p])=>$(p.o).addEventListener('click',e=>{if(e.target===$(p.o))closePanel(name)}));
+$('open-workspace').onclick=()=>openPanel('workspace');
+$('open-wallet').onclick=()=>openPanel('wallet');
+$('lightbox').onclick=()=>$('lightbox').classList.remove('show');
+
+// ── AUTH ──
+onAuthStateChanged(auth, user=>{
+  if(!user){ window.location.href='signup-login.html'; return; }
+  currentUser = user;
+  $('user-ref-code').textContent = user.uid;
+  const mem = localStorage.getItem('kola_memory');
+  if(mem) $('memory-input').value = mem;
+  loadChats(user.uid);
+  updateWalletUI();
+  setTimeout(window.checkPayReturn, 1200);
+});
+$('logout-btn').onclick=()=>{ auth.signOut(); window.location.href='signup-login.html'; };
+
+// ── CHATS (Firestore-backed, same pattern as your Studio Chat) ──
+async function loadChats(uid){
+  if(chatsUnsub) chatsUnsub();
+  const q = query(collection(db,'users',uid,'kola_chats'), orderBy('createdAt','desc'));
+  chatsUnsub = onSnapshot(q, async snap=>{
+    if(snap.empty){ await createChat(uid); return; }
+    const chats = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderChatList(chats, uid);
+    if(!currentChatId || !chats.find(c=>c.id===currentChatId)) currentChatId = chats[0].id;
+    subscribeMessages(uid, currentChatId);
+  });
+}
+async function createChat(uid){
+  const r = await addDoc(collection(db,'users',uid,'kola_chats'), {name:'New Conversation', createdAt: serverTimestamp()});
+  currentChatId = r.id;
+}
+$('new-chat-btn').onclick = ()=>{ if(currentUser) createChat(currentUser.uid); };
+
+function renderChatList(chats, uid){
+  const el = $('chats-list'); el.innerHTML='';
+  chats.forEach(chat=>{
+    const div = document.createElement('div');
+    div.className = 'chat-item' + (chat.id===currentChatId?' active':'');
+    div.innerHTML = `<span>${esc(chat.name||'Conversation')}</span><button title="Delete"><i class="fa-solid fa-trash"></i></button>`;
+    div.querySelector('span').onclick = ()=>{ currentChatId=chat.id; subscribeMessages(uid,chat.id); renderChatList(chats,uid); closePanel('workspace'); };
+    div.querySelector('button').onclick = async e=>{
+      e.stopPropagation();
+      if(!confirm(`Delete "${chat.name}"?`)) return;
+      await deleteDoc(doc(db,'users',uid,'kola_chats',chat.id));
+      if(currentChatId===chat.id) currentChatId=null;
+    };
+    el.appendChild(div);
+  });
+}
+function subscribeMessages(uid, chatId){
+  if(msgsUnsub) msgsUnsub();
+  const q = query(collection(db,'users',uid,'kola_chats',chatId,'messages'), orderBy('createdAt'));
+  msgsUnsub = onSnapshot(q, snap=>{
+    currentMessages = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!isResponding) renderChat(currentMessages);
+  });
+}
+async function saveMsg(role, text, files=[], meta={}){
+  if(!currentChatId||!currentUser) return null;
+  const ref = await addDoc(collection(db,'users',currentUser.uid,'kola_chats',currentChatId,'messages'),
+    {role, text, files, ...meta, createdAt: serverTimestamp()}).catch(()=>null);
+  return ref?.id || null;
 }
 
-function appendAiLoader() {
-  const welcome = $('welcome');
-  if (welcome) welcome.remove();
+// ── RENDER ──
+function inlineMd(raw=''){
+  let s = esc(raw);
+  s = s.replace(/`([^`\n]+?)`/g,'<code style="background:rgba(255,255,255,.08);padding:2px 6px;border-radius:4px;font-family:var(--font-code);font-size:.88em">$1</code>');
+  s = s.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>');
+  s = s.replace(/\n/g,'<br>');
+  return s;
+}
+function renderChat(msgs){
+  const vp = $('chat-vp'); vp.innerHTML='';
+  if(!msgs.length){ vp.innerHTML = `<div style="text-align:center;color:var(--t-muted);font-size:.82rem;margin-top:40px">Kola is ready. Ask for anything.</div>`; return; }
+  msgs.forEach(m=>{
+    const g = document.createElement('div');
+    g.className = `msg-group ${m.role==='user'?'usr':'ai'}`;
+    if(m.role==='user'){
+      g.innerHTML = `<div class="bubble">${inlineMd(m.text||'')}</div>`;
+    } else {
+      let html = '';
+      if(m.thinking) html += `<div class="think-block"><div class="think-hdr"><i class="fa-solid fa-brain"></i> Thinking</div><div class="think-body">${inlineMd(m.thinking)}</div></div>`;
+      if(m.toolResult) html += m.toolResult;
+      html += `<div class="bubble">${inlineMd(m.text||'')}</div>`;
+      g.innerHTML = html;
+    }
+    vp.appendChild(g);
+  });
+  scrollBot();
+}
+const scrollBot = ()=>setTimeout(()=>{const vp=$('chat-vp'); if(vp) vp.scrollTop=vp.scrollHeight;},50);
 
-  const vp = $('messages');
+// ── LONG PASTE → AUTO .TXT (no AI needed, plain file) ──
+const PASTE_TXT_THRESHOLD = 2000;
+$('txt-input').addEventListener('paste', e=>{
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if(text && text.length > PASTE_TXT_THRESHOLD){
+    e.preventDefault();
+    const blob = new Blob([text], {type:'text/plain'});
+    const file = new File([blob], `pasted-text-${Date.now()}.txt`, {type:'text/plain'});
+    uploadedFiles.push(file);
+    renderFilePrev();
+    toastNote(`Long text turned into a file — ${text.length.toLocaleString()} characters attached, you can open it anytime.`);
+  }
+});
+function toastNote(msg){
   const d = document.createElement('div');
-  d.className = 'msg ai';
-  d.id = 'ai-loader';
-  d.innerHTML = `
-    <div class="ai-indicator">
-      <div class="ai-avatar">🦅</div>
-      <div class="ai-name">${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}</div>
-    </div>
-    <div class="msg-bubble">
-      <div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    </div>
-  `;
-  vp.appendChild(d);
-  vp.scrollTop = vp.scrollHeight;
-  return d;
+  d.textContent = msg;
+  d.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(201,169,110,.15);border:1px solid var(--accent);color:var(--accent);padding:8px 16px;border-radius:20px;font-size:.78rem;z-index:9999;max-width:88%;text-align:center';
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 3200);
 }
 
-// ================================================================
-//  COMMAND DETECTION & ROUTING
-// ================================================================
-const TOOL_PATTERNS = [
-  { regex: /\b(generate|create|make|draw|render)\s+(an?\s+)?(image|photo|picture|illustration|art)\b/i, tool: 'image' },
-  { regex: /\b(generate|create|make|compose)\s+(a\s+)?(song|music|track|beat)\b/i, tool: 'music' },
-  { regex: /\b(generate|create|make|build|code)\s+(a\s+)?(website|webpage|web\s*app)\b/i, tool: 'website' },
-  { regex: /\b(create|make|generate)\s+(a\s+)?(video)\b/i, tool: 'video-text' },
-  { regex: /\b(create|make|generate)\s+(a\s+)?(comic|manga)\b/i, tool: 'comic' },
-  { regex: /\b(narrate|read|audio)\s+(this|the|my)?\s*(document|file|pdf|text)\b/i, tool: 'narrate' },
-  { regex: /\b(research|deep.?dive|report)\s+.{3,}/i, tool: 'research-report' },
-  { regex: /\b(remove|cut|strip).{0,10}background\b/i, tool: 'remove-bg' },
-  { regex: /\bslideshow\b|\bphoto.?show\b|\banimate.{0,15}photos\b/i, tool: 'slideshow' },
-  { regex: /\bvoice\b.{0,20}(gen|create|make|say|speak|read)/i, tool: 'voice-gen' },
-];
+// ── FILE UPLOAD (images/video/audio → Gemini understand-*, txt → read directly, no AI) ──
+$('file-input').onchange = function(){
+  uploadedFiles = [...uploadedFiles, ...Array.from(this.files||[])];
+  renderFilePrev();
+};
+function renderFilePrev(){
+  const bar = $('file-preview-bar');
+  if(!uploadedFiles.length){ bar.classList.remove('show'); bar.innerHTML=''; return; }
+  bar.classList.add('show');
+  bar.innerHTML = uploadedFiles.map((f,i)=>{
+    const icon = f.type.startsWith('image/')?'fa-image':f.type==='application/pdf'?'fa-file-pdf':f.type.startsWith('audio/')?'fa-file-audio':f.type.startsWith('video/')?'fa-file-video':'fa-file-lines';
+    return `<div class="file-pill" data-i="${i}"><i class="fa-solid ${icon}"></i><span>${esc(f.name)}</span><button class="rm-file" data-rm="${i}"><i class="fa-solid fa-xmark"></i></button></div>`;
+  }).join('');
+  bar.querySelectorAll('.file-pill').forEach(pill=>{
+    pill.onclick = e=>{
+      if(e.target.closest('.rm-file')) return;
+      const i = +pill.dataset.i;
+      const f = uploadedFiles[i];
+      const url = URL.createObjectURL(f);
+      if(f.type.startsWith('image/')){ $('lb-img').src=url; $('lightbox').classList.add('show'); }
+      else { const a=document.createElement('a'); a.href=url; a.download=f.name; a.click(); }
+    };
+  });
+  bar.querySelectorAll('.rm-file').forEach(b=>{ b.onclick=()=>{ uploadedFiles.splice(+b.dataset.rm,1); renderFilePrev(); }; });
+}
 
-function detectTool(text) {
-  for (const p of TOOL_PATTERNS) if (p.regex.test(text)) return p.tool;
+async function readTextFile(file){
+  return new Promise(res=>{ const r = new FileReader(); r.onload=()=>res(r.result||''); r.onerror=()=>res(''); r.readAsText(file); });
+}
+async function processFiles(files, userPrompt){
+  let ctx = '';
+  for(const file of files){
+    if(file.type==='text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')){
+      const text = await readTextFile(file);
+      ctx += `\n[Attached file — ${file.name}]\n${text}\n`;
+      continue;
+    }
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('prompt', userPrompt || `Analyze and describe this file (${file.name}) in detail.`);
+    let ep = '';
+    if(file.type.startsWith('image/')) ep='/understand-image';
+    else if(file.type==='application/pdf') ep='/understand-pdf';
+    else if(file.type.startsWith('audio/')) ep='/understand-audio';
+    else if(file.type.startsWith('video/')) ep='/understand-video';
+    if(!ep) continue;
+    try{
+      const r = await fetch(API+ep, {method:'POST', body:fd});
+      const d = await r.json();
+      if(d.response) ctx += `\n[File Analysis — ${file.name}]\n${d.response}\n`;
+    }catch(e){ ctx += `\n[Could not read ${file.name}]\n`; }
+  }
+  return ctx;
+}
+
+// ── INTENT → REAL TOOL EXECUTION (auto, no confirm popup, friendly status only) ──
+const INTENTS = [
+  { keys:['generate an image for this article','image for this article','create an image for this','make an image for this article','picture for this article'], tool:'article-image', label:'Reading the article and crafting a matching image', icon:'fa-image' },
+  { keys:['generate an image','create an image','draw','make an image','picture of'], tool:'image', label:'Generating your image', icon:'fa-image' },
+  { keys:['generate a video','create a video','make a video','video of'], tool:'video', label:'Generating your video', icon:'fa-film' },
+  { keys:['build a website','create a website','make a website','build me a site'], tool:'website', label:'Building your website', icon:'fa-globe' },
+  { keys:['generate music','create a song','make a song','compose music'], tool:'music', label:'Composing your track', icon:'fa-music' },
+  { keys:['read this aloud','generate voice','text to speech','say this out loud'], tool:'voice', label:'Generating the voiceover', icon:'fa-microphone-lines' },
+  { keys:['generate a comic','create a comic','make a comic'], tool:'comic', label:'Drawing your comic panels', icon:'fa-book-open' },
+  { keys:['research report','write me a pdf report','pdf report on'], tool:'research', label:'Researching and building your report', icon:'fa-flask-vial' },
+];
+function detectIntent(text){
+  const low = text.toLowerCase();
+  for(const i of INTENTS){ if(i.keys.some(k=>low.includes(k))) return i; }
   return null;
 }
 
-// ================================================================
-//  MAIN SEND FUNCTION
-// ================================================================
-async function sendCommand() {
-  const text = inp.value.trim();
-  if ((!text && !attachedFiles.length) || isRunning) return;
-
-  isRunning = true;
-  abortCtrl = new AbortController();
-  $('send-btn').style.display = 'none';
-  $('stop-btn').style.display = 'flex';
-  setBadge('running');
-  switchTab('activity');
-  showActivityPane();
-
-  const files = [...attachedFiles];
-  attachedFiles = [];
-  renderAttachBar();
-  inp.value = '';
-  inp.style.height = 'auto';
-  $('file-in').value = '';
-
-  // Append user message
-  appendMsg('user', text, files);
-
-  // Create task
-  const taskName = text.slice(0, 60) + (text.length > 60 ? '...' : '');
-  createTask(taskName);
-
-  // Check for tool command
-  const tool = files.length ? null : detectTool(text);
-
-  if (tool) {
-    await executeTool(tool, text, files);
-  } else {
-    await executeChat(text, files);
-  }
-
-  isRunning = false;
-  $('send-btn').style.display = 'flex';
-  $('stop-btn').style.display = 'none';
-  setBadge('done');
-
-  // Mark task done
-  const task = getTask();
-  if (task) { task.status = 'done'; renderTaskList(); }
+function showToolChip(container, label, icon){
+  const chip = document.createElement('div');
+  chip.className = 'tool-chip';
+  chip.innerHTML = `<i class="fa-solid ${icon}"></i> ${esc(label)} <span class="dot3"><span></span><span></span><span></span></span>`;
+  container.appendChild(chip);
+  scrollBot();
+  return chip;
 }
 
-// ================================================================
-//  CHAT EXECUTION
-// ================================================================
-async function executeChat(text, files=[]) {
-  const s1 = addStep('Processing', 'Reading your request...', 'running');
+async function runTool(intent, userText, fileContext){
+  switch(intent.tool){
+    case 'article-image': {
+      const article = (fileContext || userText).trim();
+      const promptRes = await fetch(EP_MINIMAX_ONESHOT, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ message: `Write ONE vivid, detailed image-generation prompt (max 60 words) for an illustration that would accompany this article. Return ONLY the prompt, nothing else.\n\nArticle:\n${article.slice(0,6000)}`, history:[], system_prompt:'You write concise, vivid image-generation prompts. Output only the prompt text, no preamble, no quotes.' })
+      });
+      const imgPrompt = await readSSEText(promptRes);
+      const r = await fetch(`${API}/api/studio/generate-image`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt: imgPrompt.trim(), model:'v6', width:1024, height:1024, use_minimax:false, creative:false})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail || 'Image generation failed');
+      return { html: `<div class="tool-result"><div style="font-size:.78rem;color:var(--t2);margin-bottom:4px">Image prompt used: "${esc(imgPrompt.trim())}"</div><img src="data:image/png;base64,${d.image_b64}" alt=""></div>`, summary: 'Here\'s an image built to match the article — click it to view full size.' };
+    }
+    case 'image': {
+      const r = await fetch(`${API}/api/studio/generate-image`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt: userText, model:'v6', width:1024, height:1024, use_minimax:false, creative:false})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail || 'Image generation failed');
+      return { html: `<div class="tool-result"><img src="data:image/png;base64,${d.image_b64}" alt=""></div>`, summary: 'Here you go!' };
+    }
+    case 'voice': {
+      const fd = new FormData(); fd.append('text', userText); fd.append('style','podcast');
+      const r = await fetch(`${API}/voicegen`, {method:'POST', body:fd});
+      if(!r.ok) throw new Error('Voice generation failed');
+      const url = URL.createObjectURL(await r.blob());
+      return { html: `<div class="tool-result"><audio controls src="${url}"></audio></div>`, summary: 'Voiceover ready.' };
+    }
+    case 'music': {
+      const r = await fetch(`${API}/api/tools/generate-music`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt:userText, lyrics:'', model:'music-1.5'})});
+      if(!r.ok) throw new Error('Music generation failed');
+      const url = URL.createObjectURL(await r.blob());
+      return { html: `<div class="tool-result"><audio controls src="${url}"></audio></div>`, summary: 'Track composed.' };
+    }
+    case 'website': {
+      const r = await fetch(`${API}/api/tools/create-website`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt:userText, user_id:currentUser.uid})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error || 'Website build failed');
+      return { html: `<div class="tool-result"><a class="file-link" href="${d.url}" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${d.url}</a></div>`, summary: 'Your site is live.' };
+    }
+    case 'comic': {
+      const r = await fetch(`${API}/api/tools/generate-comic`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({story:userText, style:'anime', panels:3, user:currentUser.displayName||'User', model_provider:'thena', thena_model_key:'v6'})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error || 'Comic generation failed');
+      const imgs = (d.images||[]).map(b64=>`<img src="data:image/png;base64,${b64}" alt="">`).join('');
+      return { html: `<div class="tool-result">${imgs}</div>`, summary: 'Your comic panels are ready.' };
+    }
+    case 'research': {
+      const r = await fetch(`${API}/api/tools/research`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({topic:userText})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.detail || 'Report generation failed');
+      return { html: `<div class="tool-result"><a class="file-link" href="${d.download_url}" download="${d.filename}"><i class="fa-solid fa-file-pdf"></i> ${esc(d.filename)}</a></div>`, summary: 'Report is ready to download.' };
+    }
+    case 'video': {
+      const r = await fetch(`${API}/api/studio/generate-video-from-text-lite`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({prompt:userText, duration:6})});
+      const d = await r.json();
+      if(!r.ok || !d.task_id) throw new Error(d.error || 'Video job failed to start');
+      return { html: `<div class="tool-result" id="vid-${d.task_id}"><div style="font-size:.82rem;color:var(--t2)">Rendering — this can take a minute, checking automatically...</div></div>`, summary: 'Video is rendering — I\'ll drop it in here the moment it\'s done.', pollVideo: d.task_id };
+    }
+  }
+}
+function pollVideoTask(taskId){
+  const el = document.getElementById(`vid-${taskId}`);
+  const iv = setInterval(async ()=>{
+    try{
+      const r = await fetch(`${API}/api/video/status?task_id=${taskId}`);
+      const d = await r.json();
+      if(d.status==='Success' && d.url){
+        clearInterval(iv);
+        if(el) el.innerHTML = `<video controls src="${d.url}"></video>`;
+      } else if(d.status && d.status!=='pending'){
+        clearInterval(iv);
+        if(el) el.innerHTML = `<div style="color:var(--danger);font-size:.82rem">Video render didn't complete.</div>`;
+      }
+    }catch(e){}
+  }, 8000);
+}
+
+async function readSSEText(res){
+  if(!res.ok) return '';
+  const reader = res.body.getReader(); const dec = new TextDecoder();
+  let buf='', full='';
+  while(true){
+    const {value,done} = await reader.read();
+    if(done) break;
+    buf += dec.decode(value,{stream:true});
+    let nl;
+    while((nl=buf.indexOf('\n\n'))!==-1){
+      const line = buf.slice(0,nl); buf = buf.slice(nl+2);
+      if(!line.startsWith('data: ')) continue;
+      const ds = line.slice(6).trim();
+      if(ds==='[DONE]') continue;
+      try{ const evt = JSON.parse(ds); if(evt.type==='content') full += evt.content; }catch(e){}
+    }
+  }
+  return full;
+}
+const EP_MINIMAX_ONESHOT = `${API}/api/minimax/chat`;
+
+// ── MAIN SEND ──
+async function sendMsg(){
+  const ti = $('txt-input');
+  const text = ti.value.trim();
+  if((!text && !uploadedFiles.length) || isResponding) return;
+
+  isResponding = true;
+  if(currentCtrl) currentCtrl.abort();
+  currentCtrl = new AbortController();
+  $('send-btn').disabled = true;
+
+  const vp = $('chat-vp');
+  const userDiv = document.createElement('div');
+  userDiv.className = 'msg-group usr';
+  userDiv.innerHTML = `<div class="bubble">${inlineMd(text)}</div>`;
+  vp.appendChild(userDiv); scrollBot();
+
+  const filesToProcess = [...uploadedFiles];
+  uploadedFiles = []; renderFilePrev();
+  await saveMsg('user', text, filesToProcess.map(f=>({name:f.name,type:f.type})));
+  ti.value=''; ti.style.height='44px';
+
+  const aiG = document.createElement('div');
+  aiG.className = 'msg-group ai';
+  vp.appendChild(aiG); scrollBot();
 
   let fileContext = '';
-  if (files.length) {
-    updateStep(s1, 'running', 'Analyzing attached files...');
-    for (const f of files) {
-      let ep = '';
-      if (f.type.startsWith('image/')) ep = '/understand-image';
-      else if (f.type === 'application/pdf') ep = '/understand-pdf';
-      else if (f.type.startsWith('audio/')) ep = '/understand-audio';
-      if (!ep) continue;
-      try {
-        const fd = new FormData(); fd.append('file', f); fd.append('prompt', text || 'Analyze this file in full detail.');
-        const r = await fetch(API + ep, { method: 'POST', body: fd, signal: abortCtrl.signal });
-        const d = await r.json();
-        if (d.response) fileContext += `\n[File: ${f.name}]\n${d.response}\n`;
-      } catch(e) {}
-    }
+  if(filesToProcess.length){
+    const chip = showToolChip(aiG, 'Reading your files', 'fa-eye');
+    fileContext = await processFiles(filesToProcess, text);
+    chip.remove();
   }
 
-  updateStep(s1, 'running', `Sending to ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}...`);
+  const intent = detectIntent(text);
+  let toolHtml = '', toolSummary = '', pollTaskId = null;
 
-  const loaderDiv = appendAiLoader();
-  const contentEl = loaderDiv.querySelector('.msg-bubble');
+  if(intent){
+    const chip = showToolChip(aiG, intent.label, intent.icon);
+    try{
+      const result = await runTool(intent, text, fileContext);
+      chip.remove();
+      toolHtml = result.html;
+      toolSummary = result.summary;
+      pollTaskId = result.pollVideo || null;
+      const resultDiv = document.createElement('div');
+      resultDiv.innerHTML = toolHtml;
+      aiG.appendChild(resultDiv);
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = 'bubble';
+      bubbleDiv.textContent = toolSummary;
+      aiG.appendChild(bubbleDiv);
+      scrollBot();
+      await saveMsg('ai', toolSummary, [], {toolResult: toolHtml});
+      if(pollTaskId) pollVideoTask(pollTaskId);
+    }catch(e){
+      chip.remove();
+      const errDiv = document.createElement('div');
+      errDiv.className = 'bubble';
+      errDiv.textContent = `Couldn't finish that: ${e.message}`;
+      aiG.appendChild(errDiv);
+      await saveMsg('ai', `Couldn't finish that: ${e.message}`);
+    }
+    isResponding = false; $('send-btn').disabled = false; scrollBot();
+    return;
+  }
 
-  const systemBase = currentModel === 'bobby'
-    ? `You are Bobby — the analytical intelligence of Elvion AI. Be clear, precise, truthful.`
-    : `You are Philadelphia — The AI Goddess 🦅. You are the flagship AI of Elvion AI. Be creative, warm, and deeply helpful.`;
+  // Normal chat — thinking always visible, streamed live
+  const thinkBlock = document.createElement('div');
+  thinkBlock.className = 'think-block'; thinkBlock.style.display='none';
+  thinkBlock.innerHTML = `<div class="think-hdr"><i class="fa-solid fa-brain"></i> Thinking</div><div class="think-body" id="live-think"></div>`;
+  aiG.appendChild(thinkBlock);
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'bubble';
+  aiG.appendChild(contentDiv);
+  scrollBot();
 
-  let fullText = '';
-  let thinkText = '';
+  let sysPrompt = `Your name is Kola. You are a capable, warm AI assistant built to actually get things done — not just talk about them. Be direct, be useful, keep responses focused.`;
+  if(userMemory) sysPrompt += `\n\n[USER CONTEXT]: "${userMemory}"`;
+  if(fileContext) sysPrompt += `\n\n[ATTACHED FILE CONTEXT]:${fileContext}`;
 
-  try {
-    if (currentModel === 'bobby') {
-      updateStep(s1, 'running', 'Bobby is reasoning...');
-      const payload = {
-        prompt: fileContext ? `${text}\n\n[FILE CONTEXT]\n${fileContext}` : text,
-        systemPrompt: systemBase
-      };
-      const res = await fetch(EP.bobby, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload), signal: abortCtrl.signal });
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
-      fullText = data.reply || data.content || 'No response.';
-      thinkText = data.thinking || '';
+  const history = currentMessages.map(m=>({role:m.role, content:m.text||''}));
+  let thinkingText='', fullText='';
 
-      // Typewriter
-      contentEl.innerHTML = '';
-      const tokens = fullText.split(/(\s+)/);
-      let acc = '';
-      for (const tok of tokens) {
-        if (abortCtrl.signal.aborted) break;
-        acc += tok;
-        contentEl.innerHTML = renderMd(acc) + '<span class="cursor"></span>';
-        $('messages').scrollTop = $('messages').scrollHeight;
-        await new Promise(r => setTimeout(r, tok.trim() ? 14 : 4));
-      }
-      contentEl.innerHTML = renderMd(fullText);
-
-    } else {
-      // Philadelphia streaming
-      updateStep(s1, 'running', 'Philadelphia is composing...');
-      const payload = {
-        message: fileContext ? `${text}\n\n[FILE CONTEXT]\n${fileContext}` : text,
-        history: [],
-        system_prompt: systemBase,
-      };
-      const res = await fetch(EP.philly_mm, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload), signal: abortCtrl.signal });
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-
-      const reader = res.body.getReader();
-      const dec = new TextDecoder();
-      let buf = '';
-      fullText = '';
-      thinkText = '';
-      contentEl.innerHTML = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let nl;
-        while ((nl = buf.indexOf('\n\n')) !== -1) {
-          const chunk = buf.slice(0, nl); buf = buf.slice(nl + 2);
-          if (chunk.startsWith('data: ')) {
-            const ds = chunk.slice(6).trim();
-            if (ds === '[DONE]') break;
-            try {
-              const d = JSON.parse(ds);
-              if (d.type === 'thinking') thinkText += d.content;
-              else if (d.type === 'content') fullText += d.content;
-              let html = '';
-              if (thinkText) html += `<details class="think-block" open><summary class="think-toggle"><i class="fa-solid fa-brain"></i> Thinking <i class="fa-solid fa-chevron-down think-chevron"></i></summary><div class="think-content">${renderMd(thinkText)}<span class="cursor"></span></div></details>`;
-              if (fullText) html += renderMd(fullText) + '<span class="cursor"></span>';
-              if (html) { contentEl.innerHTML = html; $('messages').scrollTop = $('messages').scrollHeight; }
-            } catch(e) {}
+  try{
+    const res = await fetch(EP_MINIMAX_ONESHOT, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message:text, history, system_prompt:sysPrompt }),
+      signal: currentCtrl.signal
+    });
+    if(!res.ok){ const d = await res.json().catch(()=>({})); throw new Error(d.detail || 'Kola is unavailable right now.'); }
+    const reader = res.body.getReader(); const dec = new TextDecoder();
+    let buf='';
+    while(true){
+      const {value,done} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value,{stream:true});
+      let nl;
+      while((nl=buf.indexOf('\n\n'))!==-1){
+        const line = buf.slice(0,nl); buf = buf.slice(nl+2);
+        if(!line.startsWith('data: ')) continue;
+        const ds = line.slice(6).trim();
+        if(ds==='[DONE]') continue;
+        try{
+          const evt = JSON.parse(ds);
+          if(evt.type==='thinking'){
+            thinkingText += evt.content;
+            thinkBlock.style.display='block';
+            $('live-think').textContent = thinkingText;
+            scrollBot();
+          } else if(evt.type==='content'){
+            fullText += evt.content;
+            contentDiv.innerHTML = inlineMd(fullText);
+            scrollBot();
+          } else if(evt.type==='status'){
+            // tool-in-progress inside normal chat (e.g. web_search) — friendly, not raw
           }
-        }
+        }catch(e){}
       }
-      let finalHtml = '';
-      if (thinkText) finalHtml += `<details class="think-block"><summary class="think-toggle"><i class="fa-solid fa-brain"></i> Thinking <i class="fa-solid fa-chevron-down think-chevron"></i></summary><div class="think-content">${renderMd(thinkText)}</div></details>`;
-      finalHtml += renderMd(fullText) || '<em style="color:var(--text-3)">No response.</em>';
-      contentEl.innerHTML = finalHtml;
     }
-
-    updateStep(s1, 'done', 'Response complete');
-
-  } catch (e) {
-    if (e.name !== 'AbortError') {
-      contentEl.innerHTML = `<span style="color:var(--red)">❌ ${esc(e.message)}</span>`;
-      updateStep(s1, 'error', e.message);
-    } else {
-      contentEl.innerHTML = renderMd(fullText) + '<br><em style="color:var(--text-3);font-size:0.75rem">— stopped</em>';
-      updateStep(s1, 'done', 'Stopped by user');
-    }
-  }
-  $('messages').scrollTop = $('messages').scrollHeight;
-}
-
-// ================================================================
-//  TOOL EXECUTION ENGINE
-// ================================================================
-async function executeTool(tool, prompt, files=[]) {
-  const loaderDiv = appendAiLoader();
-  const contentEl = loaderDiv.querySelector('.msg-bubble');
-
-  const toolHandlers = {
-    image: runImage,
-    music: runMusic,
-    website: runWebsite,
-    'video-text': runVideoText,
-    comic: runComic,
-    narrate: runNarrate,
-    'remove-bg': runRemoveBg,
-    'research-report': runResearch,
-    slideshow: runSlideshow,
-    'voice-gen': runVoiceGen,
-  };
-
-  const handler = toolHandlers[tool];
-  if (!handler) {
-    contentEl.innerHTML = renderMd("I'll handle that via chat mode.");
-    await executeChat(prompt, files);
-    return;
+  }catch(e){
+    fullText += e.name==='AbortError' ? '\n\n*(stopped)*' : `\n\nSomething went wrong: ${e.message}`;
+    contentDiv.innerHTML = inlineMd(fullText);
   }
 
-  try {
-    const result = await handler(prompt, files, contentEl);
-    if (result && contentEl.innerHTML.includes('typing-dots')) {
-      contentEl.innerHTML = renderMd(result);
-    }
-  } catch(e) {
-    if (e.name !== 'AbortError') {
-      contentEl.innerHTML = `<span style="color:var(--red)">❌ ${esc(e.message)}</span>`;
-    }
-  }
-  $('messages').scrollTop = $('messages').scrollHeight;
+  await saveMsg('ai', fullText, [], thinkingText ? {thinking: thinkingText} : {});
+  isResponding = false; $('send-btn').disabled = false;
+  updateWalletUI();
+  scrollBot();
 }
+$('send-btn').onclick = sendMsg;
+$('txt-input').onkeydown = e=>{
+  if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); sendMsg(); }
+};
+$('txt-input').oninput = function(){ this.style.height='auto'; this.style.height = Math.min(this.scrollHeight,170)+'px'; };
 
-// ── IMAGE ──
-async function runImage(prompt, files, contentEl) {
-  const s1 = addStep('Parsing Prompt', 'Understanding your image request...', 'running');
-  await delay(400);
-  updateStep(s1, 'done', 'Prompt analyzed');
-
-  const s2 = addStep('Generating Image', 'Philadelphia V1 engine active...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Rendering image...</div>`;
-
-  const res = await fetch(`${API}/api/studio/generate-image`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt, model: 'v6', width: 1024, height: 1024, use_minimax: false, creative: false }),
-    signal: abortCtrl.signal
-  });
-  const d = await res.json().catch(()=>({}));
-  if (!res.ok) throw new Error(d.detail || d.error || 'Image generation failed');
-
-  updateStep(s2, 'done', 'Image rendered');
-  addStep('Delivering', 'Output ready', 'done');
-
-  addOutput('image', `Generated Image`, { b64: d.image_b64 });
-  contentEl.innerHTML = `✅ Image created. <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">View in Outputs →</a>`;
-}
-
-// ── MUSIC ──
-async function runMusic(prompt, files, contentEl) {
-  const s1 = addStep('Composing', 'Setting up music engine...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Composing your track...</div>`;
-
-  const res = await fetch(`${API}/api/tools/generate-music`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt, lyrics: '', model: 'music-1.5' }),
-    signal: abortCtrl.signal
-  });
-  if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail || d.error || 'Music generation failed'); }
-
-  updateStep(s1, 'done', 'Track composed');
-  const url = URL.createObjectURL(await res.blob());
-  addOutput('audio', 'Generated Track', { url });
-  contentEl.innerHTML = `🎵 Track composed. <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">Listen in Outputs →</a>`;
-}
-
-// ── WEBSITE ──
-async function runWebsite(prompt, files, contentEl) {
-  const s1 = addStep('Architecting', 'Designing website structure...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Building & deploying...</div>`;
-
-  await delay(800);
-  updateStep(s1, 'done', 'Structure designed');
-  const s2 = addStep('Building & Deploying', 'Writing HTML/CSS/JS and pushing to Vercel...', 'running');
-
-  const uid = currentUser?.uid || 'anonymous';
-  const res = await fetch(`${API}/api/tools/create-website`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt, user_id: uid }),
-    signal: abortCtrl.signal
-  });
-  const d = await res.json().catch(()=>({}));
-  if (!res.ok) throw new Error(d.error || 'Website creation failed');
-
-  updateStep(s2, 'done', 'Deployed to Vercel');
-  addStep('Live', `Available at ${d.url}`, 'done');
-
-  addOutput('link', 'Live Website', { url: d.url, label: 'Your Website' });
-  contentEl.innerHTML = `🌐 Website deployed! <a href="${d.url}" target="_blank" style="color:var(--gold-1);text-decoration:underline">Open site →</a>`;
-}
-
-// ── VIDEO TEXT ──
-async function runVideoText(prompt, files, contentEl) {
-  const s1 = addStep('Submitting Job', 'Queuing video generation...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Submitting to MiniMax Hailuo...</div>`;
-
-  const res = await fetch(`${API}/api/studio/generate-video-from-text-lite`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt, duration: 6, model: 'video-01' }),
-    signal: abortCtrl.signal
-  });
-  const d = await res.json().catch(()=>({}));
-  if (!res.ok || !d.task_id) throw new Error(d.error || 'Video submission failed');
-
-  updateStep(s1, 'done', `Task ID: ${d.task_id}`);
-  const s2 = addStep('Rendering', 'Video is being rendered (20–90s)...', 'running');
-  contentEl.innerHTML = `⏳ Video rendering... Task: <code style="font-family:var(--mono);font-size:0.75rem;color:var(--gold-1)">${d.task_id}</code><br><span style="font-size:0.75rem;color:var(--text-2)">Checking every 20 seconds...</span>`;
-
-  await pollVideo(d.task_id, s2, contentEl);
-}
-
-async function pollVideo(taskId, stepId, contentEl) {
-  return new Promise(resolve => {
-    const interval = setInterval(async () => {
-      try {
-        const r = await fetch(`${API}/api/video/status?task_id=${taskId}`);
-        const d = await r.json();
-        if (r.ok && d.url) {
-          clearInterval(interval);
-          updateStep(stepId, 'done', 'Video ready');
-          addStep('Delivered', 'Video available in Outputs', 'done');
-          addOutput('video', 'Generated Video', { url: d.url });
-          contentEl.innerHTML = `🎬 Video ready! <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">Watch in Outputs →</a>`;
-          resolve();
-        } else if (d.status && d.status.toLowerCase().includes('fail')) {
-          clearInterval(interval);
-          updateStep(stepId, 'error', 'Render failed');
-          contentEl.innerHTML = `<span style="color:var(--red)">❌ Video render failed</span>`;
-          resolve();
-        }
-      } catch(e) { /* keep polling */ }
-    }, 20000);
-  });
-}
-
-// ── COMIC ──
-async function runComic(prompt, files, contentEl) {
-  const s1 = addStep('Writing Script', 'Turning prompt into story panels...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Creating comic panels...</div>`;
-
-  const res = await fetch(`${API}/api/tools/generate-comic`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ story: prompt, panels: 3, model_provider: 'thena', thena_model_key: 'v6', style: 'illustration' }),
-    signal: abortCtrl.signal
-  });
-  const d = await res.json().catch(()=>({}));
-  if (!res.ok) throw new Error(d.error || 'Comic generation failed');
-
-  updateStep(s1, 'done', `${d.images?.length||0} panels created`);
-  addOutput('image-grid', 'Comic Strip', { images: d.images });
-  contentEl.innerHTML = `🎨 Comic created! <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">View panels →</a>`;
-}
-
-// ── REMOVE BG ──
-async function runRemoveBg(prompt, files, contentEl) {
-  if (!files.length) {
-    contentEl.innerHTML = renderMd('Please attach an image first, then say "remove background".');
-    return;
-  }
-  const s1 = addStep('Processing Image', 'Removing background...', 'running');
-  const fd = new FormData(); fd.append('file', files[0]);
-  const res = await fetch(`${API}/api/tools/remove-background`, { method: 'POST', body: fd, signal: abortCtrl.signal });
-  if (!res.ok) throw new Error('Background removal failed');
-  const url = URL.createObjectURL(await res.blob());
-  updateStep(s1, 'done', 'Background removed');
-  addOutput('image', 'Background Removed', { url });
-  contentEl.innerHTML = `✅ Done. <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">View in Outputs →</a>`;
-}
-
-// ── NARRATE ──
-async function runNarrate(prompt, files, contentEl) {
-  if (!files.length) {
-    contentEl.innerHTML = renderMd('Please attach a PDF or text file to narrate.');
-    return;
-  }
-  const s1 = addStep('Narrating', 'Converting document to audio...', 'running');
-  const fd = new FormData(); fd.append('file', files[0]); fd.append('style', 'podcast');
-  const res = await fetch(`${API}/api/tools/audio-narration`, { method: 'POST', body: fd, signal: abortCtrl.signal });
-  if (!res.ok) throw new Error('Narration failed');
-  const url = URL.createObjectURL(await res.blob());
-  updateStep(s1, 'done', 'Narration complete');
-  addOutput('audio', `Narration: ${files[0].name}`, { url });
-  contentEl.innerHTML = `🎙 Narration ready. <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">Listen in Outputs →</a>`;
-}
-
-// ── RESEARCH REPORT ──
-async function runResearch(prompt, files, contentEl) {
-  const s1 = addStep('Researching', 'Deep-diving the topic...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Compiling research report...</div>`;
-
-  const topic = prompt.replace(/research|deep.?dive|report|about|on/gi, '').trim() || prompt;
-  const res = await fetch(`${API}/api/tools/research`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ topic }),
-    signal: abortCtrl.signal
-  });
-  const d = await res.json().catch(()=>({}));
-  if (!res.ok) throw new Error(d.detail || 'Research failed');
-
-  const blob = await (await fetch(d.download_url)).blob();
-  const url = URL.createObjectURL(blob);
-  updateStep(s1, 'done', 'Report compiled');
-  addOutput('download', `Research: ${topic}`, { url, filename: d.filename || 'report.pdf' });
-  contentEl.innerHTML = `📄 Research report ready. <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">Download PDF →</a>`;
-}
-
-// ── VOICE GEN ──
-async function runVoiceGen(prompt, files, contentEl) {
-  const text = prompt.replace(/voice|gen|create|make|say|speak|read/gi, '').trim() || prompt;
-  const s1 = addStep('Synthesizing Voice', 'Running TTS engine...', 'running');
-  const fd = new FormData(); fd.append('text', text); fd.append('style', 'podcast');
-  const res = await fetch(`${API}/voicegen`, { method: 'POST', body: fd, signal: abortCtrl.signal });
-  if (!res.ok) throw new Error('Voice generation failed');
-  const url = URL.createObjectURL(await res.blob());
-  updateStep(s1, 'done', 'Voice synthesized');
-  addOutput('audio', 'Generated Voice', { url });
-  contentEl.innerHTML = `🔊 Voice ready. <a onclick="switchTab('output')" style="color:var(--gold-1);cursor:pointer;text-decoration:underline">Listen in Outputs →</a>`;
-}
-
-// ── SLIDESHOW (photo-to-video) ──
-async function runSlideshow(prompt, files, contentEl) {
-  if (!files.length) {
-    contentEl.innerHTML = renderMd('Please attach the photos you want in your slideshow, then give the command again.');
-    return;
-  }
-  const s1 = addStep('Animating Photos', 'Creating slideshow video from photos...', 'running');
-  contentEl.innerHTML = `<div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><div style="font-size:0.75rem;color:var(--text-2);margin-top:8px">Submitting image-to-video job...</div>`;
-
-  const fd = new FormData();
-  fd.append('prompt', prompt || 'Smooth cinematic slideshow with transitions');
-  fd.append('file', files[0]);
-  const res = await fetch(`${API}/api/studio/generate-video-from-image-lite`, { method: 'POST', body: fd, signal: abortCtrl.signal });
-  const d = await res.json().catch(()=>({}));
-  if (!res.ok || !d.task_id) throw new Error(d.error || 'Slideshow submission failed');
-
-  updateStep(s1, 'done', `Task ID: ${d.task_id}`);
-  const s2 = addStep('Rendering Slideshow', 'Video engine processing...', 'running');
-  contentEl.innerHTML = `⏳ Rendering slideshow... <span style="font-size:0.75rem;color:var(--text-2)">Checking every 20s</span>`;
-  await pollVideo(d.task_id, s2, contentEl);
-}
-
-// ── TOOL GRID CLICKS ──
-document.querySelectorAll('.tool-card[data-tool]').forEach(card => {
-  card.onclick = () => openToolForm(card.dataset.tool);
-});
-
-// ================================================================
-//  FORM DRAWER
-// ================================================================
-const toolFormDefs = {
-  image: {
-    title: '🖼 Generate Image',
-    fields: `
-      <div class="form-group"><label>Engine</label>
-      <select class="form-select" name="engine"><option value="v6">Philadelphia V1 (Illustration)</option><option value="photoreal">Philadelphia V1 (Photoreal)</option><option value="anime">Philadelphia V1 (Anime)</option><option value="minimax">Philadelphia V2 (Creative)</option></select></div>
-      <div class="form-group"><label>Image Prompt</label><textarea class="form-textarea" name="prompt" required placeholder="A golden eagle soaring over Lagos at sunrise..."></textarea></div>
-    `,
-    run: async (data, contentEl) => {
-      const s1 = addStep('Generating', 'Creating your image...', 'running');
-      const res = await fetch(`${API}/api/studio/generate-image`, {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ prompt: data.prompt, model: data.engine, width:1024, height:1024, use_minimax: data.engine==='minimax', creative:false }),
-        signal: abortCtrl.signal
-      });
-      const d = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(d.detail||d.error||'Failed');
-      updateStep(s1, 'done', 'Image created');
-      addOutput('image', `Image: ${data.prompt.slice(0,40)}`, { b64: d.image_b64 });
-      return '✅ Image created. View it in Outputs →';
-    }
-  },
-  music: {
-    title: '🎵 Create Music',
-    fields: `
-      <div class="form-group"><label>Music Vibe</label><textarea class="form-textarea" name="prompt" required placeholder="Afrobeats love song, warm guitar, soft drums, Lagos midnight..."></textarea></div>
-      <div class="form-group"><label>Lyrics (Optional)</label><textarea class="form-textarea" name="lyrics" placeholder="Verse 1:\n..."></textarea></div>
-    `,
-    run: async (data, contentEl) => {
-      const s1 = addStep('Composing', 'Music AI is composing...', 'running');
-      const res = await fetch(`${API}/api/tools/generate-music`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ prompt: data.prompt, lyrics: data.lyrics||'', model:'music-1.5' }),
-        signal: abortCtrl.signal
-      });
-      if (!res.ok) { const d = await res.json().catch(()=>({})); throw new Error(d.detail||'Music failed'); }
-      const url = URL.createObjectURL(await res.blob());
-      updateStep(s1, 'done', 'Track composed');
-      addOutput('audio', 'Generated Track', { url });
-      return '🎵 Track ready. Listen in Outputs →';
-    }
-  },
-  website: {
-    title: '🌐 Build Website',
-    fields: `<div class="form-group"><label>Website Description</label><textarea class="form-textarea" name="prompt" required placeholder="A portfolio site for a Nigerian fashion designer, dark gold theme..."></textarea></div>`,
-    run: async (data, contentEl) => {
-      const s1 = addStep('Building', 'Generating and deploying...', 'running');
-      const res = await fetch(`${API}/api/tools/create-website`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ prompt: data.prompt, user_id: currentUser?.uid || 'guest' }),
-        signal: abortCtrl.signal
-      });
-      const d = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(d.error||'Website failed');
-      updateStep(s1, 'done', `Deployed: ${d.url}`);
-      addOutput('link', 'Live Website', { url: d.url, label: 'Your Website' });
-      return `🌐 Website live! <a href="${d.url}" target="_blank" style="color:var(--gold-1)">Open →</a>`;
-    }
-  },
-  'research-report': {
-    title: '📄 Research Report',
-    fields: `<div class="form-group"><label>Topic</label><input class="form-input" name="topic" required placeholder="The history of AI in Nigeria"></div>`,
-    run: async (data, contentEl) => {
-      const s1 = addStep('Researching', 'Compiling deep research...', 'running');
-      const res = await fetch(`${API}/api/tools/research`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ topic: data.topic }),
-        signal: abortCtrl.signal
-      });
-      const d = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(d.detail||'Research failed');
-      const blob = await (await fetch(d.download_url)).blob();
-      const url = URL.createObjectURL(blob);
-      updateStep(s1, 'done', 'Report ready');
-      addOutput('download', `Research: ${data.topic}`, { url, filename: d.filename||'report.pdf' });
-      return '📄 Report ready. Download in Outputs →';
-    }
-  },
-  comic: {
-    title: '🎨 Create Comic',
-    fields: `
-      <div class="form-group"><label>Story Script</label><textarea class="form-textarea" name="story" required placeholder="[DIALOGUE] Are you seeing this?\n[NARRATION] They stared into the void..."></textarea></div>
-      <div class="form-group"><label>Panels (1–6)</label><input class="form-input" type="number" name="panels" value="3" min="1" max="6"></div>
-    `,
-    run: async (data, contentEl) => {
-      const s1 = addStep('Creating Panels', 'Drawing your comic...', 'running');
-      const res = await fetch(`${API}/api/tools/generate-comic`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ story: data.story, panels: parseInt(data.panels)||3, model_provider:'thena', thena_model_key:'v6', style:'illustration' }),
-        signal: abortCtrl.signal
-      });
-      const d = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(d.error||'Comic failed');
-      updateStep(s1, 'done', `${d.images?.length} panels created`);
-      addOutput('image-grid', 'Comic Strip', { images: d.images });
-      return '🎨 Comic ready. View in Outputs →';
-    }
-  },
-  'voice-gen': {
-    title: '🔊 Voice Generation',
-    fields: `
-      <div class="form-group"><label>Text to Speak</label><textarea class="form-textarea" name="text" required placeholder="The eagle soars high above the golden city..."></textarea></div>
-      <div class="form-group"><label>Voice Style</label>
-      <select class="form-select" name="style"><option value="podcast">Podcast</option><option value="cinematic">Cinematic</option><option value="soft">Soft</option><option value="dramatic">Dramatic</option><option value="upbeat">Upbeat</option></select></div>
-    `,
-    run: async (data, contentEl) => {
-      const s1 = addStep('Synthesizing', 'TTS engine running...', 'running');
-      const fd = new FormData(); fd.append('text', data.text); fd.append('style', data.style);
-      const res = await fetch(`${API}/voicegen`, { method:'POST', body:fd, signal:abortCtrl.signal });
-      if (!res.ok) throw new Error('Voice failed');
-      const url = URL.createObjectURL(await res.blob());
-      updateStep(s1, 'done', 'Voice synthesized');
-      addOutput('audio', 'Generated Voice', { url });
-      return '🔊 Voice ready. Listen in Outputs →';
-    }
-  },
+// ── MEMORY ──
+$('save-memory-btn').onclick = ()=>{
+  const mem = $('memory-input').value.trim();
+  localStorage.setItem('kola_memory', mem);
+  userMemory = mem;
+  $('memory-status').textContent = '✓ Saved';
+  setTimeout(()=>$('memory-status').textContent='', 1800);
 };
 
-function openToolForm(tool) {
-  const def = toolFormDefs[tool];
-  if (!def) { toast(`Tool "${tool}" — use the command line`, ''); return; }
-  $('form-drawer-title').textContent = def.title;
-  $('form-drawer-body').innerHTML = `
-    <form id="tool-form-inner">${def.fields}<button type="submit" class="form-submit-btn"><i class="fa-solid fa-bolt"></i> Execute</button></form>
-  `;
-  $('form-overlay').classList.add('show');
-
-  $('tool-form-inner').onsubmit = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const data = Object.fromEntries(fd.entries());
-    $('form-overlay').classList.remove('show');
-
-    if (!isRunning) {
-      isRunning = true;
-      abortCtrl = new AbortController();
-      $('send-btn').style.display = 'none';
-      $('stop-btn').style.display = 'flex';
-      setBadge('running');
-
-      appendMsg('user', `${def.title}: ${Object.values(data).filter(Boolean).join(' — ').slice(0, 80)}`);
-      createTask(def.title);
-      switchTab('activity');
-      showActivityPane();
-
-      const loaderDiv = appendAiLoader();
-      const contentEl = loaderDiv.querySelector('.msg-bubble');
-
-      try {
-        const result = await def.run(data, contentEl);
-        if (result) contentEl.innerHTML = renderMd(result);
-      } catch(err) {
-        contentEl.innerHTML = `<span style="color:var(--red)">❌ ${esc(err.message)}</span>`;
-      }
-
-      isRunning = false;
-      $('send-btn').style.display = 'flex';
-      $('stop-btn').style.display = 'none';
-      setBadge('done');
-      const task = getTask(); if (task) { task.status = 'done'; renderTaskList(); }
+// ── WALLET (reuses your existing payment/credit endpoints) ──
+async function updateWalletUI(){
+  if(!auth.currentUser) return;
+  try{
+    const r = await fetch(`${API}/api/user/keys-and-balance`);
+    if(r.ok){
+      const d = await r.json();
+      $('hdr-bal').textContent = d.balance;
+      $('wallet-bal').textContent = d.balance;
     }
-  };
+  }catch(e){}
 }
-
-$('form-drawer-close').onclick = () => $('form-overlay').classList.remove('show');
-$('form-overlay').onclick = (e) => { if (e.target === $('form-overlay')) $('form-overlay').classList.remove('show'); };
-
-// ── Sidebar task new ──
-$('new-task-btn').onclick = () => {
-  const vp = $('messages');
-  vp.innerHTML = `<div id="welcome">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:40px 24px;text-align:center">
-      <div style="font-size:2.5rem">🦅</div>
-      <div style="font-size:1rem;font-weight:700;color:var(--text-1)">New Task</div>
-      <div style="font-size:0.8rem;color:var(--text-2);max-width:260px;line-height:1.6">What should Philadelphia build or do?</div>
-    </div>
-  </div>`;
-  currentTaskId = null;
-  $('topbar-title').textContent = 'Philadelphia AI Computer';
-  setBadge('idle');
-  $('steps-container').innerHTML = '';
-  $('outputs-container').innerHTML = '';
-  outputCount = 0;
-  $('output-count').textContent = '0';
-  $('activity-empty').style.display = '';
-  $('output-empty').style.display = '';
-  switchTab('activity');
-  inp.focus();
+$('claim-daily-btn').onclick = async ()=>{
+  const st = $('wallet-status'); st.textContent='Claiming...';
+  try{
+    const r = await fetch(`${API}/api/user/claim-daily`, {method:'POST'});
+    const d = await r.json();
+    st.textContent = d.message; st.style.color = r.ok?'var(--accent-green)':'var(--danger)';
+    if(r.ok) updateWalletUI();
+  }catch(e){ st.textContent='Connection error'; }
+  setTimeout(()=>st.textContent='', 4000);
 };
-
-// ── HELPERS ──
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ── INIT ──
-setBadge('idle');
-renderTaskList();
-setTimeout(() => inp.focus(), 200);
+$('fund-wallet-btn').onclick = async ()=>{
+  let amt = parseInt(prompt('Amount to fund (min ₦100):', '1000'));
+  if(!amt || amt<100){ toastNote('Minimum funding amount is ₦100.'); return; }
+  try{
+    const r = await fetch(`${API}/api/payments/initiate`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount:amt, redirect_url: window.location.href.split('?')[0]})});
+    const d = await r.json();
+    if(r.ok) window.location.href = d.checkout_url;
+    else toastNote(d.detail || 'Payment failed');
+  }catch(e){ toastNote('Connection error'); }
+};
+window.checkPayReturn = async ()=>{
+  const p = new URLSearchParams(window.location.search);
+  const ref = p.get('reference') || p.get('trxref');
+  if(!ref || !auth.currentUser) return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+  const st = $('wallet-status'); st.textContent='Verifying payment...'; st.style.color='var(--accent)';
+  const verify = async tries=>{
+    if(tries<=0){ st.textContent='Verification timeout.'; return; }
+    try{
+      const r = await fetch(`${API}/api/payments/verify?transaction_ref=${ref}`);
+      const d = await r.json();
+      if(d.status==='success' || d.status==='already_credited'){
+        st.textContent = `+${d.credits_added} credits added!`; st.style.color='var(--accent-green)';
+        updateWalletUI(); setTimeout(()=>st.textContent='', 5000);
+      } else if(d.status==='pending') setTimeout(()=>verify(tries-1), 4000);
+      else { st.textContent='Payment failed.'; st.style.color='var(--danger)'; }
+    }catch(e){ setTimeout(()=>verify(tries-1), 4000); }
+  };
+  verify(15);
+};
+$('redeem-btn').onclick = async ()=>{
+  const code = $('referral-input').value.trim();
+  const st = $('ref-status');
+  if(!code) return;
+  st.textContent='Verifying...';
+  try{
+    const r = await fetch(`${API}/api/user/redeem-referral`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({referrer_code:code})});
+    const d = await r.json();
+    st.textContent = d.message;
+    if(r.ok) updateWalletUI();
+  }catch(e){ st.textContent='Connection error'; }
+};
 </script>
 </body>
 </html>
-
- <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
-
-  gtag('config', 'G-J1YTKP10ZX');
-</script>
