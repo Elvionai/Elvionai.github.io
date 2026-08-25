@@ -2287,7 +2287,10 @@ async function runImageWithPrompt(prompt){
     const d=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(d.detail || d.error || 'Image generation failed');
     removeOrbLoader();
-    showImageModal(d.image_b64,'IMAGE OUTPUT',true);
+    const images = d.images_b64 || (d.image_b64 ? [d.image_b64] : []);
+    if(!images.length) throw new Error('No image returned.');
+    if(images.length > 1) showImageModal(null,'IMAGE OUTPUT',false,images);
+    else showImageModal(images[0],'IMAGE OUTPUT',true);
     await showToolResult(`Image created! Tap the floating window to download.`);
   }catch(e){removeOrbLoader();await showToolResult(`❌ ${e.message}`)}
 }
@@ -2866,7 +2869,10 @@ const toolDefs={
         const d=await res.json().catch(()=>({}));
         if(!res.ok)throw new Error(d.detail || d.error || 'Failed to generate image');
         removeOrbLoader();
-        showImageModal(d.image_b64,'IMAGE OUTPUT',true);
+        const images = d.images_b64 || (d.image_b64 ? [d.image_b64] : []);
+        if(!images.length) throw new Error('No image returned.');
+        if(images.length > 1) showImageModal(null,'IMAGE OUTPUT',false,images);
+        else showImageModal(images[0],'IMAGE OUTPUT',true);
         return'Image created! View it in the popup window above.';
       }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
       finally{removeOrbLoader()}
