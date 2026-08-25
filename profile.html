@@ -2452,25 +2452,26 @@ async function processFiles(files,userPrompt,signal){
     fd.append('file',file);
     fd.append('prompt',userPrompt||`Analyze and describe this file (${file.name}) in full detail.`);
 
-    let ep='';
-    if(file.type.startsWith('image/'))       ep='/understand-image';
-    else if(file.type==='application/pdf')   ep='/understand-pdf';
-    else if(file.type.startsWith('audio/'))  ep='/understand-audio';
-    else if(file.type.startsWith('video/'))  ep='/understand-video';
+    let ep='', key='response';
+    if(file.type.startsWith('image/')||file.type.startsWith('video/')){
+      ep='/api/studio/understand'; key='analysis';
+    }
+    else if(file.type==='application/pdf')  ep='/understand-pdf';
+    else if(file.type.startsWith('audio/')) ep='/understand-audio';
 
     if(!ep) continue;
     try{
       updateOrbStatus(`Analyzing ${file.name}…`);
       const r=await fetch(API+ep,{method:'POST',body:fd,signal});
       const d=await r.json();
-      if(d.response) ctx+=`\n[File Analysis — ${file.name}]\n${d.response}\n`;
+      if(d[key]) ctx+=`\n[File Analysis — ${file.name}]\n${d[key]}\n`;
     }catch(e){
       if(e.name!=='AbortError') ctx+=`\n[Could not read ${file.name}: ${e.message}]\n`;
     }
   }
   return ctx;
 }
-
+      
 // ── STREAMING SEND ─────────────────────────────────────────────
 async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false){
   const ti=$('txt-input');
