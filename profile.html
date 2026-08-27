@@ -2477,6 +2477,17 @@ async function processFiles(files,userPrompt,signal){
   let ctx='';
   for(const file of files){
     if(signal?.aborted) break;
+
+    if(file.type==='text/plain'){
+      try{
+        const txt = file._pastedContent || await file.text();
+        ctx+=`\n[Pasted text — ${file.name}]\n${txt}\n`;
+      }catch(e){
+        ctx+=`\n[Could not read ${file.name}: ${e.message}]\n`;
+      }
+      continue;
+    }
+
     const fd=new FormData();
     fd.append('file',file);
     fd.append('prompt',userPrompt||`Analyze and describe this file (${file.name}) in full detail.`);
@@ -2545,6 +2556,7 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     uploadedFiles=[];
     renderFilePrev();
     if(ti){ti.value='';ti.style.height='44px'}
+    localStorage.removeItem(draftKey());
     const fi=$('file-input');
     if(fi) fi.value='';
 
