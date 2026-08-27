@@ -661,6 +661,15 @@ pre::before{
 .wave-bar:nth-child(5){height:8px;animation-delay:0.4s}
 @keyframes waveBar{from{transform:scaleY(0.4);opacity:0.5}to{transform:scaleY(1.4);opacity:1}}
 
+   #txt-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:6500;justify-content:center;align-items:center;padding:20px}
+#txt-modal.show{display:flex}
+.txt-modal-box{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius-xl);padding:20px;max-width:min(640px,90vw);width:100%;max-height:80vh;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.txt-modal-top{display:flex;justify-content:space-between;align-items:center}
+.txt-modal-title{font-family:var(--font-brand);font-size:0.85rem;color:var(--accent);letter-spacing:1px}
+.txt-modal-close{background:none;border:none;color:var(--text-2);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px}
+.txt-modal-close:hover{color:var(--danger)}
+#txt-modal-content{overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-family:var(--font-body);font-size:0.88rem;color:var(--text-1);line-height:1.7;margin:0}
+   
 /* ── EMOJI PANEL ──────────────────────────────────────────────────── */
 #emoji-panel{
   display:none;position:absolute;bottom:90px;left:18px;
@@ -1003,6 +1012,16 @@ pre::before{
     <button class="call-ctrl-btn" id="end-call-btn"><i class="fa-solid fa-phone-slash"></i></button>
   </div>
 </div>
+
+    <div id="txt-modal">
+  <div class="txt-modal-box">
+    <div class="txt-modal-top">
+      <span class="txt-modal-title"><i class="fa-solid fa-file-lines"></i> PASTED TEXT</span>
+      <button class="txt-modal-close" id="txt-modal-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <pre id="txt-modal-content"></pre>
+  </div>
+    </div>
 
 <!-- ====== SCRIPTS ====== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -2107,11 +2126,19 @@ function renderChat(msgs){
           <button class="ctrl-btn" onclick="editMsg('${msg.id}')"><i class="fa-solid fa-pen"></i> Edit</button>
           <button class="ctrl-btn" onclick="copyMsg(this)"><i class="fa-solid fa-copy"></i></button>
         </div>`;
-    } else {
+     } else {
       const toolResult = isToolResult(msg.text || '');
+      let thinkingSaved = '', mainSaved = msg.text || '';
+      if (!toolResult && mainSaved.includes(THINK_SEP)) {
+        const parts = mainSaved.split(THINK_SEP);
+        thinkingSaved = parts[0];
+        mainSaved = parts[1] || '';
+      }
       const content = toolResult
-        ? (msg.text || '').slice(TOOL_PREFIX.length)   
-        : renderMd(msg.text || '');                     
+        ? (msg.text || '').slice(TOOL_PREFIX.length)
+        : (thinkingSaved
+            ? `<details class="think-block"><summary class="think-toggle"><i class="fa-solid fa-brain"></i><span>Thinking</span><i class="fa-solid fa-chevron-down think-chevron"></i></summary><div class="think-content">${renderMd(thinkingSaved)}</div></details>${renderMd(mainSaved)}`
+            : renderMd(mainSaved));
       const dur=msg.duration?`<span class="meta-lbl">${msg.duration}s</span>`:'<span class="meta-lbl">AI</span>';
       g.innerHTML=`<div class="bubble"><div class="ai-content">${content}</div></div>
         <div class="msg-controls">
@@ -2127,7 +2154,7 @@ function renderChat(msgs){
             </div>
           </div>
         </div>
-        ${msg.text&&msg.text.length>40&&!msg.text.includes('❌')?followUpChips(msg.text):''}`;
+        ${mainSaved&&mainSaved.length>40&&!mainSaved.includes('❌')?followUpChips(mainSaved):''}`;
     }
     vp.appendChild(g);
   });
