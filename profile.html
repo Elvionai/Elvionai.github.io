@@ -2063,9 +2063,13 @@ function subscribeMessages(uid,chatId){
   if(msgsUnsub)msgsUnsub();
   if(!uid||!chatId){renderChat([]);return}
   const q=query(collection(db,'users',uid,'chats',chatId,'messages'),orderBy('createdAt'));
+  let firstLoad=true;
   msgsUnsub=onSnapshot(q,snap=>{
     currentMessages=snap.docs.map(d=>({id:d.id,...d.data()}));
     if(!isResponding)renderChat(currentMessages);
+    if(firstLoad){ resumePendingVideoPolls(currentMessages); firstLoad=false; }
+    const savedDraft=localStorage.getItem(draftKey());
+    if($('txt-input')) $('txt-input').value = savedDraft || '';
   });
 }
 
@@ -3275,11 +3279,55 @@ const toolDefs={
   },
 };
 
+const activeVideoPolls = new Set();
+
+function pollVideoTask(taskId){
+  if(activeVideoPolls.has(taskId)) return;
+  activeVideoPolls.add(taskId);
+  const poll=setInterval(async()=>{
+    try{
+      const sr=await fetch(`${API}/api/video/status?task_id=${taskId}`);
+      const sd=await sr.json();
+      if(sr.ok&&sd.url){
+        clearInterval(poll);
+        activeVideoPolls.delete(taskId);
+        const videoHtml=`<video controls src="${sd.url}" style="width:100%;border-radius:10px;margin-top:8px"></video>`;
+        const vp=$('chat-vp');
+        const vDiv=document.createElement('div');
+        vDiv.className='msg-group ai';
+        vDiv.innerHTML=`<div class="bubble"><div class="ai-content"><div style="font-size:0.8rem;color:var(--accent-green);margin-bottom:8px">🎬 Your video is ready!</div>${videoHtml}</div></div>
+          <div class="msg-controls">
+            <button class="ctrl-btn" onclick="shareMsg(this)"><i class="fa-solid fa-share-nodes"></i> Share</button>
+          </div>`;
+        vp.appendChild(vDiv);
+        scrollBot();
+        await saveMsg('ai',TOOL_PREFIX+videoHtml);
+      } else if(!sr.ok||(sd.status&&sd.status.toLowerCase().includes('fail'))){
+        clearInterval(poll);
+        activeVideoPolls.delete(taskId);
+        await showToolResult(`❌ Video render failed: ${sd.error||'Unknown error'}`);
+      }
+    }catch(pe){
+      console.error('Poll error:',pe);
+    }
+  },20000);
+}
+
+function resumePendingVideoPolls(msgs){
+  const readyRe = /Video job queued\. Task ID: `([a-zA-Z0-9_-]+)`/;
+  for(let i=0;i<msgs.length;i++){
+    const m=msgs[i].text||'';
+    const match=m.match(readyRe);
+    if(!match) continue;
+    const alreadyDone = msgs.slice(i+1).some(later=>(later.text||'').includes('Your video is ready'));
+    if(!alreadyDone) pollVideoTask(match[1]);
+  }
+}
+
 async function handleVideoGen(payload,isImageToVideo){
   if(!currentCtrl)currentCtrl=new AbortController();
   showOrbLoader('Submitting video job...');
   try{
-    // FIX: Using the Lite endpoints to match the new cheap pricing strategy
     const ep=isImageToVideo?'/api/studio/generate-video-from-image-lite':'/api/studio/generate-video-from-text-lite';
     let opts;
     if(isImageToVideo) opts={method:'POST',body:payload,signal:currentCtrl.signal};
@@ -3289,33 +3337,7 @@ async function handleVideoGen(payload,isImageToVideo){
     if(!r.ok||!d.task_id)throw new Error(d.error||'Task submission failed');
     removeOrbLoader();
     await showToolResult(`⏳ Video job queued. Task ID: \`${d.task_id}\` — checking every 20 seconds...`);
-
-    const poll=setInterval(async()=>{
-      try{
-        const sr=await fetch(`${API}/api/video/status?task_id=${d.task_id}`);
-        const sd=await sr.json();
-        if(sr.ok&&sd.url){
-          clearInterval(poll);
-          const videoHtml=`<video controls src="${sd.url}" style="width:100%;border-radius:10px;margin-top:8px"></video>`;
-          const vp=$('chat-vp');
-          const vDiv=document.createElement('div');
-          vDiv.className='msg-group ai';
-          vDiv.innerHTML=`<div class="bubble"><div class="ai-content"><div style="font-size:0.8rem;color:var(--accent-green);margin-bottom:8px">🎬 Your video is ready!</div>${videoHtml}</div></div>
-            <div class="msg-controls">
-              <button class="ctrl-btn" onclick="shareMsg(this)"><i class="fa-solid fa-share-nodes"></i> Share</button>
-            </div>`;
-          vp.appendChild(vDiv);
-          scrollBot();
-          await saveMsg('ai',TOOL_PREFIX+videoHtml);
-        } else if(!sr.ok||(sd.status&&sd.status.toLowerCase().includes('fail'))){
-          clearInterval(poll);
-          await showToolResult(`❌ Video render failed: ${sd.error||'Unknown error'}`);
-        }
-      }catch(pe){
-        if(pe.name!=='AbortError')console.error('Poll error:',pe);
-        else clearInterval(poll);
-      }
-    },20000);
+    pollVideoTask(d.task_id);
   }catch(e){
     if(e.name!=='AbortError')await showToolResult(`❌ ${e.message}`);
   }finally{removeOrbLoader()}
