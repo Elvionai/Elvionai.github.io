@@ -2784,20 +2784,43 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
 window.sendMsg=sendMsg;
 $('send-btn').onclick=()=>sendMsg();
 
+const PASTE_LINE_LIMIT = 14;
+const PASTE_CHAR_LIMIT = 900;
+
+function draftKey(){ return 'ph_draft_' + (currentChatId || 'default'); }
+
+$('txt-modal-close').onclick=()=>$('txt-modal').classList.remove('show');
+function showTxtModal(text){ $('txt-modal-content').textContent=text; $('txt-modal').classList.add('show'); }
+
 const ti=$('txt-input');
 if(ti){
   ti.onkeydown=e=>{
-    if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){
-      // Do NOT prevent default — let textarea insert newline naturally
-    }
     if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
       e.preventDefault();
       sendMsg();
     }
   };
-  ti.oninput=()=>{ti.style.height='auto';ti.style.height=Math.min(ti.scrollHeight,180)+'px'};
+  ti.oninput=()=>{
+    ti.style.height='auto';ti.style.height=Math.min(ti.scrollHeight,180)+'px';
+    localStorage.setItem(draftKey(), ti.value);
+  };
+  ti.onpaste=(e)=>{
+    const pasted=(e.clipboardData||window.clipboardData).getData('text');
+    if(!pasted) return;
+    const lineCount=pasted.split('\n').length;
+    if(pasted.length>PASTE_CHAR_LIMIT || lineCount>PASTE_LINE_LIMIT){
+      e.preventDefault();
+      const file=new File([pasted],'pasted.txt',{type:'text/plain'});
+      file._pastedContent=pasted; // keep in memory for instant preview pre-send
+      uploadedFiles=[...uploadedFiles,file];
+      renderFilePrev();
+      toast('Long paste added as a text file.','i');
+    }
+  };
+  const savedDraft=localStorage.getItem(draftKey());
+  if(savedDraft){ ti.value=savedDraft; ti.dispatchEvent(new Event('input')); }
 }
-
+   
 // ── EMOJI ──────────────────────────────────────────────────────
 const emojis=['😀','😂','😍','😎','👍','🔥','💯','🎉','🤖','✨','🚀','💻','🎨','👀','🦅','🙏','❤️','😭','💪','🧠'];
 $('emoji-toggle').onclick=e=>{
@@ -2827,11 +2850,18 @@ function renderFilePrev(){
   bar.classList.add('show');
   bar.innerHTML=uploadedFiles.map((f,i)=>{
     const isImg=f.type.startsWith('image/');
-    const icon=isImg?'fa-image':f.type==='application/pdf'?'fa-file-pdf':f.type.startsWith('audio/')?'fa-file-audio':f.type.startsWith('video/')?'fa-file-video':'fa-file';
-    return`<div class="file-pill"><i class="fa-solid ${icon}"></i><span>${esc(f.name)}</span><button class="rm-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`;
+    const isTxt=f.type==='text/plain';
+    const icon=isImg?'fa-image':f.type==='application/pdf'?'fa-file-pdf':f.type.startsWith('audio/')?'fa-file-audio':f.type.startsWith('video/')?'fa-file-video':isTxt?'fa-file-lines':'fa-file';
+    return`<div class="file-pill" data-i="${i}" style="${isTxt?'cursor:pointer':''}"><i class="fa-solid ${icon}"></i><span>${esc(f.name)}</span><button class="rm-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`;
   }).join('');
+  bar.querySelectorAll('.file-pill').forEach(p=>{
+    const f=uploadedFiles[+p.dataset.i];
+    if(f && f.type==='text/plain'){
+      p.onclick=(e)=>{ if(e.target.closest('.rm-file'))return; showTxtModal(f._pastedContent || ''); };
+    }
+  });
   bar.querySelectorAll('.rm-file').forEach(b=>{
-    b.onclick=()=>{uploadedFiles.splice(+b.dataset.i,1);renderFilePrev()};
+    b.onclick=(e)=>{e.stopPropagation();uploadedFiles.splice(+b.dataset.i,1);renderFilePrev()};
   });
 }
 
