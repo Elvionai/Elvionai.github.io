@@ -3071,6 +3071,7 @@ const toolDefs={
       <label class="form-label">Voice Provider</label>
       <select class="form-select" id="tf-provider">
         <option value="gemini">Philadelphia (Styles)</option>
+        <option value="philadelphia-v2">Philadelphia (New Gen)</option>
         <option value="minimax">Seraphina (Characters)</option>
       </select>
       <label class="form-label">Text to Speak</label>
@@ -3083,6 +3084,7 @@ const toolDefs={
         const style = tf.querySelector('#tf-style');
         const voices = {
             gemini:["podcast", "cinematic", "upbeat", "soft", "dramatic"],
+            'philadelphia-v2':["amara","breeze","nova","titan","luna","echo","dawn","vale"],
             minimax:["anime", "movie", "narrator", "knight", "elder", "sweet", "casual", "ceo", "hero", "elegant"]
         };
         const update = () => {
@@ -3100,6 +3102,10 @@ const toolDefs={
       try{
         let res;
         if(prov==='gemini'){const fd=new FormData();fd.append('text',text);fd.append('style',style);res=await fetch(`${API}/voicegen`,{method:'POST',body:fd,signal:currentCtrl?.signal})}
+        else if(prov==='philadelphia-v2'){
+          const V2_MAP={amara:'kore',breeze:'zephyr',nova:'puck',titan:'fenrir',luna:'achernar',echo:'charon',dawn:'leda',vale:'orus'};
+          res=await fetch(`${API}/api/tools/text-to-speech-v2`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,voice:V2_MAP[style]||'kore'}),signal:currentCtrl?.signal});
+        }
         else{res=await fetch(`${API}/api/tools/text-to-speech`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,voice_id:style}),signal:currentCtrl?.signal})}
         if(!res.ok)throw new Error('Failed');
         const url=URL.createObjectURL(await res.blob());
