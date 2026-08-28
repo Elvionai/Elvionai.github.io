@@ -954,6 +954,17 @@ pre::before{
       <div class="status-msg" id="memory-status"></div>
     </div>
   </div>
+
+   <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border)">
+      <div class="panel-section-title">Response Style</div>
+      <select class="form-select" id="response-style-select">
+        <option value="default">Default</option>
+        <option value="concise">Concise — short, to the point</option>
+        <option value="moderate">Moderate — balanced detail</option>
+        <option value="descriptive">Descriptive — thorough & rich</option>
+        <option value="formal">Formal — professional tone</option>
+      </select>
+   </div>
 </aside>
 
 <!-- TOOLS PANEL -->
@@ -1104,6 +1115,23 @@ const TOOL_PREFIX = '\u0000TOOL\u0000';
 const THINK_SEP = '\u0000THINK\u0000';   
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+const RESPONSE_STYLE_KEY = 'ph_response_style';
+const STYLE_PROMPTS_MAP = {
+  default: '',
+  concise: '\n\n[STYLE]: Be concise. Short sentences, minimal elaboration, get straight to the point.',
+  moderate: '\n\n[STYLE]: Give a balanced amount of detail — enough context to be useful without being exhaustive.',
+  descriptive: '\n\n[STYLE]: Be thorough and descriptive. Explain reasoning, add relevant detail and examples.',
+  formal: '\n\n[STYLE]: Use a formal, professional tone. Avoid slang and casual phrasing.'
+};
+const styleSel = $('response-style-select');
+if(styleSel){
+  styleSel.value = localStorage.getItem(RESPONSE_STYLE_KEY) || 'default';
+  styleSel.onchange = () => localStorage.setItem(RESPONSE_STYLE_KEY, styleSel.value);
+}
+function getResponseStyleAddon(){
+  return STYLE_PROMPTS_MAP[localStorage.getItem(RESPONSE_STYLE_KEY) || 'default'] || '';
+   }
+   
 const CCM_KEY = 'ph_cross_chat_memory';
 function ccmToggleUI(){
   const on = localStorage.getItem(CCM_KEY) === '1';
@@ -2705,7 +2733,9 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     if (userMemory) {
         finalSysPrompt += `\n\n[USER CONTEXT]: The user has provided this info about themselves: "${userMemory}". Address them using this, but DO NOT assume this identity yourself. YOU are the AI.`;
     }
-    finalSysPrompt += `\n\n[INSTRUCTIONS]: ${basePrompt}`;
+    const pendingCtx = localStorage.getItem('ph_pending_context_'+currentChatId);
+    if (pendingCtx) { finalSysPrompt += pendingCtx; localStorage.removeItem('ph_pending_context_'+currentChatId); }
+    finalSysPrompt += `\n\n[INSTRUCTIONS]: ${basePrompt}`; 
 
     if (currentModel === 'bobby') {
       const currentDate = new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos', dateStyle: 'full', timeStyle: 'short' });
