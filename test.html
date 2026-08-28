@@ -856,8 +856,16 @@ pre::before{
       <i class="fa-solid fa-power-off"></i> Sign Out
     </button>
   </div>
-</aside>
 
+   <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
+      <div style="font-size:0.78rem;color:var(--text-1)">Remember across new chats</div>
+      <label style="position:relative;display:inline-block;width:38px;height:22px">
+        <input type="checkbox" id="cross-chat-memory-toggle" style="opacity:0;width:0;height:0">
+        <span id="ccm-toggle-track" style="position:absolute;inset:0;background:var(--border);border-radius:22px;transition:0.2s;cursor:pointer"></span>
+      </label>
+   </div>
+</aside>
+   
 <!-- PERSONA PANEL -->
 <div class="overlay" id="persona-overlay"></div>
 <aside class="panel" id="persona-panel">
@@ -1096,6 +1104,26 @@ const TOOL_PREFIX = '\u0000TOOL\u0000';
 const THINK_SEP = '\u0000THINK\u0000';   
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+const CCM_KEY = 'ph_cross_chat_memory';
+function ccmToggleUI(){
+  const on = localStorage.getItem(CCM_KEY) === '1';
+  $('cross-chat-memory-toggle').checked = on;
+  $('ccm-toggle-track').style.background = on ? 'var(--accent)' : 'var(--border)';
+}
+$('ccm-toggle-track').onclick = () => {
+  const cur = localStorage.getItem(CCM_KEY) === '1';
+  localStorage.setItem(CCM_KEY, cur ? '0' : '1');
+  ccmToggleUI();
+  toast(cur ? 'Cross-chat memory off' : 'Cross-chat memory on','i');
+};
+ccmToggleUI();
+
+function getCrossChatSummary(){
+  if(localStorage.getItem(CCM_KEY) !== '1') return '';
+  const last = currentMessages.slice(-10).map(m=>`${m.role==='user'?'User':'AI'}: ${(m.text||'').slice(0,200)}`).join('\n');
+  return last ? `\n\n[CONTEXT FROM A PREVIOUS CONVERSATION — use if relevant, don't force it]\n${last}` : '';
+}
+   
 // Better inlineMd with full markdown support (works for Bobby too)
 function inlineMd(raw=''){
   let s = esc(raw);
@@ -2079,8 +2107,10 @@ async function loadChats(uid){
   });
 }
 async function createChat(uid){
+  const summary = getCrossChatSummary();
   const r=await addDoc(collection(db,'users',uid,'chats'),{name:'New Conversation',createdAt:serverTimestamp()});
   currentChatId=r.id;
+  if(summary) localStorage.setItem('ph_pending_context_'+r.id, summary);
 }
 $('new-chat-btn').onclick=()=>{if(currentUser)createChat(currentUser.uid)};
 
