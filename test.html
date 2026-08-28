@@ -3160,38 +3160,58 @@ const toolDefs={
     run:async form=>{
       const prompt=form.querySelector('#tf-prompt').value;
       await saveMsg('user',`Build website: "${prompt}"`);
-      showOrbLoader('Building & deploying...');
+      showOrbLoader('Building your website...');
       try{
-        const res=await fetch(`${API}/api/tools/create-website`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,user_id:currentUser?.uid}),signal:currentCtrl?.signal});
-        const d=await res.json();
-        if(!res.ok)throw new Error(d.error);
-        
-        try {
-            await addDoc(collection(db, 'users', currentUser.uid, 'websites'), { url: d.url, createdAt: serverTimestamp() });
-        } catch(err) {}
+        const sysPrompt=`You are an elite frontend web developer. Return ONLY the complete raw HTML5 document. No explanations, no markdown fences. Start with <!DOCTYPE html>, end with </html>. Embed all CSS/JS. Fully responsive, real content, no Lorem Ipsum.`;
+        const html = await chatMiniMaxSSE(`Build a complete website: ${prompt}`, sysPrompt);
+        if(!html) throw new Error('AI returned no HTML.');
+        updateOrbStatus('Deploying...');
+        const dr=await fetch(`${API}/api/tools/deploy-html`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:html,user_id:currentUser?.uid}),signal:currentCtrl?.signal});
+        const dd=await dr.json();
+        const url = dr.ok ? (dd.url||'') : '';
 
-        return `✅ Website live! <a href="${d.url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">Open site here</a>`;
+        const site={id:'site_'+Date.now(),name:prompt.slice(0,40),html,url,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+        chatSites.unshift(site);
+        await siteDBPut(site);
+        try{ await setDoc(doc(db,'users',currentUser.uid,'chat_sites',site.id),{name:site.name,url:site.url,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}); }catch(err){}
+
+        return url
+          ? `✅ Website live! <a href="${url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">Open site here</a><br><span style="font-size:0.72rem;color:var(--text-2)">Saved permanently — edit it anytime from My Websites.</span>`
+          : `✅ Website built (deploy step failed, but it's saved — try My Websites to redeploy).`;
       }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
       finally{removeOrbLoader()}
     }
   },
   'edit-website':{
-    title:'Edit Last Website',
-    form:`<label class="form-label">What to Change</label><textarea class="form-textarea" id="tf-prompt" required placeholder="Change the header colour to gold..."></textarea><button type="submit" class="submit-btn"><i class="fa-solid fa-pen-ruler"></i> Apply Changes</button>`,
+    title:'Edit a Website',
+    form:`<label class="form-label">Which Site</label><select class="form-select" id="tf-site"></select><label class="form-label">What to Change</label><textarea class="form-textarea" id="tf-prompt" required placeholder="Change the header colour to gold..."></textarea><button type="submit" class="submit-btn"><i class="fa-solid fa-pen-ruler"></i> Apply Changes</button>`,
+    init: async tf => {
+      const sel=tf.querySelector('#tf-site');
+      if(!chatSites.length) chatSites = await siteDBGetAll();
+      if(!chatSites.length){ sel.innerHTML='<option value="">No websites yet — build one first</option>'; return; }
+      sel.innerHTML = chatSites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    },
     run:async form=>{
+      const siteId=form.querySelector('#tf-site').value;
       const instruction=form.querySelector('#tf-prompt').value;
-      await saveMsg('user',`Edit website: "${instruction}"`);
-      showOrbLoader('Patching & redeploying...');
+      const site=chatSites.find(s=>s.id===siteId);
+      if(!site) return '❌ Select a website first.';
+      await saveMsg('user',`Edit website "${site.name}": "${instruction}"`);
+      showOrbLoader('Applying changes...');
       try{
-        const res=await fetch(`${API}/api/tools/edit-website`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instruction,user_id:currentUser?.uid}),signal:currentCtrl?.signal});
-        const d=await res.json();
-        if(!res.ok)throw new Error(d.error);
-        
-        try {
-            await addDoc(collection(db, 'users', currentUser.uid, 'websites'), { url: d.url, createdAt: serverTimestamp() });
-        } catch(err) {}
+        const sysPrompt=`You are an elite frontend web developer. Return ONLY the complete updated raw HTML5 document. No explanations, no markdown fences. Preserve existing sections unless told to remove them.`;
+        const html = await chatMiniMaxSSE(`Apply this change:\n${instruction}\n\nExisting HTML:\n${site.html}`, sysPrompt);
+        if(!html) throw new Error('AI returned no HTML.');
+        updateOrbStatus('Redeploying...');
+        const dr=await fetch(`${API}/api/tools/deploy-html`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:html,user_id:currentUser?.uid}),signal:currentCtrl?.signal});
+        const dd=await dr.json();
+        const url = dr.ok ? (dd.url||site.url) : site.url;
 
-        return `✅ Website updated! <a href="${d.url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">View updated site here</a>`;
+        site.html=html; site.url=url; site.updatedAt=new Date().toISOString();
+        await siteDBPut(site);
+        try{ await setDoc(doc(db,'users',currentUser.uid,'chat_sites',site.id),{name:site.name,url:site.url,updatedAt:serverTimestamp()},{merge:true}); }catch(err){}
+
+        return `✅ Website updated! <a href="${url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;font-weight:bold;">View updated site here</a>`;
       }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
       finally{removeOrbLoader()}
     }
@@ -3201,26 +3221,15 @@ const toolDefs={
     isAction:true,
     run:async()=>{
       await saveMsg('user','Show my websites.');
-      showOrbLoader('Fetching your websites from secure storage...');
+      showOrbLoader('Loading your websites...');
       try{
-        const sitesQuery = query(collection(db, 'users', currentUser.uid, 'websites'), orderBy('createdAt', 'desc'));
-        const snap = await getDocs(sitesQuery);
-        
-        if(snap.empty) {
-            return 'No websites found yet. Build one with <strong>Create Website</strong>!';
-        }
-
+        if(!chatSites.length) chatSites = await siteDBGetAll();
+        if(!chatSites.length) return 'No websites found yet. Build one with <strong>Create Website</strong>!';
         let list = '<ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">';
-        const seen = new Set();
-        snap.forEach(doc => {
-            const url = doc.data().url;
-            if(!seen.has(url)) {
-                seen.add(url);
-                list += `<li><a href="${url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;">${url}</a></li>`;
-            }
+        chatSites.forEach(s=>{
+          list += `<li><strong>${esc(s.name)}</strong> — ${s.url?`<a href="${s.url}" target="_blank" style="color:var(--accent-green);text-decoration:underline;">${s.url}</a>`:'not deployed'} <span style="color:var(--text-muted);font-size:0.7rem">(updated ${new Date(s.updatedAt).toLocaleDateString()})</span></li>`;
         });
-        list += '</ul>';
-        
+        list += '</ul><span style="font-size:0.72rem;color:var(--text-2)">Use "Edit a Website" to keep working on any of these — they never disappear.</span>';
         return `Here are your permanently saved websites:<br>${list}`;
       }catch(e){return`❌ ${e.message}`}
       finally{removeOrbLoader()}
@@ -3329,6 +3338,7 @@ document.querySelectorAll('[data-tool]').forEach(btn=>{
       $('tool-form-title').textContent=def.title;
       const tf=$('tool-form');
       tf.innerHTML=def.form;
+      if(def.init) await def.init(tf);
       if(def.init) def.init(tf); 
       tf.onsubmit=async e=>{
         e.preventDefault();
@@ -3345,6 +3355,59 @@ document.querySelectorAll('[data-tool]').forEach(btn=>{
   };
 });
 
+let chatSites = [];
+let sitesDBOpen = null;
+
+async function initSitesDB(){
+  return new Promise(res=>{
+    const req = indexedDB.open('philly_chat_sites', 1);
+    req.onupgradeneeded = e => { e.target.result.createObjectStore('sites', {keyPath:'id'}); };
+    req.onsuccess = e => { sitesDBOpen = e.target.result; res(sitesDBOpen); };
+    req.onerror = () => res(null);
+  });
+}
+async function siteDBPut(site){
+  if(!sitesDBOpen) return;
+  return new Promise(r=>{
+    const tx = sitesDBOpen.transaction('sites','readwrite');
+    tx.objectStore('sites').put(site).onsuccess=()=>r();
+    tx.onerror=()=>r();
+  });
+}
+async function siteDBGetAll(){
+  if(!sitesDBOpen) return [];
+  return new Promise(r=>{
+    const tx = sitesDBOpen.transaction('sites','readonly');
+    const req = tx.objectStore('sites').getAll();
+    req.onsuccess=()=>r(req.result||[]);
+    req.onerror=()=>r([]);
+  });
+}
+initSitesDB().then(async ()=>{ chatSites = await siteDBGetAll(); });
+
+async function chatMiniMaxSSE(message, systemPrompt){
+  const res = await fetch(`${API}/api/minimax/chat`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({message, history:[], system_prompt: systemPrompt})
+  });
+  if(!res.ok){ const d=await res.json().catch(()=>({})); throw new Error(d.detail||'Generation failed'); }
+  const reader=res.body.getReader(); const dec=new TextDecoder(); let buf='', full='';
+  while(true){
+    const {value,done}=await reader.read(); if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    let nl;
+    while((nl=buf.indexOf('\n\n'))!==-1){
+      const line=buf.slice(0,nl); buf=buf.slice(nl+2);
+      if(!line.startsWith('data: '))continue;
+      const ds=line.slice(6).trim(); if(ds==='[DONE]')continue;
+      try{ const ev=JSON.parse(ds); if(ev.type==='content') full+=ev.content; }catch(e){}
+    }
+  }
+  let html=full.trim();
+  if(html.startsWith('```')) html=html.replace(/^```[a-zA-Z]*\n?/,'').replace(/\n?```$/,'').trim();
+  return html;
+}
+   
 // ── VOICE CALL (real audio-to-audio via /ws/live-call) ─────────
 let callWs=null, callMicStream=null, callMicCtx=null, callMicNode=null;
 let callPlayCtx=null, callPlayHeadTime=0;
