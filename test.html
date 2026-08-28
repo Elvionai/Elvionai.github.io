@@ -2258,7 +2258,6 @@ if(dName) {
 // ── FUNCTION CALL DETECTION ────────────────────────────────────
 const fnPatterns=[
   {regex:/\b(generate|create|make|draw|render)\s+(an?\s+)?(image|photo|picture|illustration|art)\b/i,tool:'image',label:'Create an Image'},
-  {regex:/\b(generate|create|make|compose)\s+(a\s+)?(song|music|track|beat)\b/i,tool:'music',label:'Create Music'},
   {regex:/\b(generate|create|make|build|code)\s+(a\s+)?(website|web\s*app|webpage)\b/i,tool:'website',label:'Build a Website'},
   {regex:/\b(generate|create|make|produce)\s+(a\s+)?(video)\b/i,tool:'video-text',label:'Generate a Video'},
   {regex:/\b(generate|create|make)\s+(a\s+)?(comic|comic\s*strip|manga)\b/i,tool:'comic',label:'Create a Comic'},
@@ -2291,7 +2290,6 @@ $('fn-no').onclick=()=>{
 
 function openToolWithPrompt(tool,prompt){
   if(tool==='image') runImageWithPrompt(prompt);
-  else if(tool==='music') runMusicWithPrompt(prompt);
   else{
     openPanel('tools');
     setTimeout(()=>{
@@ -3154,43 +3152,6 @@ const toolDefs={
       const fd=new FormData();fd.append('prompt',prompt);fd.append('file',file);
       await handleVideoGen(fd,true);
       return null;
-    }
-  },
-  music:{
-    title:'Create Music',
-    form:`
-      <label class="form-label">Music Vibe / Description</label>
-      <textarea class="form-textarea" id="tf-prompt" required placeholder="Afrobeats love song with warm guitar and soft drums..."></textarea>
-      <label class="form-label">Lyrics (Optional)</label>
-      <textarea class="form-textarea" id="tf-lyrics" placeholder="Verse 1:\n..."></textarea>
-      <label class="form-label">Reference Audio (Optional)</label>
-      <input type="file" class="form-input" id="tf-ref" accept="audio/*">
-      <button type="submit" class="submit-btn"><i class="fa-solid fa-music"></i> Create Music</button>`,
-    run:async form=>{
-      const prompt=form.querySelector('#tf-prompt').value;
-      const lyrics=form.querySelector('#tf-lyrics')?.value||'';
-      const ref=form.querySelector('#tf-ref').files[0];
-      await saveMsg('user',`Create music: "${prompt}"`);
-      showOrbLoader('Composing your track...');
-      const payload={prompt,lyrics,model:'music-1.5'};
-      try{
-        if(ref){
-          showOrbLoader('Uploading reference audio...');
-          const fd=new FormData();fd.append('file',ref);
-          const ur=await fetch(`${API}/api/tools/upload-music`,{method:'POST',body:fd});
-          if(ur.ok){const ud=await ur.json();if(ud.instrumental_id)payload.instrumental_id=ud.instrumental_id;if(ud.voice_id)payload.voice_id=ud.voice_id}
-          showOrbLoader('Composing with reference...');
-        }
-        const res=await fetch(`${API}/api/tools/generate-music`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:currentCtrl?.signal});
-        if(!res.ok){
-          const errData=await res.json().catch(()=>({}));
-          throw new Error(errData.detail||errData.error||`Server error ${res.status}`);
-        }
-        const blob=await res.blob();
-        const url=URL.createObjectURL(blob);
-        return`<audio controls src="${url}" style="width:100%;margin-top:8px;border-radius:8px"></audio>`;
-      }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ Music generation failed: ${e.message}`}
-      finally{removeOrbLoader()}
     }
   },
   website:{
