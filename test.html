@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 /* =====================================================================
    PHILADELPHIA STUDIO — PRO DARK
@@ -668,7 +669,7 @@ pre::before{
 .wave-bar:nth-child(5){height:8px;animation-delay:0.4s}
 @keyframes waveBar{from{transform:scaleY(0.4);opacity:0.5}to{transform:scaleY(1.4);opacity:1}}
 
-   #txt-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:6500;justify-content:center;align-items:center;padding:20px}
+#txt-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:6500;justify-content:center;align-items:center;padding:20px}
 #txt-modal.show{display:flex}
 .txt-modal-box{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius-xl);padding:20px;max-width:min(640px,90vw);width:100%;max-height:80vh;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
 .txt-modal-top{display:flex;justify-content:space-between;align-items:center}
@@ -676,6 +677,15 @@ pre::before{
 .txt-modal-close{background:none;border:none;color:var(--text-2);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px}
 .txt-modal-close:hover{color:var(--danger)}
 #txt-modal-content{overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-family:var(--font-body);font-size:0.88rem;color:var(--text-1);line-height:1.7;margin:0}
+
+/* ── PDF PREVIEW MODAL ────────────────────────────────────────────── */
+#pdf-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:6600;justify-content:center;align-items:center;padding:14px}
+#pdf-modal.show{display:flex}
+.pdf-modal-box{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius-xl);padding:16px;max-width:min(700px,94vw);width:100%;max-height:92vh;display:flex;flex-direction:column;gap:10px}
+.pdf-modal-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pdf-modal-title{font-family:var(--font-brand);font-size:0.85rem;color:var(--accent);letter-spacing:1px}
+#pdf-pages-wrap{overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:10px;background:#111;border-radius:10px;padding:10px}
+#pdf-pages-wrap canvas{max-width:100%;box-shadow:0 4px 20px rgba(0,0,0,0.6);border-radius:4px}
    
 /* ── EMOJI PANEL ──────────────────────────────────────────────────── */
 #emoji-panel{
@@ -754,6 +764,7 @@ pre::before{
         <div class="bar-left">
           <label for="file-input" class="bar-btn" title="Attach"><i class="fa-solid fa-paperclip"></i></label>
           <input type="file" id="file-input" accept="application/pdf,image/*,audio/*,video/*" multiple style="display:none">
+          <button class="bar-btn" id="clipboard-paste-btn" title="Paste from clipboard as file"><i class="fa-solid fa-clipboard"></i></button>
           <button class="bar-btn" id="emoji-toggle" title="Emoji"><i class="fa-regular fa-face-smile"></i></button>
           <button class="bar-btn" id="tool-quick-btn" title="Creator Tools"><i class="fa-solid fa-layer-group"></i></button>
         </div>
@@ -847,6 +858,14 @@ pre::before{
       <div id="ref-status" style="font-size:0.65rem; margin-top:5px; text-align:center;"></div>
     </div>
 
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;margin-bottom:15px">
+      <div style="font-size:0.78rem;color:var(--text-1)">Remember across new chats</div>
+      <label style="position:relative;display:inline-block;width:38px;height:22px">
+        <input type="checkbox" id="cross-chat-memory-toggle" style="opacity:0;width:0;height:0">
+        <span id="ccm-toggle-track" style="position:absolute;inset:0;background:var(--border);border-radius:22px;transition:0.2s;cursor:pointer"></span>
+      </label>
+    </div>
+
     <div class="panel-section-title">Conversations</div>
     <button class="panel-link" id="new-chat-btn">
       <i class="fa-solid fa-plus"></i> New Conversation
@@ -856,14 +875,6 @@ pre::before{
       <i class="fa-solid fa-power-off"></i> Sign Out
     </button>
   </div>
-
-   <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
-      <div style="font-size:0.78rem;color:var(--text-1)">Remember across new chats</div>
-      <label style="position:relative;display:inline-block;width:38px;height:22px">
-        <input type="checkbox" id="cross-chat-memory-toggle" style="opacity:0;width:0;height:0">
-        <span id="ccm-toggle-track" style="position:absolute;inset:0;background:var(--border);border-radius:22px;transition:0.2s;cursor:pointer"></span>
-      </label>
-   </div>
 </aside>
    
 <!-- PERSONA PANEL -->
@@ -953,9 +964,7 @@ pre::before{
       </button>
       <div class="status-msg" id="memory-status"></div>
     </div>
-  </div>
-
-   <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border)">
       <div class="panel-section-title">Response Style</div>
       <select class="form-select" id="response-style-select">
         <option value="default">Default</option>
@@ -964,7 +973,8 @@ pre::before{
         <option value="descriptive">Descriptive — thorough & rich</option>
         <option value="formal">Formal — professional tone</option>
       </select>
-   </div>
+    </div>
+  </div>
 </aside>
 
 <!-- TOOLS PANEL -->
@@ -988,7 +998,7 @@ pre::before{
     <button class="panel-link" data-tool="video-h3"><i class="fa-solid fa-clapperboard"></i> Video (Pro, w/ Audio)</button>
     <div class="panel-section-title" style="margin-top:14px">Web & Research</div>
     <button class="panel-link" data-tool="website"><i class="fa-solid fa-globe"></i> Create Website</button>
-    <button class="panel-link" data-tool="edit-website"><i class="fa-solid fa-pen-ruler"></i> Edit Last Website</button>
+    <button class="panel-link" data-tool="edit-website"><i class="fa-solid fa-pen-ruler"></i> Edit a Website</button>
     <button class="panel-link" data-tool="my-sites"><i class="fa-solid fa-list-check"></i> My Websites</button>
     <button class="panel-link" data-tool="research-report"><i class="fa-solid fa-flask-vial"></i> Research Report</button>
   </div>
@@ -1039,7 +1049,7 @@ pre::before{
   </div>
 </div>
 
-    <div id="txt-modal">
+<div id="txt-modal">
   <div class="txt-modal-box">
     <div class="txt-modal-top">
       <span class="txt-modal-title"><i class="fa-solid fa-file-lines"></i> PASTED TEXT</span>
@@ -1047,7 +1057,18 @@ pre::before{
     </div>
     <pre id="txt-modal-content"></pre>
   </div>
+</div>
+
+<div id="pdf-modal">
+  <div class="pdf-modal-box">
+    <div class="pdf-modal-top">
+      <span class="pdf-modal-title" id="pdf-modal-title"><i class="fa-solid fa-file-pdf"></i> DOCUMENT</span>
+      <span id="pdf-page-count" style="font-size:0.7rem;color:var(--text-muted)"></span>
+      <button class="txt-modal-close" id="pdf-modal-close"><i class="fa-solid fa-xmark"></i></button>
     </div>
+    <div id="pdf-pages-wrap"></div>
+  </div>
+</div>
 
 <!-- ====== SCRIPTS ====== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -1130,8 +1151,8 @@ if(styleSel){
 }
 function getResponseStyleAddon(){
   return STYLE_PROMPTS_MAP[localStorage.getItem(RESPONSE_STYLE_KEY) || 'default'] || '';
-   }
-   
+}
+
 const CCM_KEY = 'ph_cross_chat_memory';
 function ccmToggleUI(){
   const on = localStorage.getItem(CCM_KEY) === '1';
@@ -1174,7 +1195,6 @@ function inlineMd(raw=''){
   // Custom Table Parser
   s = s.replace(/(?:^[ \t]*\|.*(?:\n|$)){2,}/gm, (match) => {
       const lines = match.trim().split('\n');
-      // Validate it's a real markdown table (must have a separator row with dashes)
       const hasSeparator = lines.some(l => /^[ \t]*\|?[\s:|-]+\|?[ \t]*$/.test(l) && l.includes('-'));
       if (!hasSeparator) return match; 
 
@@ -1283,7 +1303,6 @@ function renderThinking(thinking, mainContent) {
   </details>` + mainContent;
 }
 
-// Only content we explicitly tagged as tool output gets raw-rendered
 function isToolResult(text) {
   return typeof text === 'string' && text.startsWith(TOOL_PREFIX);
 }
@@ -1355,6 +1374,36 @@ $('tool-back-btn').onclick=()=>{closePanel('toolform');openPanel('tools')};
 
 // ── CODE PREVIEW ───────────────────────────────────────────────
 $('code-preview-close').onclick=()=>$('code-preview-modal').classList.remove('show');
+
+// ── PDF PREVIEW ──────────────────────────────────────────────────
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+$('pdf-modal-close').onclick = () => $('pdf-modal').classList.remove('show');
+
+async function showPdfPreview(fileOrData, title){
+  $('pdf-modal-title').innerHTML = `<i class="fa-solid fa-file-pdf"></i> ${esc(title||'DOCUMENT')}`;
+  const wrap = $('pdf-pages-wrap');
+  $('pdf-page-count').textContent = '';
+  wrap.innerHTML = '<div style="color:var(--text-2);padding:30px;text-align:center">Loading document…</div>';
+  $('pdf-modal').classList.add('show');
+  try {
+    const data = fileOrData instanceof File ? await fileOrData.arrayBuffer() : fileOrData;
+    const pdf = await pdfjsLib.getDocument(data).promise;
+    $('pdf-page-count').textContent = `${pdf.numPages} page${pdf.numPages>1?'s':''}`;
+    wrap.innerHTML = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1.3 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width; canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      wrap.appendChild(canvas);
+    }
+  } catch (e) {
+    wrap.innerHTML = `<div style="color:var(--danger);padding:30px;text-align:center">Could not render this PDF: ${e.message}</div>`;
+  }
+}
 
 // ── IMAGE MODAL ─────────────────────────────────────────────────
 let currentModalImgSrc='';
@@ -1586,7 +1635,7 @@ When no search results are provided: answer from knowledge, clearly noting uncer
 The Elvion Studio is equipped with a powerful suite of Creator Tools. You are fully aware of these tools and must confidently guide users on how to use them.
 
 **How Users Access Tools:**
-1. **Auto-Trigger (The Easy Way):** Users do not have to click any menus. They can simply type a command naturally in the chat, such as "Create an image of a golden lion," "Build a website for my bakery," "Generate a comic," or "Make a song about Lagos." The system will automatically detect this prompt and pop up a confirmation box asking, "Would you like to generate this?" If the user clicks 'Yes', the tool runs automatically.
+1. **Auto-Trigger (The Easy Way):** Users do not have to click any menus. They can simply type a command naturally in the chat, such as "Create an image of a golden lion," "Build a website for my bakery," "Generate a comic," or "Make a video of..." The system will automatically detect this prompt and pop up a confirmation box asking, "Would you like to generate this?" If the user clicks 'Yes', the tool runs automatically.
 2. **Manual Access (The 🖊️ Icon):** Users can manually browse and use all tools by clicking the Pen icon (🖊️) at the top right of the screen.
 
 **The Personality Selector:**
@@ -1594,8 +1643,8 @@ Users can click the User icon (👤) at the top right of the screen to change yo
 
 **Available Tools in the Elvion Toolkit:**
 - **Images & Art:** Create Image, Edit Photo, Remove Background, Create Comic.
-- **Audio & Video:** Voice Generation, Narrate Document, Text-to-Video, Image-to-Video, Create Music.
-- **Web & Research:** Create Website, Edit Last Website, My Websites, Research Report.
+- **Audio & Video:** Voice Generation, Narrate Document, Text-to-Video, Image-to-Video, Video (Pro, w/ Audio).
+- **Web & Research:** Create Website, Edit a Website, My Websites, Research Report.
 
 **Your Role as the AI:**
 You cannot directly output an image, video, or website file in your text replies. Your job is to act as the creative director. Help users brainstorm ideas, write highly detailed descriptions for their desired outputs, and instruct them on how to trigger the magic.
@@ -1818,7 +1867,7 @@ When no search results are provided: answer from knowledge, clearly noting uncer
 The Elvion Studio is equipped with a powerful suite of Creator Tools. You are fully aware of these tools and must confidently guide users on how to use them.
 
 **How Users Access Tools:**
-1. **Auto-Trigger (The Easy Way):** Users do not have to click any menus. They can simply type a command naturally in the chat, such as "Create an image of a golden lion," "Build a website for my bakery," "Generate a comic," or "Make a song about Lagos." The system will automatically detect this prompt and pop up a confirmation box asking, "Would you like to generate this?" If the user clicks 'Yes', the tool runs automatically.
+1. **Auto-Trigger (The Easy Way):** Users do not have to click any menus. They can simply type a command naturally in the chat, such as "Create an image of a golden lion," "Build a website for my bakery," "Generate a comic," or "Make a video of..." The system will automatically detect this prompt and pop up a confirmation box asking, "Would you like to generate this?" If the user clicks 'Yes', the tool runs automatically.
 2. **Manual Access (The 🖊️ Icon):** Users can manually browse and use all tools by clicking the Pen icon (🖊️) at the top right of the screen.
 
 **The Personality Selector:**
@@ -1826,8 +1875,8 @@ Users can click the User icon (👤) at the top right of the screen to change yo
 
 **Available Tools in the Elvion Toolkit:**
 - **Images & Art:** Create Image, Edit Photo, Remove Background, Create Comic.
-- **Audio & Video:** Voice Generation, Narrate Document, Text-to-Video, Image-to-Video, Create Music.
-- **Web & Research:** Create Website, Edit Last Website, My Websites, Research Report.
+- **Audio & Video:** Voice Generation, Narrate Document, Text-to-Video, Image-to-Video, Video (Pro, w/ Audio).
+- **Web & Research:** Create Website, Edit a Website, My Websites, Research Report.
 
 **Your Role as the AI:**
 You cannot directly output an image, video, or website file in your text replies. Your job is to act as the creative director. Help users brainstorm ideas, write highly detailed descriptions for their desired outputs, and instruct them on how to trigger the magic.
@@ -2067,7 +2116,6 @@ $('inject-persona-btn').onclick=()=>{
   const mem=$('memory-input').value.trim();
   if(mem){userMemory=mem;localStorage.setItem('ph_memory',mem)}
   
-  // Update Disclaimer Name
   const dName = $('disclaimer-name');
   if(dName) {
       if(currentModel === 'bobby') dName.textContent = 'Bobby';
@@ -2203,8 +2251,8 @@ function followUpChips(aiText){
     chips=['Explain this code','Show me a full example','What are the edge cases?','Can you optimise this?'];
   } else if(t.includes('image')||t.includes('photo')||t.includes('picture')){
     chips=['Generate this image','What style should I use?','Tell me more','Create a variation'];
-  } else if(t.includes('music')||t.includes('song')||t.includes('audio')){
-    chips=['Create this music','Tell me more about this','What genre fits?','How do I mix this?'];
+  } else if(t.includes('video')){
+    chips=['Generate this video','Tell me more about this','What resolution should I use?','How do I add audio?'];
   } else if(t.includes('relationship')||t.includes('love')||t.includes('partner')){
     chips=['Tell me more','How do I communicate this?','What are the signs?','Give me advice'];
   } else if(t.includes('history')||t.includes('science')||t.includes('research')){
@@ -2238,7 +2286,10 @@ function renderChat(msgs){
     g.className=`msg-group ${msg.role==='user'?'usr':'ai'}`;
     g.dataset.id=msg.id||'';
     if(msg.role==='user'){
-      const files=(msg.files||[]).map(f=>`<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(255,255,255,0.06);border-radius:8px;font-size:0.78rem;margin-bottom:5px;color:var(--accent)"><i class="fa-solid fa-file"></i>${esc(f.name)}</div>`).join('');
+      const files=(msg.files||[]).map(f=>{
+        const isPdf = f.type==='application/pdf';
+        return `<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(255,255,255,0.06);border-radius:8px;font-size:0.78rem;margin-bottom:5px;color:var(--accent);${isPdf?'cursor:pointer':''}" ${isPdf?`onclick="toast('Re-upload this file to preview it again — sent files aren\\'t stored for replay.','i')"`:''}><i class="fa-solid fa-file"></i>${esc(f.name)}</div>`;
+      }).join('');
       g.innerHTML=`<div class="bubble">${files?`<div>${files}</div>`:''}<div>${renderMd(msg.text||'')}</div></div>
         <div class="msg-controls usr-ctrl">
           <span class="meta-lbl">You</span>
@@ -2358,13 +2409,11 @@ function hookModelBtns() {
 }
 
 // ── INITIALIZE DEFAULT AI ON PAGE LOAD ──
-// Strictly force Philadelphia as the default AI engine on fresh page load
 currentModel = 'philadelphia';
 activePersona = 'philadelphia';
 activeSystemPrompt = personaDefs['philadelphia'].prompt;
 localStorage.setItem('ph_model', 'philadelphia'); 
 
-// Sync the disclaimer text at the bottom to match the default engine
 const dName = document.getElementById('disclaimer-name');
 if(dName) {
     dName.textContent = 'Philadelphia';
@@ -2735,6 +2784,7 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     }
     const pendingCtx = localStorage.getItem('ph_pending_context_'+currentChatId);
     if (pendingCtx) { finalSysPrompt += pendingCtx; localStorage.removeItem('ph_pending_context_'+currentChatId); }
+    finalSysPrompt += getResponseStyleAddon();
     finalSysPrompt += `\n\n[INSTRUCTIONS]: ${basePrompt}`; 
 
     if (currentModel === 'bobby') {
@@ -2946,7 +2996,7 @@ if(ti){
     if(pasted.length>PASTE_CHAR_LIMIT || lineCount>PASTE_LINE_LIMIT){
       e.preventDefault();
       const file=new File([pasted],'pasted.txt',{type:'text/plain'});
-      file._pastedContent=pasted; // keep in memory for instant preview pre-send
+      file._pastedContent=pasted;
       uploadedFiles=[...uploadedFiles,file];
       renderFilePrev();
       toast('Long paste added as a text file.','i');
@@ -2955,6 +3005,26 @@ if(ti){
   const savedDraft=localStorage.getItem(draftKey());
   if(savedDraft){ ti.value=savedDraft; ti.dispatchEvent(new Event('input')); }
 }
+
+// ── CLIPBOARD PASTE BUTTON ────────────────────────────────────
+$('clipboard-paste-btn').onclick = async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) { toast('Clipboard is empty.','e'); return; }
+    if (text.length > PASTE_CHAR_LIMIT || text.split('\n').length > PASTE_LINE_LIMIT) {
+      const file = new File([text], 'clipboard.txt', { type: 'text/plain' });
+      file._pastedContent = text;
+      uploadedFiles = [...uploadedFiles, file];
+      renderFilePrev();
+      toast('Added clipboard content as a text file.','s');
+    } else {
+      if (ti) { ti.value += text; ti.dispatchEvent(new Event('input')); }
+      toast('Pasted into message.','s');
+    }
+  } catch (e) {
+    toast('Clipboard access denied by browser.','e');
+  }
+};
    
 // ── EMOJI ──────────────────────────────────────────────────────
 const emojis=['😀','😂','😍','😎','👍','🔥','💯','🎉','🤖','✨','🚀','💻','🎨','👀','🦅','🙏','❤️','😭','💪','🧠'];
@@ -2986,13 +3056,16 @@ function renderFilePrev(){
   bar.innerHTML=uploadedFiles.map((f,i)=>{
     const isImg=f.type.startsWith('image/');
     const isTxt=f.type==='text/plain';
-    const icon=isImg?'fa-image':f.type==='application/pdf'?'fa-file-pdf':f.type.startsWith('audio/')?'fa-file-audio':f.type.startsWith('video/')?'fa-file-video':isTxt?'fa-file-lines':'fa-file';
-    return`<div class="file-pill" data-i="${i}" style="${isTxt?'cursor:pointer':''}"><i class="fa-solid ${icon}"></i><span>${esc(f.name)}</span><button class="rm-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`;
+    const isPdf=f.type==='application/pdf';
+    const icon=isImg?'fa-image':isPdf?'fa-file-pdf':f.type.startsWith('audio/')?'fa-file-audio':f.type.startsWith('video/')?'fa-file-video':isTxt?'fa-file-lines':'fa-file';
+    return`<div class="file-pill" data-i="${i}" style="${(isTxt||isPdf)?'cursor:pointer':''}"><i class="fa-solid ${icon}"></i><span>${esc(f.name)}</span><button class="rm-file" data-i="${i}"><i class="fa-solid fa-xmark"></i></button></div>`;
   }).join('');
   bar.querySelectorAll('.file-pill').forEach(p=>{
     const f=uploadedFiles[+p.dataset.i];
     if(f && f.type==='text/plain'){
       p.onclick=(e)=>{ if(e.target.closest('.rm-file'))return; showTxtModal(f._pastedContent || ''); };
+    } else if(f && f.type==='application/pdf'){
+      p.onclick=(e)=>{ if(e.target.closest('.rm-file'))return; showPdfPreview(f, f.name); };
     }
   });
   bar.querySelectorAll('.rm-file').forEach(b=>{
@@ -3170,7 +3243,7 @@ const toolDefs={
         let payload = { story, panels, user: currentUser?.displayName || 'User', model_provider: provider };
         if (provider === 'thena') {
             payload.thena_model_key = selectedStyle; 
-            payload.style = 'illustration'; // internal fallback
+            payload.style = 'illustration';
         } else {
             payload.style = selectedStyle; 
         }
@@ -3258,7 +3331,7 @@ const toolDefs={
       const prompt=form.querySelector('#tf-prompt').value;
       const duration=parseInt(form.querySelector('#tf-dur').value)||6;
       await saveMsg('user',`Video: "${prompt}"`);
-      await handleVideoGen({prompt,duration,model:'video-01'},false); // NO resolution here
+      await handleVideoGen({prompt,duration,model:'video-01'},false);
       return null;
     }
   },
@@ -3275,7 +3348,7 @@ const toolDefs={
       return null;
     }
   },
-   'video-h3':{
+  'video-h3':{
     title:'Video (Pro, w/ Audio)',
     form:`
       <label class="form-label">Mode</label>
@@ -3528,7 +3601,6 @@ function resumePendingVideoPolls(msgs){
   }
 }
 
-
 async function handleVideoGen(payload,isImageToVideo){
   if(!currentCtrl)currentCtrl=new AbortController();
   showOrbLoader('Submitting video job...');
@@ -3568,7 +3640,6 @@ document.querySelectorAll('[data-tool]').forEach(btn=>{
       const tf=$('tool-form');
       tf.innerHTML=def.form;
       if(def.init) await def.init(tf);
-      if(def.init) def.init(tf); 
       tf.onsubmit=async e=>{
         e.preventDefault();
         const sb=tf.querySelector('[type=submit]');
@@ -3643,7 +3714,6 @@ let callPlayCtx=null, callPlayHeadTime=0;
 let isCallActive=false, isMuted=false, botSpeaking=false;
 let callStartTime=null, callTimerInt=null;
 
-// Renamed voices — real Gemini names never shown to the user
 const PHILLY_VOICES = {
   amara: { label:"Amara (Default)", raw:"Kore" },
   breeze:{ label:"Breeze",          raw:"Zephyr" },
@@ -3706,9 +3776,6 @@ let captionBuffers = { user: '', bot: '' };
 let captionTurnRole = null;
 
 function addCaption(role, chunk){
-  // Google streams transcripts as a sequence of small chunks per turn, not
-  // cumulative full text — so we must APPEND, and only start a fresh line
-  // when the speaking turn actually switches.
   if (captionTurnRole !== role) {
     captionTurnRole = role;
     captionBuffers[role] = '';
@@ -3797,6 +3864,7 @@ async function startVoiceCall(){
         }
       }
     };
+  };
 
   callWs.onmessage=(evt)=>{
     if(evt.data instanceof ArrayBuffer){
@@ -3976,7 +4044,7 @@ window.toast = (msg, type) => {
 window.openM = (id) => {
     const el = $(id);
     if(el) el.style.display = 'flex';
-    else prompt("Funding amount (₦):", "1000"); // Fallback if modal HTML is missing
+    else prompt("Funding amount (₦):", "1000");
 };
 window.closeM = (id) => { const el = $(id); if(el) el.style.display = 'none'; };
 </script>
@@ -3986,9 +4054,9 @@ window.closeM = (id) => { const el = $(id); if(el) el.style.display = 'none'; };
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1YTKP10ZX"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date()); 
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date()); 
 
-  gtag('config', 'G-J1YTKP10ZX');
+  gtag('config', 'G-J1YTKP10ZX');
 </script>
