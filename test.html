@@ -494,6 +494,13 @@ pre::before{
 .rm-file{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;transition:var(--transition)}
 .rm-file:hover{color:var(--danger)}
 
+/* Emails — */
+.draft-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin:8px 0}
+.draft-card-hdr{padding:10px 14px;background:rgba(201,169,110,0.08);border-bottom:1px solid var(--border);font-family:var(--font-brand);font-size:0.78rem;color:var(--accent);letter-spacing:0.5px}
+.draft-card-body{padding:16px;font-family:var(--font-body);font-size:0.92rem;line-height:1.8;outline:none;max-height:60vh;overflow-y:auto}
+.draft-card-body:focus{background:rgba(255,255,255,0.02)}
+.draft-card-actions{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--border);flex-wrap:wrap}
+   
 /* ── SIDE PANELS ──────────────────────────────────────────────────── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;opacity:0;transition:opacity 0.3s}
 .overlay.open{display:block;opacity:1}
@@ -1157,6 +1164,56 @@ function renderMd(text=''){
   html+=inlineMd(text.slice(last));
   return html;
 }
+
+function isDraftDocument(text){
+  const t = text.trim();
+  const hasSubject = /^Subject:/im.test(t);
+  const hasSalutation = /^(Dear|Hi |Hello |To Whom It May Concern)/im.test(t);
+  const longProse = t.split(/\s+/).length > 180 && !t.includes('```');
+  return (hasSubject || hasSalutation) || (longProse && /^(Dear|Hi|Hello|Subject|To |From )/im.test(t.slice(0,80)));
+}
+
+function renderDraftCard(text, msgId){
+  const safeId = 'draft_' + (msgId || Date.now());
+  const subjMatch = text.match(/^Subject:\s*(.+)$/im);
+  const subject = subjMatch ? subjMatch[1].trim() : '';
+  return `<div class="draft-card" data-draft-id="${safeId}">
+    <div class="draft-card-hdr">
+      <i class="fa-solid fa-file-lines"></i> <span>Draft${subject?': '+esc(subject):''}</span>
+    </div>
+    <div class="draft-card-body" contenteditable="true" id="${safeId}">${renderMd(text)}</div>
+    <div class="draft-card-actions">
+      <button class="ctrl-btn" onclick="copyDraft('${safeId}')"><i class="fa-solid fa-copy"></i> Copy</button>
+      <button class="ctrl-btn" onclick="emailDraft('${safeId}','${esc(subject).replace(/'/g,"\\'")}')"><i class="fa-solid fa-envelope"></i> Send as Email</button>
+      <button class="ctrl-btn" onclick="refineDraft('${safeId}')"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask AI to Refine</button>
+    </div>
+  </div>`;
+}
+
+window.copyDraft = id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  navigator.clipboard.writeText(el.innerText).catch(()=>{});
+  toast('Copied!','s');
+};
+window.emailDraft = (id, subject) => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const body = encodeURIComponent(el.innerText);
+  const subj = encodeURIComponent(subject || '');
+  window.location.href = `mailto:?subject=${subj}&body=${body}`;
+};
+window.refineDraft = id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const ti = $('txt-input');
+  if(ti){
+    ti.value = `Refine this draft:\n\n${el.innerText}\n\nInstruction: `;
+    ti.focus();
+    ti.dispatchEvent(new Event('input'));
+    ti.setSelectionRange(ti.value.length, ti.value.length);
+  }
+};
 
 function renderThinking(thinking, mainContent) {
   if (!thinking) return mainContent;
@@ -2758,7 +2815,11 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
         </details>`;
   }
   
-  finalHtml += renderMd(fullText || "No response.");
+  if (fullText && isDraftDocument(fullText)) {
+    finalHtml += renderDraftCard(fullText, aiG.dataset.id || Date.now());
+  } else {
+    finalHtml += renderMd(fullText || "No response.");
+  }
   contentEl.innerHTML = finalHtml;
   enhanceCode(aiG);
 
@@ -3652,6 +3713,10 @@ async function startVoiceCall(){
     callMicCtx=new (window.AudioContext||window.webkitAudioContext)();
     const source=callMicCtx.createMediaStreamSource(callMicStream);
     callMicNode=callMicCtx.createScriptProcessor(4096,1,1);
+    const callAnalyser=callMicCtx.createAnalyser();
+    callAnalyser.fftSize=256;
+    const ampData=new Uint8Array(callAnalyser.frequencyBinCount);
+    source.connect(callAnalyser);
     source.connect(callMicNode);
     callMicNode.connect(callMicCtx.destination);
     callMicNode.onaudioprocess=(e)=>{
@@ -3659,8 +3724,19 @@ async function startVoiceCall(){
       const input=e.inputBuffer.getChannelData(0);
       const pcm16=downsampleTo16kPCM16(input,callMicCtx.sampleRate);
       callWs.send(pcm16.buffer);
+
+      if(!botSpeaking){
+        callAnalyser.getByteFrequencyData(ampData);
+        const avg=ampData.reduce((a,b)=>a+b,0)/ampData.length;
+        const bars=document.querySelectorAll('#speech-wave .wave-bar');
+        if(avg>8){
+          $('speech-wave').classList.add('active');
+          bars.forEach((b,i)=>{ b.style.height=(6+Math.min(26,avg*(0.5+i*0.15)))+'px'; });
+        } else if(!isMuted){
+          $('speech-wave').classList.remove('active');
+        }
+      }
     };
-  };
 
   callWs.onmessage=(evt)=>{
     if(evt.data instanceof ArrayBuffer){
