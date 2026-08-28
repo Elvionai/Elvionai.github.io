@@ -3154,6 +3154,94 @@ const toolDefs={
       return null;
     }
   },
+   'video-h3':{
+    title:'Video (Pro, w/ Audio)',
+    form:`
+      <label class="form-label">Mode</label>
+      <select class="form-select" id="tf-mode">
+        <option value="text">Text to Video</option>
+        <option value="image">Image to Video</option>
+        <option value="reference">Reference (style + voice)</option>
+      </select>
+      <label class="form-label">Prompt</label>
+      <textarea class="form-textarea" id="tf-prompt" required placeholder="A drone shot over Lagos at golden hour, with cinematic score..."></textarea>
+      <div id="tf-h3-images-wrap" style="display:none">
+        <label class="form-label">First Frame Image</label>
+        <input type="file" class="form-input" id="tf-first" accept="image/*">
+        <label class="form-label">Last Frame (optional)</label>
+        <input type="file" class="form-input" id="tf-last" accept="image/*">
+      </div>
+      <div id="tf-h3-ref-wrap" style="display:none">
+        <label class="form-label">Reference Images (up to 9, style/character)</label>
+        <input type="file" class="form-input" id="tf-refimgs" accept="image/*" multiple>
+        <label class="form-label">Reference Video URL (optional — voice/pacing)</label>
+        <input type="text" class="form-input" id="tf-refvid" placeholder="https://...">
+      </div>
+      <label class="form-label">Duration (4-15s)</label>
+      <input class="form-input" type="number" id="tf-dur" value="6" min="4" max="15">
+      <label class="form-label">Resolution</label>
+      <select class="form-select" id="tf-res"><option value="768P">768P (cheaper)</option><option value="2K">2K</option></select>
+      <label class="form-label">Camera Motion</label>
+      <select class="form-select" id="tf-cam"><option value="none">None</option><option value="push_in">Push In</option><option value="pull_out">Pull Out</option><option value="pan_left">Pan Left</option><option value="pan_right">Pan Right</option><option value="orbit">Orbit</option><option value="handheld">Handheld</option><option value="drone">Drone</option><option value="zoom_burst">Zoom Burst</option><option value="shake">Shake</option></select>
+      <label class="form-label">Audio Mood</label>
+      <select class="form-select" id="tf-audio"><option value="none">None</option><option value="cinematic_score">Cinematic Score</option><option value="tense">Tense</option><option value="upbeat">Upbeat</option><option value="ambient">Ambient</option><option value="silence">Near Silence</option></select>
+      <button type="submit" class="submit-btn"><i class="fa-solid fa-clapperboard"></i> Generate Video</button>`,
+    init: tf => {
+      const mode=tf.querySelector('#tf-mode');
+      const update=()=>{
+        tf.querySelector('#tf-h3-images-wrap').style.display = mode.value==='image'?'block':'none';
+        tf.querySelector('#tf-h3-ref-wrap').style.display = mode.value==='reference'?'block':'none';
+      };
+      mode.onchange=update; update();
+    },
+    run:async form=>{
+      const mode=form.querySelector('#tf-mode').value;
+      const prompt=form.querySelector('#tf-prompt').value;
+      const duration=parseInt(form.querySelector('#tf-dur').value)||6;
+      const resolution=form.querySelector('#tf-res').value;
+      const camera_motion=form.querySelector('#tf-cam').value;
+      const audio_mood=form.querySelector('#tf-audio').value;
+      await saveMsg('user',`H3 Video (${mode}): "${prompt.slice(0,40)}..."`);
+      showOrbLoader('Submitting Pro video job...');
+      try{
+        let res, ep;
+        if(mode==='text'){
+          ep='/api/studio/h3/generate-text';
+          res=await fetch(API+ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,duration,resolution,ratio:'16:9',camera_motion,audio_mood}),signal:currentCtrl?.signal});
+        } else if(mode==='image'){
+          const first=form.querySelector('#tf-first').files[0];
+          if(!first) return '❌ Select a first frame image.';
+          const fd=new FormData();
+          fd.append('prompt',prompt);fd.append('first_frame',first);
+          const last=form.querySelector('#tf-last').files[0];
+          if(last) fd.append('last_frame',last);
+          fd.append('duration',duration);fd.append('resolution',resolution);
+          fd.append('camera_motion',camera_motion);fd.append('audio_mood',audio_mood);
+          ep='/api/studio/h3/generate-image';
+          res=await fetch(API+ep,{method:'POST',body:fd,signal:currentCtrl?.signal});
+        } else {
+          const refImgs=[...(form.querySelector('#tf-refimgs').files||[])];
+          const refVid=form.querySelector('#tf-refvid').value.trim();
+          if(!refImgs.length && !refVid) return '❌ Add at least one reference image or video URL.';
+          const fd=new FormData();
+          fd.append('prompt',prompt);
+          refImgs.forEach(f=>fd.append('reference_images',f));
+          if(refVid) fd.append('reference_video_url',refVid);
+          fd.append('duration',duration);fd.append('resolution',resolution);
+          fd.append('ratio','adaptive');fd.append('camera_motion',camera_motion);fd.append('audio_mood',audio_mood);
+          ep='/api/studio/h3/generate-reference';
+          res=await fetch(API+ep,{method:'POST',body:fd,signal:currentCtrl?.signal});
+        }
+        const d=await res.json();
+        if(!res.ok||!d.task_id) throw new Error(d.detail||'Task submission failed');
+        removeOrbLoader();
+        await showToolResult(`⏳ Pro video job queued (${d.credits_charged} credits). Task ID: \`${d.task_id}\` — checking every 20 seconds...`);
+        pollH3VideoTask(d.task_id);
+        return null;
+      }catch(e){return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`}
+      finally{removeOrbLoader()}
+    }
+  },
   website:{
     title:'Create Website',
     form:`<label class="form-label">Website Description</label><textarea class="form-textarea" id="tf-prompt" required placeholder="A portfolio site for a Nigerian fashion designer..."></textarea><button type="submit" class="submit-btn"><i class="fa-solid fa-globe"></i> Build & Deploy</button>`,
@@ -3289,6 +3377,25 @@ function pollVideoTask(taskId){
   },20000);
 }
 
+function pollH3VideoTask(taskId){
+  if(activeVideoPolls.has('h3_'+taskId)) return;
+  activeVideoPolls.add('h3_'+taskId);
+  const poll=setInterval(async()=>{
+    try{
+      const sr=await fetch(`${API}/api/h3/status/${taskId}`);
+      const sd=await sr.json();
+      if(sr.ok&&sd.url){
+        clearInterval(poll); activeVideoPolls.delete('h3_'+taskId);
+        const videoHtml=`<video controls src="${sd.url}" style="width:100%;border-radius:10px;margin-top:8px"></video>`;
+        await showToolResult(`🎬 Your Pro video (with audio) is ready!${videoHtml}`);
+      } else if(!sr.ok){
+        clearInterval(poll); activeVideoPolls.delete('h3_'+taskId);
+        await showToolResult(`❌ Video render failed.`);
+      }
+    }catch(pe){ console.error('H3 poll error:',pe); }
+  },20000);
+}
+
 function resumePendingVideoPolls(msgs){
   const readyRe = /Video job queued\. Task ID: `([a-zA-Z0-9_-]+)`/;
   for(let i=0;i<msgs.length;i++){
@@ -3299,6 +3406,7 @@ function resumePendingVideoPolls(msgs){
     if(!alreadyDone) pollVideoTask(match[1]);
   }
 }
+
 
 async function handleVideoGen(payload,isImageToVideo){
   if(!currentCtrl)currentCtrl=new AbortController();
@@ -3473,20 +3581,32 @@ function playCallPCM24k(arrayBuffer){
   },(buffer.duration*1000)+300);
 }
 
-function addCaption(role,text){
-  const wrap=$('call-captions');
-  let last=wrap.lastElementChild;
-  if(last && last.dataset.role===role){
-    last.textContent=text; // update in place — Google streams partials
-  } else {
-    const d=document.createElement('div');
-    d.className=`caption-line ${role}`;
-    d.dataset.role=role;
-    d.textContent=text;
-    wrap.appendChild(d);
-    while(wrap.children.length>6) wrap.removeChild(wrap.firstChild);
+let captionBuffers = { user: '', bot: '' };
+let captionTurnRole = null;
+
+function addCaption(role, chunk){
+  // Google streams transcripts as a sequence of small chunks per turn, not
+  // cumulative full text — so we must APPEND, and only start a fresh line
+  // when the speaking turn actually switches.
+  if (captionTurnRole !== role) {
+    captionTurnRole = role;
+    captionBuffers[role] = '';
   }
-  wrap.scrollTop=wrap.scrollHeight;
+  captionBuffers[role] += chunk;
+
+  const wrap = $('call-captions');
+  let last = wrap.lastElementChild;
+  if (last && last.dataset.role === role) {
+    last.textContent = captionBuffers[role];
+  } else {
+    const d = document.createElement('div');
+    d.className = `caption-line ${role}`;
+    d.dataset.role = role;
+    d.textContent = captionBuffers[role];
+    wrap.appendChild(d);
+    while (wrap.children.length > 8) wrap.removeChild(wrap.firstChild);
+  }
+  wrap.scrollTop = wrap.scrollHeight;
 }
 
 function startCallTimer(){
