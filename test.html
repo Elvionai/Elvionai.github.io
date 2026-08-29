@@ -985,6 +985,7 @@ let userMemory=localStorage.getItem('ph_memory')||null;
 let isResponding=false,currentCtrl=null;
 let pendingFnCall=null;
 let renameTargetId=null;
+const CALL_SYSTEM_PROMPT = "You are Philadelphia, on a live voice call, not a text chat. Speak naturally like a real phone conversation. Never suggest the user type commands, never mention buttons, menus, or panels, and never offer to generate an image, video, comic, or website since you cannot produce those on a call — if asked for something visual, tell them to text you that request instead. Keep replies conversational and reasonably short since this is spoken aloud, not read.";
 
 // ── PANELS ───────────────────────────────────────────────────────
 const panels={
@@ -2142,7 +2143,7 @@ function showOrbLoader(text='Processing'){
   const d=document.createElement('div');
   d.className='msg-group ai'; d.setAttribute('data-orb-loader','1');
   d.innerHTML=`<div class="bubble"><div class="ai-content"><div class="orb-wrap"><div class="orb-loader"><div class="orb-r orb-r1"></div><div class="orb-r orb-r2"></div><div class="orb-r orb-r3"></div></div><div class="orb-info"><div class="orb-status" id="orb-status-text">${esc(text)}</div><div class="orb-meta">Engine · ${currentModel.toUpperCase()}</div></div></div></div></div>`;
-  vp.appendChild(d); orbLoaderDiv=d; isResponding=true; scrollBot();
+  vp.appendChild(d); orbLoaderDiv=d; isResponding=true; responseStartTime=Date.now(); scrollBot();
   $('send-btn').style.display='none'; $('stop-btn').style.display='flex'; $('call-btn').style.display='none';
 }
 function removeOrbLoader(){ if(orbLoaderDiv){orbLoaderDiv.remove();orbLoaderDiv=null} }
@@ -3077,6 +3078,21 @@ $('mute-btn').onclick=(e)=>{
 };
 
 setTimeout(()=>{if(ti)ti.focus()},300);
+
+// ── STUCK-GENERATION WATCHDOG ─────────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!isResponding || !responseStartTime) return;
+  const stuckFor = Date.now() - responseStartTime;
+  if (stuckFor > 60000) {
+    if (currentCtrl) { try { currentCtrl.abort(); } catch(e){} }
+    removeOrbLoader();
+    isResponding = false;
+    responseStartTime = 0;
+    $('send-btn').style.display='flex'; $('stop-btn').style.display='none'; $('call-btn').style.display='flex';
+    toast('That generation stalled while the tab was backgrounded. If it already finished, check the chat in a moment — otherwise please try again.', 'e');
+  }
+});
 
 // ── WALLET ──────────────────────────────────────────────
 async function updateWalletUI(){
