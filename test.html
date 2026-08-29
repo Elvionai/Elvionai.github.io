@@ -682,6 +682,7 @@ pre::before{content:"CODE // " attr(data-lang);position:absolute;top:10px;left:1
     <button class="panel-link" data-tool="edit-website"><i class="fa-solid fa-pen-ruler"></i> Edit a Website <span class="tool-price-badge">~5 cr</span></button>
     <button class="panel-link" data-tool="my-sites"><i class="fa-solid fa-list-check"></i> My Websites</button>
     <button class="panel-link" data-tool="research-report"><i class="fa-solid fa-flask-vial"></i> Research Report <span class="tool-price-badge">~20 cr</span></button>
+    <button class="panel-link" data-tool="research-report-pro"><i class="fa-solid fa-magnifying-glass-chart"></i> Research Report Pro <span class="tool-price-badge">~28 cr</span></button>
   </div>
 </aside>
 
@@ -2766,17 +2767,30 @@ const toolDefs={
       finally{removeOrbLoader()}
     }
   },
-  'research-report':{ title:'Research Report', form:`<label class="form-label">Topic</label><input class="form-input" id="tf-topic" required placeholder="The history of AI in Nigeria"><button type="submit" class="submit-btn"><i class="fa-solid fa-flask-vial"></i> Generate Report</button>`,
+  'research-report-pro':{ title:'Research Report Pro', form:`
+    <div style="font-size:0.75rem;color:var(--text-2);margin-bottom:12px;line-height:1.4;">Pulls real sources via Google Search, then writes a styled, linked report.</div>
+    <label class="form-label">Topic</label>
+    <input class="form-input" id="tf-topic" required placeholder="The history of AI in Nigeria">
+    <label class="form-label">Writing Style</label>
+    <select class="form-select" id="tf-style"><option value="professional">Professional</option><option value="academic">Academic</option><option value="casual">Casual</option><option value="journalistic">Journalistic</option></select>
+    <label class="form-label">Custom Instructions (optional)</label>
+    <textarea class="form-textarea" id="tf-instructions" placeholder="e.g. Focus on the last 5 years, include specific examples..."></textarea>
+    <label class="form-label">Approx. Pages (1-10)</label>
+    <input class="form-input" type="number" id="tf-pages" value="3" min="1" max="10">
+    <button type="submit" class="submit-btn"><i class="fa-solid fa-magnifying-glass-chart"></i> Generate Pro Report</button>`,
     run:async form=>{
       const topic=form.querySelector('#tf-topic').value;
-      await saveMsg('user',`Research: "${topic}"`);
-      showOrbLoader('Researching & compiling...');
+      const writing_style=form.querySelector('#tf-style').value;
+      const custom_instructions=form.querySelector('#tf-instructions').value;
+      const num_pages=parseInt(form.querySelector('#tf-pages').value)||3;
+      await saveMsg('user',`Research Pro: "${topic}" (${writing_style}, ${num_pages}p)`);
+      showOrbLoader('Searching Google & compiling...');
       try{
-        const res=await fetch(`${API}/api/tools/research`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic}),signal:currentCtrl?.signal});
+        const res=await fetch(`${API}/api/tools/research-pro`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,writing_style,custom_instructions,num_pages}),signal:currentCtrl?.signal});
         const d=await res.json(); if(!res.ok)throw new Error(d.detail);
         const blob=await(await fetch(d.download_url)).blob();
         const url=URL.createObjectURL(blob);
-        return`<div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px"><i class="fa-solid fa-file-pdf" style="font-size:1.6rem;color:#e05a5a"></i><div><div style="font-weight:700;color:var(--text-1);margin-bottom:4px">${esc(topic)}</div><a href="${url}" download="${d.filename}" style="color:var(--accent-green);text-decoration:none"><i class="fa-solid fa-download"></i> Download PDF Report</a></div></div>`;
+        return`<div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.2);border-radius:10px"><i class="fa-solid fa-file-pdf" style="font-size:1.6rem;color:#e05a5a"></i><div><div style="font-weight:700;color:var(--text-1);margin-bottom:4px">${esc(topic)}</div><div style="font-size:0.72rem;color:var(--text-2);margin-bottom:6px">${d.sources_used} sources cited</div><a href="${url}" download="${d.filename}" style="color:var(--accent-green);text-decoration:none"><i class="fa-solid fa-download"></i> Download PDF Report</a></div></div>`;
       }catch(e){ return e.name==='AbortError'?'❌ Stopped.':`❌ ${e.message}`; }
       finally{removeOrbLoader()}
     }
