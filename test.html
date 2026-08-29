@@ -797,7 +797,7 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 // unclosed tag mid-stream. Never lets reasoning leak into the reply body.
 function parseThinkStream(raw){
   let thinking='', clean='', rest=raw||'';
-  const openRx=/<think(?:ing)?>/i, closeRx=/<\/think(?:ing)?>/i;
+  const openRx=/<[\w:]*think(?:ing)?>/i, closeRx=/<\/[\w:]*think(?:ing)?>/i;
   while(true){
     const om = rest.match(openRx);
     if(!om){ clean += rest; break; }
@@ -985,6 +985,7 @@ let userMemory=localStorage.getItem('ph_memory')||null;
 let isResponding=false,currentCtrl=null,responseStartTime=0;
 let pendingFnCall=null;
 let renameTargetId=null;
+let personaSwitchIndex = 0;
 const CALL_SYSTEM_PROMPT = "You are Philadelphia, on a live voice call, not a text chat. Speak naturally like a real phone conversation. Never suggest the user type commands, never mention buttons, menus, or panels, and never offer to generate an image, video, comic, or website since you cannot produce those on a call — if asked for something visual, tell them to text you that request instead. Keep replies conversational and reasonably short since this is spoken aloud, not read.";
 
 // ── PANELS ───────────────────────────────────────────────────────
@@ -2292,7 +2293,7 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       await typewriterRevealDual(contentEl, thinkingText, fullText, currentCtrl.signal);
 
     } else {
-      const historyPayload = currentMessages.map(m => ({ role: m.role, content: m.text || '' }));
+      const historyPayload = currentMessages.slice(personaSwitchIndex).map(m => ({ role: m.role, content: m.text || '' }));
       const payload = { message: augmentedMessage, history: historyPayload, system_prompt: finalSysPrompt };
       const res = await fetch(EP.minimax, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: currentCtrl.signal });
       if (!res.ok) { const errData = await res.json().catch(() => ({})); throw new Error(errData.detail || 'Engine is unavailable. Please check your credits.'); }
