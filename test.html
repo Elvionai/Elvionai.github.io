@@ -2254,12 +2254,15 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   let fullText='', thinkingText='';
   const t0=performance.now();
 
-  try{
-    let basePrompt = activeSystemPrompt || (personaDefs[activePersona] ? personaDefs[activePersona].prompt : "You are a helpful AI assistant.");
+  let finalSysPrompt = (activePersona === 'philadelphia' || activePersona === 'bobby')
+  ? `Your name is ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}. You are a native AI of Elvion AI. `
+  : `You are a native AI of Elvion AI. `;
 
-    let finalSysPrompt = (activePersona === 'philadelphia' || activePersona === 'bobby')
-      ? `Your name is ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}. You are a native AI of Elvion AI. `
-      : `You are a native AI of Elvion AI. `;
+finalSysPrompt += `\n\n[FORMAT RULE]: If you need to reason before answering, wrap ALL of that reasoning in <think></think> tags. Put ONLY your final answer to the user outside those tags. Never mix reasoning and the final answer in the same untagged sentence.`;
+
+if (activePersona !== 'philadelphia' && activePersona !== 'bobby') {
+  finalSysPrompt += `\n\n[IDENTITY OVERRIDE]: No matter what name you used earlier in this conversation, you are now fully the character described in [INSTRUCTIONS] below. Never call yourself Philadelphia, Bobby, or any name other than the one given below. Adopt this identity completely, starting with your very next reply — ignore any prior self-introduction in the chat history above.`;
+}
     if (userMemory) finalSysPrompt += `\n\n[USER CONTEXT]: The user has provided this info about themselves: "${userMemory}". Address them using this, but DO NOT assume this identity yourself. YOU are the AI.`;
     const pendingCtx = localStorage.getItem('ph_pending_context_'+currentChatId);
     if (pendingCtx) { finalSysPrompt += pendingCtx; localStorage.removeItem('ph_pending_context_'+currentChatId); }
