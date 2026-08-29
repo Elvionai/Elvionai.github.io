@@ -2768,7 +2768,7 @@ const toolDefs={
     }
   },
   'research-report-pro':{ title:'Research Report Pro', form:`
-    <div style="font-size:0.75rem;color:var(--text-2);margin-bottom:12px;line-height:1.4;">Pulls real sources via Google Search, then writes a styled, linked report.</div>
+    <div style="font-size:0.75rem;color:var(--text-2);margin-bottom:12px;line-height:1.4;">Pulls real sources from the web, then writes a styled, linked report.</div>
     <label class="form-label">Topic</label>
     <input class="form-input" id="tf-topic" required placeholder="The history of AI in Nigeria">
     <label class="form-label">Writing Style</label>
@@ -2777,16 +2777,25 @@ const toolDefs={
     <textarea class="form-textarea" id="tf-instructions" placeholder="e.g. Focus on the last 5 years, include specific examples..."></textarea>
     <label class="form-label">Approx. Pages (1-10)</label>
     <input class="form-input" type="number" id="tf-pages" value="3" min="1" max="10">
+    <label class="form-label">Font</label>
+    <select class="form-select" id="tf-font"><option value="times">Times New Roman</option><option value="helvetica">Helvetica</option><option value="courier">Courier</option></select>
+    <label class="form-label">Alignment</label>
+    <select class="form-select" id="tf-align"><option value="left">Left</option><option value="justified">Justified</option></select>
+    <label class="form-label">Template</label>
+    <select class="form-select" id="tf-template"><option value="classic">Classic (underlined headers)</option><option value="modern">Modern (bold headers)</option><option value="minimal">Minimal (clean, no rules)</option></select>
     <button type="submit" class="submit-btn"><i class="fa-solid fa-magnifying-glass-chart"></i> Generate Pro Report</button>`,
     run:async form=>{
       const topic=form.querySelector('#tf-topic').value;
       const writing_style=form.querySelector('#tf-style').value;
       const custom_instructions=form.querySelector('#tf-instructions').value;
       const num_pages=parseInt(form.querySelector('#tf-pages').value)||3;
-      await saveMsg('user',`Research Pro: "${topic}" (${writing_style}, ${num_pages}p)`);
-      showOrbLoader('Searching Google & compiling...');
+      const font=form.querySelector('#tf-font').value;
+      const alignment=form.querySelector('#tf-align').value;
+      const template=form.querySelector('#tf-template').value;
+      await saveMsg('user',`Research Pro: "${topic}" (${writing_style}, ${num_pages}p, ${font}, ${alignment}, ${template})`);
+      showOrbLoader('Searching & compiling...');
       try{
-        const res=await fetch(`${API}/api/tools/research-pro`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,writing_style,custom_instructions,num_pages}),signal:currentCtrl?.signal});
+        const res=await fetch(`${API}/api/tools/research-pro`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,writing_style,custom_instructions,num_pages,font,alignment,template}),signal:currentCtrl?.signal});
         const d=await res.json(); if(!res.ok)throw new Error(d.detail);
         const blob=await(await fetch(d.download_url)).blob();
         const url=URL.createObjectURL(blob);
