@@ -868,25 +868,34 @@ const REASONING_LEAK_PATTERNS = [
   /^the user (is|wants|asked|said|seems)/i,
   /^let me (search|check|verify|confirm|look|try|do)/i,
   /^i (should|need to|will|must|don'?t have) (a |an )?(search|check|verify|confirm|find|clear)/i,
-  /^now i have/i,
   /^based on (the|this|my) search results?,? let me/i,
   /^the search results (are|show|indicate|aren'?t|do not)/i,
   /^output:/i,
 ];
-function looksLikeLeakedReasoning(text){
-  const firstLine = (text || '').trim().split('\n')[0].trim();
-  return REASONING_LEAK_PATTERNS.some(rx => rx.test(firstLine));
+function stripLeadingReasoningLines(text){
+  const lines = (text || '').split('\n');
+  let i = 0, strippedLines = [];
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (!line) { i++; continue; }
+    if (REASONING_LEAK_PATTERNS.some(rx => rx.test(line))) { strippedLines.push(lines[i]); i++; }
+    else break;
+  }
+  return { stripped: strippedLines.join('\n').trim(), remaining: lines.slice(i).join('\n').trim() };
 }
 function quarantineLeakedReasoning(fullText, thinkingText){
-  if (looksLikeLeakedReasoning(fullText)) {
-    const salvaged = thinkingText ? thinkingText + '\n\n' + fullText : fullText;
-    return {
-      fullText: "I wasn't able to pin down a confirmed answer after searching — want me to try again with a more specific angle?",
-      thinkingText: salvaged
-    };
+  const { stripped, remaining } = stripLeadingReasoningLines(fullText);
+  if (!stripped) return { fullText, thinkingText }; // nothing leaked at the front — leave it alone
+  if (remaining.length > 40) {
+    // A real answer follows the leaked lead-in — keep the answer, quarantine only the leak line(s).
+    return { fullText: remaining, thinkingText: thinkingText ? thinkingText + '\n\n' + stripped : stripped };
   }
-  return { fullText, thinkingText };
-}
+  // Nothing substantial left after stripping — the whole thing really was just reasoning chatter.
+  return {
+    fullText: "I wasn't able to pin down a confirmed answer after searching — want me to try again with a more specific angle?",
+    thinkingText: thinkingText ? thinkingText + '\n\n' + fullText : fullText
+  };
+    }
 
 function renderMd(text=''){
   if(!text) return '';
