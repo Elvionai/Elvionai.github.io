@@ -858,6 +858,13 @@ function inlineMd(raw=''){
   });
   return s.replace(/\n/g,'<br>');
 }
+// Repairs a dangling/unclosed fence at the very end of a finished message —
+// safety net for when the model forgets to close a code block.
+function closeUnbalancedFences(text=''){
+  const count = (text.match(/```/g) || []).length;
+  return count % 2 !== 0 ? text + '\n```' : text;
+}
+
 function renderMd(text=''){
   if(!text) return '';
   const codeRx = /```(\w+)?\n?([\s\S]*?)```/g;
@@ -869,7 +876,20 @@ function renderMd(text=''){
     html+=`<pre data-lang="${l}"><div class="code-btns"><button class="code-btn preview-btn" title="Preview output"><i class="fa-solid fa-eye"></i> Preview</button><button class="code-btn copy-btn"><i class="fa-solid fa-copy"></i> Copy</button></div><code class="language-${l}">${sc}</code></pre>`;
     last=offset+match.length;
   });
-  html+=inlineMd(text.slice(last));
+  // Live/open fence handling: if the model has opened a fence but hasn't
+  // closed it yet (still streaming), render it as a code block IMMEDIATELY
+  // instead of waiting for the closing ``` — this is what makes it look
+  // like GitHub as it types, instead of flipping formats after the fact.
+  const rest = text.slice(last);
+  const openMatch = rest.match(/```(\w+)?\n?([\s\S]*)$/);
+  if (openMatch) {
+    html += inlineMd(rest.slice(0, openMatch.index));
+    const l = (openMatch[1] || 'code').toLowerCase().trim();
+    const sc = esc((openMatch[2]||'').replace(/\n$/,''));
+    html += `<pre data-lang="${l}"><div class="code-btns"><button class="code-btn preview-btn" title="Preview output"><i class="fa-solid fa-eye"></i> Preview</button><button class="code-btn copy-btn"><i class="fa-solid fa-copy"></i> Copy</button></div><code class="language-${l}">${sc}</code></pre>`;
+  } else {
+    html += inlineMd(rest);
+  }
   return html;
     }
 function renderThinkBlock(thinking, open=false){
@@ -2335,7 +2355,12 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
               let html = renderThinkBlock(thinkingText, true);
               if (fullText) html += renderMd(fullText) + '<span class="cursor"></span>';
               else if(thinkingText && thinkingUIEnabled()) html += '<span style="color:var(--text-muted);font-size:0.85rem">…</span>';
-              if (html) { contentEl.innerHTML = html; scrollBot(); }
+              if (html) {
+                contentEl.innerHTML = html;
+                const now = performance.now();
+                if (now - (contentEl._lastHl || 0) > 180) { enhanceCode(contentEl); contentEl._lastHl = now; }
+                scrollBot();
+              }
             }catch(e){ if (e.message && !e.message.includes('JSON')) fullText += `\n\n❌ ${e.message}`; }
           }
         }
@@ -2346,6 +2371,7 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
   }
 
   const dur=((performance.now()-t0)/1000).toFixed(1);
+  fullText = closeUnbalancedFences(fullText);
   let finalHtml = renderThinkBlock(thinkingText, false);
   finalHtml += (fullText && isDraftDocument(fullText)) ? renderDraftCard(fullText, aiG.dataset.id || Date.now()) : renderMd(fullText || "No response.");
   contentEl.innerHTML = finalHtml;
@@ -2392,7 +2418,8 @@ async function typewriterRevealDual(el, thinking, text, signal){
     scrollBot();
     await new Promise(r=>setTimeout(r,tok.trim()?16:4));
   }
-  el.innerHTML = renderThinkBlock(thinking, false) + renderMd(text);
+  el.innerHTML = renderThinkBlock(thinking, false) + renderMd(closeUnbalancedFences(text));
+  enhanceCode(el);
 }
 
 // ── PASTE HANDLING (fix: normal pastes appear instantly as text) ──
