@@ -2284,8 +2284,22 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       ? `Your name is ${currentModel === 'bobby' ? 'Bobby' : 'Philadelphia'}. You are a native AI of Elvion AI. `
       : `You are a native AI of Elvion AI. `;
 
-    finalSysPrompt += `\n\n[FORMAT RULE]: If you need to reason before answering, wrap ALL of that reasoning in <think></think> tags. Put ONLY your final answer to the user outside those tags. Never mix reasoning and the final answer in the same untagged sentence.`;
-    finalSysPrompt += `\n\n[CODE FORMAT RULE]: Any code, of any length, MUST be wrapped in a properly fenced markdown code block using triple backticks immediately followed by the language name (e.g. \`\`\`python). Never write code outside a fence. Never leave a fence unclosed — always close it with a matching triple backtick on its own line, no matter how long the code is. Do not interleave explanation text inside the code fence.`;
+    if (currentModel === 'bobby') {
+      // Bobby has no native reasoning channel — this tag convention is its ONLY way to separate the two.
+      finalSysPrompt += `\n\n[FORMAT RULE]: If you reason before answering, wrap ALL of that reasoning in <think></think> tags, and nothing else. Put ONLY your final answer outside those tags. Never place your actual answer inside <think> tags, and never place reasoning outside them. If unsure whether a sentence is reasoning or the answer, treat it as the answer and keep it outside the tags.`;
+    } else {
+      // Philadelphia/M3 already separates reasoning from the answer natively via the API's
+      // own thinking channel. Telling it to ALSO use <think> tags in its reply text is what
+      // causes the answer to get hidden inside "thinking" (or reasoning to leak into the reply).
+      finalSysPrompt += `\n\n[FORMAT RULE]: Your reasoning is already captured separately by the platform's own thinking mechanism — do NOT wrap any part of your reply in <think> or <thinking> tags. Write your final answer directly and plainly in the reply. Using <think> tags in your reply text will hide your real answer from the user, so never do it.`;
+    }
+    finalSysPrompt += `\n\n[CODE FORMAT RULE — MANDATORY, NO EXCEPTIONS]:
+1. Any code, of any length — even 10,000+ lines — lives inside ONE fenced markdown code block: open with three backticks immediately followed by the language name (e.g. \`\`\`python), close with three backticks alone on their own line.
+2. Open the fence BEFORE writing the first character of code. Never write a single line of code outside a fence.
+3. Once a fence is open for a file/snippet, keep writing inside that SAME fence until it is 100% complete. Never close it early, never split one file across multiple fenced blocks with prose in between.
+4. Explanations go before the opening fence or after the closing fence — never inside it.
+5. Every fence you open, you close. An unclosed fence is a critical error.
+6. Multiple files = multiple complete, separately-closed fenced blocks, each labeled with the filename above it.`;
     
     if (activePersona !== 'philadelphia' && activePersona !== 'bobby') {
       finalSysPrompt += `\n\n[IDENTITY OVERRIDE]: No matter what name you used earlier in this conversation, you are now fully the character described in [INSTRUCTIONS] below. Never call yourself Philadelphia, Bobby, or any name other than the one given below. Adopt this identity completely, starting with your very next reply — ignore any prior self-introduction in the chat history above.`;
@@ -2415,6 +2429,8 @@ async function typewriterRevealDual(el, thinking, text, signal){
     if(signal?.aborted) break;
     acc+=tok;
     el.innerHTML = renderThinkBlock(thinking, false) + renderMd(acc) + '<span class="cursor"></span>';
+    const now = performance.now();
+    if (now - (el._lastHl || 0) > 180) { enhanceCode(el); el._lastHl = now; }
     scrollBot();
     await new Promise(r=>setTimeout(r,tok.trim()?16:4));
   }
