@@ -860,6 +860,34 @@ function closeUnbalancedFences(text=''){
   return count % 2 !== 0 ? text + '\n```' : text;
 }
 
+// Catches reasoning that leaked with ZERO <think> tags — common during
+// search/tool rounds where the model narrates its own search process as
+// plain prose instead of answering. parseThinkStream can't catch this
+// (there's no tag to find), so this checks the shape of the text itself.
+const REASONING_LEAK_PATTERNS = [
+  /^the user (is|wants|asked|said|seems)/i,
+  /^let me (search|check|verify|confirm|look|try|do)/i,
+  /^i (should|need to|will|must|don'?t have) (a |an )?(search|check|verify|confirm|find|clear)/i,
+  /^now i have/i,
+  /^based on (the|this|my) search results?,? let me/i,
+  /^the search results (are|show|indicate|aren'?t|do not)/i,
+  /^output:/i,
+];
+function looksLikeLeakedReasoning(text){
+  const firstLine = (text || '').trim().split('\n')[0].trim();
+  return REASONING_LEAK_PATTERNS.some(rx => rx.test(firstLine));
+}
+function quarantineLeakedReasoning(fullText, thinkingText){
+  if (looksLikeLeakedReasoning(fullText)) {
+    const salvaged = thinkingText ? thinkingText + '\n\n' + fullText : fullText;
+    return {
+      fullText: "I wasn't able to pin down a confirmed answer after searching — want me to try again with a more specific angle?",
+      thinkingText: salvaged
+    };
+  }
+  return { fullText, thinkingText };
+}
+
 function renderMd(text=''){
   if(!text) return '';
   const codeRx = /```(\w+)?\n?([\s\S]*?)```/g;
@@ -1002,7 +1030,7 @@ let isResponding=false,currentCtrl=null,responseStartTime=0;
 let pendingFnCall=null;
 let renameTargetId=null;
 let personaSwitchIndex = 0;
-const CALL_SYSTEM_PROMPT = "You are Philadelphia, on a live voice call, not a text chat. Speak naturally like a real phone conversation. Never suggest the user type commands, never mention buttons, menus, or panels, and never offer to generate an image, video, comic, or website since you cannot produce those on a call — if asked for something visual, tell them to text you that request instead. Keep replies conversational and reasonably short since this is spoken aloud, not read.";
+const CALL_SYSTEM_PROMPT = "You are Philadelphia. created by Elvion AI. founded by Kolade philip Ogunlana. on a live voice call, not a text chat. Speak naturally like a real phone conversation. Never suggest the user type commands, never mention buttons, menus, or panels, and never offer to generate an image, video, comic, or website since you cannot produce those on a call — if asked for something visual, tell them to text you that request instead. Keep replies conversational and reasonably short since this is spoken aloud, not read.";
 
 // ── PANELS ───────────────────────────────────────────────────────
 const panels={
@@ -2264,7 +2292,9 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
       // Philadelphia/M3 already separates reasoning from the answer natively via the API's
       // own thinking channel. Telling it to ALSO use <think> tags in its reply text is what
       // causes the answer to get hidden inside "thinking" (or reasoning to leak into the reply).
-      finalSysPrompt += `\n\n[FORMAT RULE]: Your reasoning is already captured separately by the platform's own thinking mechanism — do NOT wrap any part of your reply in <think> or <thinking> tags. Write your final answer directly and plainly in the reply. Using <think> tags in your reply text will hide your real answer from the user, so never do it.`;
+      finalSysPrompt += `\n\n[FORMAT RULE]: Your reasoning is already captured separately by the platform's own thinking mechanism — do NOT wrap any part of your reply in <think> or <thinking> tags. Write your final answer directly and plainly in the reply. Using <think> tags in your reply text will hide your real answer from the user, so never do it.
+
+     [SEARCH/TOOL DELIBERATION RULE]: This applies with EQUAL force during and after web searches or any tool use. Never write things like "Let me search more specifically," "The user is getting impatient," "Now I have more clarity," "Based on the search results, let me confirm," or any other narration of your own search/verification process as visible reply text. That narration is reasoning, not an answer, and belongs nowhere in your visible output — the platform's thinking channel already exists for it. After a search completes, your visible reply must be ONLY the direct answer to the user's question, stated plainly. If a search comes back inconclusive after multiple attempts, say so directly and briefly to the user (e.g. "I couldn't find a confirmed answer for X — here's what I did find:") rather than narrating the search attempts themselves.`;
     }
     finalSysPrompt += `\n\n[CODE FORMAT RULE — MANDATORY, NO EXCEPTIONS]:
 1. Any code, of any length — even 10,000+ lines — lives inside ONE fenced markdown code block: open with three backticks immediately followed by the language name (e.g. \`\`\`python), close with three backticks alone on their own line.
@@ -2358,6 +2388,7 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
 
   const dur=((performance.now()-t0)/1000).toFixed(1);
   fullText = closeUnbalancedFences(fullText);
+  ({ fullText, thinkingText } = quarantineLeakedReasoning(fullText, thinkingText));
   let finalHtml = renderThinkBlock(thinkingText, false);
   finalHtml += (fullText && isDraftDocument(fullText)) ? renderDraftCard(fullText, aiG.dataset.id || Date.now()) : renderMd(fullText || "No response.");
   contentEl.innerHTML = finalHtml;
