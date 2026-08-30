@@ -632,13 +632,6 @@ pre::before{content:"CODE // " attr(data-lang);position:absolute;top:10px;left:1
     <div class="panel-section-title">Voice (for calls)</div>
     <div class="settings-grid" id="voice-tiles"></div>
 
-    <div class="panel-section-title" style="margin-top:18px">Response Length</div>
-    <div class="settings-grid" id="thinking-tiles">
-      <div class="settings-tile" data-val="small"><span class="st-label">Small</span><span class="st-sub">Fast, brief</span></div>
-      <div class="settings-tile active" data-val="moderate"><span class="st-label">Moderate</span><span class="st-sub">Balanced</span></div>
-      <div class="settings-tile" data-val="extended"><span class="st-label">Extended</span><span class="st-sub">Deep reasoning</span></div>
-      <div class="settings-tile" data-val="off"><span class="st-label">Off</span><span class="st-sub">No thinking shown</span></div>
-    </div>
 
     <div class="panel-section-title" style="margin-top:18px">Memory</div>
     <div class="toggle-row">
@@ -797,29 +790,34 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 // Strips <think>/<thinking> blocks out of raw text live, even with an
 // unclosed tag mid-stream. Never lets reasoning leak into the reply body.
 function parseThinkStream(raw){
-  let thinking='', clean='', rest=(raw||'').replace(/^\s*<\/[\w:]*think(?:ing)?>\s*/i, '');
+  let thinking='', clean='', rest=(raw||'');
   const openRx=/<[\w:]*think(?:ing)?>/i, closeRx=/<\/[\w:]*think(?:ing)?>/i;
   while(true){
     const om = rest.match(openRx);
-    if(!om){ clean += rest; break; }
-    clean += rest.slice(0, om.index);
-    const after = rest.slice(om.index + om[0].length);
-    const cm = after.match(closeRx);
-    if(!cm){ thinking += after; break; } // tag still open — still "thinking"
-    thinking += after.slice(0, cm.index);
-    rest = after.slice(cm.index + cm[0].length);
+    const cm = rest.match(closeRx);
+    if(om && (!cm || om.index <= cm.index)){
+      clean += rest.slice(0, om.index);
+      const after = rest.slice(om.index + om[0].length);
+      const cm2 = after.match(closeRx);
+      if(!cm2){ thinking += after; rest=''; break; }
+      thinking += after.slice(0, cm2.index);
+      rest = after.slice(cm2.index + cm2[0].length);
+      continue;
+    }
+    if(cm){
+      // stray/malformed closing tag with no matching open (your <mm:think> case) —
+      // everything before it was unlabeled reasoning that leaked out. Catch it.
+      thinking += rest.slice(0, cm.index);
+      rest = rest.slice(cm.index + cm[0].length);
+      continue;
+    }
+    clean += rest;
+    break;
   }
   return { clean: clean.trim(), thinking: thinking.trim() };
-}
+    }
 
-// ── RESPONSE LENGTH / THINKING LEVEL ─────────────────────────────
-const THINK_LEVEL_KEY = 'ph_thinking_level';
-const THINK_LEVEL_PROMPTS = {
-  small: '\n\n[RESPONSE LENGTH]: Keep your final answer brief — roughly 1-3 short paragraphs unless the question truly requires more detail.',
-  moderate: '\n\n[RESPONSE LENGTH]: Answer with balanced depth — as much as the question needs, no padding.',
-  extended: '\n\n[RESPONSE LENGTH]: Be thorough and detailed in your final answer. Don\'t worry about length; prioritize completeness.',
-  off: '\n\n[RESPONSE LENGTH]: Keep your final answer brief and direct.'
-};
+function thinkingUIEnabled(){ return true; }
 function getThinkLevel(){ return localStorage.getItem(THINK_LEVEL_KEY) || 'moderate'; }
 function getThinkLevelPrompt(){ return THINK_LEVEL_PROMPTS[getThinkLevel()] || ''; }
 function thinkingUIEnabled(){ return getThinkLevel() !== 'off'; }
@@ -1742,15 +1740,7 @@ $('inject-persona-btn').onclick=()=>{
   setTimeout(()=>{closePanel('persona');$('persona-status').textContent=''},1400);
 };
 
-// ── SETTINGS: response length tiles ──────────────────────────────
-document.querySelectorAll('#thinking-tiles .settings-tile').forEach(tile=>{
-  tile.onclick=()=>{
-    document.querySelectorAll('#thinking-tiles .settings-tile').forEach(t=>t.classList.remove('active'));
-    tile.classList.add('active');
-    localStorage.setItem(THINK_LEVEL_KEY, tile.dataset.val);
-    toast(`Response depth: ${tile.dataset.val}`, 'i');
-  };
-});
+
 (function initThinkTiles(){
   const saved = getThinkLevel();
   document.querySelectorAll('#thinking-tiles .settings-tile').forEach(t=>t.classList.toggle('active', t.dataset.val===saved));
@@ -2299,7 +2289,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
     if (userMemory) finalSysPrompt += `\n\n[USER CONTEXT]: The user has provided this info about themselves: "${userMemory}". Address them using this, but DO NOT assume this identity yourself. YOU are the AI.`;
     const pendingCtx = localStorage.getItem('ph_pending_context_'+currentChatId);
     if (pendingCtx) { finalSysPrompt += pendingCtx; localStorage.removeItem('ph_pending_context_'+currentChatId); }
-    finalSysPrompt += getThinkLevelPrompt();
     finalSysPrompt += `\n\n[INSTRUCTIONS]: ${basePrompt}`;
 
     if (currentModel === 'bobby') {
