@@ -860,45 +860,9 @@ function closeUnbalancedFences(text=''){
   return count % 2 !== 0 ? text + '\n```' : text;
 }
 
-// Catches reasoning that leaked with ZERO <think> tags — common during
-// search/tool rounds where the model narrates its own search process as
-// plain prose instead of answering. parseThinkStream can't catch this
-// (there's no tag to find), so this checks the shape of the text itself.
-const REASONING_LEAK_PATTERNS = [
-  /^the user (is|wants|asked|said|seems)/i,
-  /^let me (search|check|verify|confirm|look|try|do)/i,
-  /^i (should|need to|will|must|don'?t have) (a |an )?(search|check|verify|confirm|find|clear)/i,
-  /^based on (the|this|my) search results?,? let me/i,
-  /^the search results (are|show|indicate|aren'?t|do not)/i,
-  /^output:/i,
-];
-function stripLeadingReasoningLines(text){
-  const lines = (text || '').split('\n');
-  let i = 0, strippedLines = [];
-  while (i < lines.length) {
-    const line = lines[i].trim();
-    if (!line) { i++; continue; }
-    if (REASONING_LEAK_PATTERNS.some(rx => rx.test(line))) { strippedLines.push(lines[i]); i++; }
-    else break;
-  }
-  return { stripped: strippedLines.join('\n').trim(), remaining: lines.slice(i).join('\n').trim() };
-}
-function quarantineLeakedReasoning(fullText, thinkingText){
-  const { stripped, remaining } = stripLeadingReasoningLines(fullText);
-  if (!stripped) return { fullText, thinkingText }; // nothing leaked at the front — leave it alone
-  if (remaining.length > 40) {
-    // A real answer follows the leaked lead-in — keep the answer, quarantine only the leak line(s).
-    return { fullText: remaining, thinkingText: thinkingText ? thinkingText + '\n\n' + stripped : stripped };
-  }
-  // Nothing substantial left after stripping — the whole thing really was just reasoning chatter.
-  return {
-    fullText: "I wasn't able to pin down a confirmed answer after searching — want me to try again with a more specific angle?",
-    thinkingText: thinkingText ? thinkingText + '\n\n' + fullText : fullText
-  };
-    }
-
 function renderMd(text=''){
   if(!text) return '';
+  text = text.replace(/^\s*output:\s*\n+/i, '');
   const codeRx = /```(\w+)?\n?([\s\S]*?)```/g;
   let html='', last=0;
   text.replace(codeRx,(match,lang,code,offset)=>{
@@ -2397,7 +2361,6 @@ async function sendMsg(overrideText=null,skipSaveUser=false,skipDetection=false)
 
   const dur=((performance.now()-t0)/1000).toFixed(1);
   fullText = closeUnbalancedFences(fullText);
-  ({ fullText, thinkingText } = quarantineLeakedReasoning(fullText, thinkingText));
   let finalHtml = renderThinkBlock(thinkingText, false);
   finalHtml += (fullText && isDraftDocument(fullText)) ? renderDraftCard(fullText, aiG.dataset.id || Date.now()) : renderMd(fullText || "No response.");
   contentEl.innerHTML = finalHtml;
