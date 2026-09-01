@@ -997,6 +997,8 @@ let gallery=[]; let genCount=0;
 let curVidUrl=null, curPrompt='', curMode='t2v', curQuality='pro';
 let firstFrameFile=null, lastFrameFile=null, charFile=null, baseImgFile=null;
 let refImages=[]; let refVideoUrl=''; let refVideoSeconds=0; let refAudioUrl='';
+let refVideoFile=null; let refAudioFile=null;
+let refVideoInputMode='url'; let refAudioInputMode='url';
 let promptHistory=[];
 let loopOn=true;
 let _enhancedPrompt='';
@@ -1263,14 +1265,38 @@ function renderUploadZone(){
       <input type="file" id="ref-imgs-file" accept="image/*" multiple style="display:none" onchange="onRefImages(this)">
       <div id="ref-imgs-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div>
 
-      <div class="sh"><i class="fas fa-video"></i><span>Reference Video URL (optional)</span></div>
-      <div style="font-size:.55rem;color:var(--t3);margin:-4px 0 8px">Paste a public link to a clip. Its pacing and motion style get carried into your new video. This is billed as input material at the resolution you picked above.</div>
-      <div class="fld"><input type="text" id="ref-video-url" placeholder="https://... (public clip URL)" oninput="refVideoUrl=this.value.trim();onH3ParamChange()"></div>
-      <div class="fld"><label class="fld-l">Clip length (seconds, for accurate pricing)</label><input type="number" id="ref-video-secs" min="0" max="60" value="0" oninput="refVideoSeconds=parseInt(this.value)||0;onH3ParamChange()"></div>
+      <div class="sh"><i class="fas fa-video"></i><span>Reference Video (optional)</span></div>
+      <div style="font-size:.55rem;color:var(--t3);margin:-4px 0 8px">Its pacing and motion style get carried into your new video. Billed as input material at the resolution you picked above.</div>
+      <div style="display:flex;gap:5px;margin-bottom:8px">
+        <span class="dur-chip ${refVideoInputMode==='url'?'on':''}" onclick="setRefVideoMode('url')">Paste Link</span>
+        <span class="dur-chip ${refVideoInputMode==='file'?'on':''}" onclick="setRefVideoMode('file')">Upload File</span>
+      </div>
+      <div id="ref-video-url-wrap" style="display:${refVideoInputMode==='url'?'block':'none'}">
+        <div class="fld"><input type="text" id="ref-video-url" placeholder="https://... (public clip URL)" value="${refVideoUrl}" oninput="refVideoUrl=this.value.trim();onH3ParamChange()"></div>
+      </div>
+      <div id="ref-video-file-wrap" style="display:${refVideoInputMode==='file'?'block':'none'}">
+        <div class="file-drop ${refVideoFile?'has-file':''}" onclick="$('ref-video-file').click()">
+          <i class="fas fa-cloud-arrow-up"></i><span>${refVideoFile?refVideoFile.name:'Tap to Upload Clip (max 40MB)'}</span>
+        </div>
+        <input type="file" id="ref-video-file" accept="video/*" style="display:none" onchange="onRefVideoFile(this)">
+      </div>
+      <div class="fld"><label class="fld-l">Clip length (seconds, for accurate pricing)</label><input type="number" id="ref-video-secs" min="0" max="60" value="${refVideoSeconds||0}" oninput="refVideoSeconds=parseInt(this.value)||0;onH3ParamChange()"></div>
 
-      <div class="sh"><i class="fas fa-waveform-lines"></i><span>Reference Audio URL <span class="audio-badge yes" style="margin-left:4px"><i class="fas fa-volume-high"></i> Free, no extra cost</span></span></div>
-      <div style="font-size:.55rem;color:var(--t3);margin:-4px 0 8px;line-height:1.5">Paste a public link to a voice or music track and it becomes the audio of your generated video. Same voice, pacing, and tone carried over. This needs a public URL, not a local file: use a link from your Gallery, a hosted MP3, or any public audio link. It's completely free and never adds to your credit cost.</div>
-      <div class="fld"><input type="text" id="ref-audio-url" placeholder="https://... (public audio URL)" oninput="refAudioUrl=this.value.trim()"></div>
+      <div class="sh"><i class="fas fa-waveform-lines"></i><span>Reference Audio (optional) <span class="audio-badge yes" style="margin-left:4px"><i class="fas fa-volume-high"></i> Free, no extra cost</span></span></div>
+      <div style="font-size:.55rem;color:var(--t3);margin:-4px 0 8px;line-height:1.5">Becomes the audio of your generated video — same voice, pacing, and tone carried over.</div>
+      <div style="display:flex;gap:5px;margin-bottom:8px">
+        <span class="dur-chip ${refAudioInputMode==='url'?'on':''}" onclick="setRefAudioMode('url')">Paste Link</span>
+        <span class="dur-chip ${refAudioInputMode==='file'?'on':''}" onclick="setRefAudioMode('file')">Upload File</span>
+      </div>
+      <div id="ref-audio-url-wrap" style="display:${refAudioInputMode==='url'?'block':'none'}">
+        <div class="fld"><input type="text" id="ref-audio-url" placeholder="https://... (public audio URL)" value="${refAudioUrl}" oninput="refAudioUrl=this.value.trim()"></div>
+      </div>
+      <div id="ref-audio-file-wrap" style="display:${refAudioInputMode==='file'?'block':'none'}">
+        <div class="file-drop ${refAudioFile?'has-file':''}" onclick="$('ref-audio-file').click()">
+          <i class="fas fa-cloud-arrow-up"></i><span>${refAudioFile?refAudioFile.name:'Tap to Upload Audio (max 15MB)'}</span>
+        </div>
+        <input type="file" id="ref-audio-file" accept="audio/*" style="display:none" onchange="onRefAudioFile(this)">
+      </div>
     `;
     renderRefPreview();
   }
@@ -1307,6 +1333,27 @@ function renderRefPreview(){
 }
 window.removeRefImage=(i)=>{ refImages.splice(i,1); renderRefPreview(); onH3ParamChange(); };
 
+window.setRefVideoMode=(mode)=>{ refVideoInputMode=mode; renderUploadZone(); };
+window.setRefAudioMode=(mode)=>{ refAudioInputMode=mode; renderUploadZone(); };
+window.onRefVideoFile=(inp)=>{
+  const f=inp.files[0];if(!f)return;
+  if(f.size>40*1024*1024){toast('Video too large (max 40MB for direct upload) — paste a link instead','e');return;}
+  refVideoFile=f;
+  const v=document.createElement('video');
+  v.preload='metadata';
+  v.onloadedmetadata=()=>{ refVideoSeconds=Math.ceil(v.duration)||0; $('ref-video-secs').value=refVideoSeconds; onH3ParamChange(); URL.revokeObjectURL(v.src); };
+  v.src=URL.createObjectURL(f);
+  renderUploadZone();
+  toast('Video attached','s');
+};
+window.onRefAudioFile=(inp)=>{
+  const f=inp.files[0];if(!f)return;
+  if(f.size>15*1024*1024){toast('Audio too large (max 15MB for direct upload) — paste a link instead','e');return;}
+  refAudioFile=f;
+  renderUploadZone();
+  toast('Audio attached','s');
+};
+  
 /* ── PROMPT HELPERS ── */
 window.updCC=el=>{
   const cc=$('cc');if(cc)cc.textContent=`${el.value.length}/1000`;
@@ -1436,7 +1483,7 @@ async function executeGenH3(prompt){
   const camera_motion=$('h3-camera')?.value||'none';
   const audio_mood=$('h3-audiomood')?.value||'none';
   if(curMode==='i2v'&&!baseImgFile){toast('Upload a base image for Image→Video','e');return;}
-  if(curMode==='reference'&&!(refImages.length||refVideoUrl||refAudioUrl)){toast('Add at least one reference image, video, or audio URL','e');return;}
+  if(curMode==='reference'&&!(refImages.length||refVideoUrl||refVideoFile||refAudioUrl||refAudioFile)){toast('Add at least one reference image, video, or audio','e');return;}
   showGenOverlay('PRO ENGINE');startSteps();
   try{
     let taskId, resp;
@@ -1450,8 +1497,10 @@ async function executeGenH3(prompt){
     }else if(curMode==='reference'){
       const fd=new FormData();fd.append('prompt',prompt);
       refImages.forEach(f=>fd.append('reference_images',f));
-      if(refVideoUrl){fd.append('reference_video_url',refVideoUrl);fd.append('reference_video_seconds',refVideoSeconds||0);}
-      if(refAudioUrl)fd.append('reference_audio_url',refAudioUrl);
+      if(refVideoFile){fd.append('reference_video_file',refVideoFile);fd.append('reference_video_seconds',refVideoSeconds||0);}
+      else if(refVideoUrl){fd.append('reference_video_url',refVideoUrl);fd.append('reference_video_seconds',refVideoSeconds||0);}
+      if(refAudioFile)fd.append('reference_audio_file',refAudioFile);
+      else if(refAudioUrl)fd.append('reference_audio_url',refAudioUrl);
       fd.append('duration',duration);fd.append('resolution',resolution);fd.append('ratio','adaptive');fd.append('camera_motion',camera_motion);fd.append('audio_mood',audio_mood);
       resp=await fetch(`${API}/api/studio/h3/generate-reference`,{method:'POST',headers:{'X-Firebase-Token':tok},body:fd});
     }else{
